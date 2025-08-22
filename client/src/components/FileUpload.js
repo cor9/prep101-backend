@@ -28,7 +28,7 @@ const FileUpload = ({ onUpload }) => {
       formData.append('file', file);
 
       // FIXED: Call the correct endpoint and port
-      const { data } = await axios.post('http://localhost:5001/api/upload', formData, {
+      const { data } = await axios.post('https://caring-vision-production.up.railway.app/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 

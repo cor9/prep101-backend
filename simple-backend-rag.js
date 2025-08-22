@@ -454,6 +454,15 @@ app.get('/api/health', (req, res) => {
  });
 });
 
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, "client/build")));
+
+// Catch all handler for React Router
+app.get("*", (req, res) => {
+  if (!req.path.startsWith("/api")) {
+    res.sendFile(path.join(__dirname, "client/build", "index.html"));
+  }
+});
 // Load methodology on startup
 loadMethodologyFiles();
 
@@ -476,4 +485,14 @@ app.listen(PORT, () => {
  console.log('   • Actor Motivator writing style');
  console.log('');
  console.log('✅ Ready to generate authentic Corey Ralston guides!');
+});
+
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, 'client/build')));
+
+// Catch all handler for React Router  
+app.get('*', (req, res) => {
+ if (!req.path.startsWith('/api')) {
+   res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+ }
 });
