@@ -5,7 +5,8 @@
   "main": "simple-backend-rag.js",
   "scripts": {
     "start": "node simple-backend-rag.js",
-    "build": "echo 'No build step needed'",
+    "build": "cd client && npm install && npm run build",
+    "postinstall": "cd client && npm install",
     "dev": "node simple-backend-rag.js"
   },
   "dependencies": {

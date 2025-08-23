@@ -6,7 +6,7 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
-app.use(cors({ origin: ['http://localhost:3000'] }));
+app.use(cors());
 app.use(express.json());
 
 const upload = multer({ 
@@ -455,12 +455,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve static files from React build
-app.use(express.static(path.join(__dirname, "client/build")));
 
 // Catch all handler for React Router
 app.get("*", (req, res) => {
   if (!req.path.startsWith("/api")) {
-    res.sendFile(path.join(__dirname, "client/build", "index.html"));
+    res.sendFile(path.join(__dirname, "index.html"));
   }
 });
 // Load methodology on startup
@@ -488,11 +487,10 @@ app.listen(PORT, () => {
 });
 
 // Serve static files from React build
-app.use(express.static(path.join(__dirname, 'client/build')));
 
 // Catch all handler for React Router  
 app.get('*', (req, res) => {
  if (!req.path.startsWith('/api')) {
-   res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+   res.sendFile(path.join(__dirname, "index.html"));
  }
 });
