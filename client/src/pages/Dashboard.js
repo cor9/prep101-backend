@@ -23,7 +23,7 @@ const Dashboard = () => {
     console.log('📊 Frontend: Form data:', formData);
     console.log('📊 Frontend: Upload ID:', uploadData.uploadId);
     
-    const response = await fetch('https://caring-vision-production.up.railway.app/api/guides/generate', {
+    const response = await fetch('https://childactor101.sbs/api/guides/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
