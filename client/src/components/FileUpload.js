@@ -3,6 +3,15 @@ import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
+// IMPORTANT: Assuming you have a way to get the auth token,
+// such as from a global state or a context API.
+// This is a placeholder for demonstration.
+const getAuthToken = () => {
+  // Replace this with your actual token retrieval logic.
+  // Example: return localStorage.getItem('token');
+  return 'your_authentication_token_here';
+};
+
 const FileUpload = ({ onUpload }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -24,12 +33,15 @@ const FileUpload = ({ onUpload }) => {
     setUploading(true);
     try {
       const formData = new FormData();
-      // FIXED: Use 'file' instead of 'pdf' to match backend expectation
       formData.append('file', file);
 
-      // FIXED: Call the correct endpoint and port
+      // FIXED: Use the live backend URL
       const { data } = await axios.post('https://childactor101.sbs/api/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          // CRITICAL FIX: Add the authentication header to fix the 401 error
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
       });
 
       // FIXED: Handle the new response format from simple backend
@@ -69,7 +81,11 @@ const FileUpload = ({ onUpload }) => {
 
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error(err.response?.data?.error || err.message || 'Failed to upload file');
+      // More robust error handling for user feedback
+      const errorMessage = err.response?.status === 401 
+        ? 'Authentication failed. Please log in again.' 
+        : err.response?.data?.error || err.message || 'Failed to upload file';
+      toast.error(errorMessage);
     } finally {
       setUploading(false);
     }

@@ -225,7 +225,7 @@ async function generateActingGuideWithRAG(data) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 16000,
+        max_tokens: 8000,
         messages: [{
           role: "user",
           content: `You are PREP101, created by Corey Ralston. You have access to Corey's complete methodology and example guides below. Generate a professional acting guide that perfectly matches Corey's distinctive "Actor Motivator" coaching voice and methodology.
@@ -435,7 +435,7 @@ app.get('/api/health', (req, res) => {
  res.json({ 
    status: 'running',
    model: 'claude-sonnet-4-20250514',
-   maxTokens: 16000,
+   maxTokens: 8000,
    ragEnabled: true,
    methodologyFiles: Object.keys(methodologyDatabase).length,
    coreyRalstonMethodology: true,
@@ -453,17 +453,6 @@ app.get('/api/health', (req, res) => {
    message: 'PREP101 Corey Ralston RAG-Enhanced Guide Generator with Actor Motivator Style'
  });
 });
-
-// Serve static files from React build
-
-// Catch all handler for React Router
-app.get("*", (req, res) => {
-  if (!req.path.startsWith("/api")) {
-    res.sendFile(path.join(__dirname, "index.html"));
-  }
-});
-// Load methodology on startup
-loadMethodologyFiles();
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
