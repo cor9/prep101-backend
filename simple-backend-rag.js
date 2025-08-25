@@ -5,9 +5,37 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
+// Import new authentication and payment features
+const { config, validateConfig } = require('./config/config');
+const { 
+  authLimiter, 
+  apiLimiter, 
+  paymentLimiter, 
+  speedLimiter, 
+  corsOptions, 
+  securityHeaders 
+} = require('./middleware/security');
+
 const app = express();
-app.use(cors());
-app.use(express.json());
+
+// Validate configuration
+validateConfig();
+
+// Security middleware
+app.use(securityHeaders);
+
+// CORS
+app.use(cors(corsOptions));
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Rate limiting
+app.use('/api/auth', authLimiter);
+app.use('/api/payments', paymentLimiter);
+app.use('/api', apiLimiter);
+app.use(speedLimiter);
 
 const upload = multer({ 
   storage: multer.memoryStorage(), 
@@ -16,6 +44,20 @@ const upload = multer({
 
 const uploads = {};
 
+// Import and mount new API routes
+const authRoutes = require('./routes/auth');
+const paymentRoutes = require('./routes/payments');
+const guidesRoutes = require('./routes/guides');
+const uploadRoutes = require('./routes/upload');
+const betaRoutes = require('./routes/beta');
+
+// Mount new API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/guides', guidesRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/beta', betaRoutes);
+
 // Secure API key handling
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 if (!ANTHROPIC_API_KEY) {
@@ -23,8 +65,24 @@ if (!ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
+// Database initialization
+const { sequelize, testConnection } = require('./database/connection');
+const User = require('./models/User');
+const Guide = require('./models/Guide');
+
 // Load methodology files into memory for RAG
 let methodologyDatabase = {};
+
+async function initializeDatabase() {
+  try {
+    await testConnection();
+    await sequelize.sync({ alter: true });
+    console.log('✅ Database models synchronized');
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+    process.exit(1);
+  }
+}
 
 function loadMethodologyFiles() {
   const methodologyPath = path.join(__dirname, 'methodology');
@@ -448,14 +506,45 @@ app.get('/api/health', (req, res) => {
      'Professional coaching voice replication',
      'Claude Sonnet 4 + 16K tokens',
      'PREP101 authentic methodology',
-     'Actor Motivator writing style'
+     'Actor Motivator writing style',
+     'User authentication & authorization',
+     'Stripe payment integration',
+     'Subscription management',
+     'Guide usage tracking'
    ],
-   message: 'PREP101 Corey Ralston RAG-Enhanced Guide Generator with Actor Motivator Style'
+   message: 'PREP101 Corey Ralston RAG-Enhanced Guide Generator with Actor Motivator Style + Full Auth & Payment System'
  });
 });
 
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
+// Enhanced health check with new features
+app.get('/health', (req, res) => {
+ res.json({ 
+   status: 'healthy',
+   timestamp: new Date().toISOString(),
+   environment: config.server.env,
+   features: {
+     rag: true,
+     authentication: true,
+     payments: true,
+     guides: true,
+     uploads: true
+   },
+   server: 'PREP101 Enhanced Backend'
+ });
+});
+
+// Initialize server
+const startServer = async () => {
+  try {
+    // Initialize database
+    await initializeDatabase();
+    
+    // Load methodology files
+    loadMethodologyFiles();
+    
+    // Start server
+    const PORT = process.env.PORT || 5001;
+    app.listen(PORT, () => {
  console.log('🎭 PREP101 COREY RALSTON RAG-ENHANCED GENERATOR');
  console.log(`🚀 Server running on port ${PORT}`);
  console.log(`🤖 Model: Claude Sonnet 4 ✅`);
@@ -472,7 +561,35 @@ app.listen(PORT, () => {
  console.log('   • PREP101 authentic methodology');
  console.log('   • Actor Motivator writing style');
  console.log('');
- console.log('✅ Ready to generate authentic Corey Ralston guides!');
+ console.log('🔐 NEW: Authentication & Payment System');
+ console.log('   • User registration & login');
+ console.log('   • Stripe subscription management');
+ console.log('   • Guide usage tracking');
+ console.log('   • Subscription-based access control');
+ console.log('');
+ console.log('✅ Ready to generate authentic Corey Ralston guides with full auth & payments!');
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully');
+  await sequelize.close();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('🛑 SIGINT received, shutting down gracefully');
+  await sequelize.close();
+  process.exit(0);
 });
 
 // Serve static files from React build
