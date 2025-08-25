@@ -1,15 +1,25 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+let stripe = null;
 
 class PaymentService {
   constructor() {
     const { config } = require('../config/config');
-    if (!config.stripe.secretKey) {
-      throw new Error('STRIPE_SECRET_KEY is required');
+    if (config.stripe.secretKey) {
+      stripe = require('stripe')(config.stripe.secretKey);
+    } else {
+      console.warn('⚠️  Stripe not configured - payment features will be disabled');
     }
+  }
+
+  // Check if Stripe is available
+  isStripeAvailable() {
+    return stripe !== null;
   }
 
   // Create a customer in Stripe
   async createCustomer(email, name) {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
     try {
       const customer = await stripe.customers.create({
         email,

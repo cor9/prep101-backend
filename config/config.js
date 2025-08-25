@@ -120,15 +120,14 @@ const validateConfig = () => {
     process.exit(1);
   }
 
-  // Check Stripe configuration
+  // Check Stripe configuration (optional for now)
   if (!config.stripe.secretKey) {
-    console.error('❌ Stripe secret key is missing');
-    process.exit(1);
+    console.warn('⚠️  Stripe secret key is missing - payment features will be disabled');
   }
 
   console.log('✅ Configuration validated successfully');
   console.log(`🔐 JWT Secret: ${config.jwt.secret ? 'Configured' : 'Missing'}`);
-  console.log(`💳 Stripe: ${config.stripe.secretKey ? 'Configured' : 'Missing'}`);
+  console.log(`💳 Stripe: ${config.stripe.secretKey ? 'Configured' : 'Disabled (optional)'}`);
 };
 
 module.exports = { config, validateConfig };
