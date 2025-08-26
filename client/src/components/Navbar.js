@@ -38,38 +38,15 @@ const Navbar = () => {
           gap: '0.75rem',
           textDecoration: 'none'
         }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 'bold',
-            fontSize: '1.5rem',
-            boxShadow: '0 4px 15px rgba(45, 212, 191, 0.3)'
-          }}>
-            P
-          </div>
-          <div>
-            <div style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: 'bold', 
-              color: '#0891b2' 
-            }}>
-              PREP101
-            </div>
-            <div style={{ 
-              fontSize: '0.7rem', 
-              color: '#6b7280',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              Custom Scene Analysis
-            </div>
-          </div>
+          <img 
+            src="/preplogo.png" 
+            alt="PREP101 Logo" 
+            style={{
+              height: '40px',
+              width: 'auto',
+              objectFit: 'contain'
+            }}
+          />
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

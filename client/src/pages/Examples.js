@@ -78,6 +78,20 @@ const Examples = () => {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+            {/* Logo */}
+            <div style={{ marginBottom: '2rem' }}>
+              <img 
+                src="/preplogo.png" 
+                alt="PREP101 Logo" 
+                style={{
+                  height: '60px',
+                  width: 'auto',
+                  objectFit: 'contain',
+                  margin: '0 auto'
+                }}
+              />
+            </div>
+            
             <h1 style={{ 
               fontSize: '3.5rem', 
               fontWeight: 'bold', 

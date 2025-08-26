@@ -26,6 +26,21 @@ const Home = () => {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '4rem', color: 'white' }}>
+            {/* Logo */}
+            <div style={{ marginBottom: '2rem' }}>
+              <img 
+                src="/preplogo.png" 
+                alt="PREP101 Logo" 
+                style={{
+                  height: '80px',
+                  width: 'auto',
+                  objectFit: 'contain',
+                  filter: 'brightness(0) invert(1)',
+                  margin: '0 auto'
+                }}
+              />
+            </div>
+            
             <h1 style={{ 
               fontSize: '4rem', 
               fontWeight: 'bold', 
