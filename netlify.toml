@@ -1,5 +1,5 @@
 [build]
-  publish = "client/build"
+  publish = "build"
   base = "client"
   command = "npm install && npm run build"
 
