@@ -1,10 +1,13 @@
 [build]
   publish = "client/build"
-  command = "cd client && npm run build"
+  base = "client"
+  command = "npm install && npm run build"
 
 [build.environment]
   NODE_VERSION = "18"
+  NPM_VERSION = "9"
 
+# Redirect rules for SPA routing
 [[redirects]]
   from = "/"
   to = "/index.html"
