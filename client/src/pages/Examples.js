@@ -7,290 +7,173 @@ const Examples = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const examples = [
+  // === EXACT ORDER (Top → Bottom, Left → Right) ===
+  const tiles = [
+    // Row 1
     {
-      title: "Shakespeare - Hamlet's Soliloquy",
-      character: "Hamlet",
-      production: "Hamlet",
-      type: "Classical Theatre",
-      description: "A deep dive into Hamlet's famous 'To be or not to be' soliloquy, exploring the character's internal conflict and the existential themes.",
-      highlights: [
-        "Character motivation analysis",
-        "Text interpretation",
-        "Physical and vocal choices",
-        "Emotional journey mapping"
-      ],
-      image: "🎭"
+      heading: 'MultiCam Sitcom',
+      sub: 'Disney Series Guest Star',
+      href: 'https://claude.ai/public/artifacts/77401c18-46dc-47d3-b4f6-427bd0a22cb0'
     },
     {
-      title: "Contemporary - 'Doubt' by John Patrick Shanley",
-      character: "Sister Aloysius",
-      production: "Doubt",
-      type: "Contemporary Drama",
-      description: "Analysis of Sister Aloysius's complex character, examining her moral certainty and the dramatic tension in her scenes.",
-      highlights: [
-        "Subtext exploration",
-        "Power dynamics",
-        "Moral complexity",
-        "Scene partner work"
-      ],
-      image: "⛪"
+      heading: 'TV Teen Drama',
+      sub: 'Series Regular Role',
+      href: 'https://claude.ai/public/artifacts/b76be214-e69d-499a-b7ea-e8af412b682e'
+    },
+    // Row 2
+    {
+      heading: 'Thriller/Horror',
+      sub: 'Lead Role',
+      href: 'https://pzixzsjbbswpba9zyakuna.on.drv.tw/prep101/carrieweb.html'
     },
     {
-      title: "Musical Theatre - 'Wicked'",
-      character: "Elphaba",
-      production: "Wicked",
-      type: "Musical Theatre",
-      description: "Character development for Elphaba, focusing on her transformation from misunderstood outcast to powerful heroine.",
-      highlights: [
-        "Character arc development",
-        "Vocal performance notes",
-        "Physical transformation",
-        "Emotional vulnerability"
-      ],
-      image: "🟢"
+      heading: 'Drama Film',
+      sub: 'Leading Role',
+      href: 'https://claude.ai/public/artifacts/8483c054-0f47-4149-929c-a4d098934afa'
+    },
+    // Row 3
+    {
+      heading: 'Single-Cam Sitcom',
+      sub: 'Disney Series Regular',
+      href: 'https://claude.ai/public/artifacts/96f3dd5f-395f-42e9-9e5b-52eee8d41a26'
     },
     {
-      title: "Film - 'The Devil Wears Prada'",
-      character: "Andy Sachs",
-      production: "The Devil Wears Prada",
-      type: "Film",
-      description: "Modern character analysis of Andy Sachs, exploring her journey from naive newcomer to confident professional.",
-      highlights: [
-        "Character growth arc",
-        "Modern dialogue delivery",
-        "Physical comedy elements",
-        "Emotional authenticity"
-      ],
-      image: "👠"
+      heading: 'TV Medical Drama',
+      sub: 'Co-Star Role',
+      href: 'https://claude.ai/public/artifacts/1891f784-862b-4191-8e7a-a2c5c1f82443'
+    },
+    // Row 4
+    {
+      heading: 'Comedy Film',
+      sub: 'Supporting Role',
+      href: 'https://claude.ai/public/artifacts/233bb61a-6519-446e-8137-5e3ecec11610'
+    },
+    {
+      heading: 'Daytime Soap',
+      sub: 'Recurring Day Player',
+      href: 'https://claude.ai/public/artifacts/2066f5b7-465a-40ac-b110-8285e161e82a'
     }
   ];
+
+  const open = (url) => window.open(url, '_blank', 'noopener,noreferrer');
 
   return (
     <>
       <Navbar />
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-        paddingTop: '80px',
-        paddingBottom: '2rem'
+        background: 'linear-gradient(135deg,#0ea5e9 0%,#0984cf 40%,#0b4ed8 100%)',
+        paddingTop: 80,
+        paddingBottom: '3rem'
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 2rem' }}>
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-            {/* Logo */}
-            <div style={{ marginBottom: '2rem' }}>
-              <img 
-                src="/preplogo.png" 
-                alt="PREP101 Logo" 
-                style={{
-                  height: '60px',
-                  width: 'auto',
-                  objectFit: 'contain',
-                  margin: '0 auto'
-                }}
-              />
-            </div>
-            
-            <h1 style={{ 
-              fontSize: '3.5rem', 
-              fontWeight: 'bold', 
-              marginBottom: '1rem',
-              color: '#1e293b'
-            }}>
-              See What You'll Get
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem', color: 'white' }}>
+            <img
+              src="/preplogo.png"
+              alt="Prep101 Logo"
+              style={{ height: 60, width: 'auto', objectFit: 'contain', marginBottom: 12 }}
+            />
+            <h1 style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0, letterSpacing: '-0.01em' }}>
+              Audition Guide Examples
             </h1>
-            <p style={{ 
-              fontSize: '1.2rem', 
-              color: '#64748b',
-              maxWidth: '700px',
-              margin: '0 auto'
-            }}>
-              Explore examples of our comprehensive acting guides. Each guide is tailored to your specific character and production needs.
+            <p style={{ opacity: 0.9, marginTop: 8 }}>
+              Real sample guides in the exact formats parents and young actors receive.
             </p>
           </div>
 
-          {/* Examples Grid */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
-            gap: '2rem',
-            marginBottom: '4rem'
+          {/* Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '1.25rem'
           }}>
-            {examples.map((example, index) => (
-              <div key={index} style={{
-                background: 'white',
-                borderRadius: '1.5rem',
-                padding: '2rem',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                transition: 'all 0.3s ease',
-                cursor: 'pointer'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.transform = 'translateY(-5px)';
-                e.target.style.boxShadow = '0 20px 60px rgba(0,0,0,0.15)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 10px 40px rgba(0,0,0,0.1)';
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  marginBottom: '1.5rem' 
-                }}>
-                  <div style={{
-                    fontSize: '3rem',
-                    marginRight: '1rem'
-                  }}>
-                    {example.image}
-                  </div>
-                  <div>
-                    <h3 style={{ 
-                      fontSize: '1.3rem', 
-                      fontWeight: 'bold', 
-                      marginBottom: '0.5rem',
-                      color: '#1e293b'
-                    }}>
-                      {example.title}
-                    </h3>
-                    <p style={{ 
-                      fontSize: '0.9rem', 
-                      color: '#64748b',
-                      marginBottom: '0.25rem'
-                    }}>
-                      <strong>Character:</strong> {example.character}
-                    </p>
-                    <p style={{ 
-                      fontSize: '0.9rem', 
-                      color: '#64748b',
-                      marginBottom: '0.25rem'
-                    }}>
-                      <strong>Production:</strong> {example.production}
-                    </p>
-                    <p style={{ 
-                      fontSize: '0.9rem', 
-                      color: '#64748b'
-                    }}>
-                      <strong>Type:</strong> {example.type}
-                    </p>
-                  </div>
+            {tiles.map((t) => (
+              <div
+                key={t.href}
+                style={{
+                  background: 'white',
+                  borderRadius: 16,
+                  padding: '1.4rem',
+                  boxShadow: '0 10px 40px rgba(0,0,0,.10)',
+                  border: '1px solid #e5e7eb',
+                  transition: 'transform .2s ease, box-shadow .2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 16px 60px rgba(0,0,0,.14)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 10px 40px rgba(0,0,0,.10)';
+                }}
+              >
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{t.heading}</div>
+                  <div style={{ color: '#64748b', marginTop: 2 }}>{t.sub}</div>
                 </div>
-                
-                <p style={{ 
-                  color: '#475569', 
-                  marginBottom: '1.5rem',
-                  lineHeight: '1.6'
-                }}>
-                  {example.description}
-                </p>
-                
-                <div>
-                  <h4 style={{ 
-                    fontSize: '1rem', 
-                    fontWeight: '600', 
-                    marginBottom: '0.75rem',
-                    color: '#374151'
-                  }}>
-                    Guide Highlights:
-                  </h4>
-                  <ul style={{ 
-                    listStyle: 'none', 
-                    padding: 0 
-                  }}>
-                    {example.highlights.map((highlight, highlightIndex) => (
-                      <li key={highlightIndex} style={{
-                        padding: '0.25rem 0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        color: '#6b7280',
-                        fontSize: '0.9rem'
-                      }}>
-                        <span style={{
-                          color: '#2dd4bf',
-                          marginRight: '0.5rem',
-                          fontSize: '1rem'
-                        }}>
-                          •
-                        </span>
-                        {highlight}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+
+                <button
+                  onClick={() => open(t.href)}
+                  style={{
+                    background: '#0f172a',
+                    color: 'white',
+                    padding: '0.7rem 1.1rem',
+                    border: 'none',
+                    borderRadius: 999,
+                    fontWeight: 800,
+                    fontSize: '.95rem',
+                    cursor: 'pointer'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = '#111827'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = '#0f172a'; }}
+                >
+                  See Example
+                </button>
               </div>
             ))}
           </div>
 
-          {/* Call to Action */}
+          {/* CTA */}
           <div style={{
-            background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 50%, #1d4ed8 100%)',
-            borderRadius: '1.5rem',
-            padding: '3rem',
+            marginTop: '2.5rem',
+            background: 'linear-gradient(135deg,#2dd4bf 0%,#06b6d4 60%,#1d4ed8 100%)',
+            borderRadius: 18,
+            padding: '2rem',
             textAlign: 'center',
             color: 'white',
-            boxShadow: '0 25px 80px rgba(45, 212, 191, 0.3)'
+            boxShadow: '0 24px 70px rgba(6,182,212,.28)'
           }}>
-            <h2 style={{ 
-              fontSize: '2.5rem', 
-              fontWeight: 'bold', 
-              marginBottom: '1rem'
-            }}>
-              Ready to Get Your Guide?
-            </h2>
-            <p style={{ 
-              fontSize: '1.2rem', 
-              marginBottom: '2rem',
-              opacity: 0.9
-            }}>
-              Upload your sides and get a personalized guide just like these examples.
+            <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900 }}>Ready to get a guide like these?</h2>
+            <p style={{ marginTop: 8, opacity: 0.95 }}>
+              Start free (1 guide/month) — upgrade anytime.
             </p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginTop: 12 }}>
               <button
-                onClick={() => navigate('/register')}
+                onClick={() => (user ? navigate('/dashboard') : navigate('/register'))}
                 style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  color: 'white',
-                  padding: '1rem 2rem',
-                  border: '2px solid white',
-                  borderRadius: '2rem',
-                  fontWeight: 'bold',
-                  fontSize: '1.1rem',
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(10px)',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.target.style.background = 'rgba(255,255,255,0.3)';
-                  e.target.style.transform = 'translateY(-2px)';
-                }}
-                onMouseOut={(e) => {
-                  e.target.style.background = 'rgba(255,255,255,0.2)';
-                  e.target.style.transform = 'translateY(0)';
+                  background: 'white',
+                  color: '#1d4ed8',
+                  padding: '0.8rem 1.2rem',
+                  border: 'none',
+                  borderRadius: 999,
+                  fontWeight: 900,
+                  cursor: 'pointer'
                 }}
               >
-                Sign Up Now
+                {user ? 'Go to Dashboard' : 'Start Free'}
               </button>
-              
               {!user && (
                 <button
                   onClick={() => navigate('/login')}
                   style={{
-                    background: 'white',
-                    color: '#1d4ed8',
-                    padding: '1rem 2rem',
-                    border: 'none',
-                    borderRadius: '2rem',
-                    fontWeight: 'bold',
-                    fontSize: '1.1rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseOver={(e) => {
-                    e.target.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.transform = 'translateY(0)';
+                    background: 'transparent',
+                    color: 'white',
+                    border: '1px solid white',
+                    padding: '0.8rem 1.2rem',
+                    borderRadius: 999,
+                    fontWeight: 800,
+                    cursor: 'pointer'
                   }}
                 >
                   Log In
