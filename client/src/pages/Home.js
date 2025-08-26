@@ -7,12 +7,6 @@ const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Debug logging - testing Netlify auto-deploy
-  console.log('Home component: user is:', user);
-  console.log('Home component: rendering with user state:', !!user);
-  console.log('Home component: timestamp:', new Date().toISOString());
-  console.log('Home component: testing Netlify auto-deploy - attempt 3');
-
   const handleGetStarted = () => {
     if (user) {
       navigate('/dashboard');
@@ -133,7 +127,7 @@ const Home = () => {
                 </>
               ) : (
                 <button
-                  onClick={handleGetStarted}
+                  onClick={() => navigate('/account')}
                   style={{
                     background: 'linear-gradient(135deg, #fb923c 0%, #f97316 100%)',
                     color: 'white',
@@ -155,7 +149,7 @@ const Home = () => {
                     e.target.style.boxShadow = '0 10px 25px rgba(251, 146, 60, 0.3)';
                   }}
                 >
-                  Go to Dashboard
+                  Go to Account
                 </button>
               )}
             </div>

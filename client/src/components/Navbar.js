@@ -82,6 +82,19 @@ const Navbar = () => {
           {user ? (
             <>
               <Link 
+                to="/account" 
+                style={{ 
+                  color: '#4b5563', 
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  transition: 'color 0.3s ease'
+                }}
+                onMouseOver={(e) => e.target.style.color = '#0891b2'}
+                onMouseOut={(e) => e.target.style.color = '#4b5563'}
+              >
+                Account
+              </Link>
+              <Link 
                 to="/dashboard" 
                 style={{ 
                   color: '#4b5563', 

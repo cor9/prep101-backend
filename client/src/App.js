@@ -8,6 +8,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Pricing from './pages/Pricing';
 import Examples from './pages/Examples';
+import Account from './pages/Account';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -26,6 +27,14 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/examples" element={<Examples />} />
+            <Route 
+              path="/account" 
+              element={
+                <ProtectedRoute>
+                  <Account />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/dashboard" 
               element={
