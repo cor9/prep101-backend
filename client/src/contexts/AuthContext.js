@@ -12,16 +12,40 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     console.log('AuthContext: login called with:', email, password);
-    // This should be a real login function that requires actual credentials
-    // For now, return null to prevent automatic login
-    return null;
+    
+    // For now, create a fake user for demo purposes
+    // In production, this would call your backend API
+    const fakeUser = {
+      id: 1,
+      name: 'Demo User',
+      email: email,
+      subscription: 'free',
+      guidesUsed: 0,
+      guidesLimit: 3
+    };
+    
+    setUser(fakeUser);
+    console.log('AuthContext: user set to:', fakeUser);
+    return fakeUser;
   };
 
   const register = async (email, password, name) => {
     console.log('AuthContext: register called with:', email, password, name);
-    // This should be a real registration function that requires actual user input
-    // For now, return null to prevent automatic registration
-    return null;
+    
+    // For now, create a fake user for demo purposes
+    // In production, this would call your backend API
+    const fakeUser = {
+      id: 1,
+      name: name || 'Demo User',
+      email: email,
+      subscription: 'free',
+      guidesUsed: 0,
+      guidesLimit: 3
+    };
+    
+    setUser(fakeUser);
+    console.log('AuthContext: user set to:', fakeUser);
+    return fakeUser;
   };
 
   const logout = () => {
