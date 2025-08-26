@@ -7,6 +7,10 @@ const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Debug logging
+  console.log('Home component: user is:', user);
+  console.log('Home component: rendering with user state:', !!user);
+
   const handleGetStarted = () => {
     if (user) {
       navigate('/dashboard');
