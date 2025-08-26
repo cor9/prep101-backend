@@ -6,6 +6,7 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
+  CI = "false"
 
 # Redirect rules for SPA routing
 [[redirects]]

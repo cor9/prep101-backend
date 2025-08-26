@@ -7,9 +7,7 @@
     "start": "node simple-backend-rag.js",
     "dev": "nodemon simple-backend-rag.js",
     "migrate": "node scripts/migrate.js",
-    "start:enhanced": "node simple-backend-rag.js",
-    "build": "cd client && npm install && npm run build",
-    "build:client": "cd client && npm install && npm run build"
+    "start:enhanced": "node simple-backend-rag.js"
   },
   "dependencies": {
     "express": "^4.18.2",
