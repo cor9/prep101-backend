@@ -1,0 +1,11 @@
+# Redirect rules for PREP101
+/ /index.html 200
+/dashboard /index.html 200
+/login /index.html 200
+/register /index.html 200
+/pricing /index.html 200
+/examples /index.html 200
+/create-guide /index.html 200
+
+# Catch all - serve index.html for any other routes
+/* /index.html 200
