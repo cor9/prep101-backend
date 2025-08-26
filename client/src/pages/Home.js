@@ -11,6 +11,7 @@ const Home = () => {
   console.log('Home component: user is:', user);
   console.log('Home component: rendering with user state:', !!user);
   console.log('Home component: timestamp:', new Date().toISOString());
+  console.log('Home component: testing Netlify auto-deploy - attempt 3');
 
   const handleGetStarted = () => {
     if (user) {
