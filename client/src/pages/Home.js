@@ -7,7 +7,7 @@ const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Debug logging
+  // Debug logging - testing Netlify auto-deploy
   console.log('Home component: user is:', user);
   console.log('Home component: rendering with user state:', !!user);
 
