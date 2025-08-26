@@ -6,6 +6,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Pricing from './pages/Pricing';
+import Examples from './pages/Examples';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -22,6 +24,8 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/examples" element={<Examples />} />
             <Route 
               path="/dashboard" 
               element={
