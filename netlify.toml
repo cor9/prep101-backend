@@ -1,0 +1,47 @@
+[build]
+  publish = "client/build"
+  command = "cd client && npm run build"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/login"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/register"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/pricing"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/examples"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/create-guide"
+  to = "/index.html"
+  status = 200
+
+# Catch all - serve index.html for any other routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
