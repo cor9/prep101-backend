@@ -544,7 +544,7 @@ const startServer = async () => {
     
     // Start server
     const PORT = process.env.PORT || 5001;
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
  console.log('🎭 PREP101 COREY RALSTON RAG-ENHANCED GENERATOR');
  console.log(`🚀 Server running on port ${PORT}`);
  console.log(`🤖 Model: Claude Sonnet 4 ✅`);
