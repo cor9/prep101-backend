@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Pricing from './pages/Pricing';
 import Examples from './pages/Examples';
 import Account from './pages/Account';
+import StripeSuccess from './pages/StripeSuccess';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -51,6 +52,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route path="/app/stripe/success" element={<StripeSuccess />} />
             <Route path="/" element={<Home />} />
           </Routes>
         </div>

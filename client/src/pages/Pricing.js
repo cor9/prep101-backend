@@ -7,14 +7,14 @@ const Pricing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Paste your Stripe links when ready
+  // Stripe checkout URLs
   const STRIPE = {
     FREE:  '#',                 // e.g., /register or a $0 checkout if you want
-    STARTER: '#',               // Stripe price link for 3/mo @ 29.99
-    ALA_CARTE: '#',             // Stripe link for single guide @ 14.99
-    PREMIUM: '#',               // Stripe price link for 10/mo + 2 feedbacks @ 99.99
-    ADDON_COACH: '#',           // $50 30-min coaching
-    ADDON_FEEDBACK: '#',        // $22 self-tape feedback
+    STARTER: 'https://buy.stripe.com/6oU9AT4lVaPR8MBekG2wU3E',               // Stripe price link for 3/mo @ 29.99
+    ALA_CARTE: 'https://buy.stripe.com/7sY7sL9Gfe23d2Ra4q2wU3D',             // Stripe link for single guide @ 14.99
+    PREMIUM: 'https://buy.stripe.com/00w9AT2dNf679QFccy2wU3F',               // Stripe price link for 10/mo + 2 feedbacks @ 99.99
+    ADDON_COACH: 'https://buy.stripe.com/fZu00j8Cb9LN8MB4K62wU3H',           // $50 30-min coaching
+    ADDON_FEEDBACK: 'https://buy.stripe.com/6oU3cv9Gf1fhgf31xU2wU3G',        // $22 self-tape feedback
     EXAMPLES: '/examples'
   };
 

@@ -18,12 +18,70 @@ router.get('/plans', async (req, res) => {
   }
 });
 
-// POST /api/payments/create-subscription - Create a new subscription
+// POST /api/payments/create-checkout-session - Create Stripe Checkout session
+router.post(
+  '/create-checkout-session',
+  [
+    auth,
+    body('plan').isIn(['starter', 'alacarte', 'premium'])
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const { plan } = req.body;
+      const userId = req.userId;
+
+      // Get user
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Get plan details
+      const plans = paymentService.getSubscriptionPlans();
+      const selectedPlan = plans[plan];
+      
+      if (!selectedPlan || !selectedPlan.priceId) {
+        return res.status(400).json({ message: 'Invalid plan selected' });
+      }
+
+      // Create or get Stripe customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await paymentService.createCustomer(user.email, user.name);
+        customerId = customer.id;
+        await user.update({ stripeCustomerId: customerId });
+      }
+
+      // Create checkout session
+      const session = await paymentService.createCheckoutSession(
+        customerId,
+        selectedPlan.priceId
+      );
+
+      res.json({
+        message: 'Checkout session created successfully',
+        sessionId: session.id,
+        url: session.url
+      });
+
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      res.status(500).json({ message: 'Failed to create checkout session' });
+    }
+  }
+);
+
+// POST /api/payments/create-subscription - Create a new subscription (legacy method)
 router.post(
   '/create-subscription',
   [
     auth,
-    body('plan').isIn(['basic', 'premium']),
+    body('plan').isIn(['starter', 'alacarte', 'premium']),
     body('paymentMethodId').notEmpty()
   ],
   async (req, res) => {
@@ -51,11 +109,11 @@ router.post(
       }
 
       // Create or get Stripe customer
-      let customerId = user.customerId;
+      let customerId = user.stripeCustomerId;
       if (!customerId) {
         const customer = await paymentService.createCustomer(user.email, user.name);
         customerId = customer.id;
-        await user.update({ customerId: customerId });
+        await user.update({ stripeCustomerId: customerId });
       }
 
       // Create subscription
@@ -452,5 +510,80 @@ async function handlePaymentFailed(result) {
     console.error('Error handling payment failed:', error);
   }
 }
+
+// POST /api/payments/create-addon-session - Create Stripe Checkout session for add-ons
+router.post(
+  '/create-addon-session',
+  [
+    auth,
+    body('addon').isIn(['coaching', 'feedback'])
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const { addon } = req.body;
+      const userId = req.userId;
+
+      // Get user
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Get add-on details
+      const addons = paymentService.getAddOnServices();
+      const selectedAddon = addons[addon];
+      
+      if (!selectedAddon || !selectedAddon.priceId) {
+        return res.status(400).json({ message: 'Invalid add-on selected' });
+      }
+
+      // Create or get Stripe customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await paymentService.createCustomer(user.email, user.name);
+        customerId = customer.id;
+        await user.update({ stripeCustomerId: customerId });
+      }
+
+      // Create checkout session for one-time payment
+      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: selectedAddon.priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'payment', // One-time payment, not subscription
+        success_url: 'https://childactor101.sbs/app/stripe/success',
+        cancel_url: 'https://childactor101.sbs/pricing',
+        allow_promotion_codes: true,
+        billing_address_collection: 'required',
+        metadata: {
+          source: 'prep101',
+          addon: addon,
+          userId: userId
+        }
+      });
+
+      res.json({
+        message: 'Add-on checkout session created successfully',
+        sessionId: session.id,
+        url: session.url
+      });
+
+    } catch (error) {
+      console.error('Error creating add-on checkout session:', error);
+      res.status(500).json({ message: 'Failed to create add-on checkout session' });
+    }
+  }
+);
 
 module.exports = router;

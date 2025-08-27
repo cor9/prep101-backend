@@ -21,6 +21,7 @@ const authRoutes = require('./routes/auth');
 const paymentRoutes = require('./routes/payments');
 const guidesRoutes = require('./routes/guides');
 const uploadRoutes = require('./routes/upload');
+const stripeWebhookRoute = require('./routes/stripeWebhook');
 
 // Import models
 const User = require('./models/User');
@@ -36,6 +37,9 @@ app.use(securityHeaders);
 
 // CORS
 app.use(cors(corsOptions));
+
+// Stripe webhook route – raw body required (must come before express.json())
+app.use('/api', stripeWebhookRoute);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

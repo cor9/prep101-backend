@@ -162,6 +162,39 @@ class PaymentService {
     };
   }
 
+  // Create a Stripe Checkout session
+  async createCheckoutSession(customerId, priceId, successUrl = null, cancelUrl = null) {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    try {
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: successUrl || 'https://childactor101.sbs/app/stripe/success',
+        cancel_url: cancelUrl || 'https://childactor101.sbs/pricing',
+        allow_promotion_codes: true,
+        billing_address_collection: 'required',
+        metadata: {
+          source: 'prep101'
+        }
+      });
+      
+      return session;
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      throw new Error('Failed to create checkout session');
+    }
+  }
+
   // Get available subscription plans
   getSubscriptionPlans() {
     return {
@@ -169,21 +202,46 @@ class PaymentService {
         name: 'Free',
         price: 0,
         guidesLimit: 1,
-        features: ['1 guide per month', 'Basic methodology access']
+        features: ['1 guide per month', 'Core scene breakdown & tips', 'Parent + kid versions included', 'Email support']
       },
-      basic: {
-        name: 'Basic',
-        price: 9.99,
-        priceId: process.env.STRIPE_BASIC_PRICE_ID,
-        guidesLimit: 10,
-        features: ['10 guides per month', 'Full methodology access', 'Priority support']
+      starter: {
+        name: 'Starter',
+        price: 29.99,
+        priceId: process.env.STRIPE_STARTER_PRICE_ID,
+        guidesLimit: 3,
+        features: ['3 guides per month', 'Detailed beats, subtext & buttons', 'Genre-aware notes', 'Parent deep-dive + kid-ready guide', 'Priority email support', 'Printable PDF delivery']
+      },
+      alacarte: {
+        name: 'A la carte',
+        price: 14.99,
+        priceId: process.env.STRIPE_ALACARTE_PRICE_ID,
+        guidesLimit: 1,
+        features: ['1 guide (one-time purchase)', 'Same depth as Starter guides', 'Parent + kid versions', 'PDF delivery']
       },
       premium: {
         name: 'Premium',
-        price: 19.99,
+        price: 99.99,
         priceId: process.env.STRIPE_PREMIUM_PRICE_ID,
-        guidesLimit: 50,
-        features: ['50 guides per month', 'Full methodology access', 'Priority support', 'Custom requests']
+        guidesLimit: 10,
+        features: ['10 guides per month', 'Advanced scene & character analysis', '2 Self-Tape Feedbacks included', 'Parent deep-dive + kid-ready guide', 'Rush-friendly priority support', 'PDF delivery + rehearsal variations']
+      }
+    };
+  }
+
+  // Get add-on services
+  getAddOnServices() {
+    return {
+      coaching: {
+        name: '30-min Private Coaching',
+        price: 50.00,
+        priceId: process.env.STRIPE_COACHING_PRICE_ID,
+        description: 'Targeted notes on your sides + on-camera adjustments.'
+      },
+      feedback: {
+        name: 'Self-Tape Feedback',
+        price: 22.00,
+        priceId: process.env.STRIPE_FEEDBACK_PRICE_ID,
+        description: 'Actionable punch-ups within hours whenever possible.'
       }
     };
   }

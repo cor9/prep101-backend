@@ -1,3 +1,86 @@
 .App {
   text-align: center;
 }
+
+/* Stripe Success Page Styles */
+.stripe-success-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.stripe-success-content {
+  background: white;
+  border-radius: 16px;
+  padding: 48px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 500px;
+  width: 100%;
+}
+
+.success-icon {
+  margin-bottom: 24px;
+}
+
+.success-title {
+  color: #1f2937;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 32px;
+}
+
+.processing-message {
+  margin-bottom: 32px;
+}
+
+.processing-message p {
+  color: #6b7280;
+  font-size: 1.1rem;
+  margin: 16px 0 8px 0;
+}
+
+.countdown {
+  color: #10b981;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.success-details {
+  margin-bottom: 32px;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border-left: 4px solid #10b981;
+}
+
+.success-details p {
+  color: #4b5563;
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.dashboard-button {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dashboard-button:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.dashboard-button:active {
+  transform: translateY(0);
+}
