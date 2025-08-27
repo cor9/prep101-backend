@@ -419,7 +419,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 // RAG-Enhanced Guide Generation Endpoint
 app.post('/api/guides/generate', async (req, res) => {
  try {
-   const { uploadId, characterName, productionTitle, productionType } = req.body;
+   const { uploadId, characterName, productionTitle, productionType, roleSize, genre, storyline, characterBreakdown, callbackNotes, focusArea } = req.body;
    
    if (!uploadId || !uploads[uploadId]) {
      return res.status(400).json({ error: 'Invalid upload ID or expired session' });
@@ -447,23 +447,90 @@ app.post('/api/guides/generate', async (req, res) => {
 
    console.log(`✅ Corey Ralston RAG Guide Complete!`);
 
-   res.json({
-     success: true,
-     guideId: `corey_rag_${uploadId}`,
-     guideContent: guideContent,
-     generatedAt: new Date(),
-     metadata: {
-       characterName,
-       productionTitle,
-       productionType,
-       scriptWordCount: uploadData.wordCount,
-       guideLength: guideContent.length,
-       model: 'claude-sonnet-4-20250514',
-       ragEnabled: true,
-       methodologyFiles: Object.keys(methodologyDatabase).length,
-       contentQuality: 'corey-ralston-methodology-enhanced'
+   // Save guide to database
+   try {
+     const Guide = require('./models/Guide');
+     const User = require('./models/User');
+     
+     // Get user from auth token
+     const authHeader = req.headers.authorization;
+     let userId = null;
+     
+     if (authHeader && authHeader.startsWith('Bearer ')) {
+       const token = authHeader.substring(7);
+       const jwt = require('jsonwebtoken');
+       const JWT_SECRET = process.env.JWT_SECRET;
+       
+       try {
+         const decoded = jwt.verify(token, JWT_SECRET);
+         userId = decoded.userId;
+       } catch (jwtError) {
+         console.log('JWT verification failed, creating anonymous guide');
+       }
      }
-   });
+
+     const guideId = `corey_rag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+     
+     const guide = await Guide.create({
+       guideId,
+       userId: userId || '00000000-0000-0000-0000-000000000000', // Anonymous user if no auth
+       characterName: characterName.trim(),
+       productionTitle: productionTitle.trim(),
+       productionType: productionType.trim(),
+       roleSize: roleSize || 'Supporting',
+       genre: genre || 'Drama',
+       storyline: storyline || '',
+       characterBreakdown: characterBreakdown || '',
+       callbackNotes: callbackNotes || '',
+       focusArea: focusArea || '',
+       sceneText: uploadData.sceneText,
+       generatedHtml: guideContent
+     });
+
+     console.log(`💾 Guide saved to database with ID: ${guide.id}`);
+
+     res.json({
+       success: true,
+       guideId: guide.guideId,
+       guideContent: guideContent,
+       generatedAt: new Date(),
+       savedToDatabase: true,
+       metadata: {
+         characterName,
+         productionTitle,
+         productionType,
+         scriptWordCount: uploadData.wordCount,
+         guideLength: guideContent.length,
+         model: 'claude-sonnet-4-20250514',
+         ragEnabled: true,
+         methodologyFiles: Object.keys(methodologyDatabase).length,
+         contentQuality: 'corey-ralston-methodology-enhanced'
+       }
+     });
+   } catch (dbError) {
+     console.error('❌ Database save error:', dbError);
+     
+     // Still return the guide content even if save fails
+     res.json({
+       success: true,
+       guideId: `corey_rag_${uploadId}`,
+       guideContent: guideContent,
+       generatedAt: new Date(),
+       savedToDatabase: false,
+       saveError: dbError.message,
+       metadata: {
+         characterName,
+         productionTitle,
+         productionType,
+         scriptWordCount: uploadData.wordCount,
+         guideLength: guideContent.length,
+         model: 'claude-sonnet-4-20250514',
+         ragEnabled: true,
+         methodologyFiles: Object.keys(methodologyDatabase).length,
+         contentQuality: 'corey-ralston-methodology-enhanced'
+       }
+     });
+   }
 
  } catch (error) {
    console.error('❌ Corey Ralston RAG error:', error);
@@ -490,6 +557,79 @@ app.get('/api/methodology', (req, res) => {
    ragEnabled: true,
    message: 'Corey Ralston methodology files loaded and ready for RAG'
  });
+});
+
+// Get user's guides
+app.get('/api/guides', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.substring(7);
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET;
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    const Guide = require('./models/Guide');
+    const guides = await Guide.findAll({
+      where: { userId },
+      order: [['createdAt', 'DESC']],
+      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount']
+    });
+
+    res.json({
+      success: true,
+      guides: guides,
+      total: guides.length
+    });
+  } catch (error) {
+    console.error('❌ Error fetching guides:', error);
+    res.status(500).json({ error: 'Failed to fetch guides' });
+  }
+});
+
+// Get specific guide by ID
+app.get('/api/guides/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.substring(7);
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET;
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    const Guide = require('./models/Guide');
+    const guide = await Guide.findOne({
+      where: { id, userId },
+      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'storyline', 'characterBreakdown', 'callbackNotes', 'focusArea', 'sceneText', 'generatedHtml', 'createdAt', 'viewCount']
+    });
+
+    if (!guide) {
+      return res.status(404).json({ error: 'Guide not found' });
+    }
+
+    // Increment view count
+    await guide.increment('viewCount');
+
+    res.json({
+      success: true,
+      guide: guide
+    });
+  } catch (error) {
+    console.error('❌ Error fetching guide:', error);
+    res.status(500).json({ error: 'Failed to fetch guide' });
+  }
 });
 
 // Health check

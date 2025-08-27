@@ -22,7 +22,7 @@ const LoadingSpinner = () => {
           Creating your personalized audition guide...
         </h3>
         <p style={{ color: '#6b7280' }}>
-          This usually takes 30-60 seconds
+          This usually takes 2-5 minutes
         </p>
       </div>
       <style>{`

@@ -39,10 +39,12 @@ const Dashboard = () => {
   const [usageLoading, setUsageLoading] = useState(true);
   const [usageError, setUsageError] = useState(null);
   const [lastGuideUrl, setLastGuideUrl] = useState(null);
+  const [guides, setGuides] = useState([]);
+  const [guidesLoading, setGuidesLoading] = useState(false);
 
   const { user } = useAuth();
 
-  // ====== USAGE FETCH ======
+    // ====== USAGE FETCH ======
   useEffect(() => {
     let cancelled = false;
 
@@ -63,13 +65,13 @@ const Dashboard = () => {
       } catch (err) {
         // Fallback mock so the UI still works in dev
         if (!cancelled) {
-                      setUsage({
-              plan: user?.subscription || 'free',
-              used: user?.guidesUsed || 0,
-              limit: user?.guidesLimit || 1,
-              renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString() // +7 days
-            });
-            setUsageError('Using fallback data until API is ready.');
+          setUsage({
+            plan: user?.subscription || 'free',
+            used: user?.guidesUsed || 0,
+            limit: user?.guidesLimit || 1,
+            renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString() // +7 days
+          });
+          setUsageError('Using fallback data until API is ready.');
         }
       } finally {
         if (!cancelled) setUsageLoading(false);
@@ -77,6 +79,38 @@ const Dashboard = () => {
     };
 
     fetchUsage();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // ====== GUIDES FETCH ======
+  useEffect(() => {
+    if (!user?.accessToken && !user?.token) return;
+
+    let cancelled = false;
+
+    const fetchGuides = async () => {
+      setGuidesLoading(true);
+      try {
+        const headers = {
+          Authorization: `Bearer ${user.accessToken || user.token}`
+        };
+
+        const res = await fetch(`${API_BASE}/api/guides`, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const json = await res.json();
+        if (!cancelled && json.success) {
+          setGuides(json.guides || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch guides:', err);
+        if (!cancelled) setGuides([]);
+      } finally {
+        if (!cancelled) setGuidesLoading(false);
+      }
+    };
+
+    fetchGuides();
     return () => { cancelled = true; };
   }, [user]);
 
@@ -169,6 +203,22 @@ const Dashboard = () => {
       // Optimistic usage increment
       if (usage?.limit != null) {
         setUsage((u) => ({ ...u, used: (u?.used || 0) + 1 }));
+      }
+
+      // Refresh guides list
+      if (user?.accessToken || user?.token) {
+        const headers = { Authorization: `Bearer ${user.accessToken || user.token}` };
+        try {
+          const guidesRes = await fetch(`${API_BASE}/api/guides`, { headers });
+          if (guidesRes.ok) {
+            const guidesData = await guidesRes.json();
+            if (guidesData.success) {
+              setGuides(guidesData.guides || []);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to refresh guides:', err);
+        }
       }
           } catch (err) {
         console.error('Guide generation error:', err);
@@ -360,8 +410,86 @@ const Dashboard = () => {
                         👤 View Account
                       </button>
                     </div>
+                                    </div>
+                )}
+
+                {/* Guide History */}
+                {guides.length > 0 && (
+                  <div style={{
+                    background: '#f8fafc',
+                    borderRadius: 15,
+                    padding: '1.5rem',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <h3 style={{ 
+                      fontSize: '1.25rem', 
+                      fontWeight: 'bold', 
+                      color: '#1e293b',
+                      margin: '0 0 1rem 0'
+                    }}>
+                      📚 Your Guide History
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {guides.slice(0, 5).map((guide) => (
+                        <div key={guide.id} style={{
+                          background: 'white',
+                          padding: '1rem',
+                          borderRadius: 10,
+                          border: '1px solid #e2e8f0',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <div>
+                            <div style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '0.25rem' }}>
+                              {guide.characterName} - {guide.productionTitle}
+                            </div>
+                            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                              {guide.productionType} • {guide.genre} • {new Date(guide.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              // Open guide in new tab
+                              const guideUrl = `${API_BASE}/api/guides/${guide.id}`;
+                              window.open(guideUrl, '_blank', 'noopener,noreferrer');
+                            }}
+                            style={{
+                              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                              color: 'white',
+                              padding: '8px 16px',
+                              borderRadius: 8,
+                              border: 'none',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              fontSize: '0.875rem'
+                            }}
+                          >
+                            View
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {guides.length > 5 && (
+                      <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                        <button
+                          onClick={() => window.location.href = '/account'}
+                          style={{
+                            background: 'transparent',
+                            color: '#3b82f6',
+                            border: '1px solid #3b82f6',
+                            padding: '8px 16px',
+                            borderRadius: 8,
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          View All {guides.length} Guides
+                        </button>
+                      </div>
+                    )}
                   </div>
-                                  )}
+                )}
 
                 {!lastGuideUrl && (
                   <GuideForm
