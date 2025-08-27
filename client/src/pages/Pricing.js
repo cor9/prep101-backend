@@ -121,7 +121,7 @@ const Pricing = () => {
               Pricing that fits the work week
             </h1>
             <p style={{ fontSize: '1.1rem', color: '#475569', maxWidth: 760, margin: '0 auto' }}>
-              Start free. Upgrade when you’re booking more auditions. Every guide includes
+              Start free. Upgrade when you're booking more auditions. Every guide includes
               a parent deep-dive and a simplified kid version.
             </p>
           </div>
@@ -241,53 +241,49 @@ const Pricing = () => {
             padding: '2rem',
             boxShadow: '0 10px 40px rgba(0,0,0,.08)',
             border: '1px solid #e2e8f0'
-       }}>
-  <h2 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '1.25rem', color: '#0f172a', textAlign: 'center' }}>
-    FAQs
-  </h2>
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px,1fr))', gap: '1rem' }}>
-    <div>
-      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
-        Do unused guides roll over?
-      </h3>
-      <p style={{ color: '#475569' }}>
-        Not right now. Each plan refreshes monthly to keep you consistent and using your credits regularly.
-      </p>
-    </div>
-    <div>
-      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
-        How fast do I get my guide?
-      </h3>
-      <p style={{ color: '#475569' }}>
-        Once you upload your sides and submit the form, your custom Prep101 guide is ready in <strong>about 3 minutes</strong> — no waiting overnight.
-      </p>
-    </div>
-    <div>
-      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
-        Can I switch or cancel anytime?
-      </h3>
-      <p style={{ color: '#475569' }}>
-        Yes — you can manage your plan from your dashboard. Upgrades, downgrades, or cancellations take effect immediately.
-      </p>
-    </div>
-    <div>
-      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
-        What’s inside each guide?
-      </h3>
-      <p style={{ color: '#475569' }}>
-        Every Prep101 guide includes: scene beats and subtext, Uta Hagen’s 9 questions, physical and vocal choices, 
-        moment-before and button suggestions, plus a simplified kid-friendly version for quick rehearsal.
-      </p>
-    </div>
-  </div>
-  <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-    <button onClick={() => (window.location.href = STRIPE.EXAMPLES)} style={{
-      background: 'transparent', border: '1px solid #0ea5e9', color: '#0ea5e9',
-      padding: '0.6rem 0.9rem', borderRadius: 10, fontWeight: 800, cursor: 'pointer'
-    }}>
-      View Example Guides
-    </button>
-  </div>
+          }}>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '1.25rem', color: '#0f172a', textAlign: 'center' }}>
+              FAQs
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px,1fr))', gap: '1rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
+                  Do unused guides roll over?
+                </h3>
+                <p style={{ color: '#475569' }}>
+                  Not right now. We keep it simple month-to-month so you stay consistent.
+                </p>
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
+                  How fast do I get my guide?
+                </h3>
+                <p style={{ color: '#475569' }}>
+                  Typically same day to next morning for most roles. Rush needs? Add a note at upload.
+                </p>
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
+                  Can I switch or cancel anytime?
+                </h3>
+                <p style={{ color: '#475569' }}>
+                  Yes—manage your plan from your dashboard. Changes take effect immediately.
+                </p>
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
+                  What's inside each guide?
+                </h3>
+                <p style={{ color: '#475569' }}>
+                  Scene beats & subtext, Uta Hagen 9 questions, physical/vocal choices, moment-before & button options,
+                  plus a simplified kid version for quick rehearsal.
+                </p>
+              </div>
+            </div>
+            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+              <button onClick={() => (window.location.href = STRIPE.EXAMPLES)} style={{
+                background: 'transparent', border: '1px solid #0ea5e9', color: '#0ea5e9',
+                padding: '0.6rem 0.9rem', borderRadius: 10, fontWeight: 800, cursor: 'pointer'
               }}>
                 See Example Guides
               </button>
