@@ -55,7 +55,7 @@ const Dashboard = () => {
           ? { Authorization: `Bearer ${user.accessToken || user.token}` }
           : {};
 
-        const res = await fetch(`${API_BASE}/api/account/usage`, { headers });
+        const res = await fetch(`${API_BASE}/api/auth/dashboard`, { headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
@@ -64,12 +64,12 @@ const Dashboard = () => {
         // Fallback mock so the UI still works in dev
         if (!cancelled) {
           setUsage({
-            plan: 'free',   // change to 'starter' or 'premium' if you want to demo
-            used: 0,
-            limit: 1,
+            plan: user?.subscription || 'free',
+            used: user?.guidesUsed || 0,
+            limit: user?.guidesLimit || 1,
             renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString() // +7 days
           });
-          setUsageError('Using demo usage until API is ready.');
+          setUsageError('Using fallback data until API is ready.');
         }
       } finally {
         if (!cancelled) setUsageLoading(false);

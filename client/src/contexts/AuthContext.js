@@ -13,39 +13,63 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     console.log('AuthContext: login called with:', email, password);
     
-    // For now, create a fake user for demo purposes
-    // In production, this would call your backend API
-    const fakeUser = {
-      id: 1,
-      name: 'Demo User',
-      email: email,
-      subscription: 'free',
-      guidesUsed: 0,
-      guidesLimit: 3
-    };
-    
-    setUser(fakeUser);
-    console.log('AuthContext: user set to:', fakeUser);
-    return fakeUser;
+    try {
+      const response = await fetch('https://childactor101.sbs/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+
+      const data = await response.json();
+      const realUser = {
+        ...data.user,
+        accessToken: data.token
+      };
+      
+      setUser(realUser);
+      console.log('AuthContext: user set to:', realUser);
+      return realUser;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const register = async (email, password, name) => {
     console.log('AuthContext: register called with:', email, password, name);
     
-    // For now, create a fake user for demo purposes
-    // In production, this would call your backend API
-    const fakeUser = {
-      id: 1,
-      name: name || 'Demo User',
-      email: email,
-      subscription: 'free',
-      guidesUsed: 0,
-      guidesLimit: 3
-    };
-    
-    setUser(fakeUser);
-    console.log('AuthContext: user set to:', fakeUser);
-    return fakeUser;
+    try {
+      const response = await fetch('https://childactor101.sbs/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, name }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Registration failed');
+      }
+
+      const data = await response.json();
+      const realUser = {
+        ...data.user,
+        accessToken: data.token
+      };
+      
+      setUser(realUser);
+      console.log('AuthContext: user set to:', realUser);
+      return realUser;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
