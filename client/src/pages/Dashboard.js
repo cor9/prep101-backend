@@ -55,7 +55,7 @@ const Dashboard = () => {
           ? { Authorization: `Bearer ${user.accessToken || user.token}` }
           : {};
 
-        const res = await fetch('http://localhost:3001/api/auth/dashboard', { headers });
+        const res = await fetch('https://childactor101.sbs/api/auth/dashboard', { headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
