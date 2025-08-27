@@ -1299,16 +1299,32 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
     const { id } = req.params;
     const authHeader = req.headers.authorization;
     
+    console.log('🔐 PDF endpoint - Auth header:', authHeader ? 'present' : 'missing');
+    console.log('🔐 PDF endpoint - Full auth header:', authHeader);
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ PDF endpoint - No Bearer token found');
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     const token = authHeader.substring(7);
+    console.log('🔐 PDF endpoint - Token length:', token.length);
+    console.log('🔐 PDF endpoint - Token preview:', token.substring(0, 20) + '...');
+    
     const jwt = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET;
     
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.userId;
+    console.log('🔐 PDF endpoint - JWT_SECRET present:', !!JWT_SECRET);
+    console.log('🔐 PDF endpoint - JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
+    
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      console.log('🔐 PDF endpoint - JWT decoded successfully, userId:', decoded.userId);
+      const userId = decoded.userId;
+    } catch (jwtError) {
+      console.log('❌ PDF endpoint - JWT verification failed:', jwtError.message);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
 
     const Guide = require('./models/Guide');
     const guide = await Guide.findOne({
@@ -1460,16 +1476,32 @@ app.post('/api/guides/:id/email', async (req, res) => {
     const { id } = req.params;
     const authHeader = req.headers.authorization;
     
+    console.log('📧 Email endpoint - Auth header:', authHeader ? 'present' : 'missing');
+    console.log('📧 Email endpoint - Full auth header:', authHeader);
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ Email endpoint - No Bearer token found');
       return res.status(401).json({ error: 'Authentication required' });
     }
 
     const token = authHeader.substring(7);
+    console.log('📧 Email endpoint - Token length:', token.length);
+    console.log('📧 Email endpoint - Token preview:', token.substring(0, 20) + '...');
+    
     const jwt = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET;
     
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.userId;
+    console.log('📧 Email endpoint - JWT_SECRET present:', !!JWT_SECRET);
+    console.log('📧 Email endpoint - JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
+    
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      console.log('📧 Email endpoint - JWT decoded successfully, userId:', decoded.userId);
+      const userId = decoded.userId;
+    } catch (jwtError) {
+      console.log('❌ Email endpoint - JWT verification failed:', jwtError.message);
+      return res.status(500).json({ error: 'Invalid token' });
+    }
 
     const Guide = require('./models/Guide');
     const User = require('./models/User');
@@ -1492,6 +1524,9 @@ app.post('/api/guides/:id/email', async (req, res) => {
 
     // Configure nodemailer
     const nodemailer = require('nodemailer');
+    
+    console.log('📧 Email endpoint - EMAIL_USER:', process.env.EMAIL_USER);
+    console.log('📧 Email endpoint - EMAIL_PASS present:', !!process.env.EMAIL_PASS);
     
     // Create transporter (you'll need to configure this with your email service)
     const transporter = nodemailer.createTransporter({

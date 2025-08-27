@@ -249,16 +249,34 @@ const Account = () => {
                         View
                       </button>
                       <button
-                        onClick={() => {
-                          // Download PDF
-                          const pdfUrl = `${API_BASE}/api/guides/${guide.id}/pdf`;
-                          const link = document.createElement('a');
-                          link.href = pdfUrl;
-                          link.download = `guide_${guide.characterName}_${guide.productionTitle}.pdf`;
-                          link.style.display = 'none';
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`${API_BASE}/api/guides/${guide.id}/pdf`, {
+                              method: 'GET',
+                              headers: {
+                                'Authorization': `Bearer ${user?.accessToken || user?.token}`,
+                              }
+                            });
+                            
+                            if (response.ok) {
+                              // Create blob from response and download
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = `guide_${guide.characterName}_${guide.productionTitle}.pdf`;
+                              link.style.display = 'none';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              window.URL.revokeObjectURL(url);
+                            } else {
+                              const error = await response.json();
+                              alert(`❌ Failed to download PDF: ${error.error}`);
+                            }
+                          } catch (err) {
+                            alert(`❌ Error downloading PDF: ${err.message}`);
+                          }
                         }}
                         style={{
                           background: '#dc2626',
