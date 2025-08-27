@@ -251,7 +251,7 @@ const Pricing = () => {
                   Do unused guides roll over?
                 </h3>
                 <p style={{ color: '#475569' }}>
-                  Not right now. We keep it simple month-to-month so you stay consistent.
+                  Not right now. It's a simple month-to-month system to keep you consistent and using your credits regularly.
                 </p>
               </div>
               <div>
@@ -259,7 +259,7 @@ const Pricing = () => {
                   How fast do I get my guide?
                 </h3>
                 <p style={{ color: '#475569' }}>
-                  Typically same day to next morning for most roles. Rush needs? Add a note at upload.
+                  Your guide is generated in about 3 minutes after you upload your sides and submit the form. It's ready to view, download, and start rehearsing almost immediately.
                 </p>
               </div>
               <div>
@@ -267,7 +267,7 @@ const Pricing = () => {
                   Can I switch or cancel anytime?
                 </h3>
                 <p style={{ color: '#475569' }}>
-                  Yes—manage your plan from your dashboard. Changes take effect immediately.
+                  Yes — you can manage your plan from your dashboard. Upgrades, downgrades, or cancellations take effect right away.
                 </p>
               </div>
               <div>
@@ -275,8 +275,12 @@ const Pricing = () => {
                   What's inside each guide?
                 </h3>
                 <p style={{ color: '#475569' }}>
-                  Scene beats & subtext, Uta Hagen 9 questions, physical/vocal choices, moment-before & button options,
-                  plus a simplified kid version for quick rehearsal.
+                  Every Prep101 guide includes:
+                  <br />• A full scene breakdown with beats and subtext
+                  <br />• Uta Hagen's 9 questions, tailored to your character
+                  <br />• Physical and vocal choices to explore
+                  <br />• Suggestions for your "moment-before" and button
+                  <br />• A simplified, kid-friendly version for faster rehearsals
                 </p>
               </div>
             </div>
