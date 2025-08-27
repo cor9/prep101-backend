@@ -1528,12 +1528,18 @@ app.post('/api/guides/:id/email', async (req, res) => {
     console.log('📧 Email endpoint - EMAIL_USER:', process.env.EMAIL_USER);
     console.log('📧 Email endpoint - EMAIL_PASS present:', !!process.env.EMAIL_PASS);
     
-    // Create transporter (you'll need to configure this with your email service)
+    // Create transporter with modern Gmail configuration
     const transporter = nodemailer.createTransporter({
-      service: 'gmail', // or your preferred email service
+      service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
+      },
+      // Add security options for modern Gmail
+      secure: true,
+      port: 465,
+      tls: {
+        rejectUnauthorized: false
       }
     });
 
@@ -1613,19 +1619,83 @@ app.post('/api/guides/:id/email', async (req, res) => {
       html: emailHtml
     };
 
-    await transporter.sendMail(mailOptions);
-
-    console.log(`✅ Guide email sent successfully to ${user.email}`);
-
-    res.json({
-      success: true,
-      message: 'Guide sent to your email successfully',
-      email: user.email
-    });
+    console.log('📧 Attempting to send email...');
+    
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ Guide email sent successfully to ${user.email}`);
+      
+      res.json({
+        success: true,
+        message: 'Guide sent to your email successfully',
+        email: user.email
+      });
+    } catch (emailError) {
+      console.log('❌ Email sending failed:', emailError.message);
+      
+      // Provide more specific error messages
+      if (emailError.code === 'EAUTH') {
+        res.status(500).json({ 
+          error: 'Email authentication failed. Please check your Gmail credentials and ensure 2FA is enabled with an app-specific password.' 
+        });
+      } else if (emailError.code === 'ECONNECTION') {
+        res.status(500).json({ 
+          error: 'Email connection failed. Please check your internet connection and try again.' 
+        });
+      } else {
+        res.status(500).json({ 
+          error: `Email sending failed: ${emailError.message}` 
+        });
+      }
+    }
 
   } catch (error) {
     console.error('❌ Email sending error:', error);
     res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+// Test email configuration
+app.get('/api/test-email', async (req, res) => {
+  try {
+    console.log('🧪 Testing email configuration...');
+    console.log('EMAIL_USER:', process.env.EMAIL_USER);
+    console.log('EMAIL_PASS present:', !!process.env.EMAIL_PASS);
+    
+    const nodemailer = require('nodemailer');
+    
+    // Create test transporter
+    const transporter = nodemailer.createTransporter({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      secure: true,
+      port: 465,
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+    
+    // Verify credentials
+    await transporter.verify();
+    
+    res.json({
+      success: true,
+      message: 'Email configuration is valid',
+      email: process.env.EMAIL_USER,
+      config: 'Gmail with secure connection'
+    });
+    
+  } catch (error) {
+    console.log('❌ Email configuration test failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Email configuration failed',
+      details: error.message,
+      code: error.code
+    });
   }
 });
 
