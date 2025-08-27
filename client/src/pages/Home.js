@@ -7,13 +7,7 @@ const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleGetStarted = () => {
-    if (user) {
-      navigate('/dashboard');
-    } else {
-      navigate('/register');
-    }
-  };
+
 
   return (
     <>

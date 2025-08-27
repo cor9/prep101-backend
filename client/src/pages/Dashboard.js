@@ -37,7 +37,7 @@ const Dashboard = () => {
   const [usageError, setUsageError] = useState(null);
   const [lastGuideUrl, setLastGuideUrl] = useState(null);
   const [guides, setGuides] = useState([]);
-  const [guidesLoading, setGuidesLoading] = useState(false);
+
 
   const { user } = useAuth();
 

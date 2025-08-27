@@ -9,7 +9,7 @@ const FileUpload = ({ onUpload }) => {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [uploadProgress, setUploadProgress] = useState({});
+
 
   const onDrop = useCallback(async (acceptedFiles) => {
     if (!acceptedFiles || acceptedFiles.length === 0) return;
@@ -28,7 +28,6 @@ const FileUpload = ({ onUpload }) => {
     }
 
     setUploading(true);
-    setUploadProgress({});
     
     try {
       const uploadResults = [];
@@ -41,7 +40,7 @@ const FileUpload = ({ onUpload }) => {
       for (let i = 0; i < acceptedFiles.length; i++) {
         const file = acceptedFiles[i];
         
-        setUploadProgress(prev => ({ ...prev, [file.name]: 'uploading' }));
+
         
         const formData = new FormData();
         formData.append('file', file);
@@ -75,7 +74,7 @@ const FileUpload = ({ onUpload }) => {
         }
         combinedPreview += (data.preview || '') + '\n\n';
 
-        setUploadProgress(prev => ({ ...prev, [file.name]: 'completed' }));
+
       }
 
       // Update UI with all uploaded files
@@ -117,9 +116,8 @@ const FileUpload = ({ onUpload }) => {
       toast.error(errorMessage);
     } finally {
       setUploading(false);
-      setUploadProgress({});
     }
-  }, [onUpload]);
+  }, [onUpload, user?.accessToken, user?.token]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
