@@ -69,6 +69,17 @@ if (!ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
+// Debug environment variables
+console.log('🔧 Environment variables loaded:');
+console.log('  - JWT_SECRET present:', !!process.env.JWT_SECRET);
+console.log('  - EMAIL_USER present:', !!process.env.EMAIL_USER);
+console.log('  - EMAIL_PASS present:', !!process.env.EMAIL_PASS);
+console.log('  - EMAIL_SERVICE:', process.env.EMAIL_SERVICE);
+console.log('  - EMAIL_SECURE:', process.env.EMAIL_SECURE);
+console.log('  - EMAIL_PORT:', process.env.EMAIL_PORT);
+console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('  - API_BASE:', process.env.API_BASE);
+
 // Database initialization
 const { sequelize, testConnection } = require('./database/connection');
 const User = require('./models/User');
@@ -1530,14 +1541,14 @@ app.post('/api/guides/:id/email', async (req, res) => {
     
     // Create transporter with modern Gmail configuration
     const transporter = nodemailer.createTransporter({
-      service: 'gmail',
+      service: process.env.EMAIL_SERVICE || 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
       },
-      // Add security options for modern Gmail
-      secure: true,
-      port: 465,
+      // Use environment variables for security settings
+      secure: process.env.EMAIL_SECURE === 'true',
+      port: parseInt(process.env.EMAIL_PORT) || 465,
       tls: {
         rejectUnauthorized: false
       }
@@ -1666,13 +1677,13 @@ app.get('/api/test-email', async (req, res) => {
     
     // Create test transporter
     const transporter = nodemailer.createTransporter({
-      service: 'gmail',
+      service: process.env.EMAIL_SERVICE || 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
       },
-      secure: true,
-      port: 465,
+      secure: process.env.EMAIL_SECURE === 'true',
+      port: parseInt(process.env.EMAIL_PORT) || 465,
       tls: {
         rejectUnauthorized: false
       }
