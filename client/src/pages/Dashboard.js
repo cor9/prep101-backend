@@ -55,7 +55,7 @@ const Dashboard = () => {
           ? { Authorization: `Bearer ${user.accessToken || user.token}` }
           : {};
 
-        const res = await fetch('https://childactor101.sbs/api/auth/dashboard', { headers });
+        const res = await fetch(`${API_BASE}/api/auth/dashboard`, { headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
@@ -63,13 +63,13 @@ const Dashboard = () => {
       } catch (err) {
         // Fallback mock so the UI still works in dev
         if (!cancelled) {
-          setUsage({
-            plan: user?.subscription || 'free',
-            used: user?.guidesUsed || 0,
-            limit: user?.guidesLimit || 1,
-            renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString() // +7 days
-          });
-          setUsageError('Using fallback data until API is ready.');
+                      setUsage({
+              plan: user?.subscription || 'free',
+              used: user?.guidesUsed || 0,
+              limit: user?.guidesLimit || 1,
+              renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString() // +7 days
+            });
+            setUsageError('Using fallback data until API is ready.');
         }
       } finally {
         if (!cancelled) setUsageLoading(false);
@@ -124,8 +124,6 @@ const Dashboard = () => {
       return;
     }
 
-    const preWin = window.open('about:blank', '_blank', 'noopener,noreferrer');
-
     try {
       setIsGenerating(true);
       setLastGuideUrl(null);
@@ -159,11 +157,11 @@ const Dashboard = () => {
       if (ct.includes('application/json')) {
         const data = await res.json();
         if (!data?.guideContent) throw new Error('No guide content returned.');
-        openHtmlInNewTab(data.guideContent, preWin);
+        openHtmlInNewTab(data.guideContent);
       } else {
         const html = await res.text();
         if (!html || html.length < 50) throw new Error('Empty guide response.');
-        openHtmlInNewTab(html, preWin);
+        openHtmlInNewTab(html);
       }
 
       toast.success('Guide generated. Opening now!');
@@ -172,9 +170,8 @@ const Dashboard = () => {
       if (usage?.limit != null) {
         setUsage((u) => ({ ...u, used: (u?.used || 0) + 1 }));
       }
-    } catch (err) {
-      try { preWin?.close(); } catch {}
-      console.error('Guide generation error:', err);
+          } catch (err) {
+        console.error('Guide generation error:', err);
       toast.error(`Failed to generate: ${err.message}`);
     } finally {
       setIsGenerating(false);
@@ -276,7 +273,7 @@ const Dashboard = () => {
               <div style={{ textAlign: 'center', padding: '2rem' }}>
                 <LoadingSpinner />
                 <p style={{ marginTop: '1rem', color: '#6b7280' }}>
-                  Crafting your guide… this usually takes under a minute.
+                  Crafting your guide… this usually takes 2-5 minutes.
                 </p>
               </div>
             ) : (
@@ -300,25 +297,80 @@ const Dashboard = () => {
 
                 {lastGuideUrl && (
                   <div style={{
-                    padding: 12,
-                    background: '#fffbeb',
-                    borderRadius: 10,
-                    border: '1px solid #f59e0b',
-                    color: '#92400e'
+                    padding: 20,
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                    borderRadius: 15,
+                    border: '2px solid #22c55e',
+                    color: '#166534',
+                    textAlign: 'center',
+                    marginBottom: '1rem'
                   }}>
-                    Couldn’t open automatically?{' '}
-                    <a href={lastGuideUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 700 }}>
-                      Open last guide
-                    </a>
+                    <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 'bold' }}>
+                      🎉 Guide Generated Successfully!
+                    </h3>
+                    <p style={{ margin: '0 0 1.5rem 0', fontSize: '1rem' }}>
+                      Your personalized audition guide is ready and should have opened in a new tab.
+                    </p>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <a 
+                        href={lastGuideUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{
+                          background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                          color: 'white',
+                          padding: '12px 24px',
+                          borderRadius: 10,
+                          textDecoration: 'none',
+                          fontWeight: 'bold',
+                          display: 'inline-block'
+                        }}
+                      >
+                        📖 Open Guide
+                      </a>
+                      <button
+                        onClick={() => {
+                          setLastGuideUrl(null);
+                          setUploadData(null);
+                        }}
+                        style={{
+                          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                          color: 'white',
+                          padding: '12px 24px',
+                          borderRadius: 10,
+                          border: 'none',
+                          fontWeight: 'bold',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🆕 Create New Guide
+                      </button>
+                      <button
+                        onClick={() => window.location.href = '/account'}
+                        style={{
+                          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                          color: 'white',
+                          padding: '12px 24px',
+                          borderRadius: 10,
+                          border: 'none',
+                          fontWeight: 'bold',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        👤 View Account
+                      </button>
+                    </div>
                   </div>
-                )}
+                                  )}
 
-                <GuideForm
-                  onSubmit={handleGenerateGuide}
-                  hasFile={!!uploadData}
-                  isSubmitting={isGenerating || usageLoading}
-                  disabled={!canGenerate}
-                />
+                {!lastGuideUrl && (
+                  <GuideForm
+                    onSubmit={handleGenerateGuide}
+                    hasFile={!!uploadData}
+                    isSubmitting={isGenerating || usageLoading}
+                    disabled={!canGenerate}
+                  />
+                )}
               </div>
             )}
           </div>
