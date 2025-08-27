@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
+import API_BASE from '../config/api';
 
 const Account = () => {
   const { user, logout } = useAuth();
@@ -32,7 +33,7 @@ const Account = () => {
           Authorization: `Bearer ${user.accessToken || user.token}`
         };
 
-        const res = await fetch('https://childactor101.sbs/api/guides', { headers });
+        const res = await fetch(`${API_BASE}/api/guides`, { headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
@@ -231,7 +232,7 @@ const Account = () => {
                       <button
                         onClick={() => {
                           // Open guide in new tab
-                          const guideUrl = `https://childactor101.sbs/api/guides/${guide.id}`;
+                          const guideUrl = `${API_BASE}/api/guides/${guide.id}`;
                           window.open(guideUrl, '_blank', 'noopener,noreferrer');
                         }}
                         style={{

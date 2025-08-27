@@ -5,10 +5,7 @@ import FileUpload from '../components/FileUpload';
 import GuideForm from '../components/GuideForm';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-const API_BASE =
-  (import.meta?.env?.VITE_API_BASE_URL) ||
-  process.env.REACT_APP_API_BASE_URL ||
-  'https://childactor101.sbs';
+import API_BASE from '../config/api';
 
 // Simple progress bar
 const ProgressBar = ({ value, max }) => {

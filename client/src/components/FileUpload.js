@@ -3,6 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import API_BASE from '../config/api';
 
 const FileUpload = ({ onUpload }) => {
   const { user } = useAuth();
@@ -45,7 +46,7 @@ const FileUpload = ({ onUpload }) => {
         const formData = new FormData();
         formData.append('file', file);
 
-        const { data } = await axios.post('https://childactor101.sbs/api/upload', formData, {
+        const { data } = await axios.post(`${API_BASE}/api/upload`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
             'Authorization': `Bearer ${user?.accessToken || user?.token}`,

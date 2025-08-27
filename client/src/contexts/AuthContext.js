@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import API_BASE from '../config/api';
 
 const AuthContext = createContext();
 
@@ -14,7 +15,7 @@ export const AuthProvider = ({ children }) => {
     console.log('AuthContext: login called with:', email, password);
     
     try {
-      const response = await fetch('https://childactor101.sbs/api/auth/login', {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -45,7 +46,7 @@ export const AuthProvider = ({ children }) => {
     console.log('AuthContext: register called with:', email, password, name);
     
     try {
-      const response = await fetch('https://childactor101.sbs/api/auth/register', {
+      const response = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
