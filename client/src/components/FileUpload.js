@@ -14,87 +14,123 @@ const getAuthToken = () => {
 
 const FileUpload = ({ onUpload }) => {
   const [uploading, setUploading] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({});
 
   const onDrop = useCallback(async (acceptedFiles) => {
-    const file = acceptedFiles?.[0];
-    if (!file) return;
+    if (!acceptedFiles || acceptedFiles.length === 0) return;
 
-    if (file.type !== 'application/pdf') {
-      toast.error('Please upload a PDF file only');
+    // Validate all files
+    const invalidFiles = acceptedFiles.filter(file => file.type !== 'application/pdf');
+    if (invalidFiles.length > 0) {
+      toast.error(`Please upload PDF files only. Found ${invalidFiles.length} invalid file(s).`);
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('File size must be less than 10MB');
+    const oversizedFiles = acceptedFiles.filter(file => file.size > 10 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      toast.error(`Some files are too large. Max size is 10MB per file.`);
       return;
     }
 
     setUploading(true);
+    setUploadProgress({});
+    
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const uploadResults = [];
+      let totalTextLength = 0;
+      let totalWordCount = 0;
+      const allCharacterNames = new Set();
+      let combinedPreview = '';
 
-      // FIXED: Use the live backend URL
-      const { data } = await axios.post('https://childactor101.sbs/api/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          // CRITICAL FIX: Add the authentication header to fix the 401 error
-          'Authorization': `Bearer ${getAuthToken()}`,
-        },
-      });
+      // Upload files sequentially to avoid overwhelming the server
+      for (let i = 0; i < acceptedFiles.length; i++) {
+        const file = acceptedFiles[i];
+        
+        setUploadProgress(prev => ({ ...prev, [file.name]: 'uploading' }));
+        
+        const formData = new FormData();
+        formData.append('file', file);
 
-      // FIXED: Handle the new response format from simple backend
-      if (!data?.success || !data?.uploadId) {
-        throw new Error(data?.error || 'Upload failed');
+        const { data } = await axios.post('https://childactor101.sbs/api/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${getAuthToken()}`,
+          },
+        });
+
+        if (!data?.success || !data?.uploadId) {
+          throw new Error(data?.error || `Upload failed for ${file.name}`);
+        }
+
+        uploadResults.push({
+          uploadId: data.uploadId,
+          filename: data.filename || file.name,
+          textLength: data.textLength ?? 0,
+          wordCount: data.wordCount ?? 0,
+          extractionMethod: data.extractionMethod,
+          extractionConfidence: data.extractionConfidence,
+          characterNames: data.characterNames || [],
+          preview: data.preview,
+        });
+
+        totalTextLength += data.textLength ?? 0;
+        totalWordCount += data.wordCount ?? 0;
+        if (data.characterNames) {
+          data.characterNames.forEach(name => allCharacterNames.add(name));
+        }
+        combinedPreview += (data.preview || '') + '\n\n';
+
+        setUploadProgress(prev => ({ ...prev, [file.name]: 'completed' }));
       }
 
-      // Show file info in the UI
-      setUploadedFile({
-        name: data.filename || file.name,
-        size: formatFileSize(file.size),
-        extractionMethod: data.extractionMethod,
-        confidence: data.extractionConfidence,
-        characterNames: data.characterNames || [],
-      });
+      // Update UI with all uploaded files
+      setUploadedFiles(uploadResults.map(result => ({
+        name: result.filename,
+        size: formatFileSize(acceptedFiles.find(f => f.name === result.filename)?.size || 0),
+        extractionMethod: result.extractionMethod,
+        confidence: result.extractionConfidence,
+        characterNames: result.characterNames || [],
+        uploadId: result.uploadId,
+      })));
 
-      // Pass the upload data to Dashboard
+      // Pass combined upload data to Dashboard
       onUpload({
-        uploadId: data.uploadId,
-        filename: data.filename || file.name,
-        textLength: data.textLength ?? 0,
-        wordCount: data.wordCount ?? 0,
-        extractionMethod: data.extractionMethod,
-        extractionConfidence: data.extractionConfidence,
-        characterNames: data.characterNames || [],
-        preview: data.preview,
+        uploadIds: uploadResults.map(r => r.uploadId),
+        filenames: uploadResults.map(r => r.filename),
+        textLength: totalTextLength,
+        wordCount: totalWordCount,
+        extractionMethod: uploadResults[0]?.extractionMethod || 'basic',
+        extractionConfidence: uploadResults[0]?.extractionConfidence || 'high',
+        characterNames: Array.from(allCharacterNames),
+        preview: combinedPreview.trim(),
+        fileCount: acceptedFiles.length,
       });
 
-      // Show enhanced success message
-      const methodText = data.extractionMethod === 'adobe' ? 'Adobe Premium OCR' : 'Basic OCR';
-      toast.success(`PDF processed successfully using ${methodText}!`);
+      // Show success message
+      const methodText = uploadResults[0]?.extractionMethod === 'adobe' ? 'Adobe Premium OCR' : 'Basic OCR';
+      toast.success(`Successfully processed ${acceptedFiles.length} PDF${acceptedFiles.length > 1 ? 's' : ''} using ${methodText}!`);
       
-      // Show character names if found
-      if (data.characterNames && data.characterNames.length > 0) {
-        toast.success(`Found ${data.characterNames.length} character name(s): ${data.characterNames.slice(0, 3).join(', ')}`);
+      if (allCharacterNames.size > 0) {
+        toast.success(`Found ${allCharacterNames.size} character name(s): ${Array.from(allCharacterNames).slice(0, 3).join(', ')}`);
       }
 
     } catch (err) {
       console.error('Upload error:', err);
-      // More robust error handling for user feedback
       const errorMessage = err.response?.status === 401 
         ? 'Authentication failed. Please log in again.' 
-        : err.response?.data?.error || err.message || 'Failed to upload file';
+        : err.response?.data?.error || err.message || 'Failed to upload files';
       toast.error(errorMessage);
     } finally {
       setUploading(false);
+      setUploadProgress({});
     }
   }, [onUpload]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'application/pdf': ['.pdf'] },
-    multiple: false,
+    multiple: true,
   });
 
   const formatFileSize = (bytes) => {
@@ -119,7 +155,7 @@ const FileUpload = ({ onUpload }) => {
         📄 Upload Your Audition Sides
       </h3>
       <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-        Upload your audition script in PDF format. We'll extract the text and analyze it for your professional acting guide.
+        Upload one or more audition PDFs (sides, character breakdowns, etc.). We'll combine and analyze all files to create your comprehensive acting guide.
       </p>
 
       <div
@@ -165,49 +201,73 @@ const FileUpload = ({ onUpload }) => {
               Extracting text and analyzing script structure
             </p>
           </div>
-        ) : uploadedFile ? (
+        ) : uploadedFiles.length > 0 ? (
           <div style={{ color: '#059669' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
-            <p style={{ fontSize: '1.125rem', fontWeight: 600 }}>
-              {uploadedFile.name}
+            <p style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
+              {uploadedFiles.length} PDF{uploadedFiles.length > 1 ? 's' : ''} uploaded successfully
             </p>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-              {uploadedFile.size}
-            </p>
-            {uploadedFile.extractionMethod && (
-              <div style={{ 
-                marginTop: '1rem',
-                padding: '0.5rem',
-                background: uploadedFile.extractionMethod === 'adobe' ? '#d1fae5' : '#fef3c7',
+            
+            {uploadedFiles.map((file, index) => (
+              <div key={index} style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
                 borderRadius: '0.5rem',
-                fontSize: '0.875rem'
+                padding: '0.75rem',
+                marginBottom: '0.5rem',
+                textAlign: 'left'
               }}>
-                <span style={{ 
-                  fontWeight: 600,
-                  color: uploadedFile.extractionMethod === 'adobe' ? '#059669' : '#d97706'
-                }}>
-                  {uploadedFile.extractionMethod === 'adobe' ? '🔍 Adobe Premium OCR' : '📖 Basic OCR'}
-                </span>
-                <br />
-                <span style={{ color: '#6b7280' }}>
-                  {uploadedFile.confidence} confidence
-                </span>
+                <div style={{ fontWeight: 600, color: '#166534', marginBottom: '0.25rem' }}>
+                  {file.name}
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                  {file.size}
+                </div>
+                {file.extractionMethod && (
+                  <div style={{ 
+                    padding: '0.25rem 0.5rem',
+                    background: file.extractionMethod === 'adobe' ? '#d1fae5' : '#fef3c7',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.75rem',
+                    display: 'inline-block',
+                    marginRight: '0.5rem'
+                  }}>
+                    <span style={{ 
+                      fontWeight: 600,
+                      color: file.extractionMethod === 'adobe' ? '#059669' : '#d97706'
+                    }}>
+                      {file.extractionMethod === 'adobe' ? '🔍 Adobe OCR' : '📖 Basic OCR'}
+                    </span>
+                  </div>
+                )}
+                {file.characterNames && file.characterNames.length > 0 && (
+                  <div style={{ 
+                    padding: '0.25rem 0.5rem',
+                    background: '#ede9fe',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.75rem',
+                    display: 'inline-block'
+                  }}>
+                    <span style={{ fontWeight: 600, color: '#7c3aed' }}>
+                      {file.characterNames.length} character{file.characterNames.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
-            {uploadedFile.characterNames && uploadedFile.characterNames.length > 0 && (
-              <div style={{ 
-                marginTop: '0.5rem',
-                padding: '0.5rem',
-                background: '#ede9fe',
-                borderRadius: '0.5rem',
-                fontSize: '0.875rem'
-              }}>
-                <span style={{ fontWeight: 600, color: '#7c3aed' }}>
-                  Characters found: {uploadedFile.characterNames.slice(0, 3).join(', ')}
-                  {uploadedFile.characterNames.length > 3 && ` +${uploadedFile.characterNames.length - 3} more`}
-                </span>
-              </div>
-            )}
+            ))}
+            
+            {/* Combined stats */}
+            <div style={{
+              marginTop: '1rem',
+              padding: '0.75rem',
+              background: '#fef3c7',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem'
+            }}>
+              <span style={{ fontWeight: 600, color: '#d97706' }}>
+                📊 Combined: {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''} ready for guide generation
+              </span>
+            </div>
           </div>
         ) : (
           <div>
@@ -218,10 +278,10 @@ const FileUpload = ({ onUpload }) => {
               color: '#374151',
               marginBottom: '0.5rem',
             }}>
-              {isDragActive ? 'Drop your PDF here' : 'Click to upload or drag and drop'}
+              {isDragActive ? 'Drop your PDFs here' : 'Click to upload or drag and drop'}
             </p>
             <p style={{ color: '#6b7280' }}>
-              PDF audition sides only, max 10MB
+              PDF audition files only, max 10MB per file
             </p>
             <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '0.5rem' }}>
               Advanced OCR will extract text and identify characters automatically

@@ -148,7 +148,7 @@ const Dashboard = () => {
 
   // ====== GENERATE GUIDE ======
   const handleGenerateGuide = async (formData) => {
-    if (!uploadData?.uploadId) {
+    if (!uploadData?.uploadId && !uploadData?.uploadIds) {
       toast.error('Please upload your sides (PDF) before generating.');
       return;
     }
@@ -169,7 +169,11 @@ const Dashboard = () => {
           : {})
       };
 
-      const payload = { uploadId: uploadData.uploadId, ...formData };
+      const payload = { 
+        uploadId: uploadData.uploadId || uploadData.uploadIds?.[0], // For backward compatibility
+        uploadIds: uploadData.uploadIds || [uploadData.uploadId], // New multiple file support
+        ...formData 
+      };
       const res = await fetch(`${API_BASE}/api/guides/generate`, {
         method: 'POST',
         headers,
@@ -332,16 +336,31 @@ const Dashboard = () => {
 
                 {uploadData && (
                   <div style={{
-                    padding: 12,
+                    padding: 16,
                     background: '#f0fdfa',
-                    borderRadius: 10,
+                    borderRadius: 12,
                     border: '1px solid #2dd4bf',
                     color: '#065f46'
                   }}>
-                    ✅ Script ready: <strong>{uploadData.filename}</strong>{' '}
-                    <span style={{ color: '#047857' }}>
-                      ({uploadData.textLength || 0} chars extracted)
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '1.2rem' }}>✅</span>
+                      <span style={{ fontWeight: 'bold' }}>
+                        {uploadData.fileCount > 1 ? `${uploadData.fileCount} PDFs` : 'PDF'} ready for guide generation
+                      </span>
+                    </div>
+                    <div style={{ color: '#047857', fontSize: '0.9rem' }}>
+                      {uploadData.fileCount > 1 ? (
+                        <>
+                          <strong>{uploadData.filenames.join(', ')}</strong>
+                          <br />
+                          Combined: {uploadData.textLength || 0} characters, {uploadData.wordCount || 0} words
+                        </>
+                      ) : (
+                        <>
+                          <strong>{uploadData.filename}</strong> ({uploadData.textLength || 0} chars extracted)
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
 

@@ -419,10 +419,13 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 // RAG-Enhanced Guide Generation Endpoint
 app.post('/api/guides/generate', async (req, res) => {
  try {
-   const { uploadId, characterName, productionTitle, productionType, roleSize, genre, storyline, characterBreakdown, callbackNotes, focusArea } = req.body;
+   const { uploadId, uploadIds, characterName, productionTitle, productionType, roleSize, genre, storyline, characterBreakdown, callbackNotes, focusArea } = req.body;
    
-   if (!uploadId || !uploads[uploadId]) {
-     return res.status(400).json({ error: 'Invalid upload ID or expired session' });
+   // Handle both single and multiple upload IDs
+   const uploadIdList = uploadIds || [uploadId];
+   
+   if (!uploadIdList.length || uploadIdList.some(id => !uploads[id])) {
+     return res.status(400).json({ error: 'Invalid upload ID(s) or expired session' });
    }
 
    if (!characterName || !productionTitle || !productionType) {
@@ -431,18 +434,21 @@ app.post('/api/guides/generate', async (req, res) => {
      });
    }
 
-   const uploadData = uploads[uploadId];
+   // Combine all upload data
+   const allUploadData = uploadIdList.map(id => uploads[id]);
+   const combinedSceneText = allUploadData.map(data => data.sceneText).join('\n\n--- NEW SCENE ---\n\n');
+   const combinedWordCount = allUploadData.reduce((total, data) => total + (data.wordCount || 0), 0);
    
    console.log(`🎭 COREY RALSTON RAG Guide Generation...`);
    console.log(`🎬 ${characterName} | ${productionTitle} (${productionType})`);
    console.log(`🧠 Using ${Object.keys(methodologyDatabase).length} methodology files`);
 
    const guideContent = await generateActingGuideWithRAG({
-     sceneText: uploadData.sceneText,
+     sceneText: combinedSceneText,
      characterName: characterName.trim(),
      productionTitle: productionTitle.trim(),
      productionType: productionType.trim(),
-     extractionMethod: uploadData.extractionMethod
+     extractionMethod: allUploadData[0].extractionMethod
    });
 
    console.log(`✅ Corey Ralston RAG Guide Complete!`);
@@ -483,7 +489,7 @@ app.post('/api/guides/generate', async (req, res) => {
        characterBreakdown: characterBreakdown || '',
        callbackNotes: callbackNotes || '',
        focusArea: focusArea || '',
-       sceneText: uploadData.sceneText,
+       sceneText: combinedSceneText,
        generatedHtml: guideContent
      });
 
