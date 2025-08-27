@@ -7,6 +7,7 @@ const GuideForm = ({ onSubmit, hasFile }) => {
     productionType: '',
     roleSize: '',
     genre: '',
+    actorAge: '',
     storyline: '',
     characterBreakdown: '',
     callbackNotes: '',
@@ -48,7 +49,7 @@ const GuideForm = ({ onSubmit, hasFile }) => {
     e.preventDefault();
     
     // Validate required fields
-    const required = ['characterName', 'productionTitle', 'productionType', 'roleSize', 'genre'];
+    const required = ['characterName', 'actorAge', 'productionTitle', 'productionType', 'roleSize', 'genre'];
     const missing = required.filter(field => !formData[field]);
     
     if (missing.length > 0) {
@@ -56,10 +57,15 @@ const GuideForm = ({ onSubmit, hasFile }) => {
       return;
     }
 
+    // Debug logging
+    console.log('🎭 GuideForm submitting:', formData);
+    console.log('🌟 Child guide requested:', formData.childGuideRequested);
+    console.log('👶 Actor age:', formData.actorAge);
+
     onSubmit(formData);
   };
 
-  const isFormValid = formData.characterName && formData.productionTitle && 
+  const isFormValid = formData.characterName && formData.actorAge && formData.productionTitle && 
                      formData.productionType && formData.roleSize && formData.genre && hasFile;
 
   const inputStyle = {
@@ -129,6 +135,33 @@ const GuideForm = ({ onSubmit, hasFile }) => {
               style={inputStyle}
               onFocus={inputFocusHandler}
               onBlur={inputBlurHandler}
+              required
+            />
+          </div>
+          
+          <div>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '0.875rem', 
+              fontWeight: '600', 
+              color: '#374151',
+              marginBottom: '0.5rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.025em'
+            }}>
+              Actor's Age *
+            </label>
+            <input
+              type="number"
+              name="actorAge"
+              value={formData.actorAge}
+              onChange={handleChange}
+              placeholder="e.g., 8, 12, 15"
+              style={inputStyle}
+              onFocus={inputFocusHandler}
+              onBlur={inputBlurHandler}
+              min="1"
+              max="100"
               required
             />
           </div>
@@ -386,77 +419,95 @@ const GuideForm = ({ onSubmit, hasFile }) => {
         </div>
       </div>
 
-      {/* Child's Guide Option */}
-      <div>
-        <h3 style={{ 
-          fontSize: '1.5rem', 
-          fontWeight: 'bold', 
-          color: '#374151',
-          marginBottom: '1rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
-        }}>
-          🌟 Child's Guide Option
-        </h3>
-        <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-          For young actors age 12 and under, we can create a simplified, fun guide that's easier to understand and follow.
-        </p>
-
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '0.75rem',
-          padding: '1rem',
-          background: '#f8fafc',
-          border: '2px solid #e2e8f0',
-          borderRadius: '0.75rem'
-        }}>
-          <input
-            type="checkbox"
-            id="childGuideRequested"
-            name="childGuideRequested"
-            checked={formData.childGuideRequested}
-            onChange={(e) => setFormData({
-              ...formData,
-              childGuideRequested: e.target.checked
-            })}
-            style={{
-              width: '1.25rem',
-              height: '1.25rem',
-              accentColor: '#10b981'
-            }}
-          />
-          <label 
-            htmlFor="childGuideRequested"
-            style={{
-              fontSize: '1rem',
-              fontWeight: '600',
-              color: '#374151',
-              cursor: 'pointer'
-            }}
-          >
-            Would you like a simplified Child's Guide? (For roles age 12 and under only)
-          </label>
-        </div>
-        
-        {formData.childGuideRequested && (
-          <div style={{
-            marginTop: '1rem',
-            padding: '1rem',
-            background: '#ecfdf5',
-            border: '1px solid #a7f3d0',
-            borderRadius: '0.5rem',
-            color: '#065f46'
+      {/* Child's Guide Option - Only show for actors age 12 and under */}
+      {formData.actorAge && parseInt(formData.actorAge) <= 12 && (
+        <div>
+          <h3 style={{ 
+            fontSize: '1.5rem', 
+            fontWeight: 'bold', 
+            color: '#374151',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
           }}>
-            <p style={{ margin: 0, fontSize: '0.875rem' }}>
-              <strong>Great choice!</strong> We'll create both guides for you:
-              <br />• A comprehensive guide for parents/coaches
-              <br />• A fun, simplified guide perfect for young actors
-            </p>
+            🌟 Child's Guide Option
+          </h3>
+          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+            For young actors age 12 and under, we can create a simplified, fun guide that's easier to understand and follow.
+          </p>
+
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.75rem',
+            padding: '1rem',
+            background: '#f8fafc',
+            border: '2px solid #e2e8f0',
+            borderRadius: '0.75rem'
+          }}>
+            <input
+              type="checkbox"
+              id="childGuideRequested"
+              name="childGuideRequested"
+              checked={formData.childGuideRequested}
+              onChange={(e) => setFormData({
+                ...formData,
+                childGuideRequested: e.target.checked
+              })}
+              style={{
+                width: '1.25rem',
+                height: '1.25rem',
+                accentColor: '#10b981'
+              }}
+            />
+            <label 
+              htmlFor="childGuideRequested"
+              style={{
+                fontSize: '1rem',
+                fontWeight: '600',
+                color: '#374151',
+                cursor: 'pointer'
+              }}
+            >
+              Would you like a simplified Child's Guide? (For roles age 12 and under only)
+            </label>
           </div>
-        )}
-      </div>
+          
+          {formData.childGuideRequested && (
+            <div style={{
+              marginTop: '1rem',
+              padding: '1rem',
+              background: '#ecfdf5',
+              border: '1px solid #a7f3d0',
+              borderRadius: '0.5rem',
+              color: '#065f46'
+            }}>
+              <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                <strong>Great choice!</strong> We'll create both guides for you:
+                <br />• A comprehensive guide for parents/coaches
+                <br />• A fun, simplified guide perfect for young actors
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Show message for actors over 12 */}
+      {formData.actorAge && parseInt(formData.actorAge) > 12 && (
+        <div style={{
+          padding: '1rem',
+          background: '#fef3c7',
+          border: '1px solid #f59e0b',
+          borderRadius: '0.5rem',
+          color: '#92400e'
+        }}>
+          <p style={{ margin: 0, fontSize: '0.875rem' }}>
+            <strong>Note:</strong> Child's Guide option is only available for actors age 12 and under. 
+            Your guide will be optimized for your age group.
+          </p>
+        </div>
+      )}
 
       <button
         type="submit"

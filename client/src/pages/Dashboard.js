@@ -189,6 +189,14 @@ const Dashboard = () => {
       const ct = res.headers.get('content-type') || '';
       if (ct.includes('application/json')) {
         const data = await res.json();
+        console.log('🎭 Guide generation response:', data);
+        console.log('🌟 Child guide details:', {
+          requested: data.childGuideRequested,
+          completed: data.childGuideCompleted,
+          hasContent: !!data.childGuideContent,
+          contentLength: data.childGuideContent ? data.childGuideContent.length : 0
+        });
+        
         if (!data?.guideContent) throw new Error('No guide content returned.');
         
         // Open parent guide
@@ -196,9 +204,16 @@ const Dashboard = () => {
         
         // If child guide was requested and completed, show both guides
         if (data.childGuideRequested && data.childGuideCompleted && data.childGuideContent) {
+          console.log('🌟 Opening child guide in 1 second...');
           setTimeout(() => {
             openHtmlInNewTab(data.childGuideContent, 'Child Guide');
           }, 1000); // Small delay to avoid overwhelming the user
+        } else {
+          console.log('❌ Child guide not shown because:', {
+            requested: data.childGuideRequested,
+            completed: data.childGuideCompleted,
+            hasContent: !!data.childGuideContent
+          });
         }
       } else {
         const html = await res.text();
