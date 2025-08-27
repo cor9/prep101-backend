@@ -505,12 +505,14 @@ app.post('/api/guides/generate', async (req, res) => {
          characterName,
          productionTitle,
          productionType,
-         scriptWordCount: uploadData.wordCount,
+         scriptWordCount: combinedWordCount,
          guideLength: guideContent.length,
          model: 'claude-sonnet-4-20250514',
          ragEnabled: true,
          methodologyFiles: Object.keys(methodologyDatabase).length,
-         contentQuality: 'corey-ralston-methodology-enhanced'
+         contentQuality: 'corey-ralston-methodology-enhanced',
+         fileCount: uploadIdList.length,
+         uploadedFiles: uploadIdList.map(id => uploads[id].filename)
        }
      });
    } catch (dbError) {
@@ -519,7 +521,7 @@ app.post('/api/guides/generate', async (req, res) => {
      // Still return the guide content even if save fails
      res.json({
        success: true,
-       guideId: `corey_rag_${uploadId}`,
+       guideId: `corey_rag_${uploadIdList[0] || uploadId}`,
        guideContent: guideContent,
        generatedAt: new Date(),
        savedToDatabase: false,
@@ -528,12 +530,14 @@ app.post('/api/guides/generate', async (req, res) => {
          characterName,
          productionTitle,
          productionType,
-         scriptWordCount: uploadData.wordCount,
+         scriptWordCount: combinedWordCount,
          guideLength: guideContent.length,
          model: 'claude-sonnet-4-20250514',
          ragEnabled: true,
          methodologyFiles: Object.keys(methodologyDatabase).length,
-         contentQuality: 'corey-ralston-methodology-enhanced'
+         contentQuality: 'corey-ralston-methodology-enhanced',
+         fileCount: uploadIdList.length,
+         uploadedFiles: uploadIdList.map(id => uploads[id].filename)
        }
      });
    }
