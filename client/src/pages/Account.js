@@ -368,8 +368,28 @@ const Account = () => {
                                   const htmlContent = await response.text();
                                   // Open child guide in new tab with HTML content
                                   const newWindow = window.open('', '_blank', 'noopener,noreferrer');
-                                  newWindow.document.write(htmlContent);
-                                  newWindow.document.close();
+                                  
+                                  if (!newWindow) {
+                                    alert('❌ Popup blocked! Please allow popups for this site and try again.');
+                                    return;
+                                  }
+                                  
+                                  try {
+                                    // Use data URL method which is more reliable
+                                    const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
+                                    newWindow.location.href = dataUrl;
+                                  } catch (windowError) {
+                                    console.error('Window error:', windowError);
+                                    // Fallback: create a blob URL and download
+                                    const blob = new Blob([htmlContent], { type: 'text/html' });
+                                    const url = window.URL.createObjectURL(blob);
+                                    const link = document.createElement('a');
+                                    link.href = url;
+                                    link.download = `child_guide_${guide.characterName}_${guide.productionTitle}.html`;
+                                    link.click();
+                                    window.URL.revokeObjectURL(url);
+                                    alert('✅ Child guide downloaded as HTML file!');
+                                  }
                                 } else {
                                   const error = await response.json();
                                   alert(`❌ Failed to load child guide: ${error.message}`);
