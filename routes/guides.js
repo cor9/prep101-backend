@@ -15,10 +15,14 @@ router.get('/', auth, async (req, res) => {
     const guides = await Guide.findAll({
       where: { userId },
       order: [['createdAt', 'DESC']],
-      attributes: ['id', 'title', 'characterName', 'productionTitle', 'productionType', 'status', 'createdAt', 'updatedAt']
+      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount']
     });
 
-    res.json({ guides });
+    res.json({ 
+      success: true,
+      guides: guides,
+      total: guides.length
+    });
   } catch (error) {
     console.error('Error fetching guides:', error);
     res.status(500).json({ message: 'Failed to fetch guides' });
@@ -101,7 +105,10 @@ router.get('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Guide not found' });
     }
 
-    res.json({ guide });
+    res.json({ 
+      success: true,
+      guide: guide
+    });
   } catch (error) {
     console.error('Error fetching guide:', error);
     res.status(500).json({ message: 'Failed to fetch guide' });

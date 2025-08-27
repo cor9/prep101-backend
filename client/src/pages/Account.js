@@ -218,7 +218,7 @@ const Account = () => {
                         {guide.productionType} • {guide.genre} • {new Date(guide.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{
                         background: '#10b981',
                         color: 'white',
@@ -247,6 +247,66 @@ const Account = () => {
                         }}
                       >
                         View
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Download PDF
+                          const pdfUrl = `${API_BASE}/api/guides/${guide.id}/pdf`;
+                          const link = document.createElement('a');
+                          link.href = pdfUrl;
+                          link.download = `guide_${guide.characterName}_${guide.productionTitle}.pdf`;
+                          link.style.display = 'none';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        style={{
+                          background: '#dc2626',
+                          color: 'white',
+                          padding: '0.5rem 1rem',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        📄 PDF
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`${API_BASE}/api/guides/${guide.id}/email`, {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${user?.accessToken || user?.token}`,
+                                'Content-Type': 'application/json'
+                              }
+                            });
+                            
+                            if (response.ok) {
+                              const result = await response.json();
+                              alert(`✅ Guide sent to ${result.email} successfully!`);
+                            } else {
+                              const error = await response.json();
+                              alert(`❌ Failed to send email: ${error.error}`);
+                            }
+                          } catch (err) {
+                            alert(`❌ Error sending email: ${err.message}`);
+                          }
+                        }}
+                        style={{
+                          background: '#7c3aed',
+                          color: 'white',
+                          padding: '0.5rem 1rem',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        📧 Email
                       </button>
                     </div>
                   </div>
