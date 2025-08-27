@@ -24,8 +24,12 @@ validateConfig();
 // Security middleware
 app.use(securityHeaders);
 
-// CORS
-app.use(cors(corsOptions));
+// CORS - Allow ALL origins to eliminate CORS errors
+app.use(cors({
+  origin: true, // Allow all origins
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
