@@ -217,6 +217,33 @@ const Account = () => {
                       <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
                         {guide.productionType} • {guide.genre} • {new Date(guide.createdAt).toLocaleDateString()}
                       </p>
+                      {guide.childGuideRequested && (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          {guide.childGuideCompleted ? (
+                            <span style={{
+                              background: '#10b981',
+                              color: 'white',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '600'
+                            }}>
+                              🌟 Child's Guide Available
+                            </span>
+                          ) : (
+                            <span style={{
+                              background: '#f59e0b',
+                              color: 'white',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '600'
+                            }}>
+                              ⏳ Child's Guide Generating...
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{
@@ -323,9 +350,30 @@ const Account = () => {
                           cursor: 'pointer',
                           fontSize: '0.8rem'
                         }}
-                      >
-                        📧 Email
-                      </button>
+                                              >
+                          📧 Email
+                        </button>
+                        {guide.childGuideRequested && guide.childGuideCompleted && (
+                          <button
+                            onClick={() => {
+                              // Open child guide in new tab
+                              const childGuideUrl = `${API_BASE}/api/guides/${guide.id}/child`;
+                              window.open(childGuideUrl, '_blank', 'noopener,noreferrer');
+                            }}
+                            style={{
+                              background: '#f59e0b',
+                              color: 'white',
+                              padding: '0.5rem 1rem',
+                              border: 'none',
+                              borderRadius: '0.5rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            🌟 Child's Guide
+                          </button>
+                        )}
                     </div>
                   </div>
                 ))}

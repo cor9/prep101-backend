@@ -1489,7 +1489,12 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
     // Set response headers for PDF download
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="guide_${guide.characterName}_${guide.productionTitle}.pdf"`);
-    res.setHeader('Content-Length', streamAsset.asset.size);
+    
+    // Get content length safely
+    const contentLength = streamAsset.asset?.size || 'unknown';
+    if (contentLength !== 'unknown') {
+      res.setHeader('Content-Length', contentLength);
+    }
 
     // Stream the PDF to the response
     streamAsset.readStream.pipe(res);
@@ -1569,7 +1574,7 @@ app.post('/api/guides/:id/email', async (req, res) => {
     console.log('📧 Email endpoint - EMAIL_PASS present:', !!process.env.EMAIL_PASS);
     
     // Create transporter with modern Gmail configuration
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: process.env.EMAIL_SERVICE || 'gmail',
       auth: {
         user: process.env.EMAIL_USER,

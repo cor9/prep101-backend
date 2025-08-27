@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
     const guides = await Guide.findAll({
       where: { userId },
       order: [['createdAt', 'DESC']],
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount']
+      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount', 'childGuideRequested', 'childGuideCompleted', 'childGuideHtml']
     });
 
     res.json({ 
@@ -87,6 +87,35 @@ router.get('/public/:id', async (req, res) => {
   } catch (error) {
     console.error('Public guide fetch error:', error);
     res.status(500).json({ message: 'Failed to fetch public guide' });
+  }
+});
+
+// GET /api/guides/:id/child - Get child guide HTML
+router.get('/:id/child', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    const guide = await Guide.findOne({
+      where: { id, userId },
+      attributes: ['id', 'characterName', 'productionTitle', 'childGuideHtml', 'childGuideCompleted']
+    });
+
+    if (!guide) {
+      return res.status(404).json({ message: 'Guide not found' });
+    }
+
+    if (!guide.childGuideCompleted || !guide.childGuideHtml) {
+      return res.status(404).json({ message: 'Child guide not available' });
+    }
+
+    // Set HTML content type and send the child guide
+    res.setHeader('Content-Type', 'text/html');
+    res.send(guide.childGuideHtml);
+
+  } catch (error) {
+    console.error('Child guide fetch error:', error);
+    res.status(500).json({ message: 'Failed to fetch child guide' });
   }
 });
 
