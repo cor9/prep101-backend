@@ -32,7 +32,7 @@ const Home = () => {
                 src="/preplogo.png" 
                 alt="PREP101 Logo" 
                 style={{
-                  height: '80px',
+                  height: '800px',
                   width: 'auto',
                   objectFit: 'contain',
                   filter: 'brightness(0) invert(1)',
