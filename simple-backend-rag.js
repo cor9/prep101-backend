@@ -343,7 +343,7 @@ ${data.sceneText}
 - Provides actionable choices, not just theory
 - Matches the energy and enthusiasm of the example guides
 
-**OUTPUT FORMAT:** Complete HTML with proper styling that matches the professional example guides. Make it worthy of the PREP101 brand and indistinguishable from Corey's personal coaching.`
+**OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or ```html wrappers. The response should be pure HTML that can be directly inserted into a web page. Make it worthy of the PREP101 brand and indistinguishable from Corey's personal coaching.`
         }]
       })
     });
