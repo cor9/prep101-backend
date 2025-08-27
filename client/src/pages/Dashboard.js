@@ -86,7 +86,6 @@ const Dashboard = () => {
     let cancelled = false;
 
     const fetchGuides = async () => {
-      setGuidesLoading(true);
       try {
         const headers = {
           Authorization: `Bearer ${user.accessToken || user.token}`
@@ -102,8 +101,6 @@ const Dashboard = () => {
       } catch (err) {
         console.error('Failed to fetch guides:', err);
         if (!cancelled) setGuides([]);
-      } finally {
-        if (!cancelled) setGuidesLoading(false);
       }
     };
 
@@ -130,13 +127,14 @@ const Dashboard = () => {
   };
 
   // Open HTML in a new tab (Blob URL). Optionally reuse a pre-opened window.
-  const openHtmlInNewTab = (htmlString, preOpenedWindow) => {
+  const openHtmlInNewTab = (htmlString, customTitle) => {
     const blob = new Blob([htmlString], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     setLastGuideUrl(url);
-    if (preOpenedWindow) {
-      preOpenedWindow.location.href = url;
-      preOpenedWindow.focus();
+    // If customTitle is provided, it's a string for the window name
+    if (typeof customTitle === 'string') {
+      const w = window.open(url, customTitle, 'noopener,noreferrer');
+      if (!w) toast('Popup blocked. Use the "Open last guide" link below.', { icon: '⚠️' });
     } else {
       const w = window.open(url, '_blank', 'noopener,noreferrer');
       if (!w) toast('Popup blocked. Use the “Open last guide” link below.', { icon: '⚠️' });
@@ -192,7 +190,16 @@ const Dashboard = () => {
       if (ct.includes('application/json')) {
         const data = await res.json();
         if (!data?.guideContent) throw new Error('No guide content returned.');
+        
+        // Open parent guide
         openHtmlInNewTab(data.guideContent);
+        
+        // If child guide was requested and completed, show both guides
+        if (data.childGuideRequested && data.childGuideCompleted && data.childGuideContent) {
+          setTimeout(() => {
+            openHtmlInNewTab(data.childGuideContent, 'Child Guide');
+          }, 1000); // Small delay to avoid overwhelming the user
+        }
       } else {
         const html = await res.text();
         if (!html || html.length < 50) throw new Error('Empty guide response.');

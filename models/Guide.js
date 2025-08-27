@@ -29,6 +29,9 @@ const Guide = sequelize.define('Guide', {
   focusArea: DataTypes.STRING,
   sceneText: { type: DataTypes.TEXT, allowNull: false },
   generatedHtml: { type: DataTypes.TEXT, allowNull: false },
+  childGuideRequested: { type: DataTypes.BOOLEAN, defaultValue: false },
+  childGuideHtml: DataTypes.TEXT,
+  childGuideCompleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   shareUrl: DataTypes.STRING,
   isPublic: { type: DataTypes.BOOLEAN, defaultValue: false },
   viewCount: { type: DataTypes.INTEGER, defaultValue: 0 }

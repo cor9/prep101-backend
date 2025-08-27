@@ -369,6 +369,597 @@ ${data.sceneText}
    console.error('❌ RAG guide generation failed:', error.message);
    throw error;
  }
+ }
+
+// Analyze script content to determine color theme
+function determineColorTheme(characterName, productionTitle, productionType, sceneText) {
+  const text = `${characterName} ${productionTitle} ${productionType} ${sceneText}`.toLowerCase();
+  
+  // Gender-specific themes (check character names first)
+  const characterNameLower = characterName.toLowerCase();
+  
+  // Princess/Female character themes
+  if (characterNameLower.includes('princess') || characterNameLower.includes('queen') || 
+      characterNameLower.includes('fairy') || characterNameLower.includes('rose') ||
+      characterNameLower.includes('lily') || characterNameLower.includes('belle') ||
+      characterNameLower.includes('ariel') || characterNameLower.includes('snow')) {
+    return {
+      primary: '#EC4899',    // Pink
+      secondary: '#F59E0B',  // Gold
+      accent: '#8B5CF6',     // Purple
+      background: '#FDF2F8', // Light pink
+      name: 'Princess'
+    };
+  }
+  
+  // Prince/Male character themes
+  if (characterNameLower.includes('prince') || characterNameLower.includes('king') || 
+      characterNameLower.includes('knight') || characterNameLower.includes('hero') ||
+      characterNameLower.includes('warrior') || characterNameLower.includes('dragon') ||
+      characterNameLower.includes('max') || characterNameLower.includes('leo')) {
+    return {
+      primary: '#3B82F6',    // Blue
+      secondary: '#F59E0B',  // Gold
+      accent: '#10B981',     // Green
+      background: '#EFF6FF', // Light blue
+      name: 'Prince'
+    };
+  }
+  
+  // Adventure/Action themes
+  if (text.includes('adventure') || text.includes('action') || text.includes('quest') || 
+      text.includes('hero') || text.includes('battle') || text.includes('journey') ||
+      text.includes('explorer') || text.includes('warrior') || text.includes('knight')) {
+    return {
+      primary: '#4F46E5',    // Vibrant blue
+      secondary: '#F59E0B',  // Orange
+      accent: '#10B981',     // Green
+      background: '#EFF6FF', // Light blue
+      name: 'Adventure'
+    };
+  }
+  
+  // Comedy/Fun themes
+  if (text.includes('comedy') || text.includes('funny') || text.includes('humor') ||
+      text.includes('silly') || text.includes('joke') || text.includes('laugh') ||
+      text.includes('playful') || text.includes('wacky') || text.includes('goofy')) {
+    return {
+      primary: '#EC4899',    // Pink
+      secondary: '#F59E0B',  // Yellow
+      accent: '#8B5CF6',     // Purple
+      background: '#FDF2F8', // Light pink
+      name: 'Comedy'
+    };
+  }
+  
+  // Fantasy/Magical themes
+  if (text.includes('fantasy') || text.includes('magic') || text.includes('wizard') ||
+      text.includes('fairy') || text.includes('dragon') || text.includes('spell') ||
+      text.includes('enchanted') || text.includes('mythical') || text.includes('wonder')) {
+    return {
+      primary: '#8B5CF6',    // Purple
+      secondary: '#EC4899',  // Pink
+      accent: '#F59E0B',     // Gold
+      background: '#F5F3FF', // Light purple
+      name: 'Fantasy'
+    };
+  }
+  
+  // Drama/Serious themes
+  if (text.includes('drama') || text.includes('serious') || text.includes('emotional') ||
+      text.includes('intense') || text.includes('deep') || text.includes('powerful') ||
+      text.includes('meaningful') || text.includes('touching') || text.includes('heartfelt')) {
+    return {
+      primary: '#7C3AED',    // Purple
+      secondary: '#14B8A6',  // Teal
+      accent: '#6B7280',     // Gray
+      background: '#F0FDFA', // Light teal
+      name: 'Drama'
+    };
+  }
+  
+  // Modern/Urban themes
+  if (text.includes('modern') || text.includes('urban') || text.includes('city') ||
+      text.includes('contemporary') || text.includes('trendy') || text.includes('cool') ||
+      text.includes('street') || text.includes('hip') || text.includes('current')) {
+    return {
+      primary: '#3B82F6',    // Blue
+      secondary: '#6B7280',  // Gray
+      accent: '#EF4444',     // Red
+      background: '#F8FAFC', // Light gray
+      name: 'Modern'
+    };
+  }
+  
+  // Princess/Royal themes
+  if (text.includes('princess') || text.includes('royal') || text.includes('queen') ||
+      text.includes('king') || text.includes('crown') || text.includes('castle') ||
+      text.includes('noble') || text.includes('elegant') || text.includes('regal')) {
+    return {
+      primary: '#EC4899',    // Pink
+      secondary: '#F59E0B',  // Gold
+      accent: '#8B5CF6',     // Purple
+      background: '#FDF2F8', // Light pink
+      name: 'Royal'
+    };
+  }
+  
+  // Superhero themes
+  if (text.includes('superhero') || text.includes('hero') || text.includes('power') ||
+      text.includes('save') || text.includes('rescue') || text.includes('strong') ||
+      text.includes('mighty') || text.includes('brave') || text.includes('courage')) {
+    return {
+      primary: '#EF4444',    // Red
+      secondary: '#F59E0B',  // Gold
+      accent: '#3B82F6',     // Blue
+      background: '#FEF2F2', // Light red
+      name: 'Superhero'
+    };
+  }
+  
+  // Nature/Outdoor themes
+  if (text.includes('nature') || text.includes('outdoor') || text.includes('forest') ||
+      text.includes('garden') || text.includes('animal') || text.includes('tree') ||
+      text.includes('flower') || text.includes('mountain') || text.includes('river')) {
+    return {
+      primary: '#10B981',    // Green
+      secondary: '#F59E0B',  // Orange
+      accent: '#8B5CF6',     // Purple
+      background: '#F0FDF4', // Light green
+      name: 'Nature'
+    };
+  }
+  
+  // Production type specific themes
+  if (productionType.toLowerCase().includes('musical')) {
+    return {
+      primary: '#EC4899',    // Pink
+      secondary: '#F59E0B',  // Gold
+      accent: '#8B5CF6',     // Purple
+      background: '#FDF2F8', // Light pink
+      name: 'Musical'
+    };
+  }
+  
+  if (productionType.toLowerCase().includes('comedy')) {
+    return {
+      primary: '#F59E0B',    // Yellow
+      secondary: '#EC4899',  // Pink
+      accent: '#10B981',     // Green
+      background: '#FFFBEB', // Light yellow
+      name: 'Comedy'
+    };
+  }
+  
+  if (productionType.toLowerCase().includes('drama')) {
+    return {
+      primary: '#7C3AED',    // Purple
+      secondary: '#14B8A6',  // Teal
+      accent: '#6B7280',     // Gray
+      background: '#F0FDFA', // Light teal
+      name: 'Drama'
+    };
+  }
+  
+    if (productionType.toLowerCase().includes('action') || productionType.toLowerCase().includes('adventure')) {
+    return {
+      primary: '#EF4444',    // Red
+      secondary: '#F59E0B',  // Gold
+      accent: '#3B82F6',     // Blue
+      background: '#FEF2F2', // Light red
+      name: 'Action'
+    };
+  }
+  
+  // Seasonal and holiday themes
+  if (text.includes('christmas') || text.includes('holiday') || text.includes('winter')) {
+    return {
+      primary: '#EF4444',    // Red
+      secondary: '#10B981',  // Green
+      accent: '#F59E0B',     // Gold
+      background: '#FEF2F2', // Light red
+      name: 'Christmas'
+    };
+  }
+  
+  if (text.includes('halloween') || text.includes('spooky') || text.includes('ghost')) {
+    return {
+      primary: '#8B5CF6',    // Purple
+      secondary: '#F59E0B',  // Orange
+      accent: '#EF4444',     // Red
+      background: '#F5F3FF', // Light purple
+      name: 'Halloween'
+    };
+  }
+  
+  if (text.includes('easter') || text.includes('spring') || text.includes('bunny')) {
+    return {
+      primary: '#EC4899',    // Pink
+      secondary: '#10B981',  // Green
+      accent: '#FCD34D',     // Yellow
+      background: '#FDF2F8', // Light pink
+      name: 'Easter'
+    };
+  }
+  
+  if (text.includes('summer') || text.includes('beach') || text.includes('ocean')) {
+    return {
+      primary: '#3B82F6',    // Blue
+      secondary: '#FCD34D',  // Yellow
+      accent: '#10B981',     // Green
+      background: '#EFF6FF', // Light blue
+      name: 'Summer'
+    };
+  }
+  
+  // Default: Friendly and approachable
+  let theme = {
+    primary: '#10B981',      // Green
+    secondary: '#F59E0B',    // Orange
+    accent: '#3B82F6',       // Blue
+    background: '#F0FDF4',   // Light green
+    name: 'Friendly'
+  };
+  
+  // Age-specific color adjustments
+  if (text.includes('baby') || text.includes('toddler') || text.includes('little')) {
+    // Softer, pastel colors for very young characters
+    theme.primary = '#F472B6';   // Soft pink
+    theme.secondary = '#FCD34D'; // Soft yellow
+    theme.accent = '#A78BFA';    // Soft purple
+    theme.background = '#FDF2F8'; // Very light pink
+    theme.name = 'Baby-Friendly';
+  } else if (text.includes('teen') || text.includes('older') || text.includes('mature')) {
+    // More sophisticated colors for older characters
+    theme.primary = '#7C3AED';   // Deeper purple
+    theme.secondary = '#14B8A6'; // Teal
+    theme.accent = '#6B7280';    // Gray
+    theme.background = '#F8FAFC'; // Light gray
+    theme.name = 'Teen-Friendly';
+  }
+  
+  return theme;
+}
+
+// Generate sample HTML template with the determined color theme
+function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${characterName} - ${productionTitle} - Child's Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Fredoka+One&family=Bubblegum+Sans&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Comic Neue', cursive;
+            background: linear-gradient(135deg, ${colorTheme.background} 0%, #ffffff 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, ${colorTheme.primary} 0%, ${colorTheme.secondary} 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: ${colorTheme.background};
+            border-radius: 15px;
+            border-left: 5px solid ${colorTheme.accent};
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        .section h2 {
+            font-family: 'Bubblegum Sans', cursive;
+            color: ${colorTheme.primary};
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section h3 {
+            color: ${colorTheme.secondary};
+            font-size: 1.4rem;
+            margin: 20px 0 10px 0;
+            font-weight: 700;
+        }
+        
+        .highlight-box {
+            background: ${colorTheme.accent};
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 700;
+        }
+        
+        .tip-box {
+            background: ${colorTheme.secondary};
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 700;
+        }
+        
+        .number-list {
+            list-style: none;
+            counter-reset: item;
+        }
+        
+        .number-list li {
+            counter-increment: item;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid ${colorTheme.primary};
+            position: relative;
+        }
+        
+        .number-list li::before {
+            content: counter(item);
+            background: ${colorTheme.primary};
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: 700;
+        }
+        
+        .number-list li strong {
+            color: ${colorTheme.primary};
+            font-weight: 700;
+        }
+        
+        .emoji {
+            font-size: 1.5rem;
+        }
+        
+        .footer {
+            background: linear-gradient(135deg, ${colorTheme.secondary} 0%, ${colorTheme.primary} 100%);
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-weight: 700;
+        }
+        
+        @media (max-width: 600px) {
+            .header h1 { font-size: 2rem; }
+            .content { padding: 20px; }
+            .section { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌟 ${characterName} 🌟</h1>
+            <p>Your Awesome Acting Guide for ${productionTitle}</p>
+        </div>
+        
+        <div class="content">
+            <!-- Your guide content will go here -->
+        </div>
+        
+        <div class="footer">
+            <p>🎭 You've got this! Break a leg! 🎭</p>
+        </div>
+    </div>
+</body>
+</html>`;
+}
+
+// Child's Guide Generation Function
+async function generateChildGuide(data) {
+  const fetch = require('node-fetch');
+  
+  try {
+    console.log('🌟 Generating simplified Child\'s Guide...');
+    
+    // Search methodology for child-friendly examples
+    const childMethodology = searchMethodology(
+      data.characterName, 
+      data.productionType, 
+      data.sceneText
+    );
+    
+    // Build context from child-friendly methodology
+    let childMethodologyContext = '';
+    if (childMethodology.length > 0) {
+      childMethodologyContext = childMethodology.map(file => 
+        `=== CHILD-FRIENDLY METHODOLOGY: ${file.filename} ===\n${file.content}\n\n`
+      ).join('');
+    }
+
+         console.log(`🎭 Generating child guide using ${childMethodology.length} methodology files...`);
+     
+     // Determine color theme based on content
+     const colorTheme = determineColorTheme(
+       data.characterName, 
+       data.productionTitle, 
+       data.productionType, 
+       data.sceneText
+     );
+     console.log(`🎨 Using ${colorTheme.name} color theme for child guide`);
+     
+     // Generate child guide using the parent guide as reference
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+              body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 6000,
+          messages: [{
+            role: "user",
+            content: `You are Corey Ralston, a witty, experienced youth acting coach.  
+Your task is to create a simplified, fun, and empowering "Child's Guide" for young actors (ages 8–12), based on the parent-facing audition prep guide.  
+
+## Voice & Style
+- Friendly, encouraging, and conversational — talk **to the child directly**.  
+- Keep language simple but not babyish.  
+- Fun tone with positive energy, like a coach who believes in them.  
+- Use emojis sparingly for emphasis (🌟, 🎭, 🎬) — no overuse.  
+- Add clear, bold section headers for easy reading.  
+- Keep paragraphs short and scannable.
+
+## Structure
+Your guide must follow this flow:
+1. **Big Welcome**
+   - Greet the actor, mention the role name and project title, and remind them they've got this.
+2. **About Your Character**
+   - Describe who they are, what makes them unique, and their personality.
+   - Keep it relatable and fun, like explaining to a friend.
+3. **What's Happening in the Scene**
+   - Explain the scene setup in simple language.
+4. **Acting Jobs (Action Plan)**
+   - Numbered list of 3–5 specific things they need to focus on in the scene.
+   - Use bold keywords for clarity.
+5. **Fun Acting Tips**
+   - Ideas for how they can explore choices (different voices, physicality, emotions).
+6. **Moment Before & Button**
+   - A simple explanation of what happens right before the scene and how to finish strong.
+7. **Practice Ideas**
+   - Easy practice tasks or "games" to rehearse their choices.
+8. **Final Encouragement**
+   - Short, upbeat closing that reminds them they are ready and capable.
+
+## HTML Styling & Colors
+Create a complete HTML document with embedded CSS using this EXACT color theme:
+
+**${colorTheme.name.toUpperCase()} THEME COLORS:**
+- Primary: ${colorTheme.primary}
+- Secondary: ${colorTheme.secondary}  
+- Accent: ${colorTheme.accent}
+- Background: ${colorTheme.background}
+
+**HTML TEMPLATE REFERENCE:**
+Use this structure and styling approach (replace the placeholder content with your guide):
+
+${generateHTMLTemplate(colorTheme, data.characterName, data.productionTitle)}
+
+**IMPORTANT:** 
+- Use the exact colors provided above
+- Follow the CSS class names from the template (.section, .highlight-box, .tip-box, .number-list)
+- Keep the fun, youthful design with rounded corners, shadows, and gradients
+- Make sure all content is properly wrapped in the HTML structure
+
+2. **Youthful Design Elements**:
+   - Rounded corners (border-radius: 12px)
+   - Soft shadows (box-shadow: 0 4px 20px rgba(0,0,0,0.1))
+   - Fun fonts (Google Fonts: 'Comic Neue', 'Fredoka One', 'Bubblegum Sans')
+   - Gradient backgrounds
+   - Emoji icons for section headers
+   - Colorful accent borders
+
+3. **Responsive Layout**:
+   - Mobile-friendly design
+   - Easy-to-read typography
+   - Clear visual hierarchy
+   - Comfortable spacing
+
+## Rules
+- NO overly adult jargon — explain complex ideas in kid-friendly terms.
+- NO summarizing or shortening beyond what's needed for age clarity — keep the guide complete and helpful.
+- Reference the parent guide's insights for accuracy but rewrite it in a playful, empowering style.
+- When the role skews younger (under 8), simplify even further and lean into fun phrasing and examples.
+- ALWAYS include complete HTML with embedded CSS styling and appropriate colors.
+
+## References
+Match the tone, depth, and structure of these examples:
+- Tucker's Guide (age 9)  
+- Eloise's Guide (age 10)  
+- Alanna's Guide (age 4–6)  
+- Alma's Guide (age 8)  
+
+## Current Project
+CHARACTER: ${data.characterName}
+PRODUCTION: ${data.productionTitle} (${data.productionType})
+
+SCRIPT:
+${data.sceneText}
+
+## Parent Guide Reference
+${data.parentGuideContent.substring(0, 2000)}...
+
+## Child-Friendly Methodology
+${childMethodologyContext}
+
+**OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be a complete HTML document with embedded CSS styling, fun colors, and perfect for young actors!`
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Child Guide Generation Error:', response.status, errorText);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.content && result.content[0] && result.content[0].text) {
+      console.log(`✅ Child's Guide generated successfully!`);
+      console.log(`📊 Child guide length: ${result.content[0].text.length} characters`);
+      return result.content[0].text;
+    } else {
+      throw new Error('Invalid response format from API');
+    }
+
+  } catch (error) {
+    console.error('❌ Child guide generation failed:', error.message);
+    throw error;
+  }
 }
 
 // PDF Upload endpoint
@@ -419,7 +1010,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 // RAG-Enhanced Guide Generation Endpoint
 app.post('/api/guides/generate', async (req, res) => {
  try {
-   const { uploadId, uploadIds, characterName, productionTitle, productionType, roleSize, genre, storyline, characterBreakdown, callbackNotes, focusArea } = req.body;
+   const { uploadId, uploadIds, characterName, productionTitle, productionType, roleSize, genre, storyline, characterBreakdown, callbackNotes, focusArea, childGuideRequested } = req.body;
    
    // Handle both single and multiple upload IDs
    const uploadIdList = uploadIds || [uploadId];
@@ -501,15 +1092,51 @@ app.post('/api/guides/generate', async (req, res) => {
          callbackNotes: callbackNotes || '',
          focusArea: focusArea || '',
          sceneText: combinedSceneText,
-         generatedHtml: guideContent
+         generatedHtml: guideContent,
+         childGuideRequested: childGuideRequested || false,
+         childGuideCompleted: false
        });
 
      console.log(`💾 Guide saved to database with ID: ${guide.id}`);
+
+     // Second Pass: Generate Child's Guide if requested
+     let childGuideContent = null;
+     if (childGuideRequested) {
+       console.log(`🌟 Starting second pass: Child's Guide generation for ${characterName}`);
+       
+       try {
+         childGuideContent = await generateChildGuide({
+           sceneText: combinedSceneText,
+           characterName: characterName.trim(),
+           productionTitle: productionTitle.trim(),
+           productionType: productionType.trim(),
+           parentGuideContent: guideContent,
+           extractionMethod: allUploadData[0].extractionMethod
+         });
+
+         // Update guide with child guide content
+         await guide.update({
+           childGuideHtml: childGuideContent,
+           childGuideCompleted: true
+         });
+
+         console.log(`✅ Child's Guide completed and saved for ${characterName}`);
+       } catch (childGuideError) {
+         console.error('❌ Child guide generation error:', childGuideError);
+         // Don't fail the entire request, just log the error
+         await guide.update({
+           childGuideCompleted: false
+         });
+       }
+     }
 
      res.json({
        success: true,
        guideId: guide.guideId,
        guideContent: guideContent,
+       childGuideRequested: childGuideRequested || false,
+       childGuideCompleted: childGuideRequested ? !!childGuideContent : false,
+       childGuideContent: childGuideContent,
        generatedAt: new Date(),
        savedToDatabase: true,
        metadata: {
@@ -518,6 +1145,7 @@ app.post('/api/guides/generate', async (req, res) => {
          productionType,
          scriptWordCount: combinedWordCount,
          guideLength: guideContent.length,
+         childGuideLength: childGuideContent ? childGuideContent.length : 0,
          model: 'claude-sonnet-4-20250514',
          ragEnabled: true,
          methodologyFiles: Object.keys(methodologyDatabase).length,
