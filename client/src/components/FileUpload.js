@@ -2,17 +2,10 @@ import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-
-// IMPORTANT: Assuming you have a way to get the auth token,
-// such as from a global state or a context API.
-// This is a placeholder for demonstration.
-const getAuthToken = () => {
-  // Replace this with your actual token retrieval logic.
-  // Example: return localStorage.getItem('token');
-  return 'your_authentication_token_here';
-};
+import { useAuth } from '../contexts/AuthContext';
 
 const FileUpload = ({ onUpload }) => {
+  const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
@@ -55,7 +48,7 @@ const FileUpload = ({ onUpload }) => {
         const { data } = await axios.post('https://childactor101.sbs/api/upload', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${getAuthToken()}`,
+            'Authorization': `Bearer ${user?.accessToken || user?.token}`,
           },
         });
 

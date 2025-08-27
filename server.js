@@ -57,6 +57,54 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// In-memory storage for uploads (for guide generation)
+const uploads = new Map();
+
+// PDF Upload endpoint
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file || req.file.mimetype !== 'application/pdf') {
+      return res.status(400).json({ error: 'Please upload a PDF file' });
+    }
+
+    console.log(`📄 Processing: ${req.file.originalname}`);
+    
+    // Basic text extraction (you can enhance this with pdf-parse or Adobe OCR)
+    const textContent = req.file.buffer.toString('utf8');
+    
+    if (!textContent || textContent.trim().length < 10) {
+      return res.status(400).json({ error: 'Could not extract readable text from PDF' });
+    }
+
+    const uploadId = Date.now().toString();
+    uploads.set(uploadId, {
+      filename: req.file.originalname,
+      sceneText: textContent.trim(),
+      extractionMethod: 'basic',
+      uploadTime: new Date(),
+      wordCount: textContent.trim().split(/\s+/).length
+    });
+
+    console.log(`✅ Extracted ${textContent.length} characters`);
+
+    res.json({
+      uploadId,
+      filename: req.file.originalname,
+      textLength: textContent.length,
+      wordCount: uploads.get(uploadId).wordCount,
+      extractionMethod: 'basic',
+      extractionConfidence: 'medium',
+      characterNames: [],
+      preview: textContent.substring(0, 300) + '...',
+      success: true
+    });
+
+  } catch (error) {
+    console.error('❌ Upload error:', error);
+    res.status(500).json({ error: 'Failed to process PDF' });
+  }
+});
+
 // Load methodology files for RAG
 let methodologyDatabase = {};
 
@@ -144,7 +192,7 @@ app.get('/health', (req, res) => {
 });
 
 // Guide generation endpoint with subscription checking
-app.post('/api/generate-guide', upload.single('script'), async (req, res) => {
+app.post('/api/guides/generate', async (req, res) => {
   try {
     // Check if user is authenticated
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -170,41 +218,93 @@ app.post('/api/generate-guide', upload.single('script'), async (req, res) => {
       });
     }
 
-    // Check if script was uploaded
-    if (!req.file) {
-      return res.status(400).json({ message: 'No script file uploaded' });
+    const { 
+      uploadId, 
+      uploadIds, 
+      characterName, 
+      productionTitle, 
+      productionType, 
+      roleSize, 
+      genre, 
+      storyline, 
+      characterBreakdown, 
+      callbackNotes, 
+      focusArea 
+    } = req.body;
+
+    if (!uploadId && !uploadIds) {
+      return res.status(400).json({ message: 'No upload ID provided' });
     }
 
-    // Process the script and generate guide
-    const scriptContent = req.file.buffer.toString('utf8');
-    
-    // Your existing guide generation logic here
-    // ... (implement the actual guide generation)
-    
+    // Get upload data from memory storage
+    const uploadData = uploads.get(uploadId) || uploads.get(uploadIds?.[0]);
+    if (!uploadData) {
+      return res.status(400).json({ message: 'Upload data not found or expired' });
+    }
+
+    // Generate a basic guide content (you can enhance this with AI)
+    const guideContent = `
+      <h1>Audition Guide for ${characterName}</h1>
+      <h2>Production: ${productionTitle}</h2>
+      <h3>Type: ${productionType}</h3>
+      <h3>Genre: ${genre}</h3>
+      <h3>Role Size: ${roleSize}</h3>
+      
+      <h2>Script Analysis</h2>
+      <p>Script length: ${uploadData.sceneText.length} characters</p>
+      <p>Word count: ${uploadData.wordCount} words</p>
+      
+      <h2>Character Notes</h2>
+      <p>Storyline: ${storyline || 'Not provided'}</p>
+      <p>Character Breakdown: ${characterBreakdown || 'Not provided'}</p>
+      <p>Focus Area: ${focusArea || 'Balanced approach'}</p>
+      
+      <h2>Script Content</h2>
+      <pre>${uploadData.sceneText.substring(0, 1000)}...</pre>
+    `;
+
+    // Create guide data for database
+    const guideData = {
+      userId: user.id,
+      guideId: `guide_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      characterName,
+      productionTitle,
+      productionType,
+      roleSize: roleSize || 'supporting',
+      genre,
+      storyline,
+      characterBreakdown,
+      callbackNotes,
+      focusArea,
+      sceneText: uploadData.sceneText,
+      generatedHtml: guideContent,
+      status: 'completed'
+    };
+
+    // Save guide to database
+    const guide = await Guide.create(guideData);
+
     // Increment guides used for free users
     if (user.subscription === 'free') {
       await user.increment('guidesUsed');
     }
 
-    // Save guide to database
-    const guide = await Guide.create({
-      userId: user.id,
-      scriptContent: scriptContent,
-      guideContent: 'Generated guide content here', // Replace with actual generated content
-      status: 'completed'
-    });
+    // Clean up upload data from memory
+    uploads.delete(uploadId);
+    if (uploadIds) {
+      uploadIds.forEach(id => uploads.delete(id));
+    }
 
     res.json({
-      message: 'Guide generated successfully',
-      guide: {
-        id: guide.id,
-        status: guide.status,
-        createdAt: guide.createdAt
-      },
-      user: {
-        guidesUsed: user.guidesUsed,
-        guidesLimit: user.guidesLimit,
-        subscription: user.subscription
+      success: true,
+      guideId: guide.id,
+      guideContent: guide.generatedHtml,
+      generatedAt: new Date(),
+      metadata: {
+        characterName,
+        productionTitle,
+        productionType,
+        guideLength: guide.generatedHtml.length
       }
     });
 

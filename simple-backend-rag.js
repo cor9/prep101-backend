@@ -453,45 +453,56 @@ app.post('/api/guides/generate', async (req, res) => {
 
    console.log(`✅ Corey Ralston RAG Guide Complete!`);
 
-   // Save guide to database
-   try {
-     const Guide = require('./models/Guide');
-     const User = require('./models/User');
-     
-     // Get user from auth token
-     const authHeader = req.headers.authorization;
-     let userId = null;
-     
-     if (authHeader && authHeader.startsWith('Bearer ')) {
-       const token = authHeader.substring(7);
-       const jwt = require('jsonwebtoken');
-       const JWT_SECRET = process.env.JWT_SECRET;
+        // Save guide to database
+     try {
+       const Guide = require('./models/Guide');
+       const User = require('./models/User');
        
-       try {
-         const decoded = jwt.verify(token, JWT_SECRET);
-         userId = decoded.userId;
-       } catch (jwtError) {
-         console.log('JWT verification failed, creating anonymous guide');
+       // Get user from auth token
+       const authHeader = req.headers.authorization;
+       let userId = null;
+       
+       if (authHeader && authHeader.startsWith('Bearer ')) {
+         const token = authHeader.substring(7);
+         const jwt = require('jsonwebtoken');
+         const JWT_SECRET = process.env.JWT_SECRET;
+         
+         try {
+           const decoded = jwt.verify(token, JWT_SECRET);
+           userId = decoded.userId;
+           
+           // Verify user exists in database
+           const user = await User.findByPk(userId);
+           if (!user) {
+             console.log('User not found in database, cannot save guide');
+             throw new Error('User not found');
+           }
+         } catch (jwtError) {
+           console.log('JWT verification failed or user not found, cannot save guide to database');
+           throw new Error('Authentication required to save guide');
+         }
+       } else {
+         console.log('No authorization header, cannot save guide to database');
+         throw new Error('Authentication required to save guide');
        }
-     }
 
-     const guideId = `corey_rag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-     
-     const guide = await Guide.create({
-       guideId,
-       userId: userId || '00000000-0000-0000-0000-000000000000', // Anonymous user if no auth
-       characterName: characterName.trim(),
-       productionTitle: productionTitle.trim(),
-       productionType: productionType.trim(),
-       roleSize: roleSize || 'Supporting',
-       genre: genre || 'Drama',
-       storyline: storyline || '',
-       characterBreakdown: characterBreakdown || '',
-       callbackNotes: callbackNotes || '',
-       focusArea: focusArea || '',
-       sceneText: combinedSceneText,
-       generatedHtml: guideContent
-     });
+       const guideId = `corey_rag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+       
+       const guide = await Guide.create({
+         guideId,
+         userId: userId, // Now guaranteed to be valid
+         characterName: characterName.trim(),
+         productionTitle: productionTitle.trim(),
+         productionType: productionType.trim(),
+         roleSize: roleSize || 'Supporting',
+         genre: genre || 'Drama',
+         storyline: storyline || '',
+         characterBreakdown: characterBreakdown || '',
+         callbackNotes: callbackNotes || '',
+         focusArea: focusArea || '',
+         sceneText: combinedSceneText,
+         generatedHtml: guideContent
+       });
 
      console.log(`💾 Guide saved to database with ID: ${guide.id}`);
 
@@ -518,7 +529,19 @@ app.post('/api/guides/generate', async (req, res) => {
    } catch (dbError) {
      console.error('❌ Database save error:', dbError);
      
-     // Still return the guide content even if save fails
+     // Check if it's an authentication error
+     if (dbError.message.includes('Authentication required') || dbError.message.includes('User not found')) {
+       return res.status(401).json({
+         success: false,
+         error: 'Authentication required to save guide',
+         message: 'Please log in to save your guide to your account',
+         guideContent: guideContent, // Still provide the guide content
+         generatedAt: new Date(),
+         savedToDatabase: false
+       });
+     }
+     
+     // Still return the guide content even if save fails for other reasons
      res.json({
        success: true,
        guideId: `corey_rag_${uploadIdList[0] || uploadId}`,

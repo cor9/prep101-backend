@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
@@ -6,6 +6,9 @@ import Navbar from '../components/Navbar';
 const Account = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [guides, setGuides] = useState([]);
+  const [guidesLoading, setGuidesLoading] = useState(false);
+  const [guidesError, setGuidesError] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -16,25 +19,38 @@ const Account = () => {
     navigate('/dashboard');
   };
 
-  // Mock data - in production this would come from your API
-  const mockGuides = [
-    {
-      id: 1,
-      title: "Hamlet - To Be or Not To Be",
-      character: "Hamlet",
-      production: "Hamlet",
-      createdAt: "2024-01-15",
-      status: "completed"
-    },
-    {
-      id: 2,
-      title: "Romeo & Juliet - Balcony Scene",
-      character: "Romeo",
-      production: "Romeo & Juliet",
-      createdAt: "2024-01-10",
-      status: "completed"
-    }
-  ];
+  // Fetch user's guides from API
+  useEffect(() => {
+    if (!user?.accessToken && !user?.token) return;
+
+    const fetchGuides = async () => {
+      setGuidesLoading(true);
+      setGuidesError(null);
+      
+      try {
+        const headers = {
+          Authorization: `Bearer ${user.accessToken || user.token}`
+        };
+
+        const res = await fetch('https://childactor101.sbs/api/guides', { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const json = await res.json();
+        if (json.success) {
+          setGuides(json.guides || []);
+        } else {
+          setGuidesError(json.error || 'Failed to fetch guides');
+        }
+      } catch (err) {
+        console.error('Failed to fetch guides:', err);
+        setGuidesError(err.message);
+      } finally {
+        setGuidesLoading(false);
+      }
+    };
+
+    fetchGuides();
+  }, [user]);
 
   return (
     <>
@@ -146,12 +162,45 @@ const Account = () => {
             border: '1px solid #e2e8f0',
             marginBottom: '2rem'
           }}>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '1rem', color: '#0f172a' }}>
-              Recent Guides
+            <h2 style={{ fontSize: '1.6rem', fontWeight: '900', marginBottom: '1rem', color: '#0f172a' }}>
+              Your Guides ({guides.length})
             </h2>
-            {mockGuides.length > 0 ? (
+            
+            {guidesLoading ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  border: '3px solid #e5e7eb',
+                  borderTop: '3px solid #0ea5e9',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 1rem'
+                }} />
+                <p>Loading your guides...</p>
+              </div>
+            ) : guidesError ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#ef4444' }}>
+                <p>Error loading guides: {guidesError}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  style={{
+                    background: '#0ea5e9',
+                    color: 'white',
+                    padding: '0.75rem 1.5rem',
+                    border: 'none',
+                    borderRadius: '0.75rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    marginTop: '1rem'
+                  }}
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : guides.length > 0 ? (
               <div style={{ display: 'grid', gap: '1rem' }}>
-                {mockGuides.map((guide) => (
+                {guides.map((guide) => (
                   <div key={guide.id} style={{
                     border: '1px solid #e5e7eb',
                     borderRadius: '0.75rem',
@@ -162,22 +211,43 @@ const Account = () => {
                   }}>
                     <div>
                       <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.25rem', color: '#111827' }}>
-                        {guide.title}
+                        {guide.characterName} - {guide.productionTitle}
                       </h3>
                       <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                        {guide.character} • {guide.production} • {guide.createdAt}
+                        {guide.productionType} • {guide.genre} • {new Date(guide.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <span style={{
-                      background: '#10b981',
-                      color: 'white',
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '999px',
-                      fontSize: '0.8rem',
-                      fontWeight: '600'
-                    }}>
-                      {guide.status}
-                    </span>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <span style={{
+                        background: '#10b981',
+                        color: 'white',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '999px',
+                        fontSize: '0.8rem',
+                        fontWeight: '600'
+                      }}>
+                        {guide.roleSize}
+                      </span>
+                      <button
+                        onClick={() => {
+                          // Open guide in new tab
+                          const guideUrl = `https://childactor101.sbs/api/guides/${guide.id}`;
+                          window.open(guideUrl, '_blank', 'noopener,noreferrer');
+                        }}
+                        style={{
+                          background: '#0ea5e9',
+                          color: 'white',
+                          padding: '0.5rem 1rem',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        View
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -225,6 +295,14 @@ const Account = () => {
           </div>
         </div>
       </div>
+      
+      {/* CSS for loading animation */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   );
 };
