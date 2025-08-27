@@ -1355,10 +1355,11 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
     console.log('🔐 PDF endpoint - JWT_SECRET present:', !!JWT_SECRET);
     console.log('🔐 PDF endpoint - JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
     
+    let userId;
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
       console.log('🔐 PDF endpoint - JWT decoded successfully, userId:', decoded.userId);
-      const userId = decoded.userId;
+      userId = decoded.userId;
     } catch (jwtError) {
       console.log('❌ PDF endpoint - JWT verification failed:', jwtError.message);
       return res.status(401).json({ error: 'Invalid token' });
@@ -1532,10 +1533,11 @@ app.post('/api/guides/:id/email', async (req, res) => {
     console.log('📧 Email endpoint - JWT_SECRET present:', !!JWT_SECRET);
     console.log('📧 Email endpoint - JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
     
+    let userId;
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
       console.log('📧 Email endpoint - JWT decoded successfully, userId:', decoded.userId);
-      const userId = decoded.userId;
+      userId = decoded.userId;
     } catch (jwtError) {
       console.log('❌ Email endpoint - JWT verification failed:', jwtError.message);
       return res.status(500).json({ error: 'Invalid token' });
