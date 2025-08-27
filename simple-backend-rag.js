@@ -1656,44 +1656,46 @@ app.post('/api/guides/:id/email', async (req, res) => {
       </html>
     `;
 
-    // Send email
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: `🎭 Your Prep101 Guide: ${guide.characterName} - ${guide.productionTitle}`,
-      html: emailHtml
-    };
-
+    // Send email with better error handling
     console.log('📧 Attempting to send email...');
     
     try {
-      await transporter.sendMail(mailOptions);
-      console.log(`✅ Guide email sent successfully to ${user.email}`);
+      const info = await transporter.sendMail({
+        from: `"Prep101 Guide Generator" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: `🎭 Your Prep101 Guide: ${guide.characterName} - ${guide.productionTitle}`,
+        html: emailHtml
+      });
+      
+      console.log('✅ Email sent successfully:', info.messageId);
       
       res.json({
         success: true,
-        message: 'Guide sent to your email successfully',
-        email: user.email
+        message: 'Guide email sent successfully',
+        email: user.email,
+        messageId: info.messageId
       });
-    } catch (emailError) {
-      console.log('❌ Email sending failed:', emailError.message);
       
-      // Provide more specific error messages
+    } catch (emailError) {
+      console.error('❌ Email sending failed:', emailError.message);
+      
+      // Provide specific error messages for common Gmail issues
+      let errorMessage = 'Failed to send email';
+      
       if (emailError.code === 'EAUTH') {
-        res.status(500).json({ 
-          error: 'Email authentication failed. Please check your Gmail credentials and ensure 2FA is enabled with an app-specific password.' 
-        });
+        errorMessage = 'Email authentication failed. Please check your Gmail credentials and ensure 2FA is enabled with an app-specific password.';
       } else if (emailError.code === 'ECONNECTION') {
-        res.status(500).json({ 
-          error: 'Email connection failed. Please check your internet connection and try again.' 
-        });
-      } else {
-        res.status(500).json({ 
-          error: `Email sending failed: ${emailError.message}` 
-        });
+        errorMessage = 'Email connection failed. Please check your internet connection and Gmail settings.';
+      } else if (emailError.message.includes('Username and Password not accepted')) {
+        errorMessage = 'Gmail rejected credentials. Please verify your app-specific password is correct and not expired.';
       }
+      
+      res.status(500).json({
+        success: false,
+        error: errorMessage,
+        details: emailError.message
+      });
     }
-
   } catch (error) {
     console.error('❌ Email sending error:', error);
     res.status(500).json({ error: 'Failed to send email' });
@@ -1710,7 +1712,7 @@ app.get('/api/test-email', async (req, res) => {
     const nodemailer = require('nodemailer');
     
     // Create test transporter
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: process.env.EMAIL_SERVICE || 'gmail',
       auth: {
         user: process.env.EMAIL_USER,

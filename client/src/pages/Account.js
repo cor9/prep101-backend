@@ -355,10 +355,28 @@ const Account = () => {
                         </button>
                         {guide.childGuideRequested && guide.childGuideCompleted && (
                           <button
-                            onClick={() => {
-                              // Open child guide in new tab
-                              const childGuideUrl = `${API_BASE}/api/guides/${guide.id}/child`;
-                              window.open(childGuideUrl, '_blank', 'noopener,noreferrer');
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(`${API_BASE}/api/guides/${guide.id}/child`, {
+                                  method: 'GET',
+                                  headers: {
+                                    'Authorization': `Bearer ${user?.accessToken || user?.token}`,
+                                  }
+                                });
+                                
+                                if (response.ok) {
+                                  const htmlContent = await response.text();
+                                  // Open child guide in new tab with HTML content
+                                  const newWindow = window.open('', '_blank', 'noopener,noreferrer');
+                                  newWindow.document.write(htmlContent);
+                                  newWindow.document.close();
+                                } else {
+                                  const error = await response.json();
+                                  alert(`❌ Failed to load child guide: ${error.message}`);
+                                }
+                              } catch (err) {
+                                alert(`❌ Error loading child guide: ${err.message}`);
+                              }
                             }}
                             style={{
                               background: '#f59e0b',
