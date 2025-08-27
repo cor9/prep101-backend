@@ -1114,8 +1114,18 @@ app.post('/api/guides/generate', async (req, res) => {
      let childGuideContent = null;
      if (childGuideRequested) {
        console.log(`🌟 Starting second pass: Child's Guide generation for ${characterName}`);
+       console.log(`🌟 Child guide request details:`, {
+         characterName: characterName.trim(),
+         productionTitle: productionTitle.trim(),
+         productionType: productionType.trim(),
+         sceneTextLength: combinedSceneText.length,
+         parentGuideLength: guideContent.length
+       });
        
        try {
+         console.log(`🌟 Calling generateChildGuide function...`);
+         const startTime = Date.now();
+         
          childGuideContent = await generateChildGuide({
            sceneText: combinedSceneText,
            characterName: characterName.trim(),
@@ -1124,6 +1134,10 @@ app.post('/api/guides/generate', async (req, res) => {
            parentGuideContent: guideContent,
            extractionMethod: allUploadData[0].extractionMethod
          });
+
+         const endTime = Date.now();
+         console.log(`🌟 Child guide generation completed in ${endTime - startTime}ms`);
+         console.log(`🌟 Child guide content length: ${childGuideContent ? childGuideContent.length : 0}`);
 
          // Update guide with child guide content
          await guide.update({
@@ -1134,14 +1148,18 @@ app.post('/api/guides/generate', async (req, res) => {
          console.log(`✅ Child's Guide completed and saved for ${characterName}`);
        } catch (childGuideError) {
          console.error('❌ Child guide generation error:', childGuideError);
+         console.error('❌ Error stack:', childGuideError.stack);
          // Don't fail the entire request, just log the error
          await guide.update({
            childGuideCompleted: false
          });
        }
+     } else {
+       console.log(`🌟 Child guide not requested for ${characterName}`);
      }
 
-     res.json({
+     // Log the response being sent
+     const responseData = {
        success: true,
        guideId: guide.guideId,
        guideContent: guideContent,
@@ -1164,7 +1182,16 @@ app.post('/api/guides/generate', async (req, res) => {
          fileCount: uploadIdList.length,
          uploadedFiles: uploadIdList.map(id => uploads[id].filename)
        }
+     };
+     
+     console.log(`🌟 Sending response to frontend:`, {
+       childGuideRequested: responseData.childGuideRequested,
+       childGuideCompleted: responseData.childGuideCompleted,
+       hasChildGuideContent: !!responseData.childGuideContent,
+       childGuideContentLength: responseData.childGuideContent ? responseData.childGuideContent.length : 0
      });
+     
+     res.json(responseData);
    } catch (dbError) {
      console.error('❌ Database save error:', dbError);
      
