@@ -1705,43 +1705,37 @@ app.post('/api/guides/:id/email', async (req, res) => {
 // Test email configuration
 app.get('/api/test-email', async (req, res) => {
   try {
-    console.log('🧪 Testing email configuration...');
-    console.log('EMAIL_USER:', process.env.EMAIL_USER);
-    console.log('EMAIL_PASS present:', !!process.env.EMAIL_PASS);
+    console.log('🧪 Testing MailerSend configuration...');
+    console.log('MAILERSEND_API_KEY present:', !!process.env.MAILERSEND_API_KEY);
     
-    const nodemailer = require('nodemailer');
+    const EmailService = require('./services/emailService');
+    const emailService = new EmailService();
     
-    // Create test transporter
-    const transporter = nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE || 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      },
-      secure: process.env.EMAIL_SECURE === 'true',
-      port: parseInt(process.env.EMAIL_PORT) || 465,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    // Test the MailerSend configuration
+    const testResult = await emailService.testConfiguration();
     
-    // Verify credentials
-    await transporter.verify();
-    
-    res.json({
-      success: true,
-      message: 'Email configuration is valid',
-      email: process.env.EMAIL_USER,
-      config: 'Gmail with secure connection'
-    });
+    if (testResult.success) {
+      res.json({
+        success: true,
+        message: 'MailerSend configuration is valid',
+        apiKey: 'Present',
+        config: 'MailerSend with secure connection'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'MailerSend configuration failed',
+        details: testResult.error,
+        message: testResult.message
+      });
+    }
     
   } catch (error) {
-    console.log('❌ Email configuration test failed:', error.message);
+    console.log('❌ MailerSend configuration test failed:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Email configuration failed',
-      details: error.message,
-      code: error.code
+      error: 'MailerSend configuration failed',
+      details: error.message
     });
   }
 });
