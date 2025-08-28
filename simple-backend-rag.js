@@ -1567,133 +1567,81 @@ app.post('/api/guides/:id/email', async (req, res) => {
 
     console.log(`📧 Sending guide email to: ${user.email}`);
 
-    // Configure nodemailer
-    const nodemailer = require('nodemailer');
+    // Use MailerSend email service
+    const EmailService = require('./services/emailService');
+    const emailService = new EmailService();
     
-    console.log('📧 Email endpoint - EMAIL_USER:', process.env.EMAIL_USER);
-    console.log('📧 Email endpoint - EMAIL_PASS present:', !!process.env.EMAIL_PASS);
-    
-    // Create transporter with modern Gmail configuration
-    const transporter = nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE || 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      },
-      // Use environment variables for security settings
-      secure: process.env.EMAIL_SECURE === 'true',
-      port: parseInt(process.env.EMAIL_PORT) || 465,
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
+    // Create guide content for email
+    const guideContent = `
+      <div class="character-info">
+        <h2>${guide.characterName} - ${guide.productionTitle}</h2>
+        <p><strong>Production Type:</strong> ${guide.productionType}</p>
+        <p><strong>Role Size:</strong> ${guide.roleSize}</p>
+        <p><strong>Genre:</strong> ${guide.genre}</p>
+        <p><strong>Created:</strong> ${new Date(guide.createdAt).toLocaleDateString()}</p>
+      </div>
 
-    // Create email content
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
-          .email-container { max-width: 600px; margin: 0 auto; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-          .header { background: linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%); color: white; padding: 30px; text-align: center; }
-          .content { padding: 30px; }
-          .guide-section { margin-bottom: 25px; }
-          .character-info { background: #ecf0f1; padding: 20px; border-radius: 8px; margin-bottom: 25px; }
-          .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; }
-          .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
-        </style>
-      </head>
-      <body>
-        <div class="email-container">
-          <div class="header">
-            <h1>🎭 Your Prep101 Audition Guide</h1>
-            <p>Professional acting guidance delivered to your inbox</p>
-          </div>
-          
-          <div class="content">
-            <div class="character-info">
-              <h2>${guide.characterName} - ${guide.productionTitle}</h2>
-              <p><strong>Production Type:</strong> ${guide.productionType}</p>
-              <p><strong>Role Size:</strong> ${guide.roleSize}</p>
-              <p><strong>Genre:</strong> ${guide.genre}</p>
-              <p><strong>Created:</strong> ${new Date(guide.createdAt).toLocaleDateString()}</p>
-            </div>
+      <div class="guide-section">
+        <h3>Character Analysis</h3>
+        ${guide.storyline ? `<p><strong>Storyline:</strong> ${guide.storyline}</p>` : ''}
+        ${guide.characterBreakdown ? `<p><strong>Character Breakdown:</strong> ${guide.characterBreakdown}</p>` : ''}
+        ${guide.focusArea ? `<p><strong>Focus Area:</strong> ${guide.focusArea}</p>` : ''}
+      </div>
 
-            <div class="guide-section">
-              <h3>Character Analysis</h3>
-              ${guide.storyline ? `<p><strong>Storyline:</strong> ${guide.storyline}</p>` : ''}
-              ${guide.characterBreakdown ? `<p><strong>Character Breakdown:</strong> ${guide.characterBreakdown}</p>` : ''}
-              ${guide.focusArea ? `<p><strong>Focus Area:</strong> ${guide.focusArea}</p>` : ''}
-            </div>
+      <div class="guide-section">
+        <h3>Your Professional Guide</h3>
+        <p>Your personalized audition guide has been generated using Corey Ralston's professional methodology. This guide includes:</p>
+        <ul>
+          <li>Character essence and psychology</li>
+          <li>Script breakdown and analysis</li>
+          <li>Uta Hagen's 9 Questions framework</li>
+          <li>Subtext analysis and objectives</li>
+          <li>Professional coaching insights</li>
+        </ul>
+      </div>
 
-            <div class="guide-section">
-              <h3>Your Professional Guide</h3>
-              <p>Your personalized audition guide has been generated using Corey Ralston's professional methodology. This guide includes:</p>
-              <ul>
-                <li>Character essence and psychology</li>
-                <li>Script breakdown and analysis</li>
-                <li>Uta Hagen's 9 Questions framework</li>
-                <li>Subtext analysis and objectives</li>
-                <li>Professional coaching insights</li>
-              </ul>
-            </div>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="button">View Full Guide Online</a>
-              <a href="${process.env.API_BASE || 'http://localhost:3001'}/api/guides/${guide.id}/pdf" class="button">Download as PDF</a>
-            </div>
-          </div>
-          
-          <div class="footer">
-            <p>Generated by Prep101 - Professional Acting Guide Generator</p>
-            <p>Corey Ralston Methodology</p>
-            <p><small>This email was sent to ${user.email}</small></p>
-          </div>
-        </div>
-      </body>
-      </html>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="button">View Full Guide Online</a>
+        <a href="${process.env.API_BASE || 'http://localhost:3001'}/api/guides/${guide.id}/pdf" class="button">Download as PDF</a>
+      </div>
     `;
 
-    // Send email with better error handling
-    console.log('📧 Attempting to send email...');
+    // Send email using MailerSend
+    console.log('📧 Attempting to send email via MailerSend...');
     
     try {
-      const info = await transporter.sendMail({
-        from: `"Prep101 Guide Generator" <${process.env.EMAIL_USER}>`,
-        to: user.email,
-        subject: `🎭 Your Prep101 Guide: ${guide.characterName} - ${guide.productionTitle}`,
-        html: emailHtml
-      });
+      const emailResult = await emailService.sendGuideEmail(
+        user.email, 
+        user.name || 'Prep101 User', 
+        guideContent, 
+        `${guide.characterName} - ${guide.productionTitle}`
+      );
       
-      console.log('✅ Email sent successfully:', info.messageId);
-      
-      res.json({
-        success: true,
-        message: 'Guide email sent successfully',
-        email: user.email,
-        messageId: info.messageId
-      });
-      
-    } catch (emailError) {
-      console.error('❌ Email sending failed:', emailError.message);
-      
-      // Provide specific error messages for common Gmail issues
-      let errorMessage = 'Failed to send email';
-      
-      if (emailError.code === 'EAUTH') {
-        errorMessage = 'Email authentication failed. Please check your Gmail credentials and ensure 2FA is enabled with an app-specific password.';
-      } else if (emailError.code === 'ECONNECTION') {
-        errorMessage = 'Email connection failed. Please check your internet connection and Gmail settings.';
-      } else if (emailError.message.includes('Username and Password not accepted')) {
-        errorMessage = 'Gmail rejected credentials. Please verify your app-specific password is correct and not expired.';
+      if (emailResult.success) {
+        console.log('✅ Email sent successfully via MailerSend:', emailResult.messageId);
+        
+        res.json({
+          success: true,
+          message: 'Guide email sent successfully',
+          email: user.email,
+          messageId: emailResult.messageId
+        });
+      } else {
+        console.error('❌ MailerSend email sending failed:', emailResult.error);
+        
+        res.status(500).json({
+          success: false,
+          error: 'Failed to send email via MailerSend',
+          details: emailResult.error
+        });
       }
       
-      res.status(500).json({
+    } catch (emailError) {
+      console.error('❌ Email sending error:', emailError);
+      res.status(500).json({ 
         success: false,
-        error: errorMessage,
-        details: emailError.message
+        error: 'Failed to send email',
+        details: emailError.message 
       });
     }
   } catch (error) {
