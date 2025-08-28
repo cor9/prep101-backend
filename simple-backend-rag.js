@@ -72,11 +72,8 @@ if (!ANTHROPIC_API_KEY) {
 // Debug environment variables
 console.log('🔧 Environment variables loaded:');
 console.log('  - JWT_SECRET present:', !!process.env.JWT_SECRET);
-console.log('  - EMAIL_USER present:', !!process.env.EMAIL_USER);
-console.log('  - EMAIL_PASS present:', !!process.env.EMAIL_PASS);
-console.log('  - EMAIL_SERVICE:', process.env.EMAIL_SERVICE);
-console.log('  - EMAIL_SECURE:', process.env.EMAIL_SECURE);
-console.log('  - EMAIL_PORT:', process.env.EMAIL_PORT);
+console.log('  - MAILERSEND_API_KEY present:', !!process.env.MAILERSEND_API_KEY);
+console.log('  - MAILERSEND_SENDER_EMAIL:', process.env.MAILERSEND_SENDER_EMAIL);
 console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL);
 console.log('  - API_BASE:', process.env.API_BASE);
 
