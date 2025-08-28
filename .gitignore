@@ -1,0 +1,5 @@
+mailersend-token.txt
+*.key
+*.pem
+*.crt
+*token*
