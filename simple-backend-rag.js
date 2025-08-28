@@ -1258,78 +1258,7 @@ app.get('/api/methodology', (req, res) => {
  });
 });
 
-// Get user's guides
-app.get('/api/guides', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const token = authHeader.substring(7);
-    const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET;
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.userId;
-
-    const Guide = require('./models/Guide');
-    const guides = await Guide.findAll({
-      where: { userId },
-      order: [['createdAt', 'DESC']],
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount']
-    });
-
-    res.json({
-      success: true,
-      guides: guides,
-      total: guides.length
-    });
-  } catch (error) {
-    console.error('❌ Error fetching guides:', error);
-    res.status(500).json({ error: 'Failed to fetch guides' });
-  }
-});
-
-// Get specific guide by ID
-app.get('/api/guides/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const token = authHeader.substring(7);
-    const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET;
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.userId;
-
-    const Guide = require('./models/Guide');
-    const guide = await Guide.findOne({
-      where: { id, userId },
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'storyline', 'characterBreakdown', 'callbackNotes', 'focusArea', 'sceneText', 'generatedHtml', 'createdAt', 'viewCount']
-    });
-
-    if (!guide) {
-      return res.status(404).json({ error: 'Guide not found' });
-    }
-
-    // Increment view count
-    await guide.increment('viewCount');
-
-    res.json({
-      success: true,
-      guide: guide
-    });
-  } catch (error) {
-    console.error('❌ Error fetching guide:', error);
-    res.status(500).json({ error: 'Failed to fetch guide' });
-  }
-});
+// Note: Guide endpoints are now handled by the mounted routes in ./routes/guides.js
 
 // Download guide as PDF
 app.get('/api/guides/:id/pdf', async (req, res) => {

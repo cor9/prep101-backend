@@ -96,25 +96,43 @@ router.get('/:id/child', auth, async (req, res) => {
     const { id } = req.params;
     const userId = req.userId;
 
+    console.log(`🔍 Child guide request - Guide ID: ${id}, User ID: ${userId}`);
+
     const guide = await Guide.findOne({
       where: { id, userId },
       attributes: ['id', 'characterName', 'productionTitle', 'childGuideHtml', 'childGuideCompleted']
     });
 
+    console.log(`🔍 Guide found:`, {
+      found: !!guide,
+      id: guide?.id,
+      characterName: guide?.characterName,
+      childGuideRequested: guide?.childGuideRequested,
+      childGuideCompleted: guide?.childGuideCompleted,
+      hasChildGuideHtml: !!guide?.childGuideHtml,
+      childGuideHtmlLength: guide?.childGuideHtml?.length || 0
+    });
+
     if (!guide) {
+      console.log('❌ Guide not found');
       return res.status(404).json({ message: 'Guide not found' });
     }
 
     if (!guide.childGuideCompleted || !guide.childGuideHtml) {
+      console.log('❌ Child guide not available:', {
+        completed: guide.childGuideCompleted,
+        hasHtml: !!guide.childGuideHtml
+      });
       return res.status(404).json({ message: 'Child guide not available' });
     }
 
+    console.log('✅ Child guide found, sending HTML content');
     // Set HTML content type and send the child guide
     res.setHeader('Content-Type', 'text/html');
     res.send(guide.childGuideHtml);
 
   } catch (error) {
-    console.error('Child guide fetch error:', error);
+    console.error('❌ Child guide fetch error:', error);
     res.status(500).json({ message: 'Failed to fetch child guide' });
   }
 });
