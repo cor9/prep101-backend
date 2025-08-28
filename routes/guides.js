@@ -571,4 +571,111 @@ router.get('/:id/full', auth, async (req, res) => {
   }
 });
 
+// POST /api/guides/:id/email - Send guide via email
+router.post('/:id/email', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    console.log(`📧 Email endpoint - Guide ID: ${id}, User ID: ${userId}`);
+
+    const guide = await Guide.findOne({
+      where: { id, userId },
+      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'storyline', 'characterBreakdown', 'callbackNotes', 'focusArea', 'sceneText', 'generatedHtml', 'createdAt', 'viewCount']
+    });
+
+    if (!guide) {
+      return res.status(404).json({ error: 'Guide not found' });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log(`📧 Sending guide email to: ${user.email}`);
+
+    // Use MailerSend email service
+    const EmailService = require('../../services/emailService');
+    const emailService = new EmailService();
+    
+    // Create guide content for email
+    const guideContent = `
+      <div class="character-info">
+        <h2>${guide.characterName} - ${guide.productionTitle}</h2>
+        <p><strong>Production Type:</strong> ${guide.productionType}</p>
+        <p><strong>Role Size:</strong> ${guide.roleSize}</p>
+        <p><strong>Genre:</strong> ${guide.genre}</p>
+        <p><strong>Created:</strong> ${new Date(guide.createdAt).toLocaleDateString()}</p>
+      </div>
+
+      <div class="guide-section">
+        <h3>Character Analysis</h3>
+        ${guide.storyline ? `<p><strong>Storyline:</strong> ${guide.storyline}</p>` : ''}
+        ${guide.characterBreakdown ? `<p><strong>Character Breakdown:</strong> ${guide.characterBreakdown}</p>` : ''}
+        ${guide.focusArea ? `<p><strong>Focus Area:</strong> ${guide.focusArea}</p>` : ''}
+      </div>
+
+      <div class="guide-section">
+        <h3>Your Professional Guide</h3>
+        <p>Your personalized audition guide has been generated using Corey Ralston's professional methodology. This guide includes:</p>
+        <ul>
+          <li>Character essence and psychology</li>
+          <li>Script breakdown and analysis</li>
+          <li>Uta Hagen's 9 Questions framework</li>
+          <li>Subtext analysis and objectives</li>
+          <li>Professional coaching insights</li>
+        </ul>
+      </div>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${process.env.FRONTEND_URL || 'https://prep101.site'}/dashboard" class="button">View Full Guide Online</a>
+        <a href="${process.env.API_BASE || 'https://prep101.site'}/api/guides/${guide.id}/pdf" class="button">Download as PDF</a>
+      </div>
+    `;
+
+    // Send email using MailerSend
+    console.log('📧 Attempting to send email via MailerSend...');
+    
+    try {
+      const emailResult = await emailService.sendGuideEmail(
+        user.email, 
+        user.name || 'Prep101 User', 
+        guideContent, 
+        `${guide.characterName} - ${guide.productionTitle}`
+      );
+      
+      if (emailResult.success) {
+        console.log('✅ Email sent successfully via MailerSend:', emailResult.messageId);
+        
+        res.json({
+          success: true,
+          message: 'Guide email sent successfully',
+          email: user.email,
+          messageId: emailResult.messageId
+        });
+      } else {
+        console.error('❌ MailerSend email sending failed:', emailResult.error);
+        
+        res.status(500).json({
+          success: false,
+          error: 'Failed to send email via MailerSend',
+          details: emailResult.error
+        });
+      }
+      
+    } catch (emailError) {
+      console.error('❌ Email sending error:', emailError);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to send email',
+        details: emailError.message 
+      });
+    }
+  } catch (error) {
+    console.error('❌ Email sending error:', error);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
 module.exports = router;
