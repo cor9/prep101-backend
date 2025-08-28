@@ -595,8 +595,28 @@ router.post('/:id/email', auth, async (req, res) => {
 
     console.log(`📧 Sending guide email to: ${user.email}`);
 
+    // Check environment variables
+    if (!process.env.MAILERSEND_API_KEY) {
+      console.error('❌ MAILERSEND_API_KEY not found in environment variables');
+      return res.status(500).json({ 
+        error: 'Email service not configured',
+        details: 'MailerSend API key is missing'
+      });
+    }
+
     // Use MailerSend email service
-    const EmailService = require('../../services/emailService');
+    let EmailService;
+    try {
+      EmailService = require('../services/emailService');
+      console.log('✅ EmailService loaded successfully');
+    } catch (requireError) {
+      console.error('❌ Failed to load EmailService:', requireError.message);
+      return res.status(500).json({ 
+        error: 'Email service not available',
+        details: 'Failed to load email service module'
+      });
+    }
+    
     const emailService = new EmailService();
     
     // Create guide content for email
