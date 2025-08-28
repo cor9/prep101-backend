@@ -45,6 +45,15 @@ PREP101 is a comprehensive acting coaching platform that combines AI-powered gui
 - **Admin Management**: Comprehensive beta tester management tools
 
 ## 🛠️ Quick Start
+## Quickstart
+1) cp .env.example .env.local  # add keys for AIRTABLE, OPENAI, GMAIL if used
+2) npm i
+3) npm run dev   # or npm run worker
+
+## Acceptance (must pass to merge)
+- When I run `npm run seed:airtable`, a mock record is created.
+- Running `npm run generate:guide --record <id>` outputs `out/guide.html`.
+- `npm test` passes (unit + e2e smoke).
 
 ### 1. Install Dependencies
 ```bash
