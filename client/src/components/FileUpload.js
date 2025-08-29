@@ -80,29 +80,34 @@ const FileUpload = ({ onUpload }) => {
 
       }
 
-      // Update UI with all uploaded files
-      setUploadedFiles(uploadResults.map(result => ({
-        name: result.filename,
-        size: formatFileSize(acceptedFiles.find(f => f.name === result.filename)?.size || 0),
-        extractionMethod: result.extractionMethod,
-        confidence: result.extractionConfidence,
-        characterNames: result.characterNames || [],
-        uploadId: result.uploadId,
-        fileType: result.fileType
-      })));
+      // Add new files to existing uploaded files instead of replacing
+      const newUploadedFiles = [
+        ...uploadedFiles,
+        ...uploadResults.map(result => ({
+          name: result.filename,
+          size: formatFileSize(acceptedFiles.find(f => f.name === result.filename)?.size || 0),
+          extractionMethod: result.extractionMethod,
+          confidence: result.extractionConfidence,
+          characterNames: result.characterNames || [],
+          uploadId: result.uploadId,
+          fileType: result.fileType
+        }))
+      ];
+
+      setUploadedFiles(newUploadedFiles);
 
       // Pass combined upload data to Dashboard
       onUpload({
-        uploadIds: uploadResults.map(r => r.uploadId),
-        filenames: uploadResults.map(r => r.filename),
-        textLength: totalTextLength,
-        wordCount: totalWordCount,
+        uploadIds: newUploadedFiles.map(f => f.uploadId),
+        filenames: newUploadedFiles.map(f => f.name),
+        textLength: totalTextLength + (uploadedFiles.reduce((sum, f) => sum + (f.textLength || 0), 0)),
+        wordCount: totalWordCount + (uploadedFiles.reduce((sum, f) => sum + (f.wordCount || 0), 0)),
         extractionMethod: uploadResults[0]?.extractionMethod || 'basic',
         extractionConfidence: uploadResults[0]?.extractionConfidence || 'high',
         characterNames: Array.from(allCharacterNames),
         preview: combinedPreview.trim(),
-        fileCount: acceptedFiles.length,
-        fileTypes: uploadResults.map(r => r.fileType) // Include all file types
+        fileCount: newUploadedFiles.length,
+        fileTypes: newUploadedFiles.map(f => f.fileType) // Include all file types
       });
 
       // Show success message
@@ -123,7 +128,7 @@ const FileUpload = ({ onUpload }) => {
     } finally {
       setUploading(false);
     }
-  }, [onUpload, user?.accessToken, user?.token, fileType]);
+  }, [onUpload, user?.accessToken, user?.token, fileType, uploadedFiles]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -137,6 +142,33 @@ const FileUpload = ({ onUpload }) => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  };
+
+  const removeFullScript = () => {
+    setFullScriptFile(null);
+    toast.success('Full script removed.');
+  };
+
+  // Remove individual uploaded file
+  const removeFile = (uploadId) => {
+    const newUploadedFiles = uploadedFiles.filter(f => f.uploadId !== uploadId);
+    setUploadedFiles(newUploadedFiles);
+    
+    // Update the main upload data
+    onUpload({
+      uploadIds: newUploadedFiles.map(f => f.uploadId),
+      filenames: newUploadedFiles.map(f => f.name),
+      textLength: newUploadedFiles.reduce((sum, f) => sum + (f.textLength || 0), 0),
+      wordCount: newUploadedFiles.reduce((sum, f) => sum + (f.wordCount || 0), 0),
+      extractionMethod: newUploadedFiles[0]?.extractionMethod || 'basic',
+      extractionConfidence: newUploadedFiles[0]?.extractionConfidence || 'high',
+      characterNames: Array.from(new Set(newUploadedFiles.flatMap(f => f.characterNames || []))),
+      preview: newUploadedFiles.map(f => f.preview).join('\n\n').trim(),
+      fileCount: newUploadedFiles.length,
+      fileTypes: newUploadedFiles.map(f => f.fileType)
+    });
+    
+    toast.success('File removed');
   };
 
   return (
@@ -271,61 +303,85 @@ const FileUpload = ({ onUpload }) => {
                 borderRadius: '0.5rem',
                 padding: '0.75rem',
                 marginBottom: '0.5rem',
-                textAlign: 'left'
+                textAlign: 'left',
+                position: 'relative'
               }}>
-                <div style={{ fontWeight: 600, color: '#166534', marginBottom: '0.25rem' }}>
-                  {file.name}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: '#166534', marginBottom: '0.25rem' }}>
+                      {file.name}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                      {file.size}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {file.extractionMethod && (
+                        <div style={{ 
+                          padding: '0.25rem 0.5rem',
+                          background: file.extractionMethod === 'adobe' ? '#d1fae5' : '#fef3c7',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          display: 'inline-block'
+                        }}>
+                          <span style={{ 
+                            fontWeight: 600,
+                            color: file.extractionMethod === 'adobe' ? '#059669' : '#d97706'
+                          }}>
+                            {file.extractionMethod === 'adobe' ? '🔍 Adobe OCR' : '📖 Basic OCR'}
+                          </span>
+                        </div>
+                      )}
+                      {file.fileType && (
+                        <div style={{ 
+                          padding: '0.25rem 0.5rem',
+                          background: file.fileType === 'full_script' ? '#dbeafe' : '#fef3c7',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          display: 'inline-block'
+                        }}>
+                          <span style={{ 
+                            fontWeight: 600,
+                            color: file.fileType === 'full_script' ? '#1d4ed8' : '#d97706'
+                          }}>
+                            {file.fileType === 'full_script' ? '📚 Full Script' : '🎭 Sides'}
+                          </span>
+                        </div>
+                      )}
+                      {file.characterNames && file.characterNames.length > 0 && (
+                        <div style={{ 
+                          padding: '0.25rem 0.5rem',
+                          background: '#ede9fe',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          display: 'inline-block'
+                        }}>
+                          <span style={{ fontWeight: 600, color: '#7c3aed' }}>
+                            {file.characterNames.length} character{file.characterNames.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeFile(file.uploadId)}
+                    style={{
+                      background: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0.25rem',
+                      padding: '0.25rem 0.5rem',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      marginLeft: '0.5rem'
+                    }}
+                    onMouseOver={(e) => e.target.style.background = '#dc2626'}
+                    onMouseOut={(e) => e.target.style.background = '#ef4444'}
+                    title="Remove file"
+                  >
+                    ×
+                  </button>
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-                  {file.size}
-                </div>
-                {file.extractionMethod && (
-                  <div style={{ 
-                    padding: '0.25rem 0.5rem',
-                    background: file.extractionMethod === 'adobe' ? '#d1fae5' : '#fef3c7',
-                    borderRadius: '0.25rem',
-                    fontSize: '0.75rem',
-                    display: 'inline-block',
-                    marginRight: '0.5rem'
-                  }}>
-                    <span style={{ 
-                      fontWeight: 600,
-                      color: file.extractionMethod === 'adobe' ? '#059669' : '#d97706'
-                    }}>
-                      {file.extractionMethod === 'adobe' ? '🔍 Adobe OCR' : '📖 Basic OCR'}
-                    </span>
-                  </div>
-                )}
-                {file.fileType && (
-                  <div style={{ 
-                    padding: '0.25rem 0.5rem',
-                    background: file.fileType === 'full_script' ? '#dbeafe' : '#fef3c7',
-                    borderRadius: '0.25rem',
-                    fontSize: '0.75rem',
-                    display: 'inline-block',
-                    marginRight: '0.5rem'
-                  }}>
-                    <span style={{ 
-                      fontWeight: 600,
-                      color: file.fileType === 'full_script' ? '#1d4ed8' : '#d97706'
-                    }}>
-                      {file.fileType === 'full_script' ? '📚 Full Script' : '🎭 Sides'}
-                    </span>
-                  </div>
-                )}
-                {file.characterNames && file.characterNames.length > 0 && (
-                  <div style={{ 
-                    padding: '0.25rem 0.5rem',
-                    background: '#ede9fe',
-                    borderRadius: '0.25rem',
-                    fontSize: '0.75rem',
-                    display: 'inline-block'
-                  }}>
-                    <span style={{ fontWeight: 600, color: '#7c3aed' }}>
-                      {file.characterNames.length} character{file.characterNames.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                )}
               </div>
             ))}
             
@@ -337,9 +393,21 @@ const FileUpload = ({ onUpload }) => {
               borderRadius: '0.5rem',
               fontSize: '0.875rem'
             }}>
-              <span style={{ fontWeight: 600, color: '#d97706' }}>
+              <div style={{ fontWeight: 600, color: '#d97706', marginBottom: '0.5rem' }}>
                 📊 Combined: {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''} ready for guide generation
-              </span>
+              </div>
+              {uploadedFiles.length > 0 && (
+                <div style={{ fontSize: '0.75rem', color: '#d97706' }}>
+                  {(() => {
+                    const sidesCount = uploadedFiles.filter(f => f.fileType === 'sides').length;
+                    const fullScriptCount = uploadedFiles.filter(f => f.fileType === 'full_script').length;
+                    const parts = [];
+                    if (sidesCount > 0) parts.push(`${sidesCount} audition side${sidesCount > 1 ? 's' : ''}`);
+                    if (fullScriptCount > 0) parts.push(`${fullScriptCount} full script${fullScriptCount > 1 ? 's' : ''}`);
+                    return parts.join(' + ');
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         ) : (
