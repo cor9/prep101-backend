@@ -52,6 +52,12 @@ const Examples = () => {
       heading: 'Daytime Soap',
       sub: 'Recurring Day Player',
       href: 'https://claude.ai/public/artifacts/2066f5b7-465a-40ac-b110-8285e161e82a'
+    },
+    // Row 5
+    {
+      heading: "Kid's Guide Version",
+      sub: 'Film Lead',
+      href: 'https://claude.ai/public/artifacts/4b4d5156-3d2d-4d64-ba43-10a68bc08b4e'
     }
   ];
 
