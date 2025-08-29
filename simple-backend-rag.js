@@ -54,6 +54,7 @@ const paymentRoutes = require('./routes/payments');
 const guidesRoutes = require('./routes/guides');
 const uploadRoutes = require('./routes/upload');
 const betaRoutes = require('./routes/beta');
+const emailRoutes = require('./routes/email');
 
 // Mount new API routes
 app.use('/api/auth', authRoutes);
@@ -61,6 +62,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/guides', guidesRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/beta', betaRoutes);
+app.use('/api/email', emailRoutes);
 
 // Secure API key handling
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;

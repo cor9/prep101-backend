@@ -604,21 +604,6 @@ router.post('/:id/email', auth, async (req, res) => {
       });
     }
 
-    // Use MailerSend email service
-    let EmailService;
-    try {
-      EmailService = require('../services/emailService');
-      console.log('✅ EmailService loaded successfully');
-    } catch (requireError) {
-      console.error('❌ Failed to load EmailService:', requireError.message);
-      return res.status(500).json({ 
-        error: 'Email service not available',
-        details: 'Failed to load email service module'
-      });
-    }
-    
-    const emailService = new EmailService();
-    
     // Create guide content for email
     const guideContent = `
       <div class="character-info">
@@ -654,33 +639,41 @@ router.post('/:id/email', auth, async (req, res) => {
       </div>
     `;
 
-    // Send email using MailerSend
-    console.log('📧 Attempting to send email via MailerSend...');
+    // Send email using the new email route
+    console.log('📧 Attempting to send email via new email route...');
     
     try {
-      const emailResult = await emailService.sendGuideEmail(
-        user.email, 
-        user.name || 'Prep101 User', 
-        guideContent, 
-        `${guide.characterName} - ${guide.productionTitle}`
-      );
-      
-      if (emailResult.success) {
-        console.log('✅ Email sent successfully via MailerSend:', emailResult.messageId);
+      // Make internal request to email route
+      const emailResponse = await fetch(`${process.env.API_BASE || 'http://localhost:3001'}/api/email/send-guide`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${req.header('Authorization')?.replace('Bearer ', '')}`
+        },
+        body: JSON.stringify({
+          subject: `Your Prep101 Guide: ${guide.characterName} - ${guide.productionTitle}`,
+          html: guideContent
+        })
+      });
+
+      if (emailResponse.ok) {
+        const emailResult = await emailResponse.json();
+        console.log('✅ Email sent successfully via new route:', emailResult);
         
         res.json({
           success: true,
           message: 'Guide email sent successfully',
           email: user.email,
-          messageId: emailResult.messageId
+          result: emailResult
         });
       } else {
-        console.error('❌ MailerSend email sending failed:', emailResult.error);
+        const errorData = await emailResponse.json();
+        console.error('❌ Email sending failed via new route:', errorData);
         
-        res.status(500).json({
+        res.status(emailResponse.status).json({
           success: false,
-          error: 'Failed to send email via MailerSend',
-          details: emailResult.error
+          error: 'Failed to send email via new route',
+          details: errorData
         });
       }
       
