@@ -324,9 +324,9 @@ router.get('/dashboard', auth, async (req, res) => {
       where: { userId },
       order: [['createdAt', 'DESC']],
       attributes: [
-        'id', 'title', 'characterName', 'productionTitle', 
-        'productionType', 'status', 'createdAt', 'updatedAt',
-        'viewCount', 'isPublic'
+        'id', 'guideId', 'characterName', 'productionTitle', 
+        'productionType', 'roleSize', 'genre', 'createdAt', 'updatedAt',
+        'viewCount', 'isPublic', 'childGuideRequested', 'childGuideCompleted'
       ]
     });
 
@@ -338,9 +338,9 @@ router.get('/dashboard', auth, async (req, res) => {
 
     // Calculate usage statistics
     const totalGuides = guides.length;
-    const completedGuides = guides.filter(g => g.status === 'completed').length;
-    const pendingGuides = guides.filter(g => g.status === 'pending').length;
-    const processingGuides = guides.filter(g => g.status === 'processing').length;
+    const completedGuides = guides.filter(g => g.generatedHtml).length;
+    const pendingGuides = guides.filter(g => !g.generatedHtml).length;
+    const processingGuides = 0; // No processing status in current model
 
     // Get recent activity (last 5 guides)
     const recentGuides = guides.slice(0, 5);
@@ -392,7 +392,21 @@ router.get('/dashboard', auth, async (req, res) => {
         completed: completedGuides,
         pending: pendingGuides,
         processing: processingGuides,
-        recent: recentGuides
+        recent: recentGuides.map(guide => ({
+          id: guide.id,
+          guideId: guide.guideId,
+          characterName: guide.characterName,
+          productionTitle: guide.productionTitle,
+          productionType: guide.productionType,
+          roleSize: guide.roleSize,
+          genre: guide.genre,
+          createdAt: guide.createdAt,
+          updatedAt: guide.updatedAt,
+          viewCount: guide.viewCount,
+          isPublic: guide.isPublic,
+          childGuideRequested: guide.childGuideRequested,
+          childGuideCompleted: guide.childGuideCompleted
+        }))
       },
       statistics: {
         totalGuides,

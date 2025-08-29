@@ -306,20 +306,31 @@ You have access to BOTH audition sides AND the full script. Use this to your adv
 You are working with audition sides only. Focus your analysis on what's provided in the uploaded scenes.`;
     }
     
-    // Generate guide using your methodology as context
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 8000,
-        messages: [{
-          role: "user",
-          content: `You are PREP101, created by Corey Ralston. You have access to Corey's complete methodology and example guides below. Generate a professional acting guide that perfectly matches Corey's distinctive "Actor Motivator" coaching voice and methodology.
+    // Generate guide using your methodology as context with timeout and retry logic
+    const maxRetries = 3;
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Attempt ${attempt}/${maxRetries} to generate guide...`);
+        
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+        
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 8000,
+            messages: [{
+              role: "user",
+              content: `You are PREP101, created by Corey Ralston. You have access to Corey's complete methodology and example guides below. Generate a professional acting guide that perfectly matches Corey's distinctive "Actor Motivator" coaching voice and methodology.
 
 **COREY RALSTON'S METHODOLOGY & EXAMPLES:**
 ${methodologyContext}
@@ -374,26 +385,62 @@ ${data.sceneText}${fileTypeContext}
 - ${data.hasFullScript ? 'Uses full script context intelligently to enrich sides analysis' : 'Focuses analysis on the provided audition sides'}
 
 **OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be pure HTML that can be directly inserted into a web page. Make it worthy of the PREP101 brand and indistinguishable from Corey's personal coaching.`
-        }]
-      })
-    });
+            }]
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ RAG Guide Generation Error (Attempt ${attempt}):`, response.status, errorText);
+          
+          if (response.status === 504 && attempt < maxRetries) {
+            console.log(`⏰ Gateway timeout, retrying in ${attempt * 2} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+            lastError = new Error(`Gateway timeout (Attempt ${attempt})`);
+            continue;
+          }
+          
+          throw new Error(`API Error: ${response.status} - ${errorText}`);
+        }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ RAG Guide Generation Error:', response.status, errorText);
-      throw new Error(`API Error: ${response.status} - ${errorText}`);
+        const result = await response.json();
+        
+        if (result.content && result.content[0] && result.content[0].text) {
+          console.log(`✅ RAG Guide generated using Corey's methodology!`);
+          console.log(`📊 Guide length: ${result.content[0].text.length} characters`);
+          console.log(`🎯 Methodology files used: ${relevantMethodology.length}`);
+          return result.content[0].text;
+        } else {
+          throw new Error('Invalid response format from API');
+        }
+        
+      } catch (error) {
+        lastError = error;
+        
+        if (error.name === 'AbortError') {
+          console.error(`⏰ Request timeout on attempt ${attempt}`);
+          if (attempt < maxRetries) {
+            console.log(`🔄 Retrying after timeout...`);
+            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+            continue;
+          }
+        }
+        
+        if (attempt < maxRetries) {
+          console.log(`🔄 Attempt ${attempt} failed, retrying in ${attempt * 2} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          continue;
+        }
+        
+        console.error(`❌ All ${maxRetries} attempts failed`);
+        throw error;
+      }
     }
-
-    const result = await response.json();
     
-    if (result.content && result.content[0] && result.content[0].text) {
-      console.log(`✅ RAG Guide generated using Corey's methodology!`);
-      console.log(`📊 Guide length: ${result.content[0].text.length} characters`);
-      console.log(`🎯 Methodology files used: ${relevantMethodology.length}`);
-     return result.content[0].text;
-   } else {
-     throw new Error('Invalid response format from API');
-   }
+    throw lastError || new Error('Failed to generate guide after all retry attempts');
 
  } catch (error) {
    console.error('❌ RAG guide generation failed:', error.message);
