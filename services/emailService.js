@@ -26,7 +26,7 @@ class EmailService {
         new Recipient(userEmail, userName)
       ];
 
-      const emailHtml = this.createGuideEmailTemplate(userName, guideContent, guideTitle);
+      const emailHtml = this.createGuideEmailTemplate(userName, guideContent, guideTitle, userEmail);
       const emailText = this.createGuideEmailText(userName, guideTitle);
 
       const emailParams = new EmailParams()
@@ -142,7 +142,7 @@ class EmailService {
   /**
    * Create the HTML template for guide emails
    */
-  createGuideEmailTemplate(userName, guideContent, guideTitle) {
+  createGuideEmailTemplate(userName, guideContent, guideTitle, userEmail) {
     return `
       <!DOCTYPE html>
       <html>
