@@ -144,10 +144,7 @@ const FileUpload = ({ onUpload }) => {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
-  const removeFullScript = () => {
-    setFullScriptFile(null);
-    toast.success('Full script removed.');
-  };
+
 
   // Remove individual uploaded file
   const removeFile = (uploadId) => {
