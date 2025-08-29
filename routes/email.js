@@ -12,7 +12,7 @@ const FROM_EMAIL = process.env.MAILERSEND_SENDER_EMAIL || "team@prep101.site";
 const FROM_NAME = process.env.MAILERSEND_SENDER_NAME || "Prep101";
 
 // Test email configuration
-router.post("/api/email/test", async (req, res) => {
+router.post("/test", async (req, res) => {
   try {
     console.log('🧪 Testing MailerSend configuration...');
     console.log('🔑 API Key:', process.env.MAILERSEND_API_KEY ? 'Present' : 'Missing');
@@ -51,7 +51,7 @@ router.post("/api/email/test", async (req, res) => {
 });
 
 // Send guide email to authenticated user
-router.post("/api/email/send-guide", async (req, res) => {
+router.post("/send-guide", async (req, res) => {
   try {
     // Ensure user is authenticated (req.user should be set by auth middleware)
     if (!req.user || !req.user.email) {
@@ -108,7 +108,7 @@ router.post("/api/email/send-guide", async (req, res) => {
 });
 
 // Send welcome email to authenticated user
-router.post("/api/email/welcome", async (req, res) => {
+router.post("/welcome", async (req, res) => {
   try {
     if (!req.user || !req.user.email) {
       return res.status(401).json({ error: "Not authenticated or user email not found" });
