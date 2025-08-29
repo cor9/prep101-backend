@@ -9,6 +9,7 @@ const FileUpload = ({ onUpload }) => {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [fileType, setFileType] = useState('sides'); // 'sides' or 'full_script'
 
 
   const onDrop = useCallback(async (acceptedFiles) => {
@@ -44,6 +45,7 @@ const FileUpload = ({ onUpload }) => {
         
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('fileType', fileType); // Send file type to backend
 
         const { data } = await axios.post(`${API_BASE}/api/upload`, formData, {
           headers: {
@@ -65,6 +67,7 @@ const FileUpload = ({ onUpload }) => {
           extractionConfidence: data.extractionConfidence,
           characterNames: data.characterNames || [],
           preview: data.preview,
+          fileType: fileType // Include file type in upload data
         });
 
         totalTextLength += data.textLength ?? 0;
@@ -85,6 +88,7 @@ const FileUpload = ({ onUpload }) => {
         confidence: result.extractionConfidence,
         characterNames: result.characterNames || [],
         uploadId: result.uploadId,
+        fileType: result.fileType
       })));
 
       // Pass combined upload data to Dashboard
@@ -98,11 +102,13 @@ const FileUpload = ({ onUpload }) => {
         characterNames: Array.from(allCharacterNames),
         preview: combinedPreview.trim(),
         fileCount: acceptedFiles.length,
+        fileTypes: uploadResults.map(r => r.fileType) // Include all file types
       });
 
       // Show success message
       const methodText = uploadResults[0]?.extractionMethod === 'adobe' ? 'Adobe Premium OCR' : 'Basic OCR';
-      toast.success(`Successfully processed ${acceptedFiles.length} PDF${acceptedFiles.length > 1 ? 's' : ''} using ${methodText}!`);
+      const typeText = fileType === 'sides' ? 'audition sides' : 'full script';
+      toast.success(`Successfully processed ${acceptedFiles.length} PDF${acceptedFiles.length > 1 ? 's' : ''} as ${typeText} using ${methodText}!`);
       
       if (allCharacterNames.size > 0) {
         toast.success(`Found ${allCharacterNames.size} character name(s): ${Array.from(allCharacterNames).slice(0, 3).join(', ')}`);
@@ -117,7 +123,7 @@ const FileUpload = ({ onUpload }) => {
     } finally {
       setUploading(false);
     }
-  }, [onUpload, user?.accessToken, user?.token]);
+  }, [onUpload, user?.accessToken, user?.token, fileType]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -149,6 +155,64 @@ const FileUpload = ({ onUpload }) => {
       <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
         Upload one or more audition PDFs (sides, character breakdowns, etc.). We'll combine and analyze all files to create your comprehensive acting guide.
       </p>
+
+      {/* File Type Selector */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <label style={{ 
+          display: 'block', 
+          fontSize: '0.875rem', 
+          fontWeight: '600', 
+          color: '#374151',
+          marginBottom: '0.5rem'
+        }}>
+          File Type:
+        </label>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <label style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            cursor: 'pointer'
+          }}>
+            <input
+              type="radio"
+              name="fileType"
+              value="sides"
+              checked={fileType === 'sides'}
+              onChange={(e) => setFileType(e.target.value)}
+              style={{ margin: 0 }}
+            />
+            <span style={{ color: '#374151' }}>🎭 Audition Sides</span>
+          </label>
+          <label style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            cursor: 'pointer'
+          }}>
+            <input
+              type="radio"
+              name="fileType"
+              value="full_script"
+              checked={fileType === 'full_script'}
+              onChange={(e) => setFileType(e.target.value)}
+              style={{ margin: 0 }}
+            />
+            <span style={{ color: '#374151' }}>📚 Full Script</span>
+          </label>
+        </div>
+        <p style={{ 
+          color: '#6b7280', 
+          fontSize: '0.875rem', 
+          marginTop: '0.5rem',
+          fontStyle: 'italic'
+        }}>
+          {fileType === 'sides' 
+            ? 'Upload the specific scenes you\'re auditioning for'
+            : 'Upload the complete script for broader context and character insights'
+          }
+        </p>
+      </div>
 
       <div
         {...getRootProps()}
@@ -229,6 +293,23 @@ const FileUpload = ({ onUpload }) => {
                       color: file.extractionMethod === 'adobe' ? '#059669' : '#d97706'
                     }}>
                       {file.extractionMethod === 'adobe' ? '🔍 Adobe OCR' : '📖 Basic OCR'}
+                    </span>
+                  </div>
+                )}
+                {file.fileType && (
+                  <div style={{ 
+                    padding: '0.25rem 0.5rem',
+                    background: file.fileType === 'full_script' ? '#dbeafe' : '#fef3c7',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.75rem',
+                    display: 'inline-block',
+                    marginRight: '0.5rem'
+                  }}>
+                    <span style={{ 
+                      fontWeight: 600,
+                      color: file.fileType === 'full_script' ? '#1d4ed8' : '#d97706'
+                    }}>
+                      {file.fileType === 'full_script' ? '📚 Full Script' : '🎭 Sides'}
                     </span>
                   </div>
                 )}

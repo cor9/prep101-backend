@@ -285,6 +285,27 @@ async function generateActingGuideWithRAG(data) {
     console.log(`🎭 Step 2: Generating guide using ${relevantMethodology.length} methodology files...`);
     console.log(`📊 Total methodology context: ${methodologyContext.length} characters`);
     
+    // Build file type context for the AI
+    let fileTypeContext = '';
+    if (data.hasFullScript) {
+      fileTypeContext = `
+
+**FILE TYPE CONTEXT:**
+You have access to BOTH audition sides AND the full script. Use this to your advantage:
+
+- **Full Script Context**: Reference the full script ONLY for character relationships, story arc, tone, and broader context
+- **Audition Sides Focus**: Analyze and provide specific guidance ONLY on the uploaded audition sides
+- **Smart Integration**: Pull relevant background information from the full script to enrich your analysis of the sides
+- **Stay Focused**: Never give line-by-line notes on sections outside the audition sides
+
+**IMPORTANT**: The full script provides context, but your analysis should focus entirely on the audition sides. Use the broader context to make the sides analysis richer and more informed.`;
+    } else {
+      fileTypeContext = `
+
+**FILE TYPE CONTEXT:**
+You are working with audition sides only. Focus your analysis on what's provided in the uploaded scenes.`;
+    }
+    
     // Generate guide using your methodology as context
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -308,7 +329,7 @@ CHARACTER: ${data.characterName}
 PRODUCTION: ${data.productionTitle} (${data.productionType})
 
 SCRIPT:
-${data.sceneText}
+${data.sceneText}${fileTypeContext}
 
 **CRITICAL STYLE REQUIREMENTS - "ACTOR MOTIVATOR" VOICE:**
 
@@ -350,6 +371,7 @@ ${data.sceneText}
 - Feels encouraging and empowering
 - Provides actionable choices, not just theory
 - Matches the energy and enthusiasm of the example guides
+- ${data.hasFullScript ? 'Uses full script context intelligently to enrich sides analysis' : 'Focuses analysis on the provided audition sides'}
 
 **OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be pure HTML that can be directly inserted into a web page. Make it worthy of the PREP101 brand and indistinguishable from Corey's personal coaching.`
         }]
@@ -988,13 +1010,16 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
    }
 
    const uploadId = Date.now().toString();
+   const fileType = req.body.fileType || 'sides'; // Default to sides if not specified
+   
    uploads[uploadId] = {
      filename: req.file.originalname,
      sceneText: result.text.trim(),
      characterNames: result.characterNames,
      extractionMethod: result.method,
      uploadTime: new Date(),
-     wordCount: result.text.trim().split(/\s+/).length
+     wordCount: result.text.trim().split(/\s+/).length,
+     fileType: fileType // Store the file type
    };
 
    console.log(`✅ Extracted ${result.text.length} characters`);
@@ -1042,12 +1067,21 @@ app.post('/api/guides/generate', async (req, res) => {
    console.log(`🎬 ${characterName} | ${productionTitle} (${productionType})`);
    console.log(`🧠 Using ${Object.keys(methodologyDatabase).length} methodology files`);
 
+   // Check if we have full script context
+   const hasFullScript = allUploadData.some(data => data.fileType === 'full_script');
+   const hasSides = allUploadData.some(data => data.fileType === 'sides');
+   
+   console.log(`📚 File types detected: ${allUploadData.map(d => d.fileType).join(', ')}`);
+   console.log(`🎭 Has sides: ${hasSides}, Has full script: ${hasFullScript}`);
+
    const guideContent = await generateActingGuideWithRAG({
      sceneText: combinedSceneText,
      characterName: characterName.trim(),
      productionTitle: productionTitle.trim(),
      productionType: productionType.trim(),
-     extractionMethod: allUploadData[0].extractionMethod
+     extractionMethod: allUploadData[0].extractionMethod,
+     hasFullScript: hasFullScript,
+     uploadData: allUploadData
    });
 
    console.log(`✅ Corey Ralston RAG Guide Complete!`);
