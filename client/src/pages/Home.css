@@ -1,8 +1,9 @@
 :root {
-  --navy: #0b132b;
-  --ink: #111827;
-  --muted: #6b7280;
-  /* gold that reads on screens (not dull yellow) */
+  /* Cinematic palette */
+  --night: #0b1020;          /* page background */
+  --navy: #0c122b;           /* hero band */
+  --ink: #e6edf5;            /* body on dark */
+  --ink-dim: #b9c2cf;
   --gold: #FFC83A;
   --gold-deep: #8A5B00;
   --gold-grad: linear-gradient(135deg, #FFE9A3 0%, #FFC83A 45%, #FFAE00 100%);
@@ -11,80 +12,73 @@
   --blue: #1d4ed8;
 }
 
-/* page background unchanged; we'll overlay our content on a card for contrast */
+/* Page background becomes deep night; no card behind hero */
 .home {
   min-height: 100vh;
   padding-top: 80px;
-  background: radial-gradient(1200px 600px at 50% 0%, rgba(0,0,0,.08), transparent 60%),
-              linear-gradient(135deg, var(--cyan) 0%, var(--teal) 45%, var(--blue) 100%);
+  background: radial-gradient(900px 500px at 50% 0%, rgba(255,255,255,.06), transparent 60%),
+              linear-gradient(180deg, var(--night) 0%, #081022 100%);
 }
 
-/* container a bit wider */
 .container {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 2rem;
 }
 
-.hero {
-  min-height: 70vh;
-  display: grid;
-  place-items: center;
-  margin-bottom: 3.5rem;
-}
-
-/* HERO CARD: dark text on light surface = readable */
-.heroCard {
-  background: #fff;
-  border-radius: 24px;
-  padding: clamp(1.5rem, 2.5vw, 2.75rem);
-  box-shadow: 0 30px 80px rgba(0,0,0,.18);
-  max-width: 980px;
-  width: 100%;
+/* DARK HERO BAND */
+.heroDark {
+  background: radial-gradient(1200px 600px at 50% -10%, rgba(255,255,255,.06), transparent 60%),
+              linear-gradient(180deg, var(--navy) 0%, #09142e 100%);
+  min-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  border-radius: 0 0 28px 28px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.45) inset;
 }
 
-/* logo now smaller by default; remove huge gap */
-.logo {
-  height: clamp(120px, 14vw, 180px);
-  display: block;
-  margin: 0 auto .75rem;
-  object-fit: contain;
+.logoDark {
+  height: clamp(110px, 12vw, 160px);
+  margin: 0 auto 1rem;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.55));
 }
 
-.hook {
-  font-size: clamp(1.7rem, 2.3vw, 2.4rem);
-  line-height: 1.2;
-  color: var(--navy);
+.h1Dark {
+  color: #fff;
+  font-size: clamp(2.6rem, 6vw, 5.2rem);
   font-weight: 900;
-  margin: 0 .25rem .6rem;
+  letter-spacing: -0.02em;
+  margin: .25rem 0 .5rem;
 }
 
-.hook em {
+.taglineDark {
+  color: var(--ink);
+  max-width: 820px;
+  margin: 0 auto 1.25rem;
+  font-size: clamp(1.05rem, 1.2vw, 1.25rem);
+}
+
+.taglineDark strong {
   background: var(--gold-grad);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-.sub {
-  color: #334155;
-  font-size: clamp(1rem, 1vw, 1.15rem);
-  max-width: 760px;
-  margin: 0 auto 1.25rem;
-}
-
-/* CTAs: real gold + high-contrast secondary */
+/* CTA buttons on dark */
 .btnRow {
   display: flex;
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
-  margin-top: 1rem;
+  margin-top: .5rem;
 }
 
 .btn {
-  padding: 1rem 1.75rem;
+  padding: 1rem 1.9rem;
   border-radius: 999px;
   font-weight: 900;
   font-size: 1.05rem;
@@ -93,34 +87,34 @@
 }
 
 .btn:focus-visible {
-  outline: 3px solid #111;
+  outline: 3px solid #fff;
   outline-offset: 3px;
 }
 
-.btnPrimary {
+.btnPrimaryDark {
   background: var(--gold-grad);
   color: #2f2500;
   border: 0;
-  box-shadow: 0 12px 28px rgba(0,0,0,.18);
+  box-shadow: 0 16px 36px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.35);
 }
 
-.btnPrimary:hover {
+.btnPrimaryDark:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 36px rgba(0,0,0,.24);
+  box-shadow: 0 22px 44px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.45);
 }
 
-.btnSecondary {
-  background: #fff;
-  color: var(--navy);
-  border: 2px solid #cbd5e1;
+.btnSecondaryDark {
+  background: transparent;
+  color: #e6edf5;
+  border: 2px solid rgba(230,237,245,.35);
 }
 
-.btnSecondary:hover {
+.btnSecondaryDark:hover {
   transform: translateY(-2px);
-  border-color: #94a3b8;
+  border-color: #e6edf5;
 }
 
-/* section cards */
+/* Section cards below hero remain bright for contrast */
 .card {
   background: #fff;
   border-radius: 24px;
@@ -184,7 +178,7 @@
 }
 
 .stepTitle {
-  color: var(--ink);
+  color: var(--navy);
   font-weight: 800;
 }
 
@@ -231,6 +225,7 @@
   border-radius: 18px;
   padding: 1.1rem 1.2rem;
   box-shadow: 0 10px 26px rgba(0,0,0,.07);
+  min-height: 210px;
 }
 
 .goldQuote {
@@ -241,6 +236,10 @@
   margin: 0 0 .6rem;
   position: relative;
   padding-left: 1.2rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .goldQuote:before {

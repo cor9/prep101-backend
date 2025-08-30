@@ -8,42 +8,27 @@ import './Home.css';
 const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const primary = () => (user ? navigate('/account') : navigate('/register'));
 
   return (
     <>
       <Navbar />
       <div className="home">
-        <div className="container">
-          {/* HERO: readable, bold, no dead space */}
-          <header className="hero">
-            <div className="heroCard" aria-label="Prep101 hero">
-              <img src="/preplogo.png" alt="Prep101 logo" className="logo" loading="lazy" />
-              {/* Remove the duplicate giant 'PREP101' wordmark */}
-              <h1 className="hook">
-                Audition prep parents call <em>GOLD</em>.
-              </h1>
-              <p className="sub">
-                Detailed, personalized coaching guides that break down every beat of your audition—so you show up prepared, confident, and unforgettable.
-              </p>
-              <div className="btnRow">
-                {!user ? (
-                  <>
-                    <button className="btn btnPrimary" onClick={() => navigate('/register')}>
-                      Start Your Gold Guide
-                    </button>
-                    <button className="btn btnSecondary" onClick={() => navigate('/login')}>
-                      Claim Your Custom Prep Guide
-                    </button>
-                  </>
-                ) : (
-                  <button className="btn btnPrimary" onClick={() => navigate('/account')}>
-                    Go to Account
-                  </button>
-                )}
-              </div>
-            </div>
-          </header>
+        {/* DARK FULL-WIDTH HERO */}
+        <section className="heroDark" aria-label="Prep101 hero">
+          <img src="/preplogo.png" alt="Prep101" className="logoDark" loading="lazy" />
+          <h1 className="h1Dark">Audition prep parents call <strong style={{background:'none', color:'#FFC83A'}}>GOLD</strong>.</h1>
+          <p className="taglineDark">
+            Personalized coaching guides that break down every beat—so young actors show up <strong>prepared</strong>,
+            <strong> confident</strong>, and <strong>unforgettable</strong>.
+          </p>
+          <div className="btnRow">
+            <button className="btn btnPrimaryDark" onClick={primary}>Get Started</button>
+            <button className="btn btnSecondaryDark" onClick={() => navigate('/examples')}>See Examples</button>
+          </div>
+        </section>
 
+        <div className="container">
           {/* How it works */}
           <section className="card" aria-labelledby="how">
             <h2 id="how" className="h2">How It Works</h2>
@@ -73,10 +58,10 @@ const Home = () => {
           <section className="bottomCta" aria-label="Get started">
             <h3>Ready for a GOLD guide for your next audition?</h3>
             <div className="ctaActions">
-              <button className="btn btnPrimary" onClick={() => navigate('/register')}>
+              <button className="btn btnPrimaryDark" onClick={() => navigate('/register')}>
                 Get Started
               </button>
-              <button className="btn btnSecondary" onClick={() => navigate('/examples')}>
+              <button className="btn btnSecondaryDark" onClick={() => navigate('/examples')}>
                 See Examples
               </button>
             </div>
