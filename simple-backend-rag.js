@@ -52,7 +52,7 @@ const uploads = {};
 const authRoutes = require('./routes/auth');
 const paymentRoutes = require('./routes/payments');
 const guidesRoutes = require('./routes/guides');
-const uploadRoutes = require('./routes/upload');
+// const uploadRoutes = require('./routes/upload'); // COMMENTED OUT - keeping old working handler
 const betaRoutes = require('./routes/beta');
 const emailGuideRoutes = require('./routes/emailGuide');
 
@@ -60,7 +60,7 @@ const emailGuideRoutes = require('./routes/emailGuide');
 app.use('/api/auth', authRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/guides', guidesRoutes);
-app.use('/api/upload', uploadRoutes);
+// app.use('/api/upload', uploadRoutes); // COMMENTED OUT - keeping old working handler
 app.use('/api/beta', betaRoutes);
 app.use('/api/guides', emailGuideRoutes);
 
