@@ -39,10 +39,9 @@ const Dashboard = () => {
   const [usageError, setUsageError] = useState(null);
   const [lastGuideUrl, setLastGuideUrl] = useState(null);
 
-
   const { user } = useAuth();
 
-    // ====== USAGE FETCH ======
+  // ====== USAGE FETCH ======
   useEffect(() => {
     let cancelled = false;
 
@@ -80,8 +79,6 @@ const Dashboard = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-
-
   const remaining = useMemo(() => {
     if (!usage) return 0;
     if (usage.limit == null) return Infinity; // unlimited
@@ -111,7 +108,7 @@ const Dashboard = () => {
       if (!w) toast('Popup blocked. Use the "Open last guide" link below.', { icon: '⚠️' });
     } else {
       const w = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!w) toast('Popup blocked. Use the “Open last guide” link below.', { icon: '⚠️' });
+      if (!w) toast('Popup blocked. Use the "Open last guide" link below.', { icon: '⚠️' });
     }
   };
 
@@ -122,15 +119,18 @@ const Dashboard = () => {
       return;
     }
     if (!canGenerate) {
-      toast.error('You’ve hit your guide limit. Upgrade for more this month.');
-      // Optional: window.location.href = '/pricing';
+      toast.error('You\'ve hit your guide limit. Upgrade for more this month.');
       return;
     }
 
-    try {
-      setIsGenerating(true);
-      setLastGuideUrl(null);
+    setIsGenerating(true);
+    setLastGuideUrl(null);
 
+    // Add timeout to prevent infinite hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
+
+    try {
       const headers = {
         'Content-Type': 'application/json',
         ...(user?.accessToken || user?.token
@@ -139,15 +139,22 @@ const Dashboard = () => {
       };
 
       const payload = { 
-        uploadId: uploadData.uploadId || uploadData.uploadIds?.[0], // For backward compatibility
-        uploadIds: uploadData.uploadIds || [uploadData.uploadId], // New multiple file support
+        uploadId: uploadData.uploadId || uploadData.uploadIds?.[0],
+        uploadIds: uploadData.uploadIds || [uploadData.uploadId],
         ...formData 
       };
+
+      console.log('🚀 Starting guide generation for:', formData.characterName);
+      toast.loading('Generating your guide... this may take 2-5 minutes.');
+
       const res = await fetch(`${API_BASE}/api/guides/generate`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         let message = `Failed to generate guide (HTTP ${res.status})`;
@@ -155,7 +162,8 @@ const Dashboard = () => {
           const j = await res.json();
           message = j.error || message;
         } catch {
-          const t = await res.text(); if (t) message = t;
+          const t = await res.text(); 
+          if (t) message = t;
         }
         throw new Error(message);
       }
@@ -164,12 +172,6 @@ const Dashboard = () => {
       if (ct.includes('application/json')) {
         const data = await res.json();
         console.log('🎭 Guide generation response:', data);
-        console.log('🌟 Child guide details:', {
-          requested: data.childGuideRequested,
-          completed: data.childGuideCompleted,
-          hasContent: !!data.childGuideContent,
-          contentLength: data.childGuideContent ? data.childGuideContent.length : 0
-        });
         
         if (!data?.guideContent) throw new Error('No guide content returned.');
         
@@ -181,13 +183,7 @@ const Dashboard = () => {
           console.log('🌟 Opening child guide in 1 second...');
           setTimeout(() => {
             openHtmlInNewTab(data.childGuideContent, 'Child Guide');
-          }, 1000); // Small delay to avoid overwhelming the user
-        } else {
-          console.log('❌ Child guide not shown because:', {
-            requested: data.childGuideRequested,
-            completed: data.childGuideCompleted,
-            hasContent: !!data.childGuideContent
-          });
+          }, 1000);
         }
       } else {
         const html = await res.text();
@@ -195,19 +191,25 @@ const Dashboard = () => {
         openHtmlInNewTab(html);
       }
 
-      toast.success('Guide generated. Opening now!');
+      toast.success('Guide generated successfully! Opening now...');
 
       // Optimistic usage increment
       if (usage?.limit != null) {
         setUsage((u) => ({ ...u, used: (u?.used || 0) + 1 }));
       }
 
-
-          } catch (err) {
-        console.error('Guide generation error:', err);
-      toast.error(`Failed to generate: ${err.message}`);
+    } catch (err) {
+      console.error('Guide generation error:', err);
+      
+      if (err.name === 'AbortError') {
+        toast.error('Guide generation timed out after 5 minutes. Please try again.');
+      } else {
+        toast.error(`Failed to generate guide: ${err.message}`);
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsGenerating(false);
+      toast.dismiss(); // Dismiss any loading toasts
     }
   };
 
@@ -284,6 +286,9 @@ const Dashboard = () => {
                 <p style={{ marginTop: '1rem', color: '#6b7280' }}>
                   Crafting your guide… this usually takes 2-5 minutes.
                 </p>
+                <p style={{ marginTop: '0.5rem', color: '#9ca3af', fontSize: '0.875rem' }}>
+                  Please don't close this page while we generate your guide.
+                </p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
@@ -298,80 +303,48 @@ const Dashboard = () => {
                     color: '#065f46'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '1.2rem' }}>✅</span>
-                      <span style={{ fontWeight: 'bold' }}>
-                        {uploadData.fileCount > 1 ? `${uploadData.fileCount} PDFs` : 'PDF'} ready for guide generation
-                      </span>
+                      <span>✅</span>
+                      <strong>PDF uploaded successfully!</strong>
                     </div>
-                    <div style={{ color: '#047857', fontSize: '0.9rem' }}>
-                      {uploadData.fileCount > 1 ? (
-                        <>
-                          <strong>{uploadData.filenames.join(', ')}</strong>
-                          <br />
-                          Combined: {uploadData.textLength || 0} characters, {uploadData.wordCount || 0} words
-                        </>
-                      ) : (
-                        <>
-                          <strong>{uploadData.filename}</strong> ({uploadData.textLength || 0} chars extracted)
-                        </>
-                      )}
+                    <div style={{ fontSize: '0.875rem' }}>
+                      {uploadData.uploadIds ? 
+                        `${uploadData.uploadIds.length} file(s) ready for guide generation` :
+                        'File ready for guide generation'
+                      }
                     </div>
                   </div>
                 )}
 
-                {lastGuideUrl && (
-                  <div style={{
-                    padding: 20,
-                    background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-                    borderRadius: 15,
-                    border: '2px solid #22c55e',
-                    color: '#166534',
-                    textAlign: 'center',
-                    marginBottom: '1rem'
-                  }}>
-                    <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 'bold' }}>
-                      🎉 Guide Generated Successfully!
+                {uploadData && (
+                  <div>
+                    <h3 style={{ 
+                      fontSize: '1.5rem', 
+                      fontWeight: 'bold', 
+                      color: '#374151',
+                      marginBottom: '1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      🎭 Guide Details
                     </h3>
-                    <p style={{ margin: '0 0 1.5rem 0', fontSize: '1rem' }}>
-                      Your personalized audition guide is ready and should have opened in a new tab.
+                    <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                      Fill in the details below to generate your personalized audition guide.
                     </p>
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                      <a 
-                        href={lastGuideUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="btn btnPrimary"
-                      >
-                        📖 Open Guide
-                      </a>
-                      <button
-                        onClick={() => {
-                          setLastGuideUrl(null);
-                          setUploadData(null);
-                        }}
-                        className="btn btnSecondary"
-                      >
-                        🆕 Create New Guide
-                      </button>
-                      <button
-                        onClick={() => window.location.href = '/account'}
-                        className="btn btnGhost"
-                      >
-                        👤 View Account
-                      </button>
-                    </div>
+
+                    <GuideForm
+                      onSubmit={handleGenerateGuide}
+                      hasFile={!!uploadData}
+                      isSubmitting={isGenerating}
+                      disabled={!canGenerate}
+                    />
                   </div>
                 )}
 
-
-
-                {!lastGuideUrl && (
-                  <GuideForm
-                    onSubmit={handleGenerateGuide}
-                    hasFile={!!uploadData}
-                    isSubmitting={isGenerating || usageLoading}
-                    disabled={!canGenerate}
-                  />
+                {!uploadData && (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                    <p>Upload your audition sides (PDF) to get started.</p>
+                  </div>
                 )}
               </div>
             )}
