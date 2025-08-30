@@ -323,3 +323,22 @@
   transform: translateY(-2px);
   box-shadow: 0 12px 28px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.45);
 }
+
+.nav__logout {
+  background: transparent;
+  color: #e6edf5;
+  border: 2px solid rgba(230,237,245,.35);
+  padding: .5rem .75rem;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s ease;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.nav__logout:hover {
+  background: rgba(255,255,255,.06);
+  border-color: #e6edf5;
+  transform: translateY(-1px);
+}
