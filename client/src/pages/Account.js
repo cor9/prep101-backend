@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
 import API_BASE from '../config/api';
+import '../styles/shared.css';
 
 const Account = () => {
   const { user, logout } = useAuth();
@@ -56,40 +57,24 @@ const Account = () => {
   return (
     <>
       <Navbar />
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-        paddingTop: '80px',
-        paddingBottom: '2rem'
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem' }}>
+      <div className="page-dark">
+        <div className="container-wide">
           
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div style={{ marginBottom: '1.25rem' }}>
-              <img
-                src="/preplogo.png"
-                alt="Prep101 Logo"
-                style={{ height: 64, width: 'auto', objectFit: 'contain', margin: '0 auto' }}
-              />
-            </div>
-            <h1 style={{ fontSize: '3.2rem', fontWeight: 900, marginBottom: '0.5rem', color: '#0f172a' }}>
-              Your Account
-            </h1>
-            <p style={{ fontSize: '1.1rem', color: '#475569', maxWidth: 600, margin: '0 auto' }}>
+          <div className="page-hero">
+            <img
+              src="/preplogo.png"
+              alt="Prep101 Logo"
+              className="logo-hero"
+            />
+            <h1 className="h1-hero">Your Account</h1>
+            <p className="h2-hero">
               Welcome back, {user?.name}! Manage your guides and subscription.
             </p>
           </div>
 
           {/* Account Info */}
-          <div style={{
-            background: 'white',
-            borderRadius: '1.25rem',
-            padding: '2rem',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.08)',
-            border: '1px solid #e2e8f0',
-            marginBottom: '2rem'
-          }}>
+          <div className="card-white">
             <h2 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '1rem', color: '#0f172a' }}>
               Account Information
             </h2>
@@ -103,305 +88,135 @@ const Account = () => {
                 <p style={{ color: '#6b7280', margin: '0.5rem 0' }}>{user?.email}</p>
               </div>
               <div>
-                <strong style={{ color: '#374151' }}>Plan:</strong>
-                <p style={{ color: '#6b7280', margin: '0.5rem 0' }}>{user?.subscription} plan</p>
+                <strong style={{ color: '#374151' }}>Subscription:</strong>
+                <p style={{ color: '#6b7280', margin: '0.5rem 0' }}>
+                  {user?.subscription ? user.subscription.charAt(0).toUpperCase() + user.subscription.slice(1) : 'Free'}
+                </p>
               </div>
               <div>
-                <strong style={{ color: '#374151' }}>Guides Used:</strong>
-                <p style={{ color: '#6b7280', margin: '0.5rem 0' }}>{user?.guidesUsed} / {user?.guidesLimit}</p>
+                <strong style={{ color: '#374151' }}>Member Since:</strong>
+                <p style={{ color: '#6b7280', margin: '0.5rem 0' }}>
+                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
-            <button
-              onClick={handleCreateGuide}
-              style={{
-                background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 100%)',
-                color: 'white',
-                padding: '1rem 2rem',
-                border: 'none',
-                borderRadius: '1rem',
-                fontWeight: '800',
-                fontSize: '1.1rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
-            >
-              Create New Guide
-            </button>
-            
-            <button
-              onClick={() => navigate('/pricing')}
-              style={{
-                background: 'white',
-                color: '#0ea5e9',
-                padding: '1rem 2rem',
-                border: '2px solid #0ea5e9',
-                borderRadius: '1rem',
-                fontWeight: '800',
-                fontSize: '1.1rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.background = '#0ea5e9'; e.currentTarget.style.color = 'white'; }}
-              onMouseOut={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#0ea5e9'; }}
-            >
-              Manage Plan
-            </button>
-          </div>
+          {/* Guides Section */}
+          <div className="card-white">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                Your Guides ({guides.length})
+              </h2>
+              <button
+                onClick={handleCreateGuide}
+                className="btn btnPrimary"
+              >
+                + Create New Guide
+              </button>
+            </div>
 
-          {/* Recent Guides */}
-          <div style={{
-            background: 'white',
-            borderRadius: '1.25rem',
-            padding: '2rem',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.08)',
-            border: '1px solid #e2e8f0',
-            marginBottom: '2rem'
-          }}>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: '900', marginBottom: '1rem', color: '#0f172a' }}>
-              Your Guides ({guides.length})
-            </h2>
-            
             {guidesLoading ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
                 <div style={{
-                  width: '32px',
-                  height: '32px',
-                  border: '3px solid #e5e7eb',
-                  borderTop: '3px solid #0ea5e9',
+                  width: '40px',
+                  height: '40px',
+                  border: '4px solid #e5e7eb',
+                  borderTop: '4px solid var(--gold)',
                   borderRadius: '50%',
                   animation: 'spin 1s linear infinite',
                   margin: '0 auto 1rem'
-                }} />
-                <p>Loading your guides...</p>
+                }}></div>
+                <p style={{ color: '#6b7280' }}>Loading your guides...</p>
               </div>
             ) : guidesError ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#ef4444' }}>
-                <p>Error loading guides: {guidesError}</p>
+                <p>Error: {guidesError}</p>
                 <button
                   onClick={() => window.location.reload()}
-                  style={{
-                    background: '#0ea5e9',
-                    color: 'white',
-                    padding: '0.75rem 1.5rem',
-                    border: 'none',
-                    borderRadius: '0.75rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    marginTop: '1rem'
-                  }}
+                  className="btn btnSecondary"
+                  style={{ marginTop: '1rem' }}
                 >
                   Try Again
                 </button>
               </div>
             ) : guides.length > 0 ? (
-              <div style={{ display: 'grid', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {guides.map((guide) => (
-                  <div key={guide.id} style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '0.75rem',
-                    padding: '1rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.25rem', color: '#111827' }}>
+                  <div
+                    key={guide.id}
+                    style={{
+                      background: '#f8fafc',
+                      borderRadius: '0.75rem',
+                      padding: '1.25rem',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '1rem'
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.5rem 0' }}>
                         {guide.characterName} - {guide.productionTitle}
                       </h3>
-                      <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                      <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
                         {guide.productionType} • {guide.genre} • {new Date(guide.createdAt).toLocaleDateString()}
-                      </p>
-                      {guide.childGuideRequested && (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          {guide.childGuideCompleted ? (
-                            <span style={{
-                              background: '#10b981',
-                              color: 'white',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '0.375rem',
-                              fontSize: '0.75rem',
-                              fontWeight: '600'
-                            }}>
-                              🌟 Child's Guide Available
-                            </span>
-                          ) : (
-                            <span style={{
-                              background: '#f59e0b',
-                              color: 'white',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '0.375rem',
-                              fontSize: '0.75rem',
-                              fontWeight: '600'
-                            }}>
-                              ⏳ Child's Guide Generating...
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{
-                        background: '#10b981',
-                        color: 'white',
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '999px',
-                        fontSize: '0.8rem',
-                        fontWeight: '600'
-                      }}>
-                        {guide.roleSize}
-                      </span>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <button
                         onClick={() => {
                           // Open guide in new tab
                           const guideUrl = `${API_BASE}/api/guides/${guide.id}`;
                           window.open(guideUrl, '_blank', 'noopener,noreferrer');
                         }}
-                        style={{
-                          background: '#0ea5e9',
-                          color: 'white',
-                          padding: '0.5rem 1rem',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          fontSize: '0.8rem'
-                        }}
+                        className="btn btnPrimary"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
                       >
-                        View
+                        📖 View Guide
                       </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(`${API_BASE}/api/guides/${guide.id}/pdf`, {
-                              method: 'GET',
-                              headers: {
-                                'Authorization': `Bearer ${user?.accessToken || user?.token}`,
-                              }
-                            });
-                            
-                            if (response.ok) {
-                              // Create blob from response and download
-                              const blob = await response.blob();
-                              const url = window.URL.createObjectURL(blob);
-                              const link = document.createElement('a');
-                              link.href = url;
-                              link.download = `guide_${guide.characterName}_${guide.productionTitle}.pdf`;
-                              link.style.display = 'none';
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                              window.URL.revokeObjectURL(url);
-                            } else {
-                              const error = await response.json();
-                              alert(`❌ Failed to download PDF: ${error.error}`);
-                            }
-                          } catch (err) {
-                            alert(`❌ Error downloading PDF: ${err.message}`);
-                          }
-                        }}
-                        style={{
-                          background: '#dc2626',
-                          color: 'white',
-                          padding: '0.5rem 1rem',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          fontSize: '0.8rem'
-                        }}
-                      >
-                        📄 PDF
-                      </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(`${API_BASE}/api/guides/${guide.id}/email`, {
-                              method: 'POST',
-                              headers: {
-                                'Authorization': `Bearer ${user?.accessToken || user?.token}`,
-                                'Content-Type': 'application/json'
-                              }
-                            });
-                            
-                            if (response.ok) {
-                              const result = await response.json();
-                              alert(`✅ Guide sent to ${result.email} successfully!`);
-                            } else {
-                              const error = await response.json();
-                              alert(`❌ Failed to send email: ${error.error}`);
-                            }
-                          } catch (err) {
-                            alert(`❌ Error sending email: ${err.message}`);
-                          }
-                        }}
-                        style={{
-                          background: '#7c3aed',
-                          color: 'white',
-                          padding: '0.5rem 1rem',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          fontSize: '0.8rem'
-                        }}
-                                              >
-                          📧 Email
-                        </button>
-                        {guide.childGuideRequested && guide.childGuideCompleted && (
-                          <button
-                            onClick={async () => {
-                              try {
-                                const response = await fetch(`${API_BASE}/api/guides/${guide.id}/child`, {
-                                  method: 'GET',
-                                  headers: {
-                                    'Authorization': `Bearer ${user?.accessToken || user?.token}`,
-                                  }
-                                });
-                                
-                                if (response.ok) {
-                                  const htmlContent = await response.text();
-                                  
-                                  // Create a blob and download the child guide
-                                  const blob = new Blob([htmlContent], { type: 'text/html' });
-                                  const url = window.URL.createObjectURL(blob);
-                                  const link = document.createElement('a');
-                                  link.href = url;
-                                  link.download = `child_guide_${guide.characterName}_${guide.productionTitle}.html`;
-                                  link.style.display = 'none';
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                  window.URL.revokeObjectURL(url);
-                                  
-                                  alert('✅ Child guide downloaded successfully! Check your downloads folder.');
-                                } else {
-                                  const error = await response.json();
-                                  alert(`❌ Failed to load child guide: ${error.message}`);
+                      {guide.childGuideRequested && guide.childGuideCompleted && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`${API_BASE}/api/guides/${guide.id}/child-guide`, {
+                                headers: {
+                                  Authorization: `Bearer ${user.accessToken || user.token}`
                                 }
-                              } catch (err) {
-                                alert(`❌ Error loading child guide: ${err.message}`);
+                              });
+                              
+                              if (response.ok) {
+                                const htmlContent = await response.text();
+                                
+                                // Create a blob and download the child guide
+                                const blob = new Blob([htmlContent], { type: 'text/html' });
+                                const url = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `child_guide_${guide.characterName}_${guide.productionTitle}.html`;
+                                link.style.display = 'none';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(url);
+                                
+                                alert('✅ Child guide downloaded successfully! Check your downloads folder.');
+                              } else {
+                                const error = await response.json();
+                                alert(`❌ Failed to load child guide: ${error.message}`);
                               }
-                            }}
-                            style={{
-                              background: '#f59e0b',
-                              color: 'white',
-                              padding: '0.5rem 1rem',
-                              border: 'none',
-                              borderRadius: '0.5rem',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              fontSize: '0.8rem'
-                            }}
-                          >
-                            🌟 Child's Guide
-                          </button>
-                        )}
+                            } catch (err) {
+                              alert(`❌ Error loading child guide: ${err.message}`);
+                            }
+                          }}
+                          className="btn btnSecondary"
+                          style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                        >
+                          🌟 Child's Guide
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -411,16 +226,8 @@ const Account = () => {
                 <p>No guides created yet.</p>
                 <button
                   onClick={handleCreateGuide}
-                  style={{
-                    background: '#0ea5e9',
-                    color: 'white',
-                    padding: '0.75rem 1.5rem',
-                    border: 'none',
-                    borderRadius: '0.75rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    marginTop: '1rem'
-                  }}
+                  className="btn btnPrimary"
+                  style={{ marginTop: '1rem' }}
                 >
                   Create Your First Guide
                 </button>
@@ -432,18 +239,8 @@ const Account = () => {
           <div style={{ textAlign: 'center' }}>
             <button
               onClick={handleLogout}
-              style={{
-                background: 'transparent',
-                color: '#ef4444',
-                padding: '0.75rem 1.5rem',
-                border: '1px solid #ef4444',
-                borderRadius: '0.75rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
-              onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ef4444'; }}
+              className="btn btnGhost"
+              style={{ color: '#ef4444', borderColor: '#ef4444' }}
             >
               Log Out
             </button>
