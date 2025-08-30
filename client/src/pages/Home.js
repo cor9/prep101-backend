@@ -24,10 +24,14 @@ const Home = () => {
               decoding="async"
             />
             <h1 className="h1">PREP101</h1>
-            <p className="kicker">The gold standard in audition prep.</p>
+            <p className="kicker">
+              <span className="kickerBadge">Parents Call It GOLD</span>
+              — We Call It Prep101
+            </p>
             <p className="sub">
-              Get detailed, personalized audition preparation crafted by industry experts. Upload your sides,
-              answer a few questions, and receive a comprehensive coaching guide.
+              The <strong>gold standard</strong> in audition prep for young actors.  
+              Detailed, personalized coaching guides that break down every beat of your audition —  
+              so you can show up prepared, confident, and unforgettable.
             </p>
 
             <div className="btnRow">
@@ -37,9 +41,9 @@ const Home = () => {
                     type="button"
                     className="btn btnPrimary"
                     onClick={() => navigate('/register')}
-                    aria-label="Sign up for Prep101"
+                    aria-label="Start your gold guide"
                   >
-                    Sign Up Free
+                    Start Your Gold Guide
                   </button>
                   <button
                     type="button"
@@ -47,7 +51,7 @@ const Home = () => {
                     onClick={() => navigate('/login')}
                     aria-label="Log in to Prep101"
                   >
-                    Log In
+                    Claim Your Custom Prep Guide
                   </button>
                 </>
               ) : (
