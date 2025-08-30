@@ -5,6 +5,17 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import API_BASE from '../config/api';
 
+// Helper functions for normalizing extraction data
+const normalizeMethod = (m) => {
+  if (!m) return { key: 'unknown', label: 'Unknown OCR', badgeBg: '#e5e7eb', badgeFg: '#374151' };
+  const key = String(m).toLowerCase();
+  if (key.includes('adobe') || key.includes('adobe-extract')) return { key: 'adobe', label: '🔍 Adobe Extract OCR', badgeBg: '#d1fae5', badgeFg: '#065f46' };
+  if (key.includes('basic')) return { key: 'basic', label: '📖 Basic OCR', badgeBg: '#fef3c7', badgeFg: '#92400e' };
+  return { key, label: m, badgeBg: '#e5e7eb', badgeFg: '#374151' };
+};
+
+const normalizeConfidence = (c) => (c || 'unknown');
+
 const FileUpload = ({ onUpload }) => {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
@@ -87,7 +98,9 @@ const FileUpload = ({ onUpload }) => {
           name: result.filename,
           size: formatFileSize(acceptedFiles.find(f => f.name === result.filename)?.size || 0),
           extractionMethod: result.extractionMethod,
-          confidence: result.extractionConfidence,
+          extractionConfidence: result.extractionConfidence,
+          textLength: result.textLength,
+          wordCount: result.wordCount,
           characterNames: result.characterNames || [],
           uploadId: result.uploadId,
           fileType: result.fileType
@@ -102,18 +115,22 @@ const FileUpload = ({ onUpload }) => {
         filenames: newUploadedFiles.map(f => f.name),
         textLength: totalTextLength + (uploadedFiles.reduce((sum, f) => sum + (f.textLength || 0), 0)),
         wordCount: totalWordCount + (uploadedFiles.reduce((sum, f) => sum + (f.wordCount || 0), 0)),
-        extractionMethod: uploadResults[0]?.extractionMethod || 'basic',
-        extractionConfidence: uploadResults[0]?.extractionConfidence || 'high',
+        extractionMethod: normalizeMethod(uploadResults[0]?.extractionMethod).key,
+        extractionConfidence: normalizeConfidence(uploadResults[0]?.extractionConfidence),
         characterNames: Array.from(allCharacterNames),
         preview: combinedPreview.trim(),
         fileCount: newUploadedFiles.length,
         fileTypes: newUploadedFiles.map(f => f.fileType) // Include all file types
       });
 
-      // Show success message
-      const methodText = uploadResults[0]?.extractionMethod === 'adobe' ? 'Adobe Premium OCR' : 'Basic OCR';
+      // Show success message using normalized method
+      const methodMeta = normalizeMethod(uploadResults[0]?.extractionMethod);
       const typeText = fileType === 'sides' ? 'audition sides' : 'full script';
-      toast.success(`Successfully processed ${acceptedFiles.length} PDF${acceptedFiles.length > 1 ? 's' : ''} as ${typeText} using ${methodText}!`);
+      toast.success(`Successfully processed ${acceptedFiles.length} PDF${acceptedFiles.length > 1 ? 's' : ''} as ${typeText} using ${methodMeta.label}!`);
+      
+      if (totalWordCount < 120) {
+        toast.error('Very little text extracted. Try a clearer PDF or re-run with Adobe OCR.');
+      }
       
       if (allCharacterNames.size > 0) {
         toast.success(`Found ${allCharacterNames.size} character name(s): ${Array.from(allCharacterNames).slice(0, 3).join(', ')}`);
@@ -312,22 +329,20 @@ const FileUpload = ({ onUpload }) => {
                       {file.size}
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      {file.extractionMethod && (
-                        <div style={{ 
-                          padding: '0.25rem 0.5rem',
-                          background: file.extractionMethod === 'adobe' ? '#d1fae5' : '#fef3c7',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          display: 'inline-block'
-                        }}>
-                          <span style={{ 
-                            fontWeight: 600,
-                            color: file.extractionMethod === 'adobe' ? '#059669' : '#d97706'
+                      {file.extractionMethod && (() => {
+                        const m = normalizeMethod(file.extractionMethod);
+                        return (
+                          <div style={{ 
+                            padding: '0.25rem 0.5rem', 
+                            background: m.badgeBg, 
+                            borderRadius: 4, 
+                            fontSize: 12, 
+                            display: 'inline-block' 
                           }}>
-                            {file.extractionMethod === 'adobe' ? '🔍 Adobe OCR' : '📖 Basic OCR'}
-                          </span>
-                        </div>
-                      )}
+                            <span style={{ fontWeight: 600, color: m.badgeFg }}>{m.label}</span>
+                          </div>
+                        );
+                      })()}
                       {file.fileType && (
                         <div style={{ 
                           padding: '0.25rem 0.5rem',
