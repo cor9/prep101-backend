@@ -11,7 +11,6 @@ const GuideForm = ({ onSubmit, hasFile }) => {
     storyline: '',
     characterBreakdown: '',
     callbackNotes: '',
-    focusArea: '',
     childGuideRequested: false
   });
 
@@ -370,54 +369,7 @@ const GuideForm = ({ onSubmit, hasFile }) => {
         </div>
       </div>
 
-      {/* Focus Areas */}
-      <div>
-        <h3 style={{ 
-          fontSize: '1.5rem', 
-          fontWeight: 'bold', 
-          color: '#374151',
-          marginBottom: '1rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
-        }}>
-          🎯 Focus Areas (Optional)
-        </h3>
-        <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-          Is there a specific aspect of your performance you'd like to emphasize? 
-          Leave blank for a balanced approach.
-        </p>
 
-        <div>
-          <label style={{ 
-            display: 'block', 
-            fontSize: '0.875rem', 
-            fontWeight: '600', 
-            color: '#374151',
-            marginBottom: '0.5rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.025em'
-          }}>
-            Primary Focus
-          </label>
-          <select
-            name="focusArea"
-            value={formData.focusArea}
-            onChange={handleChange}
-            style={inputStyle}
-            onFocus={inputFocusHandler}
-            onBlur={inputBlurHandler}
-          >
-            <option value="">Select focus area (optional)...</option>
-            <option value="vulnerability">Vulnerability & Emotional Depth</option>
-            <option value="strength">Strength & Confidence</option>
-            <option value="humor">Comedy & Timing</option>
-            <option value="intensity">Intensity & Drama</option>
-            <option value="range">Emotional Range</option>
-            <option value="bold-choices">Bold Choices & Risk-Taking</option>
-          </select>
-        </div>
-      </div>
 
       {/* Child's Guide Option - Only show for actors age 12 and under */}
       {formData.actorAge && parseInt(formData.actorAge) <= 12 && (

@@ -7,6 +7,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 import API_BASE from '../config/api';
 import '../styles/shared.css';
+import Navbar from '../components/Navbar';
 
 // Simple progress bar
 const ProgressBar = ({ value, max }) => {
@@ -258,35 +259,19 @@ const Dashboard = () => {
     : null;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #2dd4bf 0%, #06b6d4 50%, #1d4ed8 100%)',
-      paddingTop: 80,
-      paddingBottom: '2rem'
-    }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1rem' }}>
-        <div style={{
-          background: 'white',
-          borderRadius: '1.5rem',
-          boxShadow: '0 25px 80px rgba(0,0,0,0.1)',
-          overflow: 'hidden'
-        }}>
+    <>
+      <Navbar />
+      <div className="page-dark">
+        <div className="container-wide">
           {/* Header */}
-          <div style={{
-            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-            padding: '1.1rem 1.5rem',
-            borderBottom: '1px solid #e5e7eb'
-          }}>
-            <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-              Dashboard
-            </h1>
-            <p style={{ color: '#475569', margin: '6px 0 0' }}>
-              Upload sides, fill role details, and generate your Prep101 guide.
-            </p>
+          <div className="page-hero">
+            <img src="/preplogo.png" alt="Prep101 logo" className="logo-hero" loading="lazy" />
+            <h1 className="h1-hero">Dashboard</h1>
+            <p className="h2-hero">Upload sides, fill role details, and generate your Prep101 guide.</p>
           </div>
 
           {/* Usage strip */}
-          <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+          <div className="card-white">
             {usageLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <LoadingSpinner /><span style={{ color: '#6b7280' }}>Loading plan…</span>
@@ -319,19 +304,11 @@ const Dashboard = () => {
                     color: '#92400e',
                     padding: '8px 10px'
                   }}>
-                    You’ve hit your monthly limit. Upgrade on the Pricing page for more guides.
+                    You've hit your monthly limit. Upgrade on the Pricing page for more guides.
                     <button
                       onClick={() => (window.location.href = '/pricing')}
-                      style={{
-                        marginLeft: 10,
-                        background: 'linear-gradient(135deg, #fb923c 0%, #f97316 100%)',
-                        color: 'white',
-                        padding: '6px 10px',
-                        border: 'none',
-                        borderRadius: 8,
-                        fontWeight: 800,
-                        cursor: 'pointer'
-                      }}
+                      className="btn btnPrimary"
+                      style={{ marginLeft: 10, padding: '6px 10px', fontSize: '0.875rem' }}
                     >
                       See Plans
                     </button>
@@ -342,7 +319,7 @@ const Dashboard = () => {
           </div>
 
           {/* Body */}
-          <div style={{ padding: '1.5rem' }}>
+          <div className="card-white">
             {isGenerating ? (
               <div style={{ textAlign: 'center', padding: '2rem' }}>
                 <LoadingSpinner />
@@ -405,15 +382,7 @@ const Dashboard = () => {
                         href={lastGuideUrl} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        style={{
-                          background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                          color: 'white',
-                          padding: '12px 24px',
-                          borderRadius: 10,
-                          textDecoration: 'none',
-                          fontWeight: 'bold',
-                          display: 'inline-block'
-                        }}
+                        className="btn btnPrimary"
                       >
                         📖 Open Guide
                       </a>
@@ -422,44 +391,23 @@ const Dashboard = () => {
                           setLastGuideUrl(null);
                           setUploadData(null);
                         }}
-                        style={{
-                          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                          color: 'white',
-                          padding: '12px 24px',
-                          borderRadius: 10,
-                          border: 'none',
-                          fontWeight: 'bold',
-                          cursor: 'pointer'
-                        }}
+                        className="btn btnSecondary"
                       >
                         🆕 Create New Guide
                       </button>
                       <button
                         onClick={() => window.location.href = '/account'}
-                        style={{
-                          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                          color: 'white',
-                          padding: '12px 24px',
-                          borderRadius: 10,
-                          border: 'none',
-                          fontWeight: 'bold',
-                          cursor: 'pointer'
-                        }}
+                        className="btn btnGhost"
                       >
                         👤 View Account
                       </button>
                     </div>
-                                    </div>
+                  </div>
                 )}
 
                 {/* Guide History */}
                 {guides.length > 0 && (
-                  <div style={{
-                    background: '#f8fafc',
-                    borderRadius: 15,
-                    padding: '1.5rem',
-                    border: '1px solid #e2e8f0'
-                  }}>
+                  <div className="card-white" style={{ marginTop: '1rem' }}>
                     <h3 style={{ 
                       fontSize: '1.25rem', 
                       fontWeight: 'bold', 
@@ -470,42 +418,41 @@ const Dashboard = () => {
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {guides.slice(0, 5).map((guide) => (
-                        <div key={guide.id} style={{
-                          background: 'white',
-                          padding: '1rem',
-                          borderRadius: 10,
-                          border: '1px solid #e2e8f0',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
-                        }}>
-                          <div>
-                            <div style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '0.25rem' }}>
+                        <div
+                          key={guide.id}
+                          style={{
+                            background: '#f8fafc',
+                            borderRadius: '0.75rem',
+                            padding: '1.25rem',
+                            border: '1px solid #e2e8f0',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '1rem'
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: '200px' }}>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.5rem 0' }}>
                               {guide.characterName} - {guide.productionTitle}
-                            </div>
+                            </h3>
                             <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
                               {guide.productionType} • {guide.genre} • {new Date(guide.createdAt).toLocaleDateString()}
                             </div>
                           </div>
-                          <button
-                            onClick={() => {
-                              // Open guide in new tab
-                              const guideUrl = `${API_BASE}/api/guides/${guide.id}`;
-                              window.open(guideUrl, '_blank', 'noopener,noreferrer');
-                            }}
-                            style={{
-                              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                              color: 'white',
-                              padding: '8px 16px',
-                              borderRadius: 8,
-                              border: 'none',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              fontSize: '0.875rem'
-                            }}
-                          >
-                            View
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => {
+                                // Open guide in new tab
+                                const guideUrl = `${API_BASE}/api/guides/${guide.id}`;
+                                window.open(guideUrl, '_blank', 'noopener,noreferrer');
+                              }}
+                              className="btn btnPrimary"
+                              style={{ padding: '8px 16px', fontSize: '0.875rem' }}
+                            >
+                              View
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -513,15 +460,8 @@ const Dashboard = () => {
                       <div style={{ textAlign: 'center', marginTop: '1rem' }}>
                         <button
                           onClick={() => window.location.href = '/account'}
-                          style={{
-                            background: 'transparent',
-                            color: '#3b82f6',
-                            border: '1px solid #3b82f6',
-                            padding: '8px 16px',
-                            borderRadius: 8,
-                            fontWeight: '600',
-                            cursor: 'pointer'
-                          }}
+                          className="btn btnSecondary"
+                          style={{ padding: '8px 16px' }}
                         >
                           View All {guides.length} Guides
                         </button>
@@ -543,7 +483,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

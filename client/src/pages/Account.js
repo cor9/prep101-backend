@@ -211,8 +211,17 @@ const Account = () => {
                               alert(`❌ Error loading child guide: ${err.message}`);
                             }
                           }}
-                          className="btn btnSecondary"
-                          style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                          style={{
+                            background: 'var(--gold-grad)',
+                            color: '#2f2500',
+                            padding: '0.5rem 1rem',
+                            fontSize: '0.875rem',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 12px rgba(255,200,58,.3)'
+                          }}
                         >
                           🌟 Child's Guide
                         </button>
