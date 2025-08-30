@@ -104,12 +104,9 @@ const Pricing = () => {
       <div className="page-dark">
         {/* Hero Section */}
         <section className="page-hero">
-          <h1 className="h1-hero">
-            Simple, Transparent Pricing
-          </h1>
-          <p className="h2-hero">
-            Choose the plan that fits your audition prep needs. Start free, upgrade anytime.
-          </p>
+          <img src="/preplogo.png" alt="Prep101 logo" className="logo-hero" loading="lazy" />
+          <h1 className="h1-hero">Simple, Transparent Pricing</h1>
+          <p className="h2-hero">Choose the plan that fits your audition preparation needs</p>
         </section>
 
         <div className="container-wide">

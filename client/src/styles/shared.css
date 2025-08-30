@@ -3,11 +3,13 @@
   /* Cinematic palette */
   --night: #0b1020;          /* page background */
   --navy: #0c122b;           /* hero band */
+  --navy-dark: #0B0C10;      /* darker navy for navbar */
   --ink: #e6edf5;            /* body on dark */
   --ink-dim: #b9c2cf;
   --gold: #FFC83A;
   --gold-deep: #8A5B00;
   --gold-grad: linear-gradient(135deg, #FFE9A3 0%, #FFC83A 45%, #FFAE00 100%);
+  --gold-cta: linear-gradient(135deg, #FFD700, #FFAA00);
   --teal: #06b6d4;
   --cyan: #2dd4bf;
   --blue: #1d4ed8;
@@ -63,6 +65,28 @@
   opacity: 0.9;
 }
 
+/* Logo styling for hero sections */
+.logo-hero {
+  height: clamp(120px, 15vw, 200px);
+  margin: 0 auto 1.5rem;
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,.3));
+  transition: transform .3s ease;
+}
+
+.logo-hero:hover {
+  transform: scale(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-hero {
+    transition: none;
+  }
+  
+  .logo-hero:hover {
+    transform: none;
+  }
+}
+
 /* Cards and containers */
 .container-wide {
   max-width: 1280px;
@@ -90,8 +114,8 @@
 /* Buttons */
 .btn {
   padding: 1rem 1.9rem;
-  border-radius: 999px;
-  font-weight: 900;
+  border-radius: 8px;
+  font-weight: bold;
   font-size: 1.05rem;
   cursor: pointer;
   transition: transform .15s ease, box-shadow .2s ease, background-color .2s ease, border-color .2s ease;
@@ -106,7 +130,7 @@
 }
 
 .btnPrimary {
-  background: var(--gold-grad);
+  background: var(--gold-cta);
   color: #2f2500;
   border: 0;
   box-shadow: 0 16px 36px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.35);
@@ -235,22 +259,22 @@
   left: 0;
   right: 0;
   z-index: 50;
-  background: transparent;
-  border-bottom: 1px solid transparent;
+  background: var(--navy-dark);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
   transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
-  backdrop-filter: saturate(120%) blur(6px);
 }
 
 .nav--scrolled {
-  background: rgba(9, 20, 46, .78);
-  border-color: rgba(255,255,255,.08);
-  box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  background: rgba(11, 12, 16, .95);
+  border-color: rgba(255,255,255,.12);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
 }
 
 .nav__inner {
   max-width: 1280px;
   margin: 0 auto;
-  padding: .65rem 2rem;
+  padding: .85rem 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -261,11 +285,12 @@
   font-weight: 900;
   letter-spacing: .02em;
   text-decoration: none;
+  font-size: 1.3rem;
 }
 
 .nav__links {
   display: flex;
-  gap: 1rem;
+  gap: 1.25rem;
   align-items: center;
 }
 
@@ -273,23 +298,28 @@
   color: #e6edf5;
   text-decoration: none;
   font-weight: 700;
-  padding: .4rem .6rem;
+  padding: .5rem .75rem;
   border-radius: 8px;
+  transition: all .2s ease;
 }
 
 .nav__links a:hover {
-  background: rgba(255,255,255,.06);
+  background: rgba(255,200,58,.15);
+  color: var(--gold);
+  transform: translateY(-1px);
 }
 
 .nav__cta {
-  background: var(--gold-grad);
+  background: var(--gold-cta);
   color: #2f2500 !important;
-  padding: .55rem 1rem;
+  padding: .65rem 1.25rem;
   border-radius: 999px;
   font-weight: 900;
   box-shadow: 0 8px 20px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.35);
+  transition: all .2s ease;
 }
 
 .nav__cta:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.45);
 }

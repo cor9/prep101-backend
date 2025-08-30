@@ -7,6 +7,7 @@
   --gold: #FFC83A;
   --gold-deep: #8A5B00;
   --gold-grad: linear-gradient(135deg, #FFE9A3 0%, #FFC83A 45%, #FFAE00 100%);
+  --gold-cta: linear-gradient(135deg, #FFD700, #FFAA00);
   --teal: #06b6d4;
   --cyan: #2dd4bf;
   --blue: #1d4ed8;
@@ -56,7 +57,7 @@
 }
 
 .logoDark {
-  height: clamp(150px, 18vw, 240px); /* was up to ~160px */
+  height: clamp(195px, 23vw, 312px); /* Increased by 30% from 150px-240px to 195px-312px */
   margin: 0 auto 1.25rem;
   filter: drop-shadow(0 10px 24px rgba(0,0,0,.55));
 }
@@ -95,8 +96,8 @@
 
 .btn {
   padding: 1rem 1.9rem;
-  border-radius: 999px;
-  font-weight: 900;
+  border-radius: 8px;
+  font-weight: bold;
   font-size: 1.05rem;
   cursor: pointer;
   transition: transform .15s ease, box-shadow .2s ease, background-color .2s ease, border-color .2s ease;
@@ -108,7 +109,7 @@
 }
 
 .btnPrimaryDark {
-  background: var(--gold-grad);
+  background: var(--gold-cta);
   color: #2f2500;
   border: 0;
   box-shadow: 0 16px 36px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.35);
@@ -253,15 +254,15 @@
   color: #475569;
 }
 
-/* Gold Wall 2.0 – snazzier */
+/* Gold Wall 2.0 – snazzier with dark navy background */
 .goldWall {
   max-width: 1100px;
   margin: 3rem auto 0;
-  padding: 2rem;
-  background: #fff;
+  padding: 2.5rem;
+  background: var(--navy);
   border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.12);
-  border: 1px solid #f3e3b0;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  border: 1px solid rgba(255,200,58,.2);
 }
 
 .goldHeader {
@@ -269,30 +270,31 @@
   gap: .6rem;
   justify-content: center;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .goldHeader h2 {
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   text-transform: uppercase;
   letter-spacing: .1em;
-  color: var(--gold-deep);
+  color: var(--gold);
   font-weight: 900;
 }
 
 .goldGrid {
   display: grid;
-  gap: 1rem;
+  gap: 1.25rem;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .goldCard {
   background: linear-gradient(180deg, #fff 0%, #FFF6DA 100%);
-  border: 1px solid #f1d082;
+  border: 2px solid var(--gold);
   border-radius: 18px;
-  padding: 1.1rem 1.2rem;
-  box-shadow: 0 10px 26px rgba(0,0,0,.07);
-  min-height: 190px;
+  padding: 1.25rem 1.4rem;
+  box-shadow: 0 10px 26px rgba(0,0,0,.15);
+  min-height: 180px;
+  position: relative;
 }
 
 .goldQuote {
@@ -300,9 +302,9 @@
   font-size: 1.02rem;
   line-height: 1.5;
   font-style: italic;
-  margin: 0 0 .6rem;
+  margin: 0 0 .75rem;
   position: relative;
-  padding-left: 1.2rem;
+  padding-left: 1.5rem;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -310,7 +312,7 @@
 }
 
 .goldQuote:before {
-  content: "\201C";
+  content: "";
   position: absolute;
   left: 0;
   top: -.2rem;
@@ -324,6 +326,10 @@
   font-weight: 700;
 }
 
+.goldAuthor strong {
+  color: #0f172a;
+}
+
 .goldRole {
   font-weight: 600;
   color: #64748b;
@@ -333,7 +339,7 @@
 .bottomCta {
   max-width: 1100px;
   margin: 3rem auto 1rem;
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem 2rem;
   border-radius: 18px;
   border: 1px solid #f1d082;
   background: var(--gold-grad);
@@ -359,13 +365,32 @@
 .footer {
   max-width: 1100px;
   margin: 0 auto 3rem;
+  padding: 2rem;
+  background: var(--navy);
+  border-radius: 18px;
   text-align: center;
-  color: #334155;
+  color: var(--white);
   font-size: .95rem;
+  border: 1px solid rgba(255,200,58,.2);
 }
 
 .footer a {
-  color: #0f172a;
+  color: var(--gold);
   text-decoration: underline 1px;
   text-underline-offset: 3px;
+  transition: color .2s ease;
+}
+
+.footer a:hover {
+  color: var(--white);
+}
+
+.footer::before {
+  content: "Prep101 — The gold standard in audition preparation.";
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 1rem;
+  letter-spacing: .02em;
 }

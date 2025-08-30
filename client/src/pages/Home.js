@@ -70,6 +70,7 @@ const Home = () => {
           {/* Footer */}
           <footer className="footer">
             © {new Date().getFullYear()} Prep101 · <a href="/pricing">Pricing</a> · <a href="/account">Account</a> · <a href="/terms">Terms</a>
+            <div className="tagline">Prep101 — The gold standard in audition preparation.</div>
           </footer>
         </div>
       </div>

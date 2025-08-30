@@ -67,19 +67,11 @@ const Examples = () => {
       <Navbar />
       <div className="page-dark">
         {/* Hero Section */}
-        <section className="page-hero">
-          <img
-            src="/preplogo.png"
-            alt="Prep101 Logo"
-            style={{ height: 60, width: 'auto', objectFit: 'contain', marginBottom: 12, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,.3))' }}
-          />
-          <h1 className="h1-hero">
-            Audition Guide Examples
-          </h1>
-          <p className="h2-hero">
-            Real sample guides in the exact formats parents and young actors receive.
-          </p>
-        </section>
+        <div className="page-hero">
+          <img src="/preplogo.png" alt="Prep101 logo" className="logo-hero" loading="lazy" />
+          <h1 className="h1-hero">See Prep101 in Action</h1>
+          <p className="h2-hero">Real examples of our audition preparation guides</p>
+        </div>
 
         <div className="container-wide">
           {/* Grid */}
