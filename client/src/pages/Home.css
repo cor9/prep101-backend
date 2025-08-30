@@ -38,12 +38,27 @@
   text-align: center;
   border-radius: 0 0 28px 28px;
   box-shadow: 0 30px 80px rgba(0,0,0,.45) inset;
+  position: relative;
+}
+
+.heroDark::before {
+  /* soft spotlight behind logo */
+  content: "";
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(60vw, 900px);
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255,255,255,.12), transparent 70%);
+  pointer-events: none;
 }
 
 .logoDark {
-  height: clamp(110px, 12vw, 160px);
-  margin: 0 auto 1rem;
-  filter: drop-shadow(0 6px 18px rgba(0,0,0,.55));
+  height: clamp(150px, 18vw, 240px); /* was up to ~160px */
+  margin: 0 auto 1.25rem;
+  filter: drop-shadow(0 10px 24px rgba(0,0,0,.55));
 }
 
 .h1Dark {
@@ -52,6 +67,7 @@
   font-weight: 900;
   letter-spacing: -0.02em;
   margin: .25rem 0 .5rem;
+  margin-top: .25rem;
 }
 
 .taglineDark {
@@ -142,6 +158,57 @@
   background: var(--gold-grad);
 }
 
+/* HOW IT WORKS — premium vibe */
+.hiw {
+  max-width: 1100px;
+}
+
+.hiw__title {
+  margin-bottom: 2rem;
+}
+
+.hiw__steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.hiw__step {
+  background: linear-gradient(180deg, #fff 0%, #F7FAFF 100%);
+  border: 1px solid rgba(15,23,42,.08);
+  border-radius: 18px;
+  padding: 1.4rem 1.25rem;
+  box-shadow: 0 12px 30px rgba(0,0,0,.08);
+}
+
+.hiw__step h3 {
+  margin: .25rem 0 .35rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0b132b;
+}
+
+.hiw__step p {
+  color: #475569;
+  margin: 0;
+}
+
+.hiw__num {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-grid;
+  place-items: center;
+  font-weight: 900;
+  color: #2f2500;
+  background: var(--gold-grad);
+  box-shadow: 0 8px 18px rgba(255, 168, 0, .25), inset 0 0 0 1px rgba(255,255,255,.6);
+  margin-bottom: .5rem;
+}
+
 /* steps tidy */
 .steps {
   display: grid;
@@ -225,7 +292,7 @@
   border-radius: 18px;
   padding: 1.1rem 1.2rem;
   box-shadow: 0 10px 26px rgba(0,0,0,.07);
-  min-height: 210px;
+  min-height: 190px;
 }
 
 .goldQuote {
@@ -237,7 +304,7 @@
   position: relative;
   padding-left: 1.2rem;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

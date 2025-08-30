@@ -30,25 +30,25 @@ const Home = () => {
 
         <div className="container">
           {/* How it works */}
-          <section className="card" aria-labelledby="how">
-            <h2 id="how" className="h2">How It Works</h2>
-            <div className="steps">
-              <div className="step">
-                <div className="stepBadge badge1">1</div>
-                <h3 className="stepTitle">Upload Sides</h3>
-                <p className="stepSub">Upload your audition script in PDF format</p>
-              </div>
-              <div className="step">
-                <div className="stepBadge badge2">2</div>
-                <h3 className="stepTitle">Fill Details</h3>
-                <p className="stepSub">Provide character and production information</p>
-              </div>
-              <div className="step">
-                <div className="stepBadge badge3">3</div>
-                <h3 className="stepTitle">Get Guide</h3>
-                <p className="stepSub">Receive your personalized coaching guide</p>
-              </div>
-            </div>
+          <section className="card hiw" aria-labelledby="how">
+            <h2 id="how" className="h2 hiw__title">How It Works</h2>
+            <ol className="hiw__steps">
+              <li className="hiw__step">
+                <span className="hiw__num">1</span>
+                <h3>Upload Sides</h3>
+                <p>PDF sides work best. Clean scans = faster turnaround.</p>
+              </li>
+              <li className="hiw__step">
+                <span className="hiw__num">2</span>
+                <h3>Fill Details</h3>
+                <p>Character + production info so we tailor the guide.</p>
+              </li>
+              <li className="hiw__step">
+                <span className="hiw__num">3</span>
+                <h3>Get Your Guide</h3>
+                <p>Scene beats, subtext, physicality, button strategy—ready to rehearse.</p>
+              </li>
+            </ol>
           </section>
 
           {/* GOLD WALL — with initials */}
