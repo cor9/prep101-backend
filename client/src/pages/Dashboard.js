@@ -12,7 +12,7 @@ const ProgressBar = ({ value, max }) => {
   const pct = Math.max(0, Math.min(100, max ? (value / max) * 100 : 0));
   return (
     <div style={{ width: '100%', height: 10, background: '#e5e7eb', borderRadius: 999 }}>
-      <div style={{ width: `${pct}%`, height: '100%', background: '#06b6d4', borderRadius: 999 }} />
+      <div style={{ width: `${pct}%`, height: '100%', background: 'var(--gold)', borderRadius: 999 }} />
     </div>
   );
 };
