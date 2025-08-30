@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
-import GoldWall from '../components/GoldWall';
+import GoldWall from '../components/GoldWall.js';
 import './Home.css';
 
 const Home = () => {
