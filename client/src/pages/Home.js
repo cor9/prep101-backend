@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
+import Testimonials from '../components/Testimonials';
 import './Home.css';
 
 const Home = () => {
@@ -23,7 +24,7 @@ const Home = () => {
               decoding="async"
             />
             <h1 className="h1">PREP101</h1>
-            <p className="kicker">Custom Scene Analysis & Performance Coaching Guides</p>
+            <p className="kicker">The gold standard in audition prep.</p>
             <p className="sub">
               Get detailed, personalized audition preparation crafted by industry experts. Upload your sides,
               answer a few questions, and receive a comprehensive coaching guide.
@@ -100,8 +101,30 @@ const Home = () => {
               </div>
             </div>
           </section>
+
+          <Testimonials />
         </div>
       </div>
+      
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify({
+        "@context":"https://schema.org",
+        "@type":"Product",
+        "name":"Prep101 Audition Prep Guide",
+        "description":"Custom scene analysis and coaching guide for young actors.",
+        "brand":{"@type":"Brand","name":"Child Actor 101"},
+        "aggregateRating":{
+          "@type":"AggregateRating",
+          "ratingValue":"5",
+          "reviewCount": 5
+        },
+        "review": [
+          { "@type":"Review", "author": {"@type":"Person","name":"Sara Shaddix"}, "reviewBody": "Holy Moly! ... would easily pay $75–$125 for this.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Jennifer Diamond"}, "reviewBody": "This is gold!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Kristina Brunelle"}, "reviewBody": "Pure gold.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Ty Correira"}, "reviewBody": "Gave me so much to work with.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Olivia Eppe"}, "reviewBody": "Very helpful!", "reviewRating":{"@type":"Rating","ratingValue":"5"} }
+        ]
+      })}} />
     </>
   );
 };

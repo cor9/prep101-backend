@@ -140,3 +140,23 @@
 .badge3{ background: linear-gradient(135deg, #fb923c 0%, var(--brand-orange) 100%); }
 .stepTitle{ font-size:1.15rem; font-weight:700; margin:.25rem 0 .35rem; color:#111827; }
 .stepSub{ color: var(--ink-500); }
+
+/* Testimonials */
+.t-grid{
+  display:grid; gap:1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
+}
+.t-card{
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:1.25rem;
+  padding:1.25rem 1.25rem 1rem;
+  background:linear-gradient(180deg,#fff 0%, #fffbea 100%);
+  box-shadow:0 10px 30px rgba(0,0,0,.06);
+}
+.t-stars{ display:flex; gap:.25rem; margin-bottom:.5rem; }
+.t-quote{
+  color:#1f2937; line-height:1.45; margin:0 0 .75rem 0; font-size:1rem;
+}
+.t-author{ color:#6b7280; font-weight:600; font-size:.95rem; }
+.t-name{ color:#111827; }
+.t-role{ color:#6b7280; font-weight:500; }
