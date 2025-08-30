@@ -102,6 +102,10 @@ const Home = () => {
             </div>
           </section>
 
+          <section className="trustBand" aria-label="Trust signal">
+            <p>Trusted by parents and agents nationwide</p>
+          </section>
+
           <Testimonials />
         </div>
       </div>
@@ -115,14 +119,16 @@ const Home = () => {
         "aggregateRating":{
           "@type":"AggregateRating",
           "ratingValue":"5",
-          "reviewCount": 5
+          "reviewCount": 7
         },
         "review": [
           { "@type":"Review", "author": {"@type":"Person","name":"Sara Shaddix"}, "reviewBody": "Holy Moly! ... would easily pay $75–$125 for this.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
           { "@type":"Review", "author": {"@type":"Person","name":"Jennifer Diamond"}, "reviewBody": "This is gold!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
           { "@type":"Review", "author": {"@type":"Person","name":"Kristina Brunelle"}, "reviewBody": "Pure gold.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
           { "@type":"Review", "author": {"@type":"Person","name":"Ty Correira"}, "reviewBody": "Gave me so much to work with.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
-          { "@type":"Review", "author": {"@type":"Person","name":"Olivia Eppe"}, "reviewBody": "Very helpful!", "reviewRating":{"@type":"Rating","ratingValue":"5"} }
+          { "@type":"Review", "author": {"@type":"Person","name":"Olivia Eppe"}, "reviewBody": "Very helpful!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Lynnette L."}, "reviewBody": "This is AWESOME! ... He dove right into it this morning.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Agent David Doan"}, "reviewBody": "These are incredible!", "reviewRating":{"@type":"Rating","ratingValue":"5"} }
         ]
       })}} />
     </>

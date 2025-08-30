@@ -37,5 +37,17 @@ export const testimonials: Testimonial[] = [
     quote: "This is so great to have—very helpful!",
     short: ""Very helpful!"",
     role: "Parent"
+  },
+  {
+    name: "Lynnette L.",
+    quote: "This is AWESOME! Thanks, Corey!! He dove right into it this morning.",
+    short: ""AWESOME — dove right in."",
+    role: "Parent"
+  },
+  {
+    name: "Agent David Doan",
+    quote: "These are incredible!",
+    short: ""Incredible."",
+    role: "Agent"
   }
 ];

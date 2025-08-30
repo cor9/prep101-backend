@@ -160,3 +160,12 @@
 .t-author{ color:#6b7280; font-weight:600; font-size:.95rem; }
 .t-name{ color:#111827; }
 .t-role{ color:#6b7280; font-weight:500; }
+
+/* Trust Band */
+.trustBand{
+  max-width: 860px; margin: 0 auto 1.25rem;
+  background: linear-gradient(180deg,#fff 0%, #fff7e6 100%);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 1rem; padding: .75rem 1rem;
+  text-align:center; color:#92400e; font-weight:700;
+}
