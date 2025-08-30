@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
+import '../styles/shared.css';
 
 const Pricing = () => {
   const { user } = useAuth();
@@ -100,99 +101,121 @@ const Pricing = () => {
   return (
     <>
       <Navbar />
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-        paddingTop: 80,
-        paddingBottom: '2rem'
-      }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 2rem' }}>
-          
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div style={{ marginBottom: '1.25rem' }}>
-              <img
-                src="/preplogo.png"
-                alt="Prep101 Logo"
-                style={{ height: 64, width: 'auto', objectFit: 'contain', margin: '0 auto' }}
-              />
-            </div>
-            <h1 style={{ fontSize: '3.2rem', fontWeight: 900, marginBottom: '0.5rem', color: '#0f172a' }}>
-              Pricing that fits the work week
-            </h1>
-            <p style={{ fontSize: '1.1rem', color: '#475569', maxWidth: 760, margin: '0 auto' }}>
-              Start free. Upgrade when you're booking more auditions. Every guide includes
-              a parent deep-dive and a simplified kid version.
-            </p>
-          </div>
+      <div className="page-dark">
+        {/* Hero Section */}
+        <section className="page-hero">
+          <h1 className="h1-hero">
+            Simple, Transparent Pricing
+          </h1>
+          <p className="h2-hero">
+            Choose the plan that fits your audition prep needs. Start free, upgrade anytime.
+          </p>
+        </section>
 
+        <div className="container-wide">
           {/* Pricing Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '1.5rem',
-            marginBottom: '2rem'
-          }}>
+          <div className="grid-2">
             {plans.map((plan) => (
-              <div key={plan.name} style={{
-                background: 'white',
-                borderRadius: '1.25rem',
-                padding: '1.75rem',
-                boxShadow: plan.popular ? '0 24px 70px rgba(45,212,191,.28)' : '0 10px 40px rgba(0,0,0,.08)',
-                border: plan.popular ? '3px solid #2dd4bf' : '1px solid #e2e8f0',
-                position: 'relative',
-                transform: plan.popular ? 'scale(1.03)' : 'scale(1)',
-                transition: 'all .3s ease'
-              }}>
-                {plan.badge && (
+              <div
+                key={plan.name}
+                className={`card-white ${plan.popular ? 'popular-plan' : ''}`}
+                style={{
+                  position: 'relative',
+                  border: plan.popular ? '2px solid var(--gold)' : '1px solid var(--gray-200)',
+                  transform: plan.popular ? 'scale(1.02)' : 'scale(1)',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                }}
+              >
+                {plan.popular && (
                   <div style={{
-                    position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)',
-                    background: plan.popular
-                      ? 'linear-gradient(135deg,#2dd4bf 0%,#06b6d4 100%)'
-                      : 'linear-gradient(135deg,#fb923c 0%,#f97316 100%)',
-                    color: 'white', padding: '6px 14px', borderRadius: 999, fontSize: '.8rem', fontWeight: 700
+                    position: 'absolute',
+                    top: '-12px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'var(--gold-grad)',
+                    color: '#2f2500',
+                    padding: '0.25rem 1rem',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: '800',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
                   }}>
                     {plan.badge}
                   </div>
                 )}
 
-                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ fontSize: '1.4rem', fontWeight: 900, margin: 0, color: '#0f172a' }}>{plan.name}</h3>
-                  <div style={{ marginTop: 8, color: '#64748b' }}>{plan.tagline}</div>
+                <div className="text-center mb-3">
+                  <h3 style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '800',
+                    color: 'var(--gray-800)',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    {plan.name}
+                  </h3>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <span style={{
+                      fontSize: '2.5rem',
+                      fontWeight: '900',
+                      color: 'var(--gray-900)'
+                    }}>
+                      {plan.price}
+                    </span>
+                    <span style={{
+                      fontSize: '1rem',
+                      color: 'var(--gray-600)',
+                      fontWeight: '600'
+                    }}>
+                      {plan.period}
+                    </span>
+                  </div>
+                  <p style={{
+                    color: 'var(--gray-600)',
+                    fontSize: '0.95rem',
+                    margin: '0 0 1.5rem 0'
+                  }}>
+                    {plan.tagline}
+                  </p>
                 </div>
 
-                <div style={{ textAlign: 'center', margin: '0.75rem 0 1.25rem' }}>
-                  <span style={{ fontSize: '2.6rem', fontWeight: 900, color: '#0ea5e9' }}>{plan.price}</span>
-                  <span style={{ fontSize: '1rem', color: '#64748b' }}>{plan.period}</span>
-                </div>
-
-                <ul style={{ listStyle: 'none', padding: 0, marginBottom: '1.25rem', minHeight: 200 }}>
-                  {plan.features.map((f) => (
-                    <li key={f} style={{ display: 'flex', alignItems: 'start', gap: 10, padding: '6px 0', color: '#334155' }}>
-                      <span style={{ color: '#10b981', fontWeight: 900 }}>✓</span>
-                      <span>{f}</span>
+                <ul style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: '0 0 2rem 0'
+                }}>
+                  {plan.features.map((feature, index) => (
+                    <li key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '0.75rem',
+                      fontSize: '0.95rem',
+                      color: 'var(--gray-700)'
+                    }}>
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        style={{ marginRight: '0.75rem', flexShrink: 0 }}
+                      >
+                        <path
+                          d="M20 6L9 17l-5-5"
+                          stroke="var(--gold)"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      {feature}
                     </li>
                   ))}
                 </ul>
 
                 <button
                   onClick={() => go(plan.href)}
-                  style={{
-                    width: '100%',
-                    background: plan.popular
-                      ? 'linear-gradient(135deg,#2dd4bf 0%,#06b6d4 100%)'
-                      : 'linear-gradient(135deg,#fb923c 0%,#f97316 100%)',
-                    color: 'white',
-                    padding: '0.9rem 1rem',
-                    border: 'none',
-                    borderRadius: '0.9rem',
-                    fontWeight: 800,
-                    fontSize: '1.05rem',
-                    cursor: 'pointer',
-                    transition: 'all .25s ease'
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+                  className={`btn ${plan.popular ? 'btnPrimary' : 'btnSecondary'}`}
+                  style={{ width: '100%' }}
                 >
                   {plan.cta}
                 </button>
@@ -200,97 +223,192 @@ const Pricing = () => {
             ))}
           </div>
 
-          {/* Add-Ons */}
-          <div style={{
-            background: 'white',
-            borderRadius: '1.25rem',
-            padding: '1.75rem',
-            boxShadow: '0 10px 40px rgba(0,0,0,.08)',
-            border: '1px solid #e2e8f0',
-            marginBottom: '2rem'
-          }}>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '1rem', color: '#0f172a', textAlign: 'center' }}>
-              Add-Ons (any plan)
+          {/* Add-ons Section */}
+          <div className="card-white mt-4">
+            <h2 style={{
+              fontSize: '1.8rem',
+              fontWeight: '800',
+              color: 'var(--gray-800)',
+              textAlign: 'center',
+              margin: '0 0 2rem 0'
+            }}>
+              Additional Services
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px,1fr))', gap: '1rem' }}>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: '1rem' }}>
-                <div style={{ fontWeight: 800, marginBottom: 6 }}>30-min Private Coaching</div>
-                <div style={{ color: '#0ea5e9', fontWeight: 900, marginBottom: 6 }}>$50</div>
-                <div style={{ color: '#475569', marginBottom: 10 }}>Targeted notes on your sides + on-camera adjustments.</div>
-                <button onClick={() => go(STRIPE.ADDON_COACH)} style={{
-                  background: 'linear-gradient(135deg,#fb923c 0%,#f97316 100%)',
-                  color: 'white', padding: '0.6rem 0.9rem', border: 'none', borderRadius: 10, fontWeight: 800, cursor: 'pointer'
-                }}>Add Coaching</button>
+            <div className="grid-2">
+              <div style={{
+                textAlign: 'center',
+                padding: '1.5rem',
+                border: '1px solid var(--gray-200)',
+                borderRadius: '16px',
+                background: 'var(--gray-50)'
+              }}>
+                <h3 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: '700',
+                  color: 'var(--gray-800)',
+                  margin: '0 0 0.5rem 0'
+                }}>
+                  Self-Tape Feedback
+                </h3>
+                <div style={{
+                  fontSize: '2rem',
+                  fontWeight: '900',
+                  color: 'var(--gray-900)',
+                  marginBottom: '0.5rem'
+                }}>
+                  $22
+                </div>
+                <p style={{
+                  color: 'var(--gray-600)',
+                  margin: '0 0 1rem 0'
+                }}>
+                  Professional feedback on your self-tape performance
+                </p>
+                <button
+                  onClick={() => go(STRIPE.ADDON_FEEDBACK)}
+                  className="btn btnSecondary"
+                >
+                  Get Feedback
+                </button>
               </div>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: '1rem' }}>
-                <div style={{ fontWeight: 800, marginBottom: 6 }}>Self-Tape Feedback</div>
-                <div style={{ color: '#0ea5e9', fontWeight: 900, marginBottom: 6 }}>$22</div>
-                <div style={{ color: '#475569', marginBottom: 10 }}>Actionable punch-ups within hours whenever possible.</div>
-                <button onClick={() => go(STRIPE.ADDON_FEEDBACK)} style={{
-                  background: 'linear-gradient(135deg,#2dd4bf 0%,#06b6d4 100%)',
-                  color: 'white', padding: '0.6rem 0.9rem', border: 'none', borderRadius: 10, fontWeight: 800, cursor: 'pointer'
-                }}>Add Feedback</button>
+
+              <div style={{
+                textAlign: 'center',
+                padding: '1.5rem',
+                border: '1px solid var(--gray-200)',
+                borderRadius: '16px',
+                background: 'var(--gray-50)'
+              }}>
+                <h3 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: '700',
+                  color: 'var(--gray-800)',
+                  margin: '0 0 0.5rem 0'
+                }}>
+                  30-Min Coaching Session
+                </h3>
+                <div style={{
+                  fontSize: '2rem',
+                  fontWeight: '900',
+                  color: 'var(--gray-900)',
+                  marginBottom: '0.5rem'
+                }}>
+                  $50
+                </div>
+                <p style={{
+                  color: 'var(--gray-600)',
+                  margin: '0 0 1rem 0'
+                }}>
+                  One-on-one coaching with Corey Ralston
+                </p>
+                <button
+                  onClick={() => go(STRIPE.ADDON_COACH)}
+                  className="btn btnSecondary"
+                >
+                  Book Session
+                </button>
               </div>
             </div>
           </div>
 
-          {/* FAQ */}
-          <div style={{
-            background: 'white',
-            borderRadius: '1.25rem',
-            padding: '2rem',
-            boxShadow: '0 10px 40px rgba(0,0,0,.08)',
-            border: '1px solid #e2e8f0'
-          }}>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '1.25rem', color: '#0f172a', textAlign: 'center' }}>
-              FAQs
+          {/* FAQ Section */}
+          <div className="card-white mt-4">
+            <h2 style={{
+              fontSize: '1.8rem',
+              fontWeight: '800',
+              color: 'var(--gray-800)',
+              textAlign: 'center',
+              margin: '0 0 2rem 0'
+            }}>
+              Frequently Asked Questions
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px,1fr))', gap: '1rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
-                  Do unused guides roll over?
+            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{
+                  fontSize: '1.1rem',
+                  fontWeight: '700',
+                  color: 'var(--gray-800)',
+                  margin: '0 0 0.5rem 0'
+                }}>
+                  Can I cancel my subscription anytime?
                 </h3>
-                <p style={{ color: '#475569' }}>
-                  Not right now. It's a simple month-to-month system to keep you consistent and using your credits regularly.
+                <p style={{
+                  color: 'var(--gray-600)',
+                  margin: 0,
+                  lineHeight: '1.6'
+                }}>
+                  Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your current billing period.
                 </p>
               </div>
-              <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
-                  How fast do I get my guide?
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{
+                  fontSize: '1.1rem',
+                  fontWeight: '700',
+                  color: 'var(--gray-800)',
+                  margin: '0 0 0.5rem 0'
+                }}>
+                  What if I need more guides than my plan allows?
                 </h3>
-                <p style={{ color: '#475569' }}>
-                  Your guide is generated in about 3 minutes after you upload your sides and submit the form. It's ready to view, download, and start rehearsing almost immediately.
+                <p style={{
+                  color: 'var(--gray-600)',
+                  margin: 0,
+                  lineHeight: '1.6'
+                }}>
+                  You can purchase additional guides individually at $14.99 each, or upgrade to a higher tier plan.
                 </p>
               </div>
-              <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
-                  Can I switch or cancel anytime?
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{
+                  fontSize: '1.1rem',
+                  fontWeight: '700',
+                  color: 'var(--gray-800)',
+                  margin: '0 0 0.5rem 0'
+                }}>
+                  Do you offer refunds?
                 </h3>
-                <p style={{ color: '#475569' }}>
-                  Yes — you can manage your plan from your dashboard. Upgrades, downgrades, or cancellations take effect right away.
-                </p>
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 6, color: '#111827' }}>
-                  What's inside each guide?
-                </h3>
-                <p style={{ color: '#475569' }}>
-                  Every Prep101 guide includes:
-                  <br />• A full scene breakdown with beats and subtext
-                  <br />• Uta Hagen's 9 questions, tailored to your character
-                  <br />• Physical and vocal choices to explore
-                  <br />• Suggestions for your "moment-before" and button
-                  <br />• A simplified, kid-friendly version for faster rehearsals
+                <p style={{
+                  color: 'var(--gray-600)',
+                  margin: 0,
+                  lineHeight: '1.6'
+                }}>
+                  We offer a 30-day money-back guarantee on all paid plans. If you're not satisfied, contact us for a full refund.
                 </p>
               </div>
             </div>
-            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-              <button onClick={() => (window.location.href = STRIPE.EXAMPLES)} style={{
-                background: 'transparent', border: '1px solid #0ea5e9', color: '#0ea5e9',
-                padding: '0.6rem 0.9rem', borderRadius: 10, fontWeight: 800, cursor: 'pointer'
+          </div>
+
+          {/* Bottom CTA */}
+          <div className="text-center mt-5">
+            <div className="card-dark">
+              <h2 style={{
+                fontSize: '1.8rem',
+                fontWeight: '800',
+                color: 'var(--white)',
+                margin: '0 0 1rem 0'
               }}>
-                See Example Guides
-              </button>
+                Ready to get started?
+              </h2>
+              <p style={{
+                color: 'var(--ink-dim)',
+                margin: '0 0 1.5rem 0',
+                fontSize: '1.1rem'
+              }}>
+                Start with our free plan and upgrade when you're ready for more.
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="btn btnPrimary"
+                  onClick={() => navigate('/register')}
+                >
+                  Start Free
+                </button>
+                <button
+                  className="btn btnSecondary"
+                  onClick={() => navigate('/examples')}
+                >
+                  View Examples
+                </button>
+              </div>
             </div>
           </div>
         </div>

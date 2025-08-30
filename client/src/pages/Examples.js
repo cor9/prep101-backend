@@ -2,9 +2,9 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
+import '../styles/shared.css';
 
 const Examples = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   // === EXACT ORDER (Top → Bottom, Left → Right) ===
@@ -46,12 +46,12 @@ const Examples = () => {
     {
       heading: 'Comedy Film',
       sub: 'Supporting Role',
-      href: 'https://claude.ai/public/artifacts/233bb61a-6519-446e-8137-5e3ecec11610'
+      href: 'https://claude.ai/public/artifacts/233bb61a-6159-446e-8137-5e3ecec11610'
     },
     {
       heading: 'Daytime Soap',
       sub: 'Recurring Day Player',
-      href: 'https://claude.ai/public/artifacts/2066f5b7-465a-40ac-b110-8285e161e82a'
+      href: 'https://claude.ai/public/artifacts/206bb5b7-465a-40ac-b110-8285e161e82a'
     },
     // Row 5
     {
@@ -66,125 +66,116 @@ const Examples = () => {
   return (
     <>
       <Navbar />
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg,#0ea5e9 0%,#0984cf 40%,#0b4ed8 100%)',
-        paddingTop: 80,
-        paddingBottom: '3rem'
-      }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 2rem' }}>
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem', color: 'white' }}>
-            <img
-              src="/preplogo.png"
-              alt="Prep101 Logo"
-              style={{ height: 60, width: 'auto', objectFit: 'contain', marginBottom: 12 }}
-            />
-            <h1 style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0, letterSpacing: '-0.01em' }}>
-              Audition Guide Examples
-            </h1>
-            <p style={{ opacity: 0.9, marginTop: 8 }}>
-              Real sample guides in the exact formats parents and young actors receive.
-            </p>
-          </div>
+      <div className="page-dark">
+        {/* Hero Section */}
+        <section className="page-hero">
+          <img
+            src="/preplogo.png"
+            alt="Prep101 Logo"
+            style={{ height: 60, width: 'auto', objectFit: 'contain', marginBottom: 12, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,.3))' }}
+          />
+          <h1 className="h1-hero">
+            Audition Guide Examples
+          </h1>
+          <p className="h2-hero">
+            Real sample guides in the exact formats parents and young actors receive.
+          </p>
+        </section>
 
+        <div className="container-wide">
           {/* Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '1.25rem'
-          }}>
+          <div className="grid-responsive">
             {tiles.map((t) => (
               <div
                 key={t.href}
-                style={{
-                  background: 'white',
-                  borderRadius: 16,
-                  padding: '1.4rem',
-                  boxShadow: '0 10px 40px rgba(0,0,0,.10)',
-                  border: '1px solid #e5e7eb',
-                  transition: 'transform .2s ease, box-shadow .2s ease'
-                }}
-                onMouseOver={(e) => {
+                className="card-white"
+                style={{ cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
+                onClick={() => open(t.href)}
+                onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 16px 60px rgba(0,0,0,.14)';
+                  e.currentTarget.style.boxShadow = '0 28px 80px rgba(0,0,0,.15)';
                 }}
-                onMouseOut={(e) => {
+                onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 10px 40px rgba(0,0,0,.10)';
+                  e.currentTarget.style.boxShadow = '0 22px 70px rgba(0,0,0,.10)';
                 }}
               >
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{t.heading}</div>
-                  <div style={{ color: '#64748b', marginTop: 2 }}>{t.sub}</div>
+                <h3 style={{ 
+                  fontSize: '1.25rem', 
+                  fontWeight: '800', 
+                  color: 'var(--gray-800)', 
+                  margin: '0 0 0.5rem 0',
+                  lineHeight: '1.3'
+                }}>
+                  {t.heading}
+                </h3>
+                <p style={{ 
+                  color: 'var(--gray-600)', 
+                  margin: '0 0 1rem 0',
+                  fontSize: '0.95rem'
+                }}>
+                  {t.sub}
+                </p>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: 'var(--gold)',
+                  fontWeight: '600',
+                  fontSize: '0.9rem'
+                }}>
+                  <span>View Example</span>
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    style={{ marginLeft: '0.5rem' }}
+                  >
+                    <path 
+                      d="M7 17L17 7M17 7H7M17 7V17" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </div>
-
-                <button
-                  onClick={() => open(t.href)}
-                  style={{
-                    background: '#0f172a',
-                    color: 'white',
-                    padding: '0.7rem 1.1rem',
-                    border: 'none',
-                    borderRadius: 999,
-                    fontWeight: 800,
-                    fontSize: '.95rem',
-                    cursor: 'pointer'
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.background = '#111827'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.background = '#0f172a'; }}
-                >
-                  See Example
-                </button>
               </div>
             ))}
           </div>
 
-          {/* CTA */}
-          <div style={{
-            marginTop: '2.5rem',
-            background: 'linear-gradient(135deg,#2dd4bf 0%,#06b6d4 60%,#1d4ed8 100%)',
-            borderRadius: 18,
-            padding: '2rem',
-            textAlign: 'center',
-            color: 'white',
-            boxShadow: '0 24px 70px rgba(6,182,212,.28)'
-          }}>
-            <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900 }}>Ready to get a guide like these?</h2>
-            <p style={{ marginTop: 8, opacity: 0.95 }}>
-              Start free (1 guide/month) — upgrade anytime.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginTop: 12 }}>
-              <button
-                onClick={() => (user ? navigate('/dashboard') : navigate('/register'))}
-                style={{
-                  background: 'white',
-                  color: '#1d4ed8',
-                  padding: '0.8rem 1.2rem',
-                  border: 'none',
-                  borderRadius: 999,
-                  fontWeight: 900,
-                  cursor: 'pointer'
-                }}
-              >
-                {user ? 'Go to Dashboard' : 'Start Free'}
-              </button>
-              {!user && (
-                <button
-                  onClick={() => navigate('/login')}
-                  style={{
-                    background: 'transparent',
-                    color: 'white',
-                    border: '1px solid white',
-                    padding: '0.8rem 1.2rem',
-                    borderRadius: 999,
-                    fontWeight: 800,
-                    cursor: 'pointer'
-                  }}
+          {/* Bottom CTA */}
+          <div className="text-center mt-5">
+            <div className="card-dark">
+              <h2 style={{ 
+                fontSize: '1.5rem', 
+                fontWeight: '800', 
+                color: 'var(--white)', 
+                margin: '0 0 1rem 0' 
+              }}>
+                Ready to get your own custom guide?
+              </h2>
+              <p style={{ 
+                color: 'var(--ink-dim)', 
+                margin: '0 0 1.5rem 0',
+                fontSize: '1.1rem'
+              }}>
+                Upload your sides and get a personalized coaching guide in minutes.
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button 
+                  className="btn btnPrimary"
+                  onClick={() => navigate('/register')}
                 >
-                  Log In
+                  Get Started
                 </button>
-              )}
+                <button 
+                  className="btn btnSecondary"
+                  onClick={() => navigate('/pricing')}
+                >
+                  View Pricing
+                </button>
+              </div>
             </div>
           </div>
         </div>
