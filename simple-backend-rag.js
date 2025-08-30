@@ -52,7 +52,7 @@ const uploads = {};
 const authRoutes = require('./routes/auth');
 const paymentRoutes = require('./routes/payments');
 const guidesRoutes = require('./routes/guides');
-const uploadRoutes = require('./routes/upload');
+// const uploadRoutes = require('./routes/upload'); // COMMENTED OUT - keeping working upload handler
 const betaRoutes = require('./routes/beta');
 const emailGuideRoutes = require('./routes/emailGuide');
 
@@ -60,7 +60,7 @@ const emailGuideRoutes = require('./routes/emailGuide');
 app.use('/api/auth', authRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/guides', guidesRoutes);
-app.use('/api/upload', uploadRoutes);
+// app.use('/api/upload', uploadRoutes); // COMMENTED OUT - keeping working upload handler
 app.use('/api/beta', betaRoutes);
 app.use('/api/guides', emailGuideRoutes);
 
@@ -244,8 +244,8 @@ async function extractTextBasic(pdfBuffer) {
     .replace(/Sides by Breakdown Services - Actors Access/g, '')
     .replace(/Page \d+ of \d+/g, '')
     .replace(/\d{1,2}\.\s*/g, '')
-    .replace(/\s+/g, ' ')
-    .replace(/\n\s*\n/g, '\n')
+    .replace(/\r\n/g, '\n')  // Normalize line endings
+    .replace(/\n\s*\n/g, '\n\n')  // Clean up multiple blank lines
     .trim();
   
   const characterPattern = /^[A-Z][A-Z\s]+:/gm;
@@ -253,6 +253,13 @@ async function extractTextBasic(pdfBuffer) {
     (cleanText.match(characterPattern) || [])
       .map(name => name.replace(':', '').trim())
   )];
+  
+  // Debug logging to see what we're extracting
+  console.log(`📄 PDF Extraction Results:`);
+  console.log(`  - Original text length: ${data.text.length}`);
+  console.log(`  - Cleaned text length: ${cleanText.length}`);
+  console.log(`  - Character names found: ${characterNames.join(', ')}`);
+  console.log(`  - First 200 chars: ${cleanText.substring(0, 200)}...`);
   
   return { 
     text: cleanText, 
