@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
-import GoldWall from '../components/GoldWall.js';
+import GoldWall from '../components/GoldWall';
 import './Home.css';
 
 const Home = () => {
@@ -14,79 +14,39 @@ const Home = () => {
       <Navbar />
       <div className="home">
         <div className="container">
-          {/* Header */}
-          <header className="hero" aria-label="Prep101 hero">
-            <img
-              src="/preplogo.png"
-              alt="Prep101 logo"
-              className="logo"
-              loading="lazy"
-              decoding="async"
-            />
-            <h1 className="h1">PREP101</h1>
-            <p className="kicker">
-              <span className="kickerBadge">Parents Call It GOLD</span>
-              — We Call It Prep101
-            </p>
-            <p className="sub">
-              The <strong>gold standard</strong> in audition prep for young actors.  
-              Detailed, personalized coaching guides that break down every beat of your audition —  
-              so you can show up prepared, confident, and unforgettable.
-            </p>
-
-            <div className="btnRow">
-              {!user ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn btnPrimary"
-                    onClick={() => navigate('/register')}
-                    aria-label="Start your gold guide"
-                  >
-                    Start Your Gold Guide
+          {/* HERO: readable, bold, no dead space */}
+          <header className="hero">
+            <div className="heroCard" aria-label="Prep101 hero">
+              <img src="/preplogo.png" alt="Prep101 logo" className="logo" loading="lazy" />
+              {/* Remove the duplicate giant 'PREP101' wordmark */}
+              <h1 className="hook">
+                Audition prep parents call <em>GOLD</em>.
+              </h1>
+              <p className="sub">
+                Detailed, personalized coaching guides that break down every beat of your audition—so you show up prepared, confident, and unforgettable.
+              </p>
+              <div className="btnRow">
+                {!user ? (
+                  <>
+                    <button className="btn btnPrimary" onClick={() => navigate('/register')}>
+                      Start Your Gold Guide
+                    </button>
+                    <button className="btn btnSecondary" onClick={() => navigate('/login')}>
+                      Claim Your Custom Prep Guide
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn btnPrimary" onClick={() => navigate('/account')}>
+                    Go to Account
                   </button>
-                  <button
-                    type="button"
-                    className="btn btnGhost"
-                    onClick={() => navigate('/login')}
-                    aria-label="Log in to Prep101"
-                  >
-                    Claim Your Custom Prep Guide
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btnPrimary"
-                  onClick={() => navigate('/account')}
-                  aria-label="Go to your account"
-                >
-                  Go to Account
-                </button>
-              )}
-            </div>
-
-            <div className="btnRow" aria-label="Secondary actions">
-              <button
-                type="button"
-                className="btnPill"
-                onClick={() => navigate('/examples')}
-              >
-                View Examples
-              </button>
-              <button
-                type="button"
-                className="btnPill"
-                onClick={() => navigate('/pricing')}
-              >
-                View Pricing
-              </button>
+                )}
+              </div>
             </div>
           </header>
 
-          {/* Features */}
-          <section className="card" aria-labelledby="howItWorksHeading">
-            <h2 id="howItWorksHeading" className="h2">How It Works</h2>
+          {/* How it works */}
+          <section className="card" aria-labelledby="how">
+            <h2 id="how" className="h2">How It Works</h2>
             <div className="steps">
               <div className="step">
                 <div className="stepBadge badge1">1</div>
@@ -106,11 +66,26 @@ const Home = () => {
             </div>
           </section>
 
-          <section className="trustBand" aria-label="Trust signal">
-            <p>Trusted by parents and agents nationwide</p>
+          {/* GOLD WALL — with initials */}
+          <GoldWall />
+
+          {/* Bottom CTA band */}
+          <section className="bottomCta" aria-label="Get started">
+            <h3>Ready for a GOLD guide for your next audition?</h3>
+            <div className="ctaActions">
+              <button className="btn btnPrimary" onClick={() => navigate('/register')}>
+                Get Started
+              </button>
+              <button className="btn btnSecondary" onClick={() => navigate('/examples')}>
+                See Examples
+              </button>
+            </div>
           </section>
 
-          <GoldWall />
+          {/* Footer */}
+          <footer className="footer">
+            © {new Date().getFullYear()} Prep101 · <a href="/pricing">Pricing</a> · <a href="/account">Account</a> · <a href="/terms">Terms</a>
+          </footer>
         </div>
       </div>
       
