@@ -6,6 +6,7 @@ import GuideForm from '../components/GuideForm';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 import API_BASE from '../config/api';
+import '../styles/shared.css';
 
 // Simple progress bar
 const ProgressBar = ({ value, max }) => {
