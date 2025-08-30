@@ -52,7 +52,7 @@ const uploads = {};
 const authRoutes = require('./routes/auth');
 const paymentRoutes = require('./routes/payments');
 const guidesRoutes = require('./routes/guides');
-// const uploadRoutes = require('./routes/upload'); // COMMENTED OUT - keeping old working handler
+const uploadRoutes = require('./routes/upload');
 const betaRoutes = require('./routes/beta');
 const emailGuideRoutes = require('./routes/emailGuide');
 
@@ -60,7 +60,7 @@ const emailGuideRoutes = require('./routes/emailGuide');
 app.use('/api/auth', authRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/guides', guidesRoutes);
-// app.use('/api/upload', uploadRoutes); // COMMENTED OUT - keeping old working handler
+app.use('/api/upload', uploadRoutes);
 app.use('/api/beta', betaRoutes);
 app.use('/api/guides', emailGuideRoutes);
 
@@ -233,166 +233,32 @@ function searchMethodology(characterName, productionType, sceneContext) {
   return topResults;
 }
 
-// PDF extraction using Adobe PDF Services
-async function extractTextWithAdobe(pdfBuffer) {
-  const {
-    ServicePrincipalCredentials,
-    PDFServices,
-    MimeType,
-    ExtractPDFParams,
-    ExtractElementType,
-    ExtractPDFJob,
-    ExtractPDFResult,
-    SDKError,
-    ServiceUsageError,
-    ServiceApiError
-  } = require("@adobe/pdfservices-node-sdk");
-
-  try {
-    // Create credentials from the credentials file
-    const credentials = ServicePrincipalCredentials.fromFile("pdfservices-api-credentials.json");
-
-    // Create PDF Services instance
-    const pdfServices = new PDFServices({credentials});
-
-    // Create a readable stream from the buffer
-    const { Readable } = require('stream');
-    const stream = new Readable();
-    stream.push(pdfBuffer);
-    stream.push(null);
-
-    // Upload the PDF
-    const inputAsset = await pdfServices.upload({
-      readStream: stream,
-      mimeType: MimeType.PDF
-    });
-
-    // Create parameters for text extraction
-    const params = new ExtractPDFParams({
-      elementsToExtract: [ExtractElementType.TEXT]
-    });
-
-    // Create and submit the job
-    const job = new ExtractPDFJob({inputAsset, params});
-    const pollingURL = await pdfServices.submit({job});
-    
-    // Wait for completion and get result
-    const pdfServicesResponse = await pdfServices.getJobResult({
-      pollingURL,
-      resultType: ExtractPDFResult
-    });
-
-    // Get the extracted text content
-    const resultAsset = pdfServicesResponse.result.resource;
-    const streamAsset = await pdfServices.getContent({asset: resultAsset});
-    
-    // Convert stream to text
-    const chunks = [];
-    for await (const chunk of streamAsset.readStream) {
-      chunks.push(chunk);
-    }
-    const extractedText = Buffer.concat(chunks).toString('utf8');
-
-    console.log('🔍 Adobe raw response (first 200 chars):', extractedText.substring(0, 200));
-    
-    let fullText = '';
-    
-    // Try to parse as JSON first (structured format)
-    try {
-      const textData = JSON.parse(extractedText);
-      if (textData.elements) {
-        textData.elements.forEach(element => {
-          if (element.Text) {
-            fullText += element.Text + '\n';
-          }
-        });
-      }
-    } catch (jsonError) {
-      // If JSON parsing fails, treat as plain text
-      console.log('🔍 JSON parsing failed, treating as plain text');
-      fullText = extractedText;
-    }
-
-    // Clean up the text while preserving structure
-    let cleanText = fullText
-      .replace(/\r\n/g, '\n')
-      .replace(/[ \t]+\n/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-
-    // Remove only known watermarks/footers
-    cleanText = cleanText
-      .replace(/Sides by Breakdown Services - Actors Access/gi, '')
-      .replace(/Page \d+\s+of\s+\d+/gi, '')
-      .replace(/B568CR-|74222 - .*? -/g, '')
-      .trim();
-
-    // Character tags: keep multiline, after we preserved \n
-    const characterPattern = /^(?:[A-Z][A-Z][A-Z\s]{1,40}):/gm; // e.g., "BRAD:" or "MRS. CARRUTHERS:"
-    const characterNames = [...new Set(
-      (cleanText.match(characterPattern) || []).map(n => n.replace(':','').trim())
-    )];
-
-    // Basic quality signal
-    const wordCount = (cleanText.match(/\b\w+\b/g) || []).length;
-
-    console.log('🔍 Adobe PDF Services Extraction:');
-    console.log('🔍 Text length:', cleanText.length);
-    console.log('🔍 Word count:', wordCount);
-    console.log('🔍 Character names found:', characterNames);
-    console.log('🔍 First 300 chars:', cleanText.substring(0, 300));
-
-    return {
-      text: cleanText,
-      method: 'adobe-pdf-services',
-      confidence: wordCount > 120 ? 'high' : wordCount > 40 ? 'medium' : 'low',
-      characterNames,
-      wordCount
-    };
-
-  } catch (error) {
-    console.error('❌ Adobe PDF Services extraction failed:', error);
-    
-    // Fallback to basic extraction if Adobe fails
-    console.log('🔄 Falling back to basic pdf-parse extraction...');
-    return await extractTextBasic(pdfBuffer);
-  }
-}
-
-// Fallback PDF extraction (keep the old function as backup)
+// PDF extraction
 async function extractTextBasic(pdfBuffer) {
   const pdfParse = require('pdf-parse');
   const data = await pdfParse(pdfBuffer);
-
-  // Preserve line breaks. Normalize only CRLF->LF and trim trailing spaces.
-  let text = data.text
-    .replace(/\r\n/g, '\n')
-    .replace(/[ \t]+\n/g, '\n')     // strip end-of-line spaces
-    .replace(/\n{3,}/g, '\n\n')     // collapse >2 blank lines to 1 blank line
+  
+  let cleanText = data.text
+    .replace(/74222 - Aug 20, 2025 9:42 AM -/g, '')
+    .replace(/B568CR-/g, '')
+    .replace(/Sides by Breakdown Services - Actors Access/g, '')
+    .replace(/Page \d+ of \d+/g, '')
+    .replace(/\d{1,2}\.\s*/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\n\s*\n/g, '\n')
     .trim();
-
-  // Remove only known watermarks/footers; DO NOT blanket-replace digits or spaces
-  text = text
-    .replace(/Sides by Breakdown Services - Actors Access/gi, '')
-    .replace(/Page \d+\s+of\s+\d+/gi, '')
-    .replace(/B568CR-|74222 - .*? -/g, '')
-    .trim();
-
-  // Character tags: keep multiline, after we preserved \n
-  const characterPattern = /^(?:[A-Z][A-Z][A-Z\s]{1,40}):/gm; // e.g., "BRAD:" or "MRS. CARRUTHERS:"
+  
+  const characterPattern = /^[A-Z][A-Z\s]+:/gm;
   const characterNames = [...new Set(
-    (text.match(characterPattern) || []).map(n => n.replace(':','').trim())
+    (cleanText.match(characterPattern) || [])
+      .map(name => name.replace(':', '').trim())
   )];
-
-  // Basic quality signal
-  const wordCount = (text.match(/\b\w+\b/g) || []).length;
-
-  return {
-    text,
-    method: 'basic',
-    confidence: wordCount > 120 ? 'high' : wordCount > 40 ? 'medium' : 'low',
-    characterNames,
-    wordCount
+  
+  return { 
+    text: cleanText, 
+    method: 'basic', 
+    confidence: 'medium', 
+    characterNames 
   };
 }
 
@@ -454,25 +320,6 @@ You are working with audition sides only. Focus your analysis on what's provided
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
         
-        // Debug scene content
-        console.log('📄 Scene text preview (first 500 chars):', data.sceneText.substring(0, 500));
-        console.log('📄 Scene text length:', data.sceneText.length);
-        
-        // Log what the model actually sees
-        console.log('🧾 SCRIPT PREVIEW:', 
-          (data.sceneText || '').slice(0, 800).replace(/\n/g,'⏎'), 
-          '... (len:', (data.sceneText||'').length, ')'
-        );
-        
-        const POLICY = `
-STRICT SCRIPT POLICY:
-- Use ONLY facts present in SCRIPT below. If a fact (title, studio, franchise, comps, location, time period) is not present, write "Not stated in sides".
-- Do NOT invent project names (e.g., "Scary Movie 6") or comparable titles unless they appear verbatim in SCRIPT.
-- If SCRIPT appears sparse or generic, output "Limited content in sides" and keep guidance minimal and generic (no comps, no genre labels).
-- Label each factual claim that depends on SCRIPT with [evidence] → quote 3-10 exact words and page/line if available.
-- Tone: professional coaching; avoid hype metaphors ("warrior", "dominate", "pure gold") unless the user explicitly opts into pep mode.
-`;
-
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -485,9 +332,7 @@ STRICT SCRIPT POLICY:
             max_tokens: 8000,
             messages: [{
               role: "user",
-              content: `${POLICY}
-
-You are PREP101, created by Corey Ralston. You have access to Corey's complete methodology and example guides below. Generate a professional acting guide that perfectly matches Corey's distinctive "Actor Motivator" coaching voice and methodology.
+              content: `You are PREP101, created by Corey Ralston. You have access to Corey's complete methodology and example guides below. Generate a professional acting guide that perfectly matches Corey's distinctive "Actor Motivator" coaching voice and methodology.
 
 **COREY RALSTON'S METHODOLOGY & EXAMPLES:**
 ${methodologyContext}
@@ -1198,72 +1043,50 @@ ${childMethodologyContext}
 
 // PDF Upload endpoint
 app.post('/api/upload', upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file || req.file.mimetype !== 'application/pdf') {
-      return res.status(400).json({ error: 'Please upload a PDF file' });
-    }
+ try {
+   if (!req.file || req.file.mimetype !== 'application/pdf') {
+     return res.status(400).json({ error: 'Please upload a PDF file' });
+   }
 
-    console.log(`📄 Processing: ${req.file.originalname}`);
+   console.log(`📄 Processing: ${req.file.originalname}`);
+   
+   const result = await extractTextBasic(req.file.buffer);
+   
+   if (!result.text || result.text.trim().length < 50) {
+     return res.status(400).json({ 
+       error: 'Could not extract enough readable text from PDF.' 
+     });
+   }
 
-    let result;
-    try {
-      const { extractWithAdobe } = require('./adobeExtract');
-      result = await extractWithAdobe(req.file.buffer);
-    } catch (e) {
-      console.warn('⚠️ Adobe Extract failed, falling back to basic:', e.message);
-      const pdfParse = require('pdf-parse');
-      const data = await pdfParse(req.file.buffer);
-      const text = (data.text || '')
-        .replace(/\r\n/g, '\n')
-        .replace(/[ \t]+\n/g, '\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
-      const wc = (text.match(/\b\w+\b/g) || []).length;
-      result = { text, method: 'basic', confidence: wc > 120 ? 'medium' : 'low', wordCount: wc, speakers: [] };
-    }
+   const uploadId = Date.now().toString();
+   const fileType = req.body.fileType || 'sides'; // Default to sides if not specified
+   
+   uploads[uploadId] = {
+     filename: req.file.originalname,
+     sceneText: result.text.trim(),
+     characterNames: result.characterNames,
+     extractionMethod: result.method,
+     uploadTime: new Date(),
+     wordCount: result.text.trim().split(/\s+/).length,
+     fileType: fileType // Store the file type
+   };
 
-    if (!result.text || result.wordCount < 120) {
-      return res.status(422).json({
-        success: false,
-        error: 'Could not extract enough readable text from PDF.',
-        extractionMethod: result.method,
-        extractionConfidence: result.confidence,
-        wordCount: result.wordCount
-      });
-    }
+   console.log(`✅ Extracted ${result.text.length} characters`);
 
-    const uploadId = Date.now().toString();
-    const fileType = req.body.fileType || 'sides'; // Default to sides if not specified
-    
-    uploads[uploadId] = {
-      filename: req.file.originalname,
-      sceneText: result.text.trim(),
-      characterNames: result.speakers,
-      extractionMethod: result.method,
-      extractionConfidence: result.confidence,
-      uploadTime: new Date(),
-      wordCount: result.wordCount,
-      fileType: fileType // Store the file type
-    };
+   res.json({
+     uploadId,
+     filename: req.file.originalname,
+     textLength: result.text.length,
+     wordCount: uploads[uploadId].wordCount,
+     characterNames: result.characterNames,
+     preview: result.text.substring(0, 400) + '...',
+     success: true
+   });
 
-    console.log(`✅ Extracted ${result.text.length} characters with ${result.method} (${result.confidence} confidence)`);
-
-    res.json({
-      success: true,
-      uploadId,
-      filename: req.file.originalname,
-      textLength: result.text.length,
-      wordCount: result.wordCount,
-      characterNames: result.speakers,
-      preview: result.text.substring(0, 400) + '…',
-      extractionMethod: result.method,
-      extractionConfidence: result.confidence
-    });
-
-  } catch (error) {
-    console.error('❌ Upload error:', error);
-    res.status(500).json({ error: 'Failed to process PDF: ' + error.message });
-  }
+ } catch (error) {
+   console.error('❌ Upload error:', error);
+   res.status(500).json({ error: 'Failed to process PDF: ' + error.message });
+ }
 });
 
 // RAG-Enhanced Guide Generation Endpoint
@@ -1299,16 +1122,6 @@ app.post('/api/guides/generate', async (req, res) => {
    
    console.log(`📚 File types detected: ${allUploadData.map(d => d.fileType).join(', ')}`);
    console.log(`🎭 Has sides: ${hasSides}, Has full script: ${hasFullScript}`);
-
-   // Quality gate - block generation if extraction is weak
-   const MIN_WORDS = 120;
-   if (combinedWordCount < MIN_WORDS) {
-     return res.status(422).json({
-       success: false,
-       error: 'Insufficient script text extracted from PDF. Please upload a clearer PDF (no images-only scans) or try another file.',
-       details: { combinedWordCount, required: MIN_WORDS }
-     });
-   }
 
    const guideContent = await generateActingGuideWithRAG({
      sceneText: combinedSceneText,
@@ -1763,7 +1576,7 @@ app.get('/api/health', (req, res) => {
    uploadsCount: Object.keys(uploads).length,
    features: [
      'True RAG with Corey Ralston methodology',
-     'Intelligent methodology search',
+     'Intelligent methodology file search',
      'Example guide pattern matching',
      'Professional coaching voice replication',
      'Claude Sonnet 4 + 16K tokens',
