@@ -1,7 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { StripeProvider } from './contexts/StripeContext';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -11,7 +14,11 @@ import Examples from './pages/Examples';
 import Account from './pages/Account';
 import GuideView from './pages/GuideView';
 import StripeSuccess from './pages/StripeSuccess';
+import SubscriptionManager from './components/SubscriptionManager';
 import './App.css';
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -47,51 +54,63 @@ function ProtectedRoute({ children }) {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="App">
-          <Toaster position="top-right" />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/examples" element={<Examples />} />
-            <Route 
-              path="/account" 
-              element={
-                <ProtectedRoute>
-                  <Account />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/create-guide" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/guide/:id" 
-              element={
-                <ProtectedRoute>
-                  <GuideView />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="/app/stripe/success" element={<StripeSuccess />} />
-            <Route path="/" element={<Home />} />
-          </Routes>
-        </div>
-      </Router>
+      <StripeProvider>
+        <Elements stripe={stripePromise}>
+          <Router>
+            <div className="App">
+              <Toaster position="top-right" />
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/examples" element={<Examples />} />
+                <Route 
+                  path="/account" 
+                  element={
+                    <ProtectedRoute>
+                      <Account />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/create-guide" 
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/guide/:id" 
+                  element={
+                    <ProtectedRoute>
+                      <GuideView />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/subscription" 
+                  element={
+                    <ProtectedRoute>
+                      <SubscriptionManager />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="/app/stripe/success" element={<StripeSuccess />} />
+                <Route path="/" element={<Home />} />
+              </Routes>
+            </div>
+          </Router>
+        </Elements>
+      </StripeProvider>
     </AuthProvider>
   );
 }

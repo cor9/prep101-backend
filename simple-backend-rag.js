@@ -306,6 +306,8 @@ const paymentRoutes = require('./routes/payments');
 const guidesRoutes = require('./routes/guides');
 // const uploadRoutes = require('./routes/upload'); // COMMENTED OUT - keeping old working handler
 const betaRoutes = require('./routes/beta');
+const stripeRoutes = require('./routes/stripe');
+const stripeWebhookRoutes = require('./routes/stripeWebhook');
 
 
 // Mount new API routes
@@ -314,6 +316,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/guides', guidesRoutes);
 // app.use('/api/upload', uploadRoutes); // COMMENTED OUT - keeping old working handler
 app.use('/api/beta', betaRoutes);
+app.use('/api/stripe', stripeRoutes);
+app.use('/api/webhooks', stripeWebhookRoutes);
 
 
 // Secure API key handling (trim to avoid invisible whitespace issues)

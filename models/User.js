@@ -29,6 +29,17 @@ const User = sequelize.define('User', {
   },
   subscriptionId: DataTypes.STRING,
   customerId: DataTypes.STRING,
+  // Stripe-specific fields
+  stripeCustomerId: DataTypes.STRING,
+  stripeSubscriptionId: DataTypes.STRING,
+  stripePriceId: DataTypes.STRING,
+  subscriptionStatus: {
+    type: DataTypes.ENUM('active', 'canceled', 'past_due', 'unpaid', 'trialing'),
+    defaultValue: 'active'
+  },
+  currentPeriodStart: DataTypes.DATE,
+  currentPeriodEnd: DataTypes.DATE,
+  defaultPaymentMethodId: DataTypes.STRING,
   guidesUsed: {
     type: DataTypes.INTEGER,
     defaultValue: 0
@@ -106,8 +117,9 @@ const User = sequelize.define('User', {
   }
 });
 
-User.prototype.comparePassword = async function(password) {
-  return await bcrypt.compare(password, this.password);
+// Instance method to compare passwords
+User.prototype.comparePassword = async function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
 // Beta tester methods
