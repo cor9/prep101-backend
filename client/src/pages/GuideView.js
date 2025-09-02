@@ -115,7 +115,7 @@ const GuideView = () => {
       <Navbar />
       <div className="page-dark">
         <div className="container">
-          <div style={{ padding: '2rem 0', maxWidth: '800px', margin: '0 auto' }}>
+          <div style={{ padding: '2rem 0', maxWidth: '1200px', margin: '0 auto' }}>
             <button onClick={handleBack} className="btn btnSecondary" style={{ marginBottom: '2rem' }}>
               ← Back to Account
             </button>
