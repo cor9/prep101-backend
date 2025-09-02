@@ -3,3 +3,4 @@ mailersend-token.txt
 *.pem
 *.crt
 *token*
+.env

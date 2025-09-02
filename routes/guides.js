@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
     const guides = await Guide.findAll({
       where: { userId },
       order: [['createdAt', 'DESC']],
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount', 'childGuideRequested', 'childGuideCompleted', 'childGuideHtml']
+      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount', 'childGuideRequested', 'childGuideCompleted', 'childGuideHtml', 'isFavorite']
     });
 
     res.json({ 
@@ -603,6 +603,73 @@ router.post('/:id/email', auth, async (req, res) => {
   } catch (error) {
     console.error('❌ Email sending error:', error);
     res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+// PUT /api/guides/:id/favorite - Toggle guide favorite status
+router.put('/:id/favorite', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    console.log(`⭐ Favorite toggle - Guide ID: ${id}, User ID: ${userId}`);
+
+    const guide = await Guide.findOne({ 
+      where: { id, userId },
+      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'isFavorite']
+    });
+
+    if (!guide) {
+      return res.status(404).json({ error: 'Guide not found' });
+    }
+
+    // Toggle favorite status
+    const newFavoriteStatus = !guide.isFavorite;
+    await guide.update({ isFavorite: newFavoriteStatus });
+
+    console.log(`⭐ Guide ${newFavoriteStatus ? 'favorited' : 'unfavorited'}: ${guide.characterName} in ${guide.productionTitle}`);
+
+    res.json({
+      success: true,
+      message: `Guide ${newFavoriteStatus ? 'added to' : 'removed from'} favorites`,
+      guide: {
+        id: guide.id,
+        guideId: guide.guideId,
+        characterName: guide.characterName,
+        productionTitle: guide.productionTitle,
+        isFavorite: newFavoriteStatus
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Favorite toggle error:', error);
+    res.status(500).json({ error: 'Failed to toggle favorite status' });
+  }
+});
+
+// GET /api/guides/favorites - Get user's favorite guides
+router.get('/favorites', auth, async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    console.log(`⭐ Fetching favorites - User ID: ${userId}`);
+
+    const guides = await Guide.findAll({
+      where: { userId, isFavorite: true },
+      order: [['createdAt', 'DESC']],
+      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount', 'childGuideRequested', 'childGuideCompleted', 'childGuideHtml', 'isFavorite']
+    });
+
+    console.log(`⭐ Found ${guides.length} favorite guides`);
+
+    res.json({ 
+      success: true,
+      guides: guides,
+      total: guides.length
+    });
+  } catch (error) {
+    console.error('❌ Error fetching favorite guides:', error);
+    res.status(500).json({ error: 'Failed to fetch favorite guides' });
   }
 });
 

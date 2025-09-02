@@ -11,6 +11,7 @@ const Account = () => {
   const [guides, setGuides] = useState([]);
   const [guidesLoading, setGuidesLoading] = useState(false);
   const [guidesError, setGuidesError] = useState(null);
+  const [showFavorites, setShowFavorites] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -19,6 +20,34 @@ const Account = () => {
 
   const handleCreateGuide = () => {
     navigate('/dashboard');
+  };
+
+  const handleToggleFavorite = async (guideId) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/guides/${guideId}/favorite`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.accessToken || user.token}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Update the guide in the local state
+        setGuides(prevGuides => 
+          prevGuides.map(guide => 
+            guide.id === guideId 
+              ? { ...guide, isFavorite: result.guide.isFavorite }
+              : guide
+          )
+        );
+      } else {
+        console.error('Failed to toggle favorite');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
   // Fetch user's guides from API
@@ -105,9 +134,24 @@ const Account = () => {
           {/* Guides Section */}
           <div className="card-white">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-                Your Guides ({guides.length})
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                  Your Guides ({showFavorites ? guides.filter(g => g.isFavorite).length : guides.length})
+                </h2>
+                <button
+                  onClick={() => setShowFavorites(!showFavorites)}
+                  className="btn btnSecondary"
+                  style={{ 
+                    padding: '0.5rem 1rem', 
+                    fontSize: '0.875rem',
+                    background: showFavorites ? 'var(--gold-grad)' : undefined,
+                    color: showFavorites ? '#2f2500' : undefined,
+                    fontWeight: showFavorites ? 'bold' : undefined
+                  }}
+                >
+                  {showFavorites ? '⭐ Show All' : '⭐ Favorites Only'}
+                </button>
+              </div>
               <button
                 onClick={handleCreateGuide}
                 className="btn btnPrimary"
@@ -140,9 +184,9 @@ const Account = () => {
                   Try Again
                 </button>
               </div>
-            ) : guides.length > 0 ? (
+            ) : (showFavorites ? guides.filter(g => g.isFavorite) : guides).length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {guides.map((guide) => (
+                {(showFavorites ? guides.filter(g => g.isFavorite) : guides).map((guide) => (
                   <div
                     key={guide.id}
                     style={{
@@ -158,9 +202,26 @@ const Account = () => {
                     }}
                   >
                     <div style={{ flex: 1, minWidth: '200px' }}>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a', margin: '0 0 0.5rem 0' }}>
-                        {guide.characterName} - {guide.productionTitle}
-                      </h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+                          {guide.characterName} - {guide.productionTitle}
+                        </h3>
+                        <button
+                          onClick={() => handleToggleFavorite(guide.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '1.2rem',
+                            color: guide.isFavorite ? '#fbbf24' : '#d1d5db',
+                            transition: 'color 0.2s ease',
+                            padding: '0.25rem'
+                          }}
+                          title={guide.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          {guide.isFavorite ? '⭐' : '☆'}
+                        </button>
+                      </div>
                       <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
                         {guide.productionType} • {guide.genre} • {new Date(guide.createdAt).toLocaleDateString()}
                       </div>
@@ -232,13 +293,13 @@ const Account = () => {
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                <p>No guides created yet.</p>
+                <p>{showFavorites ? 'No favorite guides yet.' : 'No guides created yet.'}</p>
                 <button
-                  onClick={handleCreateGuide}
+                  onClick={showFavorites ? () => setShowFavorites(false) : handleCreateGuide}
                   className="btn btnPrimary"
                   style={{ marginTop: '1rem' }}
                 >
-                  Create Your First Guide
+                  {showFavorites ? 'Show All Guides' : 'Create Your First Guide'}
                 </button>
               </div>
             )}

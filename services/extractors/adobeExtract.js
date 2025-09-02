@@ -35,8 +35,32 @@ function isWatermarkText(s) {
     /B\d{3,}CR-\w*/i,
     /\b\d{1,2}:\d{2}\s*(AM|PM)\b/i,
     /This document.*confidential/i,
+    // Enhanced patterns for better watermark detection
+    /\b\d{5,}\b/g, // Repeated numeric watermarks
+    /^\d{1,2}:\d{2}:\d{2}\s*$/i, // Timestamps
+    /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/i, // Date-time stamps
+    /^[0-9\s\-_:]+$/i, // Lines with only numbers, spaces, dashes, underscores, colons
+    /[A-Za-z]{1,2}\s*$/i, // Single or double letter lines
   ];
   return patterns.some(re => re.test(t));
+}
+
+// Enhanced text cleaning function
+function cleanExtractedText(text) {
+  if (!text) return '';
+  
+  return text
+    .replace(/\r/g, '')
+    .replace(/Sides by Breakdown Services - Actors Access/gi, '')
+    .replace(/Page \d+ of \d+/gi, '')
+    // Enhanced cleaning patterns
+    .replace(/\b\d{5,}\b/g, '') // Remove numeric watermarks
+    .replace(/^\d{1,2}:\d{2}:\d{2}\s*$/gm, '') // Remove timestamp lines
+    .replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/gm, '') // Remove date-time lines
+    .replace(/^[0-9\s\-_:]+$/gm, '') // Remove lines with only numbers/symbols
+    .replace(/^[A-Za-z]{1,2}\s*$/gm, '') // Remove single/double letter lines
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function summarize(text) {
@@ -109,12 +133,7 @@ function collectTextWithCharBounds(structured) {
     kept.push(n.text);
   }
 
-  let text = kept.join('\n')
-    .replace(/\r/g, '')
-    .replace(/Sides by Breakdown Services - Actors Access/gi, '')
-    .replace(/Page \d+ of \d+/gi, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  let text = cleanExtractedText(kept.join('\n'));
 
   const wordCount = (text.match(/\b\w+\b/g) || []).length;
   const confidence = wordCount > 600 ? 'high' : wordCount > 300 ? 'medium' : 'low';
@@ -149,7 +168,7 @@ async function extractWithAdobe(pdfBuffer) {
 
     const r = await pdfServices.getJobResult({
       pollingURL,
-      resultType: PDFServicesResponse.ResultType.ExtractPDF,
+      resultType: 'ExtractPDFResult',
     });
 
     const resultAsset = r.result.asset;

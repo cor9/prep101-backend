@@ -71,15 +71,78 @@ const extractionStats = {
   last: null,
 };
 
-// Basic extraction helper used as fallback
-async function extractWithBasic(pdfBuffer) {
-  const data = await pdfParse(pdfBuffer);
-  let text = (data.text || '')
+// Enhanced text cleaning function for basic extraction
+function cleanBasicText(text) {
+  if (!text) return '';
+  
+  return text
     .replace(/\r/g, '')
     .replace(/Sides by Breakdown Services - Actors Access/gi, '')
     .replace(/Page \d+ of \d+/gi, '')
+    // Enhanced cleaning patterns
+    .replace(/\b\d{5,}\b/g, '') // Remove numeric watermarks
+    .replace(/^\d{1,2}:\d{2}:\d{2}\s*$/gm, '') // Remove timestamp lines
+    .replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/gm, '') // Remove date-time lines
+    .replace(/^[0-9\s\-_:]+$/gm, '') // Remove lines with only numbers/symbols
+    .replace(/^[A-Za-z]{1,2}\s*$/gm, '') // Remove single/double letter lines
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+// Content quality assessment function
+function assessContentQuality(text, wordCount) {
+  if (!text || wordCount < 50) {
+    return { quality: 'poor', reason: 'insufficient_content' };
+  }
+  
+  // Check for repetitive content patterns
+  const repetitivePatterns = [
+    /\b\d{5,}\b/g, // Numeric watermarks
+    /^\d{1,2}:\d{2}:\d{2}\s*$/gm, // Timestamps
+    /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/gm, // Date-time stamps
+    /- Aug \d{1,2}, \d{4} \d{1,2}:\d{2} (AM|PM) -/g, // Specific timestamp pattern from logs
+    /^\d{1,2}:\d{2} (AM|PM) -/gm, // Time AM/PM pattern
+  ];
+  
+  // Check for repetitive content
+  const repetitiveMatches = repetitivePatterns.reduce((count, pattern) => {
+    return count + (text.match(pattern) || []).length;
+  }, 0);
+  
+  const repetitiveRatio = repetitiveMatches / Math.max(wordCount, 1);
+  
+  // Check for high repetition of the same phrases
+  const words = text.toLowerCase().split(/\s+/);
+  const wordFreq = {};
+  words.forEach(word => {
+    if (word.length > 3) { // Only count words longer than 3 chars
+      wordFreq[word] = (wordFreq[word] || 0) + 1;
+    }
+  });
+  
+  const maxFreq = Math.max(...Object.values(wordFreq));
+  const repetitionRatio = maxFreq / Math.max(wordCount, 1);
+  
+  // More strict criteria for corrupted content
+  if (repetitiveRatio > 0.05) { // More than 5% repetitive patterns
+    return { quality: 'poor', reason: 'repetitive_content', repetitiveRatio };
+  }
+  
+  if (repetitionRatio > 0.1) { // More than 10% of content is the same word
+    return { quality: 'poor', reason: 'high_repetition', repetitionRatio };
+  }
+  
+  if (wordCount < 200) {
+    return { quality: 'low', reason: 'minimal_content' };
+  }
+  
+  return { quality: 'good', reason: 'sufficient_content' };
+}
+
+// Basic extraction helper used as fallback
+async function extractWithBasic(pdfBuffer) {
+  const data = await pdfParse(pdfBuffer);
+  let text = cleanBasicText(data.text || '');
 
   const wordCount = (text.match(/\b\w+\b/g) || []).length;
   const confidence = wordCount > 600 ? 'high' : wordCount > 300 ? 'medium' : 'low';
@@ -89,6 +152,152 @@ async function extractWithBasic(pdfBuffer) {
   const characterNames = [...new Set((text.match(characterPattern) || []).map(n => n.replace(':', '').trim()))];
 
   return { text, method: 'basic', wordCount, confidence, characterNames };
+}
+
+// OCR extraction using Claude's vision model as fallback
+async function extractWithOCR(pdfBuffer) {
+  try {
+    console.log('[OCR] Starting OCR extraction with Claude Vision...');
+    
+    // Convert PDF to images first
+    const pdf2pic = require('pdf2pic');
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    
+    // Create temporary directory for images
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdf-ocr-'));
+    const tempPdfPath = path.join(tempDir, 'input.pdf');
+    fs.writeFileSync(tempPdfPath, pdfBuffer);
+    
+    // Convert PDF to images
+    const options = {
+      density: 300,
+      saveFilename: "page",
+      savePath: tempDir,
+      format: "png",
+      width: 2048,
+      height: 2048
+    };
+    
+    const convert = pdf2pic.fromPath(tempPdfPath, options);
+    
+    // Try to get page count by attempting to convert pages until it fails
+    let pageCount = 0;
+    let maxPages = 10; // Reasonable limit for sides
+    
+    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+      try {
+        const testPage = await convert(pageNum);
+        if (testPage && testPage.path) {
+          pageCount = pageNum;
+        } else {
+          break;
+        }
+      } catch (error) {
+        break;
+      }
+    }
+    
+    console.log(`[OCR] PDF has ${pageCount} pages`);
+    
+    if (pageCount === 0) {
+      throw new Error('Failed to detect any pages in PDF');
+    }
+    
+    let allText = '';
+    
+    // Process each page
+    for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+      console.log(`[OCR] Processing page ${pageNum}/${pageCount}...`);
+      
+      const pageData = await convert(pageNum);
+      
+      if (!pageData || !pageData.path) {
+        console.log(`[OCR] Failed to convert page ${pageNum}, skipping...`);
+        continue;
+      }
+      
+      // Read the image file
+      const imageBuffer = fs.readFileSync(pageData.path);
+      const base64Image = imageBuffer.toString('base64');
+      
+      // Prepare the message for Claude Vision
+      const message = {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `Please extract all the text from this script/sides image (page ${pageNum} of ${pageCount.length}). Focus on:
+1. Character names (in ALL CAPS followed by colon)
+2. Dialogue and scene descriptions
+3. Stage directions and parentheticals
+4. Scene headings and transitions
+
+Ignore watermarks, timestamps, page numbers, and other metadata. Return only the clean script content.`
+          },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/png',
+              data: base64Image
+            }
+          }
+        ]
+      };
+
+      // Call Claude Vision API for this page
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 4000,
+          messages: [message]
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log(`[OCR] Failed to process page ${pageNum}: ${errorText}`);
+        continue;
+      }
+
+      const result = await response.json();
+      const pageText = result.content[0].text || '';
+      
+      // Add page text to total (with separator)
+      if (pageText.trim()) {
+        allText += (allText ? '\n\n' : '') + pageText.trim();
+      }
+    }
+    
+    // Clean up temporary files
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    
+    // Clean the extracted text from all pages
+    let text = cleanBasicText(allText);
+    
+    const wordCount = (text.match(/\b\w+\b/g) || []).length;
+    const confidence = wordCount > 600 ? 'high' : wordCount > 300 ? 'medium' : 'low';
+
+    // Character names in ALL-CAPS ending with colon
+    const characterPattern = /^[A-Z][A-Z\s]+:/gm;
+    const characterNames = [...new Set((text.match(characterPattern) || []).map(n => n.replace(':', '').trim()))];
+
+    console.log(`[OCR] Extraction completed: ${wordCount} words, ${characterNames.length} characters found`);
+    
+    return { text, method: 'ocr', wordCount, confidence, characterNames };
+    
+  } catch (error) {
+    console.error('[OCR] Extraction failed:', error.message);
+    throw new Error(`OCR extraction failed: ${error.message}`);
+  }
 }
 
 // Import and mount new API routes
@@ -1262,14 +1471,69 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       result = await extractWithBasic(req.file.buffer);
     }
 
-    // 2) Gate low-content input
-    if (!result.text || (result.wordCount || 0) < MIN_WC) {
+    // OCR Fallback: If basic extraction fails or produces poor quality content, try OCR
+    if (!result?.text || result.text.length < 100) {
+      console.log('[UPLOAD] Basic extraction failed, trying OCR fallback...');
+      try {
+        result = await extractWithOCR(req.file.buffer);
+        console.log('[UPLOAD] OCR extraction completed:', {
+          method: result.method,
+          wordCount: result.wordCount,
+          confidence: result.confidence
+        });
+      } catch (ocrError) {
+        console.error('[UPLOAD] OCR fallback failed:', ocrError.message);
+      }
+    }
+
+    // Additional OCR fallback: If content quality is poor, try OCR
+    const initialContentQuality = assessContentQuality(result.text, result.wordCount || 0);
+    if (initialContentQuality.quality === 'poor' && result.method === 'basic') {
+      console.log('[UPLOAD] Basic extraction produced poor quality content, trying OCR fallback...');
+      try {
+        const ocrResult = await extractWithOCR(req.file.buffer);
+        const ocrContentQuality = assessContentQuality(ocrResult.text, ocrResult.wordCount || 0);
+        
+        // Use OCR result if it's better quality
+        if (ocrContentQuality.quality !== 'poor') {
+          console.log('[UPLOAD] OCR produced better quality content, using OCR result');
+          result = ocrResult;
+        } else {
+          console.log('[UPLOAD] OCR also produced poor quality content, keeping basic result');
+        }
+      } catch (ocrError) {
+        console.error('[UPLOAD] OCR fallback failed:', ocrError.message);
+      }
+    }
+
+    // 2) Assess content quality and handle low-quality content
+    const contentQuality = assessContentQuality(result.text, result.wordCount || 0);
+    
+    if (contentQuality.quality === 'poor') {
+      console.warn(`[UPLOAD] Poor content quality detected: ${contentQuality.reason}`, {
+        filename: req.file.originalname,
+        wordCount: result.wordCount,
+        watermarkRatio: contentQuality.watermarkRatio
+      });
+      
       return res.status(422).json({
         success: false,
-        error: `Could not extract enough readable text from PDF (words=${result.wordCount || 0}).`,
+        error: contentQuality.reason === 'watermark_heavy' 
+          ? 'Limited content: please upload clean sides without watermarks or timestamps'
+          : 'Limited content: please upload a script with actual dialogue and scene content',
+        contentQuality: contentQuality.reason,
         extractionMethod: result.method,
         extractionConfidence: result.confidence || 'low',
-        wordCount: result.wordCount
+        wordCount: result.wordCount,
+        watermarkRatio: contentQuality.watermarkRatio
+      });
+    }
+    
+    if (contentQuality.quality === 'low') {
+      console.log(`[UPLOAD] Low content quality - allowing fallback generation`, {
+        filename: req.file.originalname,
+        wordCount: result.wordCount,
+        reason: contentQuality.reason
       });
     }
 
@@ -1291,14 +1555,15 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       fileType: fileType // Store the file type
     };
 
-    // 5) Log triage
-    const preview = (result.text || '').slice(0, 180).replace(/\n/g, '⏎');
+    // 5) Log triage with enhanced preview
+    const preview = (result.text || '').slice(0, 300).replace(/\n/g, '⏎');
     console.log('[UPLOAD]', {
       file: req.file.originalname,
       method: result.method,
       confidence: result.confidence,
       words: result.wordCount,
-      preview
+      contentQuality: contentQuality.quality,
+      preview: `"${preview}..."`
     });
 
     // Update extraction diagnostics for /api/health
@@ -1332,6 +1597,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     res.status(500).json({ error: 'Failed to process PDF: ' + error.message });
   }
 });
+
+
 
 // RAG-Enhanced Guide Generation Endpoint
 app.post('/api/guides/generate', async (req, res) => {
@@ -1375,13 +1642,27 @@ app.post('/api/guides/generate', async (req, res) => {
    console.log(`📚 File types detected: ${allUploadData.map(d => d.fileType).join(', ')}`);
    console.log(`🎭 Has sides: ${hasSides}, Has full script: ${hasFullScript}`);
 
-   // Quality gate - block generation if extraction is weak
-   const MIN_WORDS = 120;
-   if (combinedWordCount < MIN_WORDS) {
+   // Quality assessment - reject poor content
+   const contentQuality = assessContentQuality(combinedSceneText, combinedWordCount);
+   
+   if (contentQuality.quality === 'poor' || contentQuality.quality === 'low') {
+     let errorMessage = 'Limited content: please upload clean sides without watermarks or timestamps';
+     
+     if (contentQuality.reason === 'repetitive_content') {
+       errorMessage = 'Corrupted content detected: please upload clean sides without repetitive timestamps or watermarks';
+     } else if (contentQuality.reason === 'high_repetition') {
+       errorMessage = 'Repetitive content detected: please upload clean sides with actual dialogue and scene content';
+     }
+     
      return res.status(422).json({
        success: false,
-       error: 'Insufficient script text extracted from PDF. Please upload a clearer PDF (no images-only scans) or try another file.',
-       details: { combinedWordCount, required: MIN_WORDS }
+       error: errorMessage,
+       contentQuality: contentQuality.reason,
+       details: { 
+         combinedWordCount, 
+         repetitiveRatio: contentQuality.repetitiveRatio,
+         repetitionRatio: contentQuality.repetitionRatio
+       }
      });
    }
 
@@ -1394,6 +1675,8 @@ app.post('/api/guides/generate', async (req, res) => {
      hasFullScript: hasFullScript,
      uploadData: allUploadData
    });
+
+   
 
    console.log(`✅ Corey Ralston RAG Guide Complete!`);
 

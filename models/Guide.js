@@ -34,7 +34,8 @@ const Guide = sequelize.define('Guide', {
   childGuideCompleted: { type: DataTypes.BOOLEAN, defaultValue: false },
   shareUrl: DataTypes.STRING,
   isPublic: { type: DataTypes.BOOLEAN, defaultValue: false },
-  viewCount: { type: DataTypes.INTEGER, defaultValue: 0 }
+  viewCount: { type: DataTypes.INTEGER, defaultValue: 0 },
+  isFavorite: { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   timestamps: true,
   indexes: [
