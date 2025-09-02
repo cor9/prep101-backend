@@ -1,0 +1,149 @@
+.guide-content {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.7;
+  font-size: 1rem;
+}
+
+.guide-content h1,
+.guide-content h2,
+.guide-content h3,
+.guide-content h4 {
+  color: #fbbf24 !important;
+  margin-top: 2rem !important;
+  margin-bottom: 1rem !important;
+  font-weight: bold !important;
+  line-height: 1.3 !important;
+}
+
+.guide-content h1 {
+  font-size: 1.75rem !important;
+}
+
+.guide-content h2 {
+  font-size: 1.5rem !important;
+}
+
+.guide-content h3 {
+  font-size: 1.25rem !important;
+}
+
+.guide-content h4 {
+  font-size: 1.125rem !important;
+}
+
+.guide-content p {
+  margin-bottom: 1rem !important;
+  line-height: 1.7 !important;
+}
+
+.guide-content ul,
+.guide-content ol {
+  margin-bottom: 1rem !important;
+  padding-left: 1.5rem !important;
+}
+
+.guide-content li {
+  margin-bottom: 0.5rem !important;
+  line-height: 1.6 !important;
+}
+
+.guide-content strong,
+.guide-content b {
+  color: #fbbf24 !important;
+  font-weight: bold !important;
+}
+
+.guide-content em,
+.guide-content i {
+  color: #d1d5db !important;
+  font-style: italic !important;
+}
+
+.guide-content blockquote {
+  border-left: 4px solid #fbbf24 !important;
+  padding-left: 1rem !important;
+  margin: 1.5rem 0 !important;
+  font-style: italic !important;
+  color: #d1d5db !important;
+}
+
+.guide-content code {
+  background: #374151 !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 0.25rem !important;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+  color: #fbbf24 !important;
+  font-size: 0.875rem !important;
+}
+
+.guide-content pre {
+  background: #374151 !important;
+  padding: 1rem !important;
+  border-radius: 0.5rem !important;
+  overflow-x: auto !important;
+  margin: 1rem 0 !important;
+  border: 1px solid #4b5563 !important;
+}
+
+.guide-content pre code {
+  background: none !important;
+  padding: 0 !important;
+  color: #f3f4f6 !important;
+}
+
+.guide-content table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 1rem 0 !important;
+}
+
+.guide-content th,
+.guide-content td {
+  border: 1px solid #4b5563 !important;
+  padding: 0.75rem !important;
+  text-align: left !important;
+}
+
+.guide-content th {
+  background: #374151 !important;
+  color: #fbbf24 !important;
+  font-weight: bold !important;
+}
+
+.guide-content td {
+  background: #1f2937 !important;
+}
+
+.guide-content hr {
+  border: none !important;
+  border-top: 1px solid #4b5563 !important;
+  margin: 2rem 0 !important;
+}
+
+.guide-content a {
+  color: #60a5fa !important;
+  text-decoration: underline !important;
+}
+
+.guide-content a:hover {
+  color: #93c5fd !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .guide-content {
+    font-size: 0.95rem !important;
+  }
+  
+  .guide-content h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .guide-content h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  .guide-content h3 {
+    font-size: 1.125rem !important;
+  }
+}

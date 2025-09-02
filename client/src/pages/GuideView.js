@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
 import API_BASE from '../config/api';
 import '../styles/shared.css';
+import '../styles/guide.css';
 
 const GuideView = () => {
   const { id } = useParams();
@@ -114,24 +115,40 @@ const GuideView = () => {
       <Navbar />
       <div className="page-dark">
         <div className="container">
-          <div style={{ padding: '2rem 0' }}>
+          <div style={{ padding: '2rem 0', maxWidth: '800px', margin: '0 auto' }}>
             <button onClick={handleBack} className="btn btnSecondary" style={{ marginBottom: '2rem' }}>
               ← Back to Account
             </button>
             
             <div style={{ 
               background: '#1f2937', 
-              borderRadius: '0.5rem', 
-              padding: '2rem',
-              marginBottom: '2rem'
+              borderRadius: '0.75rem', 
+              padding: '2.5rem',
+              marginBottom: '2rem',
+              border: '1px solid #374151'
             }}>
-              <h1 style={{ fontSize: '2rem', marginBottom: '1rem', color: '#fbbf24' }}>
+              <h1 style={{ 
+                fontSize: '2.5rem', 
+                marginBottom: '1rem', 
+                color: '#fbbf24',
+                fontWeight: 'bold',
+                lineHeight: '1.2'
+              }}>
                 {guide.characterName}
               </h1>
-              <div style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>
+              <div style={{ 
+                fontSize: '1.25rem', 
+                marginBottom: '0.5rem',
+                color: '#f3f4f6',
+                fontWeight: '500'
+              }}>
                 {guide.productionTitle}
               </div>
-              <div style={{ color: '#9ca3af', marginBottom: '2rem' }}>
+              <div style={{ 
+                color: '#9ca3af', 
+                marginBottom: '0',
+                fontSize: '1rem'
+              }}>
                 {guide.productionType} • {guide.roleSize} • {guide.genre}
               </div>
             </div>
@@ -140,11 +157,14 @@ const GuideView = () => {
               dangerouslySetInnerHTML={{ __html: guide.generatedHtml }}
               style={{ 
                 background: '#1f2937', 
-                borderRadius: '0.5rem', 
-                padding: '2rem',
+                borderRadius: '0.75rem', 
+                padding: '2.5rem',
                 color: '#f3f4f6',
-                lineHeight: '1.6'
+                lineHeight: '1.7',
+                fontSize: '1rem',
+                border: '1px solid #374151'
               }}
+              className="guide-content"
             />
           </div>
         </div>
