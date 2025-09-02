@@ -15,6 +15,7 @@ import Account from './pages/Account';
 import GuideView from './pages/GuideView';
 import StripeSuccess from './pages/StripeSuccess';
 import SubscriptionManager from './components/SubscriptionManager';
+import Terms from './pages/Terms';
 import './App.css';
 
 // Initialize Stripe
@@ -105,6 +106,7 @@ function App() {
                   } 
                 />
                 <Route path="/app/stripe/success" element={<StripeSuccess />} />
+                <Route path="/terms" element={<Terms />} />
                 <Route path="/" element={<Home />} />
               </Routes>
             </div>
