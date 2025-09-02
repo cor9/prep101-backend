@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import Footer from '../components/Footer';
 import '../styles/shared.css';
 
 const Login = () => {
@@ -102,6 +103,11 @@ const Login = () => {
           </form>
 
           <div className="text-center mt-3">
+            <p style={{ color: 'var(--gray-500)', marginBottom: '0.5rem' }}>
+              <Link to="/forgot-password" style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: '600' }}>
+                Forgot your password?
+              </Link>
+            </p>
             <p style={{ color: 'var(--gray-500)', marginBottom: '1rem' }}>
               Don't have an account?{' '}
               <Link to="/register" style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: '600' }}>
@@ -110,6 +116,9 @@ const Login = () => {
             </p>
           </div>
         </div>
+        
+        {/* Footer */}
+        <Footer />
       </div>
     </div>
   );

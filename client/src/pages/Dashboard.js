@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import FileUpload from '../components/FileUpload';
 import GuideForm from '../components/GuideForm';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Footer from '../components/Footer';
 
 import API_BASE from '../config/api';
 import '../styles/shared.css';
@@ -363,6 +364,9 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+        
+        {/* Footer */}
+        <Footer />
       </div>
     </>
   );

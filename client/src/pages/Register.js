@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import Footer from '../components/Footer';
 import '../styles/shared.css';
 
 const Register = () => {
@@ -169,6 +170,9 @@ const Register = () => {
             </p>
           </div>
         </div>
+        
+        {/* Footer */}
+        <Footer />
       </div>
     </div>
   );

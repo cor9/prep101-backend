@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import GoldWall from '../components/GoldWall';
 import './Home.css';
 
@@ -68,10 +69,7 @@ const Home = () => {
           </section>
 
           {/* Footer */}
-          <footer className="footer">
-            © {new Date().getFullYear()} Prep101 · <a href="/pricing">Pricing</a> · <a href="/account">Account</a> · <a href="/terms">Terms</a>
-            <div className="tagline">Prep101 — The gold standard in audition preparation.</div>
-          </footer>
+          <Footer />
         </div>
       </div>
       

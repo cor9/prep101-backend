@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import API_BASE from '../config/api';
 import '../styles/shared.css';
 
@@ -311,6 +312,9 @@ const Account = () => {
             </button>
           </div>
         </div>
+        
+        {/* Footer */}
+        <Footer />
       </div>
       
       {/* CSS for loading animation */}
