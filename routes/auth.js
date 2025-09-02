@@ -13,7 +13,7 @@ router.post(
   '/register',
   [
     body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 6 }),
+    body('password').isLength({ min: 8 }).matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one uppercase letter, one lowercase letter, and one number'),
     body('name').trim().isLength({ min: 2, max: 100 })
   ],
   async (req, res) => {
@@ -21,12 +21,34 @@ router.post(
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { email, password, name } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
     try {
+      // Check for existing user
       const existing = await User.findOne({ where: { email } });
-      if (existing) return res.status(409).json({ message: 'Email already registered' });
+      if (existing) {
+        console.log(`🔒 Registration attempt with existing email: ${email} from IP: ${clientIP}`);
+        return res.status(409).json({ message: 'Email already registered' });
+      }
 
-      const user = await User.create({ email, password, name });
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+      // Create new user with default free subscription
+      const user = await User.create({ 
+        email, 
+        password, 
+        name,
+        subscription: 'free',
+        guidesLimit: 1, // Start with 1 guide per month
+        guidesUsed: 0
+      });
+
+      const token = jwt.sign({ 
+        userId: user.id,
+        email: user.email,
+        subscription: user.subscription,
+        isBetaTester: user.isBetaTester
+      }, JWT_SECRET, { expiresIn: '30d' });
+      
+      console.log(`✅ New user registered: ${email} from IP: ${clientIP}`);
       
       res.status(201).json({
         user: { 
@@ -35,9 +57,12 @@ router.post(
           name: user.name, 
           subscription: user.subscription,
           guidesUsed: user.guidesUsed,
-          guidesLimit: user.guidesLimit
+          guidesLimit: user.guidesLimit,
+          isBetaTester: user.isBetaTester,
+          betaAccessLevel: user.betaAccessLevel
         },
-        token
+        token,
+        message: 'Account created successfully! You can now generate your first acting guide.'
       });
     } catch (err) {
       console.error('Register error:', err);
@@ -58,14 +83,64 @@ router.post(
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { email, password } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
     try {
+      // Check for brute force attempts
+      const failedAttempts = require('../middleware/auth').failedAttempts;
+      const attemptKey = `${clientIP}:${email}`;
+      const attempts = failedAttempts.get(attemptKey);
+      
+      if (attempts && attempts.count >= 5 && (Date.now() - attempts.timestamp) < 15 * 60 * 1000) {
+        console.log(`🚫 Brute force attempt blocked: ${email} from IP: ${clientIP}`);
+        return res.status(429).json({ 
+          message: 'Too many failed login attempts. Please try again in 15 minutes.',
+          retryAfter: Math.ceil((15 * 60 * 1000 - (Date.now() - attempts.timestamp)) / 1000)
+        });
+      }
+
       const user = await User.findOne({ where: { email } });
-      if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+      if (!user) {
+        // Track failed attempt
+        const currentAttempts = failedAttempts.get(attemptKey) || { count: 0, timestamp: Date.now() };
+        currentAttempts.count++;
+        currentAttempts.timestamp = Date.now();
+        failedAttempts.set(attemptKey, currentAttempts);
+        
+        console.log(`🔒 Failed login attempt: ${email} from IP: ${clientIP}`);
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
 
       const ok = await user.comparePassword(password);
-      if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+      if (!ok) {
+        // Track failed attempt
+        const currentAttempts = failedAttempts.get(attemptKey) || { count: 0, timestamp: Date.now() };
+        currentAttempts.count++;
+        currentAttempts.timestamp = Date.now();
+        failedAttempts.set(attemptKey, currentAttempts);
+        
+        console.log(`🔒 Failed login attempt: ${email} from IP: ${clientIP}`);
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
 
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+      // Clear failed attempts on successful login
+      failedAttempts.delete(attemptKey);
+
+      // Check if user account is active
+      if (user.betaStatus === 'expired') {
+        console.log(`🔒 Login attempt with expired account: ${email} from IP: ${clientIP}`);
+        return res.status(401).json({ message: 'Account access expired' });
+      }
+
+      const token = jwt.sign({ 
+        userId: user.id,
+        email: user.email,
+        subscription: user.subscription,
+        isBetaTester: user.isBetaTester
+      }, JWT_SECRET, { expiresIn: '30d' });
+      
+      console.log(`✅ Successful login: ${email} from IP: ${clientIP}`);
+      
       res.json({
         user: { 
           id: user.id, 
@@ -73,7 +148,9 @@ router.post(
           name: user.name, 
           subscription: user.subscription,
           guidesUsed: user.guidesUsed,
-          guidesLimit: user.guidesLimit
+          guidesLimit: user.guidesLimit,
+          isBetaTester: user.isBetaTester,
+          betaAccessLevel: user.betaAccessLevel
         },
         token
       });
@@ -278,7 +355,103 @@ router.post(
 
 // POST /api/auth/logout - Logout (client-side token removal)
 router.post('/logout', auth, (req, res) => {
+  const clientIP = req.ip || req.connection.remoteAddress;
+  console.log(`✅ User logged out: ${req.user.email} from IP: ${clientIP}`);
   res.json({ message: 'Logged out successfully' });
+});
+
+// DELETE /api/auth/account - Delete user account
+router.delete('/account', auth, async (req, res) => {
+  try {
+    const { password } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
+    if (!password) {
+      return res.status(400).json({ message: 'Password required to delete account' });
+    }
+
+    const user = await User.findByPk(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      console.log(`🔒 Failed account deletion attempt: ${user.email} from IP: ${clientIP}`);
+      return res.status(401).json({ message: 'Invalid password' });
+    }
+
+    // Delete user's guides first
+    const Guide = require('../models/Guide');
+    await Guide.destroy({ where: { userId: user.id } });
+
+    // Delete the user
+    await user.destroy();
+    
+    console.log(`🗑️  Account deleted: ${user.email} from IP: ${clientIP}`);
+    res.json({ message: 'Account deleted successfully' });
+  } catch (err) {
+    console.error('Account deletion error:', err);
+    res.status(500).json({ message: 'Account deletion failed' });
+  }
+});
+
+// GET /api/auth/stats - Get user statistics
+router.get('/stats', auth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const Guide = require('../models/Guide');
+    
+    const guides = await Guide.findAll({
+      where: { userId },
+      attributes: ['createdAt', 'updatedAt', 'viewCount']
+    });
+
+    const totalGuides = guides.length;
+    const totalViews = guides.reduce((sum, guide) => sum + (guide.viewCount || 0), 0);
+    const averageViews = totalGuides > 0 ? Math.round(totalViews / totalGuides) : 0;
+    
+    // Calculate monthly stats
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const guidesThisMonth = guides.filter(guide => guide.createdAt >= thisMonth).length;
+
+    res.json({
+      totalGuides,
+      totalViews,
+      averageViews,
+      guidesThisMonth,
+      accountCreated: req.user.createdAt,
+      lastActive: req.user.updatedAt
+    });
+  } catch (err) {
+    console.error('Stats fetch error:', err);
+    res.status(500).json({ message: 'Failed to fetch statistics' });
+  }
+});
+
+// POST /api/auth/upgrade - Request subscription upgrade
+router.post('/upgrade', auth, async (req, res) => {
+  try {
+    const { plan } = req.body;
+    const validPlans = ['basic', 'premium'];
+    
+    if (!validPlans.includes(plan)) {
+      return res.status(400).json({ message: 'Invalid plan specified' });
+    }
+
+    // For now, just log the upgrade request
+    // In production, this would integrate with Stripe
+    console.log(`💰 Upgrade request: ${req.user.email} wants ${plan} plan`);
+    
+    res.json({ 
+      message: 'Upgrade request received. You will be contacted shortly.',
+      requestedPlan: plan
+    });
+  } catch (err) {
+    console.error('Upgrade request error:', err);
+    res.status(500).json({ message: 'Upgrade request failed' });
+  }
 });
 
 // GET /api/auth/verify - Verify token validity
