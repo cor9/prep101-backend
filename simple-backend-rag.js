@@ -1761,6 +1761,8 @@ app.get('/api/health', (req, res) => {
    coreyRalstonMethodology: true,
    apiKey: ANTHROPIC_API_KEY ? 'configured' : 'missing',
    uploadsCount: Object.keys(uploads).length,
+   adobeExtract: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true' ? 'enabled' : 'disabled',
+   minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10),
    features: [
      'True RAG with Corey Ralston methodology',
      'Intelligent methodology search',
