@@ -22,9 +22,11 @@ const ProgressBar = ({ value, max }) => {
 const nicePlan = (p) => {
   switch ((p || '').toLowerCase()) {
     case 'free': return 'Free';
-    case 'starter': return 'Starter';
+    case 'basic': return 'Basic';
     case 'premium': return 'Premium';
+    case 'starter': return 'Starter';
     case 'alacarte': return 'A la carte';
+    case 'unlimited': return 'Unlimited';
     default: return '—';
   }
 };
@@ -58,7 +60,18 @@ const Dashboard = () => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
-        if (!cancelled) setUsage(json);
+        console.log('🔍 Dashboard API response:', json);
+        if (!cancelled) {
+          // Transform the complex backend response to the simple format expected by the UI
+          const transformedUsage = {
+            plan: json.user?.subscription || json.subscription?.currentPlan?.name,
+            used: json.user?.guidesUsed || 0,
+            limit: json.user?.guidesLimit || 1,
+            renewsAt: json.subscription?.renewsAt || new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString()
+          };
+          console.log('🔍 Transformed usage data:', transformedUsage);
+          setUsage(transformedUsage);
+        }
       } catch (err) {
         // Fallback mock so the UI still works in dev
         if (!cancelled) {
@@ -240,7 +253,7 @@ const Dashboard = () => {
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                   <div style={{ fontWeight: 800, color: '#0f172a' }}>
-                    Plan: {nicePlan(usage?.plan)}
+                    Plan: {nicePlan(usage?.plan || user?.subscription)}
                     {usageError && <span style={{ color: '#f59e0b', marginLeft: 8 }}>(demo)</span>}
                   </div>
                   <div style={{ color: '#475569', fontWeight: 700 }}>
