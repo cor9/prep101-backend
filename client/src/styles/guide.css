@@ -1,172 +1,140 @@
-/* ----- PREP101 Guide Readability Hotfix (non-destructive) ----- */
-:root {
-  --bg: #0e1726;           /* deep slate */
-  --panel: #121a2b;        /* panel bg */
-  --text: #e8edf7;         /* primary text */
-  --muted: #c8d2e6;        /* secondary text */
-  --accent: #fbbf24;       /* warm accent (gold) */
-  --accent-2: #f472b6;     /* pink accent for highlights */
-  --ok: #34d399;           /* green accent */
-  --danger: #f87171;       /* coral */
-  --card: #0f172a;         /* dark card */
-  --card-soft: #132038;    /* softer card */
-  --border: rgba(255,255,255,.08);
-  --shadow: 0 10px 30px rgba(0,0,0,.35);
+/* ----- Guide readability overrides (scoped) ----- */
+.guide-html {
+  --guide-bg: #0f172a;         /* app dark bg */
+  --guide-text: #e5e7eb;       /* slate-200 */
+  --guide-muted: #cbd5e1;      /* slate-300 */
+  --guide-strong: #f8fafc;     /* near-white */
+  --guide-accent: #f59e0b;     /* amber */
+  --guide-card: rgba(255,255,255,0.06);
+  --guide-border: rgba(255,255,255,0.12);
+  --guide-shadow: 0 6px 24px rgba(0,0,0,0.35);
 }
 
-/* Scope to the guide root if you have one */
-.guide-root, .guide, .guide-content {
-  background: var(--bg);
-  color: var(--text);
+/* kill unreadable light-on-light and text shadows the generator adds */
+.guide-html, .guide-html * {
+  color: var(--guide-text) !important;
+  text-shadow: none !important;
 }
 
-/* Headings */
-.guide-content h1, .guide-content h2, .guide-content h3,
-.guide-root h1, .guide-root h2, .guide-root h3 {
-  color: var(--accent);
-  letter-spacing: .2px;
-  text-shadow: none;
-  font-weight: bold;
+/* headings pop in amber, strong contrast */
+.guide-html h1, .guide-html h2, .guide-html h3 {
+  color: var(--guide-accent) !important;
+  line-height: 1.2 !important;
 }
 
-.guide-content h1 { font-size: 1.75rem !important; }
-.guide-content h2 { font-size: 1.5rem !important; }
-.guide-content h3 { font-size: 1.25rem !important; }
-.guide-content h4 { font-size: 1.125rem !important; }
-
-/* Panels / sections */
-.section, .guide-section, .card, .panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  padding: clamp(16px, 2.2vw, 28px);
-  margin: 18px 0;
+/* body copy readability */
+.guide-html p, .guide-html li {
+  color: var(--guide-strong) !important;
 }
 
-/* Lists: restore bullets + spacing */
-.guide-content ul, .guide ul, .content ul {
-  list-style: disc;
-  padding-left: 1.25rem;
-  margin: .5rem 0 1rem;
+/* generic "section" blocks from the template */
+.guide-html .section {
+  background: var(--guide-card) !important;
+  border: 1px solid var(--guide-border) !important;
+  box-shadow: var(--guide-shadow) !important;
+  border-radius: 16px !important;
 }
 
-.guide-content li, .guide li {
-  margin: .4rem 0;
-  color: var(--text);
+/* pastel cards: force dark text for legibility */
+.guide-html .highlight-box,
+.guide-html .tip-box {
+  background: #fffbe6 !important;        /* light warm */
+  color: #1f2937 !important;              /* slate-800 */
+  border: 1px solid #fde68a !important;   /* amber-300 */
+  box-shadow: 0 6px 24px rgba(0,0,0,0.15) !important;
 }
 
-.guide-content p {
-  margin-bottom: 1rem !important;
-  line-height: 1.7 !important;
-  color: var(--text);
+/* the pink/green info cards the model loves to emit */
+.guide-html [style*="background: linear-gradient"],
+.guide-html [style*="background:linear-gradient"],
+.guide-html .info-card, 
+.guide-html .note-card {
+  background: var(--guide-card) !important;
+  color: var(--guide-strong) !important;
+  border: 1px solid var(--guide-border) !important;
 }
 
-/* Callouts with gradients — enforce readable text */
-.highlight-box, .tip-box, .note-box, .warning-box {
-  border-radius: 14px;
-  padding: clamp(14px, 2vw, 22px);
-  font-weight: 600;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  /* keep your vibe but ensure contrast */
-  color: #0b1020;                    /* dark text for light gradients */
-  background: linear-gradient(135deg, #ffd08a 0%, #ff9ab3 100%);
+/* bullets & lists */
+.guide-html ul { padding-left: 1.25rem !important; }
+.guide-html li { margin: .4rem 0 !important; }
+
+/* checklists that were rendering "invisible" */
+.guide-html .number-list li,
+.guide-html .checklist li {
+  background: rgba(255,255,255,0.04) !important;
+  color: var(--guide-strong) !important;
+  border: 1px solid var(--guide-border) !important;
 }
 
-/* If you ever render a "danger" or "ok" box, set text color for contrast */
-.callout-ok   { background: #1b2a26; color: #c9f7e9; border-color: rgba(52,211,153,.35); }
-.callout-warn { background: #2a2319; color: #ffe9b5; border-color: rgba(251,191,36,.35); }
-.callout-bad  { background: #2a1b1b; color: #ffd1d1; border-color: rgba(248,113,113,.35); }
-
-/* "Three-Take" cards: readable pastel blocks */
-.take-card {
-  background: #1a2336;
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-.take-card--natural   { border-left: 6px solid var(--ok);     }
-.take-card--bold      { border-left: 6px solid var(--accent); }
-.take-card--vulnerable{ border-left: 6px solid var(--danger); }
-
-/* "Prep Checklist" overlay: remove opacity tricks that wash out text */
-.checklist, .prep-checklist {
-  background: rgba(255,255,255,0.06);
-  color: var(--text);
-  backdrop-filter: blur(2px);
-}
-.checklist * { opacity: 1 !important; }
-
-/* Buttons/links */
-.guide-content a, .btn, button {
-  color: var(--accent);
-}
-.btn-primary {
-  background: var(--accent);
-  color: #121212;
-  border: none;
-}
-.btn-primary:hover {
-  filter: brightness(0.95);
+/* buttons/banners from the template */
+.guide-html .footer,
+.guide-html .banner {
+  background: var(--guide-card) !important;
+  color: var(--guide-strong) !important;
+  border-top: 1px solid var(--guide-border) !important;
 }
 
-/* Clamp paragraph width for readability */
-.guide-content, .guide, .guide-root {
-  --maxw: 980px;
-}
-.guide-content > *, .guide > *, .guide-root > * {
-  max-width: var(--maxw);
-  margin-left: auto;
-  margin-right: auto;
+/* wipe white text on light backgrounds the model inlines */
+.guide-html [style*="color: white"],
+.guide-html [style*="color:#fff"] {
+  color: #1f2937 !important; /* slate-800 */
 }
 
-/* Ensure any inline-styled pale text becomes readable */
-[class*="box"] p, [class*="box"] li, [class*="box"] span {
-  color: inherit !important;
+/* over-bright backgrounds: tone them down */
+.guide-html [style*="background-color:#fff"],
+.guide-html [style*="background:#fff"] {
+  background: #fff !important;
+  color: #1f2937 !important;
 }
 
-/* Bullet visibility inside colored boxes */
-.highlight-box ul, .tip-box ul {
-  list-style: disc;
-  padding-left: 1.25rem;
+/* ----- Guide List Component Fixes ----- */
+/* Reset guide list styles that were broken by global overrides */
+.guide-list button,
+.guide-list .guide-card {
+  color: #1f2937 !important; /* dark text */
+  background: #ffffff !important; /* white cards */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important;
+  border-radius: 12px !important;
 }
 
-/* Force readable text on any colored backgrounds */
-.guide-content div[style*="background"] {
-  color: #0b1020 !important;
+.guide-list button:hover {
+  background: #fef3c7 !important; /* soft yellow highlight */
 }
 
-.guide-content div[style*="background-color"] {
-  color: #0b1020 !important;
+.guide-list .btn {
+  color: #1f2937 !important;
+  background: #ffffff !important;
 }
 
-/* Override any light text on light backgrounds */
-.guide-content [style*="color: light"],
-.guide-content [style*="color: gray"],
-.guide-content [style*="color: grey"],
-.guide-content [style*="color: white"],
-.guide-content [style*="color: pink"],
-.guide-content [style*="color: yellow"],
-.guide-content [style*="color: blue"],
-.guide-content [style*="color: green"] {
-  color: #0b1020 !important;
+.guide-list .btn:hover {
+  background: #fef3c7 !important;
+}
+
+.guide-list .btnPrimary {
+  background: #fbbf24 !important;
+  color: #1f2937 !important;
+}
+
+.guide-list .btnSecondary {
+  background: #374151 !important;
+  color: #f3f4f6 !important;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .guide-content {
+  .guide-html {
     font-size: 0.95rem !important;
   }
   
-  .guide-content h1 {
+  .guide-html h1 {
     font-size: 1.5rem !important;
   }
   
-  .guide-content h2 {
+  .guide-html h2 {
     font-size: 1.25rem !important;
   }
   
-  .guide-content h3 {
+  .guide-html h3 {
     font-size: 1.125rem !important;
   }
 }

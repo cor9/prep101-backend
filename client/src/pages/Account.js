@@ -87,7 +87,7 @@ const Account = () => {
     <>
       <Navbar />
       <div className="page-dark">
-        <div className="container-wide">
+        <div className="container-wide guide-list">
           
           {/* Header */}
           <div className="page-hero">
@@ -227,12 +227,12 @@ const Account = () => {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => {
-                          // Open guide in new tab using frontend route
-                          const guideUrl = `/guide/${guide.id}`;
-                          window.open(guideUrl, '_blank', 'noopener,noreferrer');
-                        }}
+                                              <button
+                          onClick={() => {
+                            // Open guide in new tab using frontend route
+                            const guideUrl = `/guide/${guide.id}`;
+                            window.open(guideUrl, '_blank', 'noopener,noreferrer');
+                          }}
                         className="btn btnPrimary"
                         style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
                       >

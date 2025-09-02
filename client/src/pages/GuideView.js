@@ -6,6 +6,20 @@ import API_BASE from '../config/api';
 import '../styles/shared.css';
 import '../styles/guide.css';
 
+// Strip inline styles from generated HTML
+const stripInlineStyles = (html) => html.replace(/<style[\s\S]*?<\/style>/gi, '');
+
+// Normalize the worst inline styles from the model
+const normalizeGuide = (html) => {
+  // strip embedded <style> blocks
+  html = html.replace(/<style[\s\S]*?<\/style>/gi, '');
+  // kill inline text-shadows
+  html = html.replace(/text-shadow\s*:\s*[^;"']+;?/gi, '');
+  // downgrade super low opacity text
+  html = html.replace(/opacity\s*:\s*0\.[0-3]\d*;?/gi, 'opacity:1;');
+  return html;
+};
+
 const GuideView = () => {
   const { id } = useParams();
   const { user } = useAuth();
@@ -110,6 +124,9 @@ const GuideView = () => {
     );
   }
 
+  // Sanitize the HTML before rendering
+  const safeHtml = normalizeGuide(guide.generatedHtml);
+
   return (
     <>
       <Navbar />
@@ -154,7 +171,8 @@ const GuideView = () => {
             </div>
 
             <div 
-              dangerouslySetInnerHTML={{ __html: guide.generatedHtml }}
+              className="guide-html"
+              dangerouslySetInnerHTML={{ __html: safeHtml }}
               style={{ 
                 background: '#1f2937', 
                 borderRadius: '0.75rem', 
@@ -164,7 +182,6 @@ const GuideView = () => {
                 fontSize: '1rem',
                 border: '1px solid #374151'
               }}
-              className="guide-content"
             />
           </div>
         </div>
