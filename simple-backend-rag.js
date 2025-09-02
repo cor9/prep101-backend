@@ -6,6 +6,7 @@ const path = require('path');
 require('dotenv').config();
 const pdfParse = require('pdf-parse');
 const { extractWithAdobe } = require('./services/extractors/adobeExtract');
+const { DEFAULT_CLAUDE_MODEL } = require('./config/models');
 
 // Import new authentication and payment features
 const { config, validateConfig } = require('./config/config');
@@ -507,7 +508,7 @@ STRICT SCRIPT POLICY:
             'anthropic-version': '2023-06-01'
           },
           body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
+            model: DEFAULT_CLAUDE_MODEL,
             max_tokens: 8000,
             messages: [{
               role: "user",
@@ -577,7 +578,7 @@ ${data.sceneText}${fileTypeContext}
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`❌ RAG Guide Generation Error (Attempt ${attempt}):`, response.status, errorText);
+          console.error(`❌ RAG Guide Generation Error (Attempt ${attempt}) [model=${DEFAULT_CLAUDE_MODEL}]:`, response.status, response.statusText, errorText);
           
           if (response.status === 504 && attempt < maxRetries) {
             console.log(`⏰ Gateway timeout, retrying in ${attempt * 2} seconds...`);
@@ -586,7 +587,7 @@ ${data.sceneText}${fileTypeContext}
             continue;
           }
           
-          throw new Error(`API Error: ${response.status} - ${errorText}`);
+          throw new Error(`Anthropic ${response.status}: ${errorText}`);
         }
 
         const result = await response.json();
@@ -1098,7 +1099,7 @@ async function generateChildGuide(data) {
         'anthropic-version': '2023-06-01'
       },
               body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: DEFAULT_CLAUDE_MODEL,
           max_tokens: 6000,
           messages: [{
             role: "user",
@@ -1765,7 +1766,7 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
 app.get('/api/health', (req, res) => {
  res.json({ 
    status: 'running',
-   model: 'claude-sonnet-4-20250514',
+   model: DEFAULT_CLAUDE_MODEL,
    maxTokens: 8000,
    ragEnabled: true,
    methodologyFiles: Object.keys(methodologyDatabase).length,
