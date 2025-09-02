@@ -4,8 +4,25 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+
+// Create app immediately for fast health checks
+const app = express();
+
+// Super fast health check - responds immediately
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+// Continue with other imports
 const pdfParse = require('pdf-parse');
-const { extractWithAdobe } = require('./services/extractors/adobeExtract');
+// Try to load Adobe extractor, but don't fail if it's not available
+let extractWithAdobe;
+try {
+  extractWithAdobe = require('./services/extractors/adobeExtract').extractWithAdobe;
+} catch (error) {
+  console.log('⚠️  Adobe extractor not available, using basic extraction only');
+  extractWithAdobe = null;
+}
 const { DEFAULT_CLAUDE_MODEL } = require('./config/models');
 
 // Import new authentication and payment features
@@ -18,8 +35,6 @@ const {
   corsOptions, 
   securityHeaders 
 } = require('./middleware/security');
-
-const app = express();
 
 // Validate configuration
 validateConfig();
@@ -1820,6 +1835,11 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     server: 'PREP101 Enhanced Backend'
   });
+});
+
+// Even faster health check for Railway deployment
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 // Enhanced health check with new features (for detailed monitoring)
