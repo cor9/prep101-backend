@@ -92,8 +92,8 @@ app.use('/api/guides', guidesRoutes);
 app.use('/api/beta', betaRoutes);
 
 
-// Secure API key handling
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+// Secure API key handling (trim to avoid invisible whitespace issues)
+const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
 if (!ANTHROPIC_API_KEY) {
   console.error('❌ ANTHROPIC_API_KEY not found in environment variables');
   process.exit(1);
@@ -102,6 +102,11 @@ if (!ANTHROPIC_API_KEY) {
 // Debug environment variables
 console.log('🔧 Environment variables loaded:');
 console.log('  - JWT_SECRET present:', !!process.env.JWT_SECRET);
+// Masked Anthropic key diagnostics (length only)
+try {
+  const masked = ANTHROPIC_API_KEY ? `len=${ANTHROPIC_API_KEY.length}` : 'missing';
+  console.log('  - ANTHROPIC_API_KEY:', masked);
+} catch(_) {}
 
 console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL);
 console.log('  - API_BASE:', process.env.API_BASE);
