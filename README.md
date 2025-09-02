@@ -45,41 +45,76 @@ PREP101 is a comprehensive acting coaching platform that combines AI-powered gui
 - **Admin Management**: Comprehensive beta tester management tools
 
 ## 🛠️ Quick Start
-## Quickstart
-1) cp .env.example .env.local  # add keys for AIRTABLE, OPENAI, GMAIL if used
-2) npm i
-3) npm run dev   # or npm run worker
 
-## Acceptance (must pass to merge)
-- When I run `npm run seed:airtable`, a mock record is created.
-- Running `npm run generate:guide --record <id>` outputs `out/guide.html`.
-- `npm test` passes (unit + e2e smoke).
+### ⚠️ IMPORTANT: Environment Security
+This project uses sensitive API keys and database credentials. **Never commit your `.env` file to git!**
 
 ### 1. Install Dependencies
 ```bash
 npm install
 ```
 
-### 2. Environment Setup
-Copy `env.template` to `.env` and configure:
+### 2. Environment Setup (SAFE METHOD)
+Use our setup script to configure environment variables safely:
 ```bash
-cp env.template .env
-# Edit .env with your database and API keys
+./setup-env.sh
 ```
 
-### 3. Database Setup
+Or manually:
+```bash
+cp env.template .env
+# Edit .env with your actual values
+```
+
+### 3. Required Environment Variables
+You must configure these in your `.env` file:
+
+**Essential:**
+- `DATABASE_URL` - PostgreSQL connection string
+- `ANTHROPIC_API_KEY` - Your Anthropic API key (starts with `sk-ant-api03-`)
+- `JWT_SECRET` - A long, random string for JWT signing
+
+**Optional:**
+- `ADOBE_CLIENT_ID` & `ADOBE_CLIENT_SECRET` - For PDF processing
+- `STRIPE_SECRET_KEY` - For payment processing
+- `MAILERSEND_API_KEY` - For email functionality
+
+### 4. Database Setup
 ```bash
 npm run migrate
 ```
 
-### 4. Start Development Server
+### 5. Start Development Server
 ```bash
-npm run dev
+npm start
 ```
 
-### 5. Setup Beta Tester System (Optional)
+### 6. Setup Beta Tester System (Optional)
 ```bash
 ./setup-beta-admin.sh
+```
+
+## 🔒 Security Features
+
+- **Pre-commit Hook**: Automatically prevents committing sensitive files
+- **Comprehensive .gitignore**: Protects all sensitive files
+- **Environment Template**: Safe template with no real credentials
+- **Setup Script**: Validates environment configuration
+
+## 🚨 Troubleshooting
+
+**Git push blocked due to secrets?**
+```bash
+git reset --soft HEAD~1
+git reset HEAD .env
+git add .gitignore
+git commit --amend --no-edit
+git push
+```
+
+**Missing environment variables?**
+```bash
+./setup-env.sh
 ```
 
 ## 🌐 API Endpoints
