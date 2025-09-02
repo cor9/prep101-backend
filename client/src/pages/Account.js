@@ -122,12 +122,7 @@ const Account = () => {
                   {user?.subscription ? user.subscription.charAt(0).toUpperCase() + user.subscription.slice(1) : 'Free'}
                 </p>
               </div>
-              <div>
-                <strong style={{ color: '#374151' }}>Member Since:</strong>
-                <p style={{ color: '#6b7280', margin: '0.5rem 0' }}>
-                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                </p>
-              </div>
+
             </div>
           </div>
 
