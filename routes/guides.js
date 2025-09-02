@@ -600,7 +600,6 @@ router.post('/:id/email', auth, async (req, res) => {
       message: 'Guide created successfully (email disabled)',
       guideId: guide.id
     });
-    }
   } catch (error) {
     console.error('❌ Email sending error:', error);
     res.status(500).json({ error: 'Failed to send email' });
