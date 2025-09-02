@@ -132,12 +132,18 @@
   color: #93c5fd !important;
 }
 
-/* Aggressive overrides for any problematic styling */
+/* Nuclear option - override everything */
 .guide-content * {
   color: #f3f4f6 !important;
 }
 
-.guide-content div {
+.guide-content div,
+.guide-content section,
+.guide-content article,
+.guide-content aside,
+.guide-content header,
+.guide-content footer,
+.guide-content main {
   background: #374151 !important;
   color: #f3f4f6 !important;
   border: 1px solid #4b5563 !important;
@@ -146,7 +152,11 @@
   margin: 1rem 0 !important;
 }
 
-.guide-content span {
+.guide-content span,
+.guide-content p,
+.guide-content li,
+.guide-content td,
+.guide-content th {
   color: #f3f4f6 !important;
 }
 
@@ -155,14 +165,23 @@
 .guide-content .bold,
 .guide-content .highlight,
 .guide-content span[style*="font-weight"],
-.guide-content span[style*="bold"] {
+.guide-content span[style*="bold"],
+.guide-content h1,
+.guide-content h2,
+.guide-content h3,
+.guide-content h4,
+.guide-content h5,
+.guide-content h6 {
   color: #fbbf24 !important;
   font-weight: bold !important;
 }
 
-/* Override any inline styles */
-.guide-content [style*="background"] {
+/* Override any inline styles with !important */
+.guide-content [style*="background"],
+.guide-content [style*="background-color"],
+.guide-content [style*="bgcolor"] {
   background: #374151 !important;
+  background-color: #374151 !important;
   color: #f3f4f6 !important;
   border: 1px solid #4b5563 !important;
 }
@@ -171,19 +190,23 @@
   color: #f3f4f6 !important;
 }
 
-.guide-content [style*="background-color"] {
-  background-color: #374151 !important;
-  color: #f3f4f6 !important;
-}
-
-/* Specific overrides for common problematic patterns */
-.guide-content div[style*="pink"],
-.guide-content div[style*="light"],
-.guide-content div[style*="yellow"],
-.guide-content div[style*="white"],
-.guide-content div[style*="gray"],
-.guide-content div[style*="grey"] {
+/* Target specific color patterns */
+.guide-content [style*="pink"],
+.guide-content [style*="light"],
+.guide-content [style*="yellow"],
+.guide-content [style*="white"],
+.guide-content [style*="gray"],
+.guide-content [style*="grey"],
+.guide-content [style*="blue"],
+.guide-content [style*="green"],
+.guide-content [style*="cream"],
+.guide-content [style*="beige"],
+.guide-content [style*="ivory"],
+.guide-content [style*="mint"],
+.guide-content [style*="lavender"],
+.guide-content [style*="peach"] {
   background: #374151 !important;
+  background-color: #374151 !important;
   color: #f3f4f6 !important;
   border: 1px solid #4b5563 !important;
 }
@@ -193,7 +216,35 @@
 .guide-content [style*="color: gray"],
 .guide-content [style*="color: grey"],
 .guide-content [style*="color: white"],
-.guide-content [style*="color: pink"] {
+.guide-content [style*="color: pink"],
+.guide-content [style*="color: yellow"],
+.guide-content [style*="color: blue"],
+.guide-content [style*="color: green"],
+.guide-content [style*="color: cream"],
+.guide-content [style*="color: beige"] {
+  color: #f3f4f6 !important;
+}
+
+/* Target specific HTML elements that might have problematic styling */
+.guide-content .checklist,
+.guide-content .take,
+.guide-content .approach,
+.guide-content .box,
+.guide-content .container,
+.guide-content .content,
+.guide-content .item,
+.guide-content .entry {
+  background: #374151 !important;
+  background-color: #374151 !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #4b5563 !important;
+  border-radius: 0.5rem !important;
+  padding: 1rem !important;
+  margin: 1rem 0 !important;
+}
+
+/* Force all text to be readable */
+.guide-content *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(strong):not(b) {
   color: #f3f4f6 !important;
 }
 
