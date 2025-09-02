@@ -16,7 +16,11 @@ import './App.css';
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   
+  console.log('🔒 ProtectedRoute - user:', user ? 'logged in' : 'not logged in');
+  console.log('🔒 ProtectedRoute - loading:', loading);
+  
   if (loading) {
+    console.log('🔒 ProtectedRoute - showing loading screen');
     return (
       <div style={{ 
         display: 'flex', 
@@ -31,7 +35,13 @@ function ProtectedRoute({ children }) {
     );
   }
   
-  return user ? children : <Navigate to="/login" />;
+  if (!user) {
+    console.log('🔒 ProtectedRoute - redirecting to login');
+    return <Navigate to="/login" />;
+  }
+  
+  console.log('🔒 ProtectedRoute - rendering protected content');
+  return children;
 }
 
 function App() {

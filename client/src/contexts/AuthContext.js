@@ -9,20 +9,54 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Validate token with backend
+  const validateToken = async (token) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/verify`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Token validation error:', error);
+      return false;
+    }
+  };
+
   // Load user from localStorage on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('prep101_user');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        console.log('AuthContext: loaded user from localStorage:', parsedUser);
-      } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('prep101_user');
+    const loadUser = async () => {
+      const savedUser = localStorage.getItem('prep101_user');
+      console.log('🔍 Loading user from localStorage:', savedUser ? 'found' : 'not found');
+      
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          console.log('🔍 Parsed user:', parsedUser);
+          
+          // Validate token with backend
+          const isValid = await validateToken(parsedUser.accessToken);
+          console.log('🔍 Token validation result:', isValid);
+          
+          if (isValid) {
+            setUser(parsedUser);
+            console.log('✅ User loaded from localStorage');
+          } else {
+            console.log('❌ Token invalid, clearing localStorage');
+            localStorage.removeItem('prep101_user');
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Error parsing saved user:', error);
+          localStorage.removeItem('prep101_user');
+          setUser(null);
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    loadUser();
   }, []);
 
   // Debug logging
@@ -52,7 +86,7 @@ export const AuthProvider = ({ children }) => {
       
       setUser(realUser);
       localStorage.setItem('prep101_user', JSON.stringify(realUser));
-      console.log('AuthContext: user set to:', realUser);
+      console.log('✅ User logged in and saved to localStorage');
       return realUser;
     } catch (error) {
       console.error('Login error:', error);
@@ -84,7 +118,7 @@ export const AuthProvider = ({ children }) => {
       
       setUser(realUser);
       localStorage.setItem('prep101_user', JSON.stringify(realUser));
-      console.log('AuthContext: user set to:', realUser);
+      console.log('✅ User registered and saved to localStorage');
       return realUser;
     } catch (error) {
       console.error('Registration error:', error);
