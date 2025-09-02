@@ -65,7 +65,7 @@ const Terms = () => {
               1) Who we are
             </h2>
             <p style={{ color: '#334155' }}>
-              Prep101 is a coaching and content service for audition and performance preparation. Contact: <a href="mailto:support@prep101.site" style={{ color: '#1e293b', textDecoration: 'underline' }}>support@prep101.site</a>.
+              Prep101 is a coaching and content service for audition and performance preparation. Contact: <a href="mailto:admin@prep101.site" style={{ color: '#1e293b', textDecoration: 'underline' }}>admin@prep101.site</a>.
             </p>
 
             <h2 style={{
@@ -254,7 +254,7 @@ const Terms = () => {
               16) Contact
             </h2>
             <p style={{ color: '#334155' }}>
-              Email <a href="mailto:support@prep101.site" style={{ color: '#1e293b', textDecoration: 'underline' }}>support@prep101.site</a> for questions about these Terms.
+              Email <a href="mailto:admin@prep101.site" style={{ color: '#1e293b', textDecoration: 'underline' }}>admin@prep101.site</a> for questions about these Terms.
             </p>
 
             <footer style={{

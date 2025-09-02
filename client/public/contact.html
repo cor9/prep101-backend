@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contact Us • Prep101</title>
+  <meta name="robots" content="index,follow" />
+  <meta name="description" content="Contact Prep101 for support and questions." />
+  <style>
+    :root {
+      --ink:#0f172a; --muted:#334155; --soft:#64748b; --line:#e2e8f0;
+      --brand:#1e293b; --bg:#ffffff; --accent:#f59e0b;
+      --max:840px;
+    }
+    html,body{background:var(--bg); color:var(--ink); margin:0; font:16px/1.6 system-ui,-apple-system,Segoe UI,Inter,Arial,sans-serif}
+    .wrap{max-width:var(--max); margin:0 auto; padding:48px 20px}
+    h1{font-size:clamp(28px,4vw,40px); line-height:1.2; margin:0 0 12px}
+    h2{font-size:clamp(20px,2.2vw,24px); margin:32px 0 8px}
+    h3{font-size:18px; margin:24px 0 8px}
+    p,li{color:var(--muted)}
+    .meta{color:var(--soft); font-size:14px; border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:24px}
+    a{color:var(--brand); text-decoration:underline}
+    .card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:24px}
+    .notice{border-left:4px solid var(--accent); background:#fff8eb; padding:12px 16px; border-radius:8px; color:#7c5b09}
+    .contact-info{background:#f8fafc; border:1px solid var(--line); border-radius:12px; padding:20px; margin:20px 0}
+    ul{padding-left:22px}
+    footer{margin-top:40px; font-size:14px; color:var(--soft)}
+  </style>
+  <noscript>
+    <style>body{padding:20px;font-family:system-ui}</style>
+    <p>This page is fully static—JavaScript is not required.</p>
+  </noscript>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Contact Us</h1>
+    <div class="meta">We're here to help with any questions or support needs</div>
+
+    <div class="card">
+      <p>Have questions, feedback, or need support? We're here for you and committed to providing excellent customer service.</p>
+      <p class="notice"><strong>Response Time:</strong> We typically respond within 24 hours during business days. For urgent billing issues, include "URGENT" in your subject line.</p>
+    </div>
+
+    <div class="contact-info">
+      <h2>Primary Contact</h2>
+      <p><strong>Email:</strong> <a href="mailto:admin@prep101.site">admin@prep101.site</a></p>
+      <p><strong>Business Hours:</strong> Monday – Friday, 9 AM – 5 PM PT</p>
+      <p><strong>Response Time:</strong> Within 24 hours (usually much faster)</p>
+    </div>
+
+    <h2>What We Can Help With</h2>
+    <ul>
+      <li><strong>Account Issues:</strong> Login problems, password resets, account management</li>
+      <li><strong>Billing & Payments:</strong> Subscription questions, payment issues, refund requests</li>
+      <li><strong>Technical Support:</strong> Guide generation problems, upload issues, site functionality</li>
+      <li><strong>Feature Requests:</strong> Suggestions for new features or improvements</li>
+      <li><strong>General Questions:</strong> About our services, policies, or how to get the most from Prep101</li>
+    </ul>
+
+    <h2>Before Contacting Us</h2>
+    <p>To help us assist you more quickly, please include:</p>
+    <ul>
+      <li>Your account email address</li>
+      <li>A clear description of the issue or question</li>
+      <li>Any relevant screenshots or error messages</li>
+      <li>Steps you've already tried to resolve the issue</li>
+    </ul>
+
+    <h2>Urgent Issues</h2>
+    <p>For urgent billing or technical issues that prevent you from using our service:</p>
+    <ul>
+      <li>Include "URGENT" in your email subject line</li>
+      <li>Provide your account email and a brief description</li>
+      <li>We'll prioritize these requests and respond as quickly as possible</li>
+    </ul>
+
+    <h2>Other Resources</h2>
+    <ul>
+      <li><a href="/terms">Terms of Service</a> - Our complete terms and conditions</li>
+      <li><a href="/privacy">Privacy Policy</a> - How we handle your data</li>
+      <li><a href="/refunds">Refund Policy</a> - Information about refunds</li>
+      <li><a href="/disclaimer">Disclaimer</a> - Important disclaimers about our services</li>
+    </ul>
+
+    <h2>Feedback</h2>
+    <p>We value your feedback! Whether it's a suggestion for improvement, a feature request, or just letting us know how we're doing, we'd love to hear from you. Your input helps us make Prep101 better for everyone.</p>
+
+    <footer>© <span id="yy"></span> Prep101. All rights reserved.</footer>
+  </main>
+  <script>document.getElementById('yy').textContent = new Date().getFullYear()</script>
+</body>
+</html>
