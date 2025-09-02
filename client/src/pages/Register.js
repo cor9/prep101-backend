@@ -30,8 +30,13 @@ const Register = () => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      toast.error('Password must contain at least one uppercase letter, one lowercase letter, and one number');
       return;
     }
 
@@ -42,7 +47,17 @@ const Register = () => {
       toast.success('Account created successfully!');
       navigate('/account');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      console.error('Registration error:', error);
+      
+      // Handle validation errors from backend
+      if (error.response?.data?.errors) {
+        const validationErrors = error.response.data.errors;
+        validationErrors.forEach(err => {
+          toast.error(`${err.param}: ${err.msg}`);
+        });
+      } else {
+        toast.error(error.response?.data?.message || 'Registration failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -116,6 +131,9 @@ const Register = () => {
                 className="form-input"
                 required
               />
+              <small style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                Must be at least 8 characters with uppercase, lowercase, and number
+              </small>
             </div>
 
             <div className="form-group">
