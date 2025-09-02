@@ -593,105 +593,13 @@ router.post('/:id/email', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log(`📧 Sending guide email to: ${user.email}`);
-
-    // Check environment variables
-    if (!process.env.MAILERSEND_API_KEY) {
-      console.error('❌ MAILERSEND_API_KEY not found in environment variables');
-      return res.status(500).json({ 
-        error: 'Email service not configured',
-        details: 'MailerSend API key is missing'
-      });
-    }
-
-    // Create guide content for email
-    const guideContent = `
-      <div class="character-info">
-        <h2>${guide.characterName} - ${guide.productionTitle}</h2>
-        <p><strong>Production Type:</strong> ${guide.productionType}</p>
-        <p><strong>Role Size:</strong> ${guide.roleSize}</p>
-        <p><strong>Genre:</strong> ${guide.genre}</p>
-        <p><strong>Created:</strong> ${new Date(guide.createdAt).toLocaleDateString()}</p>
-      </div>
-
-      <div class="guide-section">
-        <h3>Character Analysis</h3>
-        ${guide.storyline ? `<p><strong>Storyline:</strong> ${guide.storyline}</p>` : ''}
-        ${guide.characterBreakdown ? `<p><strong>Character Breakdown:</strong> ${guide.characterBreakdown}</p>` : ''}
-        ${guide.focusArea ? `<p><strong>Focus Area:</strong> ${guide.focusArea}</p>` : ''}
-      </div>
-
-      <div class="guide-section">
-        <h3>Your Professional Guide</h3>
-        <p>Your personalized audition guide has been generated using Corey Ralston's professional methodology. This guide includes:</p>
-        <ul>
-          <li>Character essence and psychology</li>
-          <li>Script breakdown and analysis</li>
-          <li>Uta Hagen's 9 Questions framework</li>
-          <li>Subtext analysis and objectives</li>
-          <li>Professional coaching insights</li>
-        </ul>
-      </div>
-
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${process.env.FRONTEND_URL || 'https://prep101.site'}/dashboard" class="button">View Full Guide Online</a>
-        <a href="${process.env.API_BASE || 'https://prep101.site'}/api/guides/${guide.id}/pdf" class="button">Download as PDF</a>
-      </div>
-    `;
-
-    // Send email using MailerSend directly
-    console.log('📧 Attempting to send email via MailerSend...');
+    console.log(`📧 Email functionality disabled - guide created successfully`);
     
-    try {
-      // Import MailerSend directly here to avoid circular dependencies
-      const { MailerSend, EmailParams, Sender, Recipient } = require('mailersend');
-      
-      const mailerSend = new MailerSend({ 
-        apiKey: process.env.MAILERSEND_API_KEY 
-      });
-      
-      const FROM_EMAIL = process.env.MAILERSEND_SENDER_EMAIL || "team@prep101.site";
-      const FROM_NAME = process.env.MAILERSEND_SENDER_NAME || "Prep101";
-      
-      console.log(`📧 From: ${FROM_EMAIL} (${FROM_NAME})`);
-      console.log(`📧 To: ${user.email}`);
-      
-      const emailParams = new EmailParams()
-        .setFrom(new Sender(FROM_EMAIL, FROM_NAME))
-        .setTo([new Recipient(user.email, user.name || "Prep101 User")])
-        .setReplyTo(new Sender(FROM_EMAIL, FROM_NAME))
-        .setSubject(`Your Prep101 Guide: ${guide.characterName} - ${guide.productionTitle}`)
-        .setHtml(guideContent)
-        .setText(guideContent.replace(/<[^>]+>/g, "")); // plain text fallback
-
-      const result = await mailerSend.email.send(emailParams);
-      
-      console.log('✅ Guide email sent successfully to:', user.email);
-      console.log('📊 Result:', result);
-      
-      res.json({ 
-        success: true, 
-        message: 'Guide email sent successfully',
-        recipient: user.email,
-        result 
-      });
-      
-    } catch (error) {
-      console.error('❌ Guide email failed:', error);
-      
-      if (error.body) {
-        console.error('Response Body:', JSON.stringify(error.body, null, 2));
-      }
-      
-      if (error.statusCode) {
-        console.error('Status Code:', error.statusCode);
-      }
-      
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || 'Failed to send guide email',
-        details: error.body || error
-      });
+    res.json({ 
+      success: true, 
+      message: 'Guide created successfully (email disabled)',
+      guideId: guide.id
+    });
     }
   } catch (error) {
     console.error('❌ Email sending error:', error);

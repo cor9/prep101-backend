@@ -54,7 +54,7 @@ const paymentRoutes = require('./routes/payments');
 const guidesRoutes = require('./routes/guides');
 // const uploadRoutes = require('./routes/upload'); // COMMENTED OUT - keeping old working handler
 const betaRoutes = require('./routes/beta');
-const emailGuideRoutes = require('./routes/emailGuide');
+
 
 // Mount new API routes
 app.use('/api/auth', authRoutes);
@@ -62,7 +62,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/guides', guidesRoutes);
 // app.use('/api/upload', uploadRoutes); // COMMENTED OUT - keeping old working handler
 app.use('/api/beta', betaRoutes);
-app.use('/api/guides', emailGuideRoutes);
+
 
 // Secure API key handling
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -74,8 +74,7 @@ if (!ANTHROPIC_API_KEY) {
 // Debug environment variables
 console.log('🔧 Environment variables loaded:');
 console.log('  - JWT_SECRET present:', !!process.env.JWT_SECRET);
-console.log('  - MAILERSEND_API_KEY present:', !!process.env.MAILERSEND_API_KEY);
-console.log('  - MAILERSEND_SENDER_EMAIL:', process.env.MAILERSEND_SENDER_EMAIL);
+
 console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL);
 console.log('  - API_BASE:', process.env.API_BASE);
 
@@ -1713,42 +1712,7 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
 // Note: Email endpoint is now handled by the mounted routes in ./routes/guides.js
 
 // Test email configuration
-app.get('/api/test-email', async (req, res) => {
-  try {
-    console.log('🧪 Testing MailerSend configuration...');
-    console.log('MAILERSEND_API_KEY present:', !!process.env.MAILERSEND_API_KEY);
-    
-    const EmailService = require('./services/emailService');
-    const emailService = new EmailService();
-    
-    // Test the MailerSend configuration
-    const testResult = await emailService.testConfiguration();
-    
-    if (testResult.success) {
-      res.json({
-        success: true,
-        message: 'MailerSend configuration is valid',
-        apiKey: 'Present',
-        config: 'MailerSend with secure connection'
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        error: 'MailerSend configuration failed',
-        details: testResult.error,
-        message: testResult.message
-      });
-    }
-    
-  } catch (error) {
-    console.log('❌ MailerSend configuration test failed:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'MailerSend configuration failed',
-      details: error.message
-    });
-  }
-});
+
 
 // Health check
 app.get('/api/health', (req, res) => {
