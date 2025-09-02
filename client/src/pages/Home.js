@@ -68,9 +68,10 @@ const Home = () => {
             </div>
           </section>
 
-          {/* Footer */}
-          <Footer />
         </div>
+        
+        {/* Footer */}
+        <Footer />
       </div>
       
       <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify({
