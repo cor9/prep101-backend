@@ -1320,6 +1320,14 @@ app.post('/api/guides/generate', async (req, res) => {
    
    // Handle both single and multiple upload IDs
    const uploadIdList = uploadIds || [uploadId];
+   // Debug request basics for faster triage
+   console.log('📝 Generate request:', {
+     uploadIdsCount: Array.isArray(uploadIds) ? uploadIds.length : (uploadId ? 1 : 0),
+     hasAuthHeader: !!req.headers.authorization,
+     hasCharacterName: !!characterName,
+     hasProductionTitle: !!productionTitle,
+     hasProductionType: !!productionType
+   });
    
    if (!uploadIdList.length || uploadIdList.some(id => !uploads[id])) {
      return res.status(400).json({ error: 'Invalid upload ID(s) or expired session' });
@@ -1547,10 +1555,10 @@ app.post('/api/guides/generate', async (req, res) => {
 
  } catch (error) {
    console.error('❌ Corey Ralston RAG error:', error);
-   
+   // Always surface the server-side reason for easier client debug (no secrets)
    res.status(500).json({ 
      error: 'Failed to generate Corey Ralston methodology guide. Please try again.',
-     details: process.env.NODE_ENV === 'development' ? error.message : undefined
+     reason: error && error.message ? String(error.message) : undefined
    });
  }
 });
