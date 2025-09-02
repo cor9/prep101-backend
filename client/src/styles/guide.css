@@ -132,39 +132,69 @@
   color: #93c5fd !important;
 }
 
-/* Fix for highlighted boxes and special content */
-.guide-content div[style*="background"],
-.guide-content .highlight,
-.guide-content .alert,
-.guide-content .note {
+/* Aggressive overrides for any problematic styling */
+.guide-content * {
+  color: #f3f4f6 !important;
+}
+
+.guide-content div {
   background: #374151 !important;
+  color: #f3f4f6 !important;
   border: 1px solid #4b5563 !important;
   border-radius: 0.5rem !important;
   padding: 1rem !important;
   margin: 1rem 0 !important;
-  color: #f3f4f6 !important;
 }
 
-/* Ensure all text has good contrast */
-.guide-content * {
+.guide-content span {
   color: #f3f4f6 !important;
 }
 
 .guide-content strong,
 .guide-content b,
 .guide-content .bold,
-.guide-content .highlight {
+.guide-content .highlight,
+.guide-content span[style*="font-weight"],
+.guide-content span[style*="bold"] {
   color: #fbbf24 !important;
   font-weight: bold !important;
 }
 
-/* Fix for any pink/light colored backgrounds */
-.guide-content div[style*="pink"],
-.guide-content div[style*="light"],
-.guide-content div[style*="background-color"] {
+/* Override any inline styles */
+.guide-content [style*="background"] {
   background: #374151 !important;
   color: #f3f4f6 !important;
   border: 1px solid #4b5563 !important;
+}
+
+.guide-content [style*="color"] {
+  color: #f3f4f6 !important;
+}
+
+.guide-content [style*="background-color"] {
+  background-color: #374151 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Specific overrides for common problematic patterns */
+.guide-content div[style*="pink"],
+.guide-content div[style*="light"],
+.guide-content div[style*="yellow"],
+.guide-content div[style*="white"],
+.guide-content div[style*="gray"],
+.guide-content div[style*="grey"] {
+  background: #374151 !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #4b5563 !important;
+}
+
+/* Override any text color issues */
+.guide-content [style*="color: light"],
+.guide-content [style*="color: gray"],
+.guide-content [style*="color: grey"],
+.guide-content [style*="color: white"],
+.guide-content [style*="color: pink"] {
+  color: #f3f4f6 !important;
 }
 
 /* Responsive adjustments */
