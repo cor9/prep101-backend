@@ -1784,14 +1784,15 @@ app.get('/api/health', (req, res) => {
    ragEnabled: true,
    methodologyFiles: Object.keys(methodologyDatabase).length,
    coreyRalstonMethodology: true,
-  apiKey: ANTHROPIC_API_KEY ? 'configured' : 'missing',
-  uploadsCount: Object.keys(uploads).length,
-  adobeExtract: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true' ? 'enabled' : 'disabled',
-  minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10),
-  extraction: {
-    adobeEnabled: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true',
-    minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10)
-  },
+   apiKey: ANTHROPIC_API_KEY ? 'configured' : 'missing',
+   anthropicKeyLen: ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.length : 0,
+   uploadsCount: Object.keys(uploads).length,
+   adobeExtract: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true' ? 'enabled' : 'disabled',
+   minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10),
+   extraction: {
+     adobeEnabled: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true',
+     minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10)
+   },
   extractionTotals: extractionStats.totals,
   extractionLast: extractionStats.last,
    features: [
