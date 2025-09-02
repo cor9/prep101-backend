@@ -1,151 +1,155 @@
-.guide-content {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.7;
-  font-size: 1rem;
+/* ----- PREP101 Guide Readability Hotfix (non-destructive) ----- */
+:root {
+  --bg: #0e1726;           /* deep slate */
+  --panel: #121a2b;        /* panel bg */
+  --text: #e8edf7;         /* primary text */
+  --muted: #c8d2e6;        /* secondary text */
+  --accent: #fbbf24;       /* warm accent (gold) */
+  --accent-2: #f472b6;     /* pink accent for highlights */
+  --ok: #34d399;           /* green accent */
+  --danger: #f87171;       /* coral */
+  --card: #0f172a;         /* dark card */
+  --card-soft: #132038;    /* softer card */
+  --border: rgba(255,255,255,.08);
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
 }
 
-.guide-content h1,
-.guide-content h2,
-.guide-content h3,
-.guide-content h4 {
-  color: #fbbf24 !important;
-  margin-top: 2rem !important;
-  margin-bottom: 1rem !important;
-  font-weight: bold !important;
-  line-height: 1.3 !important;
+/* Scope to the guide root if you have one */
+.guide-root, .guide, .guide-content {
+  background: var(--bg);
+  color: var(--text);
 }
 
-.guide-content h1 {
-  font-size: 1.75rem !important;
+/* Headings */
+.guide-content h1, .guide-content h2, .guide-content h3,
+.guide-root h1, .guide-root h2, .guide-root h3 {
+  color: var(--accent);
+  letter-spacing: .2px;
+  text-shadow: none;
+  font-weight: bold;
 }
 
-.guide-content h2 {
-  font-size: 1.5rem !important;
+.guide-content h1 { font-size: 1.75rem !important; }
+.guide-content h2 { font-size: 1.5rem !important; }
+.guide-content h3 { font-size: 1.25rem !important; }
+.guide-content h4 { font-size: 1.125rem !important; }
+
+/* Panels / sections */
+.section, .guide-section, .card, .panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: clamp(16px, 2.2vw, 28px);
+  margin: 18px 0;
 }
 
-.guide-content h3 {
-  font-size: 1.25rem !important;
+/* Lists: restore bullets + spacing */
+.guide-content ul, .guide ul, .content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: .5rem 0 1rem;
 }
 
-.guide-content h4 {
-  font-size: 1.125rem !important;
+.guide-content li, .guide li {
+  margin: .4rem 0;
+  color: var(--text);
 }
 
 .guide-content p {
   margin-bottom: 1rem !important;
   line-height: 1.7 !important;
+  color: var(--text);
 }
 
-.guide-content ul,
-.guide-content ol {
-  margin-bottom: 1rem !important;
-  padding-left: 1.5rem !important;
+/* Callouts with gradients — enforce readable text */
+.highlight-box, .tip-box, .note-box, .warning-box {
+  border-radius: 14px;
+  padding: clamp(14px, 2vw, 22px);
+  font-weight: 600;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  /* keep your vibe but ensure contrast */
+  color: #0b1020;                    /* dark text for light gradients */
+  background: linear-gradient(135deg, #ffd08a 0%, #ff9ab3 100%);
 }
 
-.guide-content li {
-  margin-bottom: 0.5rem !important;
-  line-height: 1.6 !important;
+/* If you ever render a "danger" or "ok" box, set text color for contrast */
+.callout-ok   { background: #1b2a26; color: #c9f7e9; border-color: rgba(52,211,153,.35); }
+.callout-warn { background: #2a2319; color: #ffe9b5; border-color: rgba(251,191,36,.35); }
+.callout-bad  { background: #2a1b1b; color: #ffd1d1; border-color: rgba(248,113,113,.35); }
+
+/* "Three-Take" cards: readable pastel blocks */
+.take-card {
+  background: #1a2336;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.take-card--natural   { border-left: 6px solid var(--ok);     }
+.take-card--bold      { border-left: 6px solid var(--accent); }
+.take-card--vulnerable{ border-left: 6px solid var(--danger); }
+
+/* "Prep Checklist" overlay: remove opacity tricks that wash out text */
+.checklist, .prep-checklist {
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  backdrop-filter: blur(2px);
+}
+.checklist * { opacity: 1 !important; }
+
+/* Buttons/links */
+.guide-content a, .btn, button {
+  color: var(--accent);
+}
+.btn-primary {
+  background: var(--accent);
+  color: #121212;
+  border: none;
+}
+.btn-primary:hover {
+  filter: brightness(0.95);
 }
 
-.guide-content strong,
-.guide-content b {
-  color: #fbbf24 !important;
-  font-weight: bold !important;
+/* Clamp paragraph width for readability */
+.guide-content, .guide, .guide-root {
+  --maxw: 980px;
+}
+.guide-content > *, .guide > *, .guide-root > * {
+  max-width: var(--maxw);
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.guide-content em,
-.guide-content i {
-  font-style: italic !important;
+/* Ensure any inline-styled pale text becomes readable */
+[class*="box"] p, [class*="box"] li, [class*="box"] span {
+  color: inherit !important;
 }
 
-.guide-content blockquote {
-  border-left: 4px solid #fbbf24 !important;
-  padding-left: 1rem !important;
-  margin: 1.5rem 0 !important;
-  font-style: italic !important;
+/* Bullet visibility inside colored boxes */
+.highlight-box ul, .tip-box ul {
+  list-style: disc;
+  padding-left: 1.25rem;
 }
 
-.guide-content code {
-  background: #374151 !important;
-  padding: 0.25rem 0.5rem !important;
-  border-radius: 0.25rem !important;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
-  color: #fbbf24 !important;
-  font-size: 0.875rem !important;
+/* Force readable text on any colored backgrounds */
+.guide-content div[style*="background"] {
+  color: #0b1020 !important;
 }
 
-.guide-content pre {
-  background: #374151 !important;
-  padding: 1rem !important;
-  border-radius: 0.5rem !important;
-  overflow-x: auto !important;
-  margin: 1rem 0 !important;
-  border: 1px solid #4b5563 !important;
+.guide-content div[style*="background-color"] {
+  color: #0b1020 !important;
 }
 
-.guide-content pre code {
-  background: none !important;
-  padding: 0 !important;
-}
-
-.guide-content table {
-  width: 100% !important;
-  border-collapse: collapse !important;
-  margin: 1rem 0 !important;
-}
-
-.guide-content th,
-.guide-content td {
-  border: 1px solid #4b5563 !important;
-  padding: 0.75rem !important;
-  text-align: left !important;
-}
-
-.guide-content th {
-  background: #374151 !important;
-  color: #fbbf24 !important;
-  font-weight: bold !important;
-}
-
-.guide-content td {
-  background: #1f2937 !important;
-}
-
-.guide-content hr {
-  border: none !important;
-  border-top: 1px solid #4b5563 !important;
-  margin: 2rem 0 !important;
-}
-
-.guide-content a {
-  color: #60a5fa !important;
-  text-decoration: underline !important;
-}
-
-.guide-content a:hover {
-  color: #93c5fd !important;
-}
-
-/* Simple fix: just make all text dark and readable */
-.guide-content {
-  color: #000000 !important;
-}
-
-.guide-content * {
-  color: #000000 !important;
-}
-
-/* Keep headings gold */
-.guide-content h1,
-.guide-content h2,
-.guide-content h3,
-.guide-content h4,
-.guide-content h5,
-.guide-content h6,
-.guide-content strong,
-.guide-content b {
-  color: #fbbf24 !important;
-  font-weight: bold !important;
+/* Override any light text on light backgrounds */
+.guide-content [style*="color: light"],
+.guide-content [style*="color: gray"],
+.guide-content [style*="color: grey"],
+.guide-content [style*="color: white"],
+.guide-content [style*="color: pink"],
+.guide-content [style*="color: yellow"],
+.guide-content [style*="color: blue"],
+.guide-content [style*="color: green"] {
+  color: #0b1020 !important;
 }
 
 /* Responsive adjustments */
