@@ -34,7 +34,6 @@
 .guide-content p {
   margin-bottom: 1rem !important;
   line-height: 1.7 !important;
-  color: #f3f4f6 !important;
 }
 
 .guide-content ul,
@@ -46,7 +45,6 @@
 .guide-content li {
   margin-bottom: 0.5rem !important;
   line-height: 1.6 !important;
-  color: #f3f4f6 !important;
 }
 
 .guide-content strong,
@@ -57,7 +55,6 @@
 
 .guide-content em,
 .guide-content i {
-  color: #d1d5db !important;
   font-style: italic !important;
 }
 
@@ -66,7 +63,6 @@
   padding-left: 1rem !important;
   margin: 1.5rem 0 !important;
   font-style: italic !important;
-  color: #d1d5db !important;
 }
 
 .guide-content code {
@@ -90,7 +86,6 @@
 .guide-content pre code {
   background: none !important;
   padding: 0 !important;
-  color: #f3f4f6 !important;
 }
 
 .guide-content table {
@@ -114,7 +109,6 @@
 
 .guide-content td {
   background: #1f2937 !important;
-  color: #f3f4f6 !important;
 }
 
 .guide-content hr {
@@ -132,37 +126,16 @@
   color: #93c5fd !important;
 }
 
-/* Only fix text contrast issues, preserve color coding */
+/* Simple fix: just make all text dark and readable */
+.guide-content {
+  color: #000000 !important;
+}
+
 .guide-content * {
-  color: #1a1a1a !important; /* Dark text for light backgrounds */
+  color: #000000 !important;
 }
 
-/* Keep color coding but ensure text is readable */
-.guide-content div[style*="background"] {
-  /* Keep the background color but ensure text is dark */
-  color: #1a1a1a !important;
-}
-
-.guide-content div[style*="background-color"] {
-  /* Keep the background color but ensure text is dark */
-  color: #1a1a1a !important;
-}
-
-/* Specific fixes for common problematic patterns */
-.guide-content [style*="color: light"],
-.guide-content [style*="color: gray"],
-.guide-content [style*="color: grey"],
-.guide-content [style*="color: white"],
-.guide-content [style*="color: pink"],
-.guide-content [style*="color: yellow"],
-.guide-content [style*="color: blue"],
-.guide-content [style*="color: green"],
-.guide-content [style*="color: cream"],
-.guide-content [style*="color: beige"] {
-  color: #1a1a1a !important; /* Dark text for readability */
-}
-
-/* Preserve headings and bold text */
+/* Keep headings gold */
 .guide-content h1,
 .guide-content h2,
 .guide-content h3,
@@ -170,9 +143,7 @@
 .guide-content h5,
 .guide-content h6,
 .guide-content strong,
-.guide-content b,
-.guide-content .bold,
-.guide-content .highlight {
+.guide-content b {
   color: #fbbf24 !important;
   font-weight: bold !important;
 }
