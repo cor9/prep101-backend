@@ -1207,7 +1207,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     let result;
     try {
-      const { extractWithAdobe } = require('./adobeExtract');
+      const { extractWithAdobe } = require('./services/extractors/adobeExtract');
       result = await extractWithAdobe(req.file.buffer);
     } catch (e) {
       console.warn('⚠️ Adobe Extract failed, falling back to basic:', e.message);
