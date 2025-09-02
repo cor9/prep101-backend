@@ -1812,7 +1812,17 @@ app.get('/api/health', (req, res) => {
  });
 });
 
-// Enhanced health check with new features
+// Fast health check for Railway (no database queries)
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    server: 'PREP101 Enhanced Backend'
+  });
+});
+
+// Enhanced health check with new features (for detailed monitoring)
 app.get('/health', (req, res) => {
  res.json({ 
    status: 'healthy',
