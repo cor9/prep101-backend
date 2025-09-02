@@ -4,6 +4,8 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+const pdfParse = require('pdf-parse');
+const { extractWithAdobe } = require('./services/extractors/adobeExtract');
 
 // Import new authentication and payment features
 const { config, validateConfig } = require('./config/config');
@@ -47,6 +49,31 @@ const upload = multer({
 });
 
 const uploads = {};
+// Track extraction diagnostics for /api/health
+const extractionStats = {
+  totals: { adobe: 0, basic: 0, ocr: 0 },
+  last: null,
+};
+
+// Basic extraction helper used as fallback
+async function extractWithBasic(pdfBuffer) {
+  const data = await pdfParse(pdfBuffer);
+  let text = (data.text || '')
+    .replace(/\r/g, '')
+    .replace(/Sides by Breakdown Services - Actors Access/gi, '')
+    .replace(/Page \d+ of \d+/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  const wordCount = (text.match(/\b\w+\b/g) || []).length;
+  const confidence = wordCount > 600 ? 'high' : wordCount > 300 ? 'medium' : 'low';
+
+  // Character names in ALL-CAPS ending with colon
+  const characterPattern = /^[A-Z][A-Z\s]+:/gm;
+  const characterNames = [...new Set((text.match(characterPattern) || []).map(n => n.replace(':', '').trim()))];
+
+  return { text, method: 'basic', wordCount, confidence, characterNames };
+}
 
 // Import and mount new API routes
 const authRoutes = require('./routes/auth');
@@ -1204,29 +1231,23 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     console.log(`📄 Processing: ${req.file.originalname}`);
 
-    let result;
-    try {
-      const { extractWithAdobe } = require('./services/extractors/adobeExtract');
-      result = await extractWithAdobe(req.file.buffer);
-    } catch (e) {
-      console.warn('⚠️ Adobe Extract failed, falling back to basic:', e.message);
-      const pdfParse = require('pdf-parse');
-      const data = await pdfParse(req.file.buffer);
-      const text = (data.text || '')
-        .replace(/\r\n/g, '\n')
-        .replace(/[ \t]+\n/g, '\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
-      const wc = (text.match(/\b\w+\b/g) || []).length;
-      result = { text, method: 'basic', confidence: wc > 120 ? 'medium' : 'low', wordCount: wc, speakers: [] };
+    const MIN_WC = parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10);
+    // 1) Adobe first
+    let result = await extractWithAdobe(req.file.buffer)
+      .catch(e => ({ success: false, method: 'adobe', reason: e?.message || 'adobe-extract-error' }));
+
+    if (!result?.success || !result.text) {
+      console.warn('[UPLOAD] Adobe failed or empty:', result?.reason || 'no-text');
+      result = await extractWithBasic(req.file.buffer);
     }
 
-    if (!result.text || result.wordCount < 120) {
+    // 2) Gate low-content input
+    if (!result.text || (result.wordCount || 0) < MIN_WC) {
       return res.status(422).json({
         success: false,
-        error: 'Could not extract enough readable text from PDF.',
+        error: `Could not extract enough readable text from PDF (words=${result.wordCount || 0}).`,
         extractionMethod: result.method,
-        extractionConfidence: result.confidence,
+        extractionConfidence: result.confidence || 'low',
         wordCount: result.wordCount
       });
     }
@@ -1234,10 +1255,14 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     const uploadId = Date.now().toString();
     const fileType = req.body.fileType || 'sides'; // Default to sides if not specified
     
+    // 3) Character names (if Adobe didn’t supply them)
+    const characterPattern = /^[A-Z][A-Z\s]+:/gm;
+    const characterNames = result.characterNames || [...new Set((result.text.match(characterPattern) || []).map(n => n.replace(':','').trim()))];
+
     uploads[uploadId] = {
       filename: req.file.originalname,
       sceneText: result.text.trim(),
-      characterNames: result.speakers,
+      characterNames,
       extractionMethod: result.method,
       extractionConfidence: result.confidence,
       uploadTime: new Date(),
@@ -1245,18 +1270,40 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       fileType: fileType // Store the file type
     };
 
-    console.log(`✅ Extracted ${result.text.length} characters with ${result.method} (${result.confidence} confidence)`);
+    // 5) Log triage
+    const preview = (result.text || '').slice(0, 180).replace(/\n/g, '⏎');
+    console.log('[UPLOAD]', {
+      file: req.file.originalname,
+      method: result.method,
+      confidence: result.confidence,
+      words: result.wordCount,
+      preview
+    });
 
-    res.json({
+    // Update extraction diagnostics for /api/health
+    try {
+      const m = result.method || 'unknown';
+      if (extractionStats.totals[m] !== undefined) extractionStats.totals[m] += 1;
+      extractionStats.last = {
+        method: result.method,
+        confidence: result.confidence,
+        wordCount: result.wordCount,
+        filename: req.file.originalname,
+        at: new Date().toISOString(),
+      };
+    } catch (_) {}
+
+    // 6) Respond
+    return res.json({
       success: true,
       uploadId,
       filename: req.file.originalname,
       textLength: result.text.length,
       wordCount: result.wordCount,
-      characterNames: result.speakers,
-      preview: result.text.substring(0, 400) + '…',
+      characterNames,
       extractionMethod: result.method,
-      extractionConfidence: result.confidence
+      extractionConfidence: result.confidence,
+      preview: (result.text || '').slice(0, 400) + '...'
     });
 
   } catch (error) {
@@ -1723,10 +1770,16 @@ app.get('/api/health', (req, res) => {
    ragEnabled: true,
    methodologyFiles: Object.keys(methodologyDatabase).length,
    coreyRalstonMethodology: true,
-   apiKey: ANTHROPIC_API_KEY ? 'configured' : 'missing',
-   uploadsCount: Object.keys(uploads).length,
-   adobeExtract: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true' ? 'enabled' : 'disabled',
-   minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10),
+  apiKey: ANTHROPIC_API_KEY ? 'configured' : 'missing',
+  uploadsCount: Object.keys(uploads).length,
+  adobeExtract: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true' ? 'enabled' : 'disabled',
+  minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10),
+  extraction: {
+    adobeEnabled: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true',
+    minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10)
+  },
+  extractionTotals: extractionStats.totals,
+  extractionLast: extractionStats.last,
    features: [
      'True RAG with Corey Ralston methodology',
      'Intelligent methodology search',
