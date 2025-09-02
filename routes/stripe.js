@@ -7,7 +7,7 @@ const User = require('../models/User');
 const router = express.Router();
 
 // GET /api/stripe/prices - Get available subscription prices
-router.get('/prices', async (req, res) => {
+router.get('/prices', auth, async (req, res) => {
   try {
     const prices = [
       {
