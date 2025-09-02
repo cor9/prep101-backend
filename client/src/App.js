@@ -14,7 +14,23 @@ import StripeSuccess from './pages/StripeSuccess';
 import './App.css';
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        background: '#111827',
+        color: '#f3f4f6'
+      }}>
+        <div>Loading...</div>
+      </div>
+    );
+  }
+  
   return user ? children : <Navigate to="/login" />;
 }
 
