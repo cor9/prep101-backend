@@ -229,8 +229,8 @@ const Account = () => {
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <button
                         onClick={() => {
-                          // Open guide in new tab
-                          const guideUrl = `${API_BASE}/api/guides/${guide.id}`;
+                          // Open guide in new tab using frontend route
+                          const guideUrl = `/guide/${guide.id}`;
                           window.open(guideUrl, '_blank', 'noopener,noreferrer');
                         }}
                         className="btn btnPrimary"

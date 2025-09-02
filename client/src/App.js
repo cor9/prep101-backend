@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Pricing from './pages/Pricing';
 import Examples from './pages/Examples';
 import Account from './pages/Account';
+import GuideView from './pages/GuideView';
 import StripeSuccess from './pages/StripeSuccess';
 import './App.css';
 
@@ -49,6 +50,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/guide/:id" 
+              element={
+                <ProtectedRoute>
+                  <GuideView />
                 </ProtectedRoute>
               } 
             />
