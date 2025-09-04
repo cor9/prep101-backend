@@ -86,13 +86,15 @@ const Home = () => {
           "reviewCount": 7
         },
         "review": [
-          { "@type":"Review", "author": {"@type":"Person","name":"Sara Shaddix"}, "reviewBody": "Holy Moly! That audition breakdown was incredible. Really phenomenal. It broke down every little bit and my daughter really took it to heart. I would easily pay $75–$125 for this.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
-          { "@type":"Review", "author": {"@type":"Person","name":"Jennifer Diamond"}, "reviewBody": "How in the world do you come up with all of this? This is gold!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
-          { "@type":"Review", "author": {"@type":"Person","name":"Kristina Brunelle"}, "reviewBody": "O. M. G. Corey, You. Are. A Wizard! Seriously, this is pure gold, thank you so much!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
-          { "@type":"Review", "author": {"@type":"Person","name":"Ty Correira"}, "reviewBody": "Thanks so much for the audition preparation guide, Corey. It gave me so much to work with and I really used it to inform a lot of choices in the audition.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
-          { "@type":"Review", "author": {"@type":"Person","name":"Olivia Eppe"}, "reviewBody": "This is so great to have!!! Very helpful!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Sara S."}, "reviewBody": "Holy Moly! That audition breakdown was incredible. Really phenomenal. It broke down every little bit and my daughter really took it to heart. I would easily pay $75–$125 for this.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Jennifer D."}, "reviewBody": "How in the world do you come up with all of this? This is gold!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+           { "@type":"Review", "author": {"@type":"Person","name":"Brandy R"}, "reviewBody": "Seriously, where has this been all my life? I'm Obsessed.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Kristina B."}, "reviewBody": "O. M. G. Corey, You. Are. A Wizard! Seriously, this is pure gold, thank you so much!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"T. Correira"}, "reviewBody": "Thanks so much for the audition preparation guide, Corey. It gave me so much to work with and I really used it to inform a lot of choices in the audition.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Olivia E."}, "reviewBody": "This is so great to have!!! Very helpful!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
           { "@type":"Review", "author": {"@type":"Person","name":"Lynnette L."}, "reviewBody": "This is AWESOME! Thanks, Corey!! He dove right into it this morning.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
-          { "@type":"Review", "author": {"@type":"Person","name":"Agent David Doan"}, "reviewBody": "These are incredible!", "reviewRating":{"@type":"Rating","ratingValue":"5"} }
+          { "@type":"Review", "author": {"@type":"Person","name":"Jeannette C."}, "reviewBody": "This is really, really good. What incredible breakdowns you can use on any role!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
+          { "@type":"Review", "author": {"@type":"Person","name":"Youth Agent D. Doan"}, "reviewBody": "These are incredible!", "reviewRating":{"@type":"Rating","ratingValue":"5"} }
         ]
       })}} />
     </>
