@@ -1,7 +1,13 @@
 [build]
-  publish = "build"
   base = "client"
   command = "npm install && npm run build"
+  publish = "client/build"
+
+[build.processing]
+  skip_processing = false
+
+[build.processing.prerender]
+  prerender = true
 
 [build.environment]
   NODE_VERSION = "18"
