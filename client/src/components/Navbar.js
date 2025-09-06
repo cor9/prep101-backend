@@ -25,7 +25,6 @@ export default function Navbar() {
         <div className="nav__links">
           <Link to="/examples">Examples</Link>
           <Link to="/pricing">Pricing</Link>
-          <Link to="/terms">Terms</Link>
           {user ? (
             <>
               <Link to="/dashboard">Dashboard</Link>
