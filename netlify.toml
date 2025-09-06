@@ -1,61 +1,14 @@
 [build]
   base = "client"
-  command = "npm install && npm run build"
-  publish = "client/build"
-
-[build.processing]
-  skip_processing = false
-
-[build.processing.prerender]
-  prerender = true
+  command = "npm ci && npm run build"
+  publish = "build"
 
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
   CI = "false"
 
-# Redirect rules for SPA routing
-[[redirects]]
-  from = "/"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/dashboard"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/login"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/register"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/forgot-password"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/pricing"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/examples"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/create-guide"
-  to = "/index.html"
-  status = 200
-
-# Catch all - serve index.html for any other routes
+# Single catch-all for CRA/SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
