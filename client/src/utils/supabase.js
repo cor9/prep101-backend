@@ -7,8 +7,14 @@ export const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Auth functions
 export const signUp = async (email, password, name) => {
+  console.log('�� signUp called with:', { email, password: '***', name });
+  
+  // Clean the email
+  const cleanEmail = email.trim().toLowerCase();
+  console.log('🔍 Cleaned email:', cleanEmail);
+  
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: cleanEmail,
     password,
     options: {
       data: {
@@ -16,6 +22,8 @@ export const signUp = async (email, password, name) => {
       }
     }
   })
+  
+  console.log('🔍 Supabase response:', { data, error });
   return { data, error }
 }
 
