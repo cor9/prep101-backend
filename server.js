@@ -334,46 +334,5 @@ app.use('*', (req, res) => {
   res.status(404).json({ message: 'Endpoint not found' });
 });
 
-// Database sync and server startup
-const startServer = async () => {
-  try {
-    // Test database connection
-    await testConnection();
-    
-    // Sync database models
-    await sequelize.sync({ alter: true });
-    console.log('✅ Database models synchronized');
-    
-    // Load methodology files
-    loadMethodologyFiles();
-    
-    // Start server
-    const port = config.server.port;
-    app.listen(port, () => {
-      console.log(`🚀 Server running on port ${port}`);
-      console.log(`🌍 Environment: ${config.server.env}`);
-      console.log(`🔐 JWT Secret: ${config.jwt.secret ? 'Configured' : 'Missing'}`);
-      console.log(`💳 Stripe: ${config.stripe.secretKey ? 'Configured' : 'Missing'}`);
-    });
-    
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
-};
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully');
-  await sequelize.close();
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('🛑 SIGINT received, shutting down gracefully');
-  await sequelize.close();
-  process.exit(0);
-});
-
-// Start the server
-startServer();
+// For Vercel serverless functions, export the app instead of starting a server
+module.exports = app;

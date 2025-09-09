@@ -18,7 +18,14 @@ export const StripeProvider = ({ children }) => {
   useEffect(() => {
     const initStripe = async () => {
       try {
-        const stripeInstance = await loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+        const stripeKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
+        if (!stripeKey || stripeKey === 'pk_test_placeholder') {
+          console.log('⚠️ Stripe key not configured, skipping Stripe initialization');
+          setLoading(false);
+          return;
+        }
+        
+        const stripeInstance = await loadStripe(stripeKey);
         setStripe(stripeInstance);
         console.log('✅ Stripe initialized');
       } catch (error) {
