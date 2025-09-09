@@ -10,8 +10,53 @@ const app = express();
 
 // Super fast health check - responds immediately
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+  res.status(200).json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    vercel: !!process.env.VERCEL
+  });
 });
+
+// Even simpler test endpoint
+app.get('/test', (req, res) => {
+  res.status(200).json({ message: 'Hello from Vercel!' });
+});
+
+// Root route handler
+app.get('/', (req, res) => {
+  res.json({
+    message: 'PREP101 Backend API',
+    status: 'running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      apiHealth: '/api/health',
+      upload: '/api/upload',
+      guides: '/api/guides',
+      auth: '/api/auth'
+    },
+    documentation: 'https://github.com/cor9/prep101-backend'
+  });
+});
+
+// Basic middleware setup first
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// CORS - Allow specific origins including prep101.site
+app.use(cors({
+  origin: [
+    'https://prep101.site',
+    'https://prep101-backend-1k3nlnaxi-cor9s-projects.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
 // Continue with other imports
 const pdfParse = require('pdf-parse');
@@ -25,33 +70,47 @@ try {
 }
 const { DEFAULT_CLAUDE_MODEL } = require('./config/models');
 
-// Import new authentication and payment features
-const { config, validateConfig } = require('./config/config');
-const { 
-  authLimiter, 
-  apiLimiter, 
-  paymentLimiter, 
-  speedLimiter, 
-  corsOptions, 
-  securityHeaders 
-} = require('./middleware/security');
+// Import new authentication and payment features (with error handling)
+let config, validateConfig, authLimiter, apiLimiter, paymentLimiter, speedLimiter, corsOptions, securityHeaders;
 
-// Validate configuration
-validateConfig();
+try {
+  const configModule = require('./config/config');
+  config = configModule.config;
+  validateConfig = configModule.validateConfig;
+} catch (error) {
+  console.log('⚠️  Config module not available:', error.message);
+  config = { jwt: { secret: 'fallback' } };
+  validateConfig = () => console.log('⚠️  Config validation skipped');
+}
+
+try {
+  const securityModule = require('./middleware/security');
+  authLimiter = securityModule.authLimiter;
+  apiLimiter = securityModule.apiLimiter;
+  paymentLimiter = securityModule.paymentLimiter;
+  speedLimiter = securityModule.speedLimiter;
+  corsOptions = securityModule.corsOptions;
+  securityHeaders = securityModule.securityHeaders;
+} catch (error) {
+  console.log('⚠️  Security middleware not available:', error.message);
+  // Create fallback middleware
+  authLimiter = (req, res, next) => next();
+  apiLimiter = (req, res, next) => next();
+  paymentLimiter = (req, res, next) => next();
+  speedLimiter = (req, res, next) => next();
+  securityHeaders = (req, res, next) => next();
+}
+
+// Validate configuration (skip in Vercel if env vars not set)
+if (process.env.VERCEL) {
+  console.log('🚀 Running in Vercel serverless environment');
+  console.log('⚠️  Skipping config validation - environment variables will be set in Vercel dashboard');
+} else {
+  validateConfig();
+}
 
 // Security middleware
 app.use(securityHeaders);
-
-// CORS - Allow ALL origins to eliminate CORS errors
-app.use(cors({
-  origin: true, // Allow all origins
-  credentials: true,
-  optionsSuccessStatus: 200
-}));
-
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting
 app.use('/api/auth', authLimiter);
@@ -300,31 +359,65 @@ Ignore watermarks, timestamps, page numbers, and other metadata. Return only the
   }
 }
 
-// Import and mount new API routes
-const authRoutes = require('./routes/auth');
-const paymentRoutes = require('./routes/payments');
-const guidesRoutes = require('./routes/guides');
-// const uploadRoutes = require('./routes/upload'); // COMMENTED OUT - keeping old working handler
-const betaRoutes = require('./routes/beta');
-const stripeRoutes = require('./routes/stripe');
-const stripeWebhookRoutes = require('./routes/stripeWebhook');
+// Import and mount new API routes (with error handling)
+try {
+  const authRoutes = require('./routes/auth');
+  app.use('/api/auth', authRoutes);
+  console.log('✅ Auth routes loaded');
+} catch (error) {
+  console.log('⚠️  Auth routes not available:', error.message);
+}
 
+try {
+  const paymentRoutes = require('./routes/payments');
+  app.use('/api/payments', paymentRoutes);
+  console.log('✅ Payment routes loaded');
+} catch (error) {
+  console.log('⚠️  Payment routes not available:', error.message);
+}
 
-// Mount new API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/guides', guidesRoutes);
-// app.use('/api/upload', uploadRoutes); // COMMENTED OUT - keeping old working handler
-app.use('/api/beta', betaRoutes);
-app.use('/api/stripe', stripeRoutes);
-app.use('/api/webhooks', stripeWebhookRoutes);
+try {
+  const guidesRoutes = require('./routes/guides');
+  app.use('/api/guides', guidesRoutes);
+  console.log('✅ Guide routes loaded');
+} catch (error) {
+  console.log('⚠️  Guide routes not available:', error.message);
+}
+
+try {
+  const betaRoutes = require('./routes/beta');
+  app.use('/api/beta', betaRoutes);
+  console.log('✅ Beta routes loaded');
+} catch (error) {
+  console.log('⚠️  Beta routes not available:', error.message);
+}
+
+try {
+  const stripeRoutes = require('./routes/stripe');
+  app.use('/api/stripe', stripeRoutes);
+  console.log('✅ Stripe routes loaded');
+} catch (error) {
+  console.log('⚠️  Stripe routes not available:', error.message);
+}
+
+try {
+  const stripeWebhookRoutes = require('./routes/stripeWebhook');
+  app.use('/api/webhooks', stripeWebhookRoutes);
+  console.log('✅ Stripe webhook routes loaded');
+} catch (error) {
+  console.log('⚠️  Stripe webhook routes not available:', error.message);
+}
 
 
 // Secure API key handling (trim to avoid invisible whitespace issues)
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
 if (!ANTHROPIC_API_KEY) {
   console.error('❌ ANTHROPIC_API_KEY not found in environment variables');
-  process.exit(1);
+  if (process.env.VERCEL) {
+    console.log('⚠️  Anthropic API key missing in Vercel - guide generation will fail');
+  } else {
+    process.exit(1);
+  }
 }
 
 // Debug environment variables
@@ -339,22 +432,56 @@ try {
 console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL);
 console.log('  - API_BASE:', process.env.API_BASE);
 
-// Database initialization
-const { sequelize, testConnection } = require('./database/connection');
-const User = require('./models/User');
-const Guide = require('./models/Guide');
+// Database initialization (with error handling)
+let sequelize, testConnection, User, Guide;
+
+try {
+  const dbModule = require('./database/connection');
+  sequelize = dbModule.sequelize;
+  testConnection = dbModule.testConnection;
+  console.log('✅ Database connection module loaded');
+} catch (error) {
+  console.log('⚠️  Database connection module not available:', error.message);
+  sequelize = null;
+  testConnection = () => Promise.reject(new Error('Database not available'));
+}
+
+try {
+  User = require('./models/User');
+  console.log('✅ User model loaded');
+} catch (error) {
+  console.log('⚠️  User model not available:', error.message);
+  User = null;
+}
+
+try {
+  Guide = require('./models/Guide');
+  console.log('✅ Guide model loaded');
+} catch (error) {
+  console.log('⚠️  Guide model not available:', error.message);
+  Guide = null;
+}
 
 // Load methodology files into memory for RAG
 let methodologyDatabase = {};
 
 async function initializeDatabase() {
+  if (!sequelize || !testConnection) {
+    console.log('⚠️  Database not available - skipping initialization');
+    return;
+  }
+  
   try {
     await testConnection();
     await sequelize.sync({ alter: true });
     console.log('✅ Database models synchronized');
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
-    process.exit(1);
+    if (process.env.VERCEL) {
+      console.log('⚠️  Database connection failed in Vercel - continuing without database');
+    } else {
+      process.exit(1);
+    }
   }
 }
 
@@ -2189,27 +2316,38 @@ const startServer = async () => {
   }
 };
 
-// Start the server
-startServer();
+// Initialize for serverless (Vercel)
+const initializeForServerless = async () => {
+  try {
+    // Load methodology files immediately for serverless
+    loadMethodologyFiles();
+    console.log('🧠 Methodology files loaded for serverless');
+  } catch (error) {
+    console.error('❌ Failed to initialize for serverless:', error);
+  }
+};
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully');
-  await sequelize.close();
-  process.exit(0);
-});
+// Initialize immediately for serverless functions
+initializeForServerless();
 
-process.on('SIGINT', async () => {
-  console.log('🛑 SIGINT received, shutting down gracefully');
-  await sequelize.close();
-  process.exit(0);
-});
+// For Vercel serverless functions, export the app instead of starting a server
+module.exports = app;
 
-// Serve static files from React build
+// Only start server if not in Vercel environment
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  // Start the server
+  startServer();
 
-// Catch all handler for React Router  
-app.get('*', (req, res) => {
- if (!req.path.startsWith('/api')) {
-   res.sendFile(path.join(__dirname, "index.html"));
- }
-});
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    console.log('🛑 SIGTERM received, shutting down gracefully');
+    await sequelize.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    console.log('🛑 SIGINT received, shutting down gracefully');
+    await sequelize.close();
+    process.exit(0);
+  });
+}

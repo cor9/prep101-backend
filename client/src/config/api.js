@@ -2,7 +2,7 @@
 const API_BASE = 
   (import.meta?.env?.VITE_API_BASE_URL) ||
   process.env.REACT_APP_API_BASE_URL ||
-  'https://prep101-backend-hv7y09xkb-cor9s-projects.vercel.app'; // Vercel backend
+  'https://prep101-backend-cx97x74l8-cor9s-projects.vercel.app'; // Vercel backend
 
 // Debug: Log the API URL being used
 console.log('🔧 API_BASE URL:', API_BASE);
