@@ -44,7 +44,7 @@ const Register = () => {
     setLoading(true);
 
     try {
-      await register(formData.name, formData.email, formData.password);
+     await register(formData.email, formData.password, formData.name);
       toast.success('Account created successfully!');
       navigate('/account');
     } catch (error) {
