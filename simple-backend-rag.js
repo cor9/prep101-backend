@@ -48,7 +48,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors({
   origin: [
     'https://prep101.site',
-    'https://prep101-backend-3tlig2rhk-cor9s-projects.vercel.app',
+    'https://prep101-backend-8xpfyiutb-cor9s-projects.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001'
   ],
