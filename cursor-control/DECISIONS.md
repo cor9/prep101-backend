@@ -10,6 +10,16 @@
 **Decision:** Successfully deployed prep101 backend to Vercel with robust error handling for missing modules and environment variables. Updated vercel.json to use simple-backend-rag.js as entry point, made app serverless-compatible, and added graceful fallbacks for database and middleware when not available.
 **Status:** Success
 
+## 2025-09-09
+**Issue:** CORS errors and frontend-backend connectivity issues
+**Decision:** Fixed CORS configuration to allow prep101.site origin, updated frontend API URL to point to current Vercel deployment, resolved Git rebase conflicts with Supabase utilities, and successfully rebuilt frontend with correct backend endpoint.
+**Status:** Success
+
+## 2025-09-09
+**Issue:** API routes returning 404 errors due to missing database connections
+**Decision:** Added fallback routes for authentication, payment, and Stripe services that return proper 503 errors when database is unavailable, allowing frontend to handle service unavailability gracefully instead of getting 404s.
+**Status:** Success
+
 
 ---
 # Imported Decisions & Learnings (from user)

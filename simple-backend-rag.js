@@ -48,7 +48,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors({
   origin: [
     'https://prep101.site',
-    'https://prep101-backend-1k3nlnaxi-cor9s-projects.vercel.app',
+    'https://prep101-backend.vercel.app',
     'http://localhost:3000',
     'http://localhost:3001'
   ],
@@ -366,6 +366,19 @@ try {
   console.log('✅ Auth routes loaded');
 } catch (error) {
   console.log('⚠️  Auth routes not available:', error.message);
+  // Add fallback routes for when auth routes fail to load
+  app.get('/api/auth/dashboard', (req, res) => {
+    res.status(503).json({ 
+      error: 'Authentication service temporarily unavailable',
+      message: 'Database connection required for authentication features'
+    });
+  });
+  app.get('/api/auth/profile', (req, res) => {
+    res.status(503).json({ 
+      error: 'Authentication service temporarily unavailable',
+      message: 'Database connection required for authentication features'
+    });
+  });
 }
 
 try {
@@ -374,6 +387,13 @@ try {
   console.log('✅ Payment routes loaded');
 } catch (error) {
   console.log('⚠️  Payment routes not available:', error.message);
+  // Add fallback routes for when payment routes fail to load
+  app.get('/api/payments/*', (req, res) => {
+    res.status(503).json({ 
+      error: 'Payment service temporarily unavailable',
+      message: 'Database connection required for payment features'
+    });
+  });
 }
 
 try {
@@ -398,6 +418,13 @@ try {
   console.log('✅ Stripe routes loaded');
 } catch (error) {
   console.log('⚠️  Stripe routes not available:', error.message);
+  // Add fallback routes for when Stripe routes fail to load
+  app.get('/api/stripe/*', (req, res) => {
+    res.status(503).json({ 
+      error: 'Stripe service temporarily unavailable',
+      message: 'Database connection required for Stripe features'
+    });
+  });
 }
 
 try {
