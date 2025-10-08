@@ -1814,17 +1814,31 @@ app.post('/api/guides/generate', async (req, res) => {
    console.log(`📚 File types detected: ${allUploadData.map(d => d.fileType).join(', ')}`);
    console.log(`🎭 Has sides: ${hasSides}, Has full script: ${hasFullScript}`);
 
-   // Quality assessment - reject poor content
-   const contentQuality = assessContentQuality(combinedSceneText, combinedWordCount);
+   // Quality assessment - very lenient since we already validated at upload
+   const contentQuality = assessContentQuality(combinedSceneText, combinedWordCount, false);
    
-   if (contentQuality.quality === 'poor' || contentQuality.quality === 'low') {
-     let errorMessage = 'Limited content: please upload clean sides without watermarks or timestamps';
+   // Only reject if TRULY terrible (< 10 words or > 80% corrupted)
+   if (contentQuality.quality === 'poor' && 
+       (combinedWordCount < 10 || 
+        (contentQuality.repetitiveRatio && contentQuality.repetitiveRatio > 0.8) ||
+        (contentQuality.repetitionRatio && contentQuality.repetitionRatio > 0.8))) {
      
-     if (contentQuality.reason === 'repetitive_content') {
-       errorMessage = 'Corrupted content detected: please upload clean sides without repetitive timestamps or watermarks';
-     } else if (contentQuality.reason === 'high_repetition') {
-       errorMessage = 'Repetitive content detected: please upload clean sides with actual dialogue and scene content';
+     let errorMessage = 'Unable to generate guide: content appears to be corrupted or empty';
+     
+     if (contentQuality.repetitiveRatio > 0.8) {
+       errorMessage = 'Unable to generate guide: content is mostly watermarks/timestamps (>80%)';
+     } else if (contentQuality.repetitionRatio > 0.8) {
+       errorMessage = 'Unable to generate guide: content is mostly repetitive text (>80%)';
+     } else if (combinedWordCount < 10) {
+       errorMessage = 'Unable to generate guide: insufficient content (less than 10 words)';
      }
+     
+     console.warn('[GENERATION] Rejecting due to poor quality:', {
+       wordCount: combinedWordCount,
+       repetitiveRatio: contentQuality.repetitiveRatio,
+       repetitionRatio: contentQuality.repetitionRatio,
+       reason: contentQuality.reason
+     });
      
      return res.status(422).json({
        success: false,
@@ -1835,6 +1849,14 @@ app.post('/api/guides/generate', async (req, res) => {
          repetitiveRatio: contentQuality.repetitiveRatio,
          repetitionRatio: contentQuality.repetitionRatio
        }
+     });
+   }
+   
+   // If we made it here, content is acceptable - log for monitoring
+   if (contentQuality.quality === 'low') {
+     console.log('[GENERATION] Low quality content but proceeding:', {
+       wordCount: combinedWordCount,
+       reason: contentQuality.reason
      });
    }
 
