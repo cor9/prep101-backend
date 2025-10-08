@@ -40,6 +40,9 @@ app.get('/', (req, res) => {
   });
 });
 
+// Trust proxy - Required for Vercel and rate limiting to work correctly
+app.set('trust proxy', true);
+
 // Basic middleware setup first
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -149,8 +152,19 @@ function cleanBasicText(text) {
 }
 
 // Content quality assessment function
-function assessContentQuality(text, wordCount) {
-  if (!text || wordCount < 50) {
+// NOTE: Very lenient on upload, stricter on generation
+function assessContentQuality(text, wordCount, isUpload = false) {
+  // UPLOAD CHECK: Only reject completely empty/corrupted files
+  if (isUpload) {
+    if (!text || wordCount < 10) {
+      return { quality: 'poor', reason: 'insufficient_content' };
+    }
+    // For uploads, accept everything else and let generation handle quality
+    return { quality: 'good', reason: 'sufficient_content' };
+  }
+  
+  // GENERATION CHECK: Stricter validation before spending API tokens
+  if (!text || wordCount < 25) {
     return { quality: 'poor', reason: 'insufficient_content' };
   }
   
@@ -182,16 +196,16 @@ function assessContentQuality(text, wordCount) {
   const maxFreq = Math.max(...Object.values(wordFreq));
   const repetitionRatio = maxFreq / Math.max(wordCount, 1);
   
-  // More strict criteria for corrupted content
-  if (repetitiveRatio > 0.05) { // More than 5% repetitive patterns
+  // Lenient criteria - only reject truly corrupted content
+  if (repetitiveRatio > 0.5) { // More than 50% repetitive patterns
     return { quality: 'poor', reason: 'repetitive_content', repetitiveRatio };
   }
   
-  if (repetitionRatio > 0.1) { // More than 10% of content is the same word
+  if (repetitionRatio > 0.5) { // More than 50% of content is the same word
     return { quality: 'poor', reason: 'high_repetition', repetitionRatio };
   }
   
-  if (wordCount < 200) {
+  if (wordCount < 100) {
     return { quality: 'low', reason: 'minimal_content' };
   }
   
@@ -1645,12 +1659,12 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     }
 
     // Additional OCR fallback: If content quality is poor, try OCR
-    const initialContentQuality = assessContentQuality(result.text, result.wordCount || 0);
+    const initialContentQuality = assessContentQuality(result.text, result.wordCount || 0, true);
     if (initialContentQuality.quality === 'poor' && result.method === 'basic') {
       console.log('[UPLOAD] Basic extraction produced poor quality content, trying OCR fallback...');
       try {
         const ocrResult = await extractWithOCR(req.file.buffer);
-        const ocrContentQuality = assessContentQuality(ocrResult.text, ocrResult.wordCount || 0);
+        const ocrContentQuality = assessContentQuality(ocrResult.text, ocrResult.wordCount || 0, true);
         
         // Use OCR result if it's better quality
         if (ocrContentQuality.quality !== 'poor') {
@@ -1664,8 +1678,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       }
     }
 
-    // 2) Assess content quality and handle low-quality content
-    const contentQuality = assessContentQuality(result.text, result.wordCount || 0);
+    // 2) Assess content quality and handle low-quality content (lenient check on upload)
+    const contentQuality = assessContentQuality(result.text, result.wordCount || 0, true);
     
     if (contentQuality.quality === 'poor') {
       console.warn(`[UPLOAD] Poor content quality detected: ${contentQuality.reason}`, {
