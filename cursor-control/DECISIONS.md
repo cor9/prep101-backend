@@ -1,5 +1,49 @@
 # Project Decisions Log
 
+## 2025-11-17
+**Issue:** PDF upload failing with "adobe extract is not a function" error
+**Decision:** Added null check before calling extractWithAdobe to prevent TypeError when Adobe extractor is not available
+**Technical Details:**
+- When Adobe PDF extractor fails to load (line 69-72 in simple-backend-rag.js), extractWithAdobe is set to null
+- Code at line 1638 was calling extractWithAdobe(req.file.buffer) directly without checking if it exists
+- Calling null as a function throws "adobe extract is not a function" TypeError
+- Fixed by checking if extractWithAdobe exists before calling it, gracefully falling back to basic extraction
+**Impact:** Fixes PDF upload failures when Adobe extractor is not available or fails to load
+**Status:** Success - Deployed to production (dpl_5CzUeSTgX5k6ZbBS8kVkhiH8h63a)
+
+## 2025-10-08 (Part 3)
+**Issue:** All API endpoints returning 503 errors with "ValidationError: X-Forwarded-For header" rate limiter crash
+**Decision:** Added `app.set('trust proxy', true)` to Express configuration
+**Technical Details:**
+- Vercel acts as a proxy and sends X-Forwarded-For header
+- Express rate limiter requires trust proxy to be enabled
+- Without it, rate limiter validation fails → 503 errors
+- Single line fix: `app.set('trust proxy', true)` before middleware
+**Impact:** Fixes ALL 503 errors on /api/auth/dashboard, /api/stripe/*, etc.
+**Status:** Success - Deployed to production
+
+## 2025-10-08 (Part 2)
+**Issue:** PDF uploads rejected with "Limited content: please upload a script with actual dialogue" error
+**Decision:** Relaxed content quality thresholds to reduce false rejections
+**Technical Details:**
+- Lowered minimum word count from 50 to 25 words
+- Increased repetitive content threshold from 5% to 15%
+- Increased word repetition threshold from 10% to 20%
+- Lowered "minimal content" threshold from 200 to 150 words
+**Reasoning:** Quality checks were too strict, rejecting valid scripts with shorter scenes or formatting quirks. More lenient thresholds allow these through while still blocking truly corrupted content.
+**Status:** Success - Deployed to production
+
+## 2025-10-08 (Part 1)
+**Issue:** Login not working - Frontend using Supabase Auth but backend still validating old JWT tokens
+**Decision:** Updated backend auth middleware to validate Supabase JWT tokens. Middleware now tries Supabase token validation first, falls back to legacy JWT for backward compatibility. Auto-creates user records in backend database for Supabase authenticated users.
+**Technical Details:**
+- Installed @supabase/supabase-js on backend
+- Updated middleware/auth.js to validate Supabase tokens using supabase.auth.getUser()
+- Added fallback to legacy JWT validation for backward compatibility
+- Added auto-creation of User records when Supabase users first authenticate
+- Updated env.template with SUPABASE_URL and SUPABASE_ANON_KEY/SUPABASE_SERVICE_KEY
+**Status:** Success - Authentication now works with Supabase tokens
+
 ## 2025-09-09
 **Issue:** Cursor previously used wrong date (Jan 27, 2025).  
 **Decision:** Enforce date confirmation before logging.  
