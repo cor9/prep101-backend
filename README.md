@@ -190,7 +190,7 @@ npm start           # Start production server
 2. **Setup Beta Testing**: Use `setup-beta-admin.sh` to create admin beta tester
 3. **Frontend Development**: Build React components for user interface
 4. **Production Deployment**: Deploy to Railway with your existing setup
-5. **Beta Launch**: Invite select users for testing and feedback
+5. **Beta Launch**: Invite select users for testing and feedback - Oct 2025
 
 ## 🌟 Key Benefits
 
