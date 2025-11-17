@@ -10,7 +10,7 @@ const app = express();
 
 // Super fast health check - responds immediately
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
+  res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
@@ -121,9 +121,9 @@ app.use('/api/payments', paymentLimiter);
 app.use('/api', apiLimiter);
 app.use(speedLimiter);
 
-const upload = multer({ 
-  storage: multer.memoryStorage(), 
-  limits: { fileSize: 10 * 1024 * 1024 } 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
 });
 
 const uploads = {};
@@ -136,7 +136,7 @@ const extractionStats = {
 // Enhanced text cleaning function for basic extraction
 function cleanBasicText(text) {
   if (!text) return '';
-  
+
   return text
     .replace(/\r/g, '')
     .replace(/Sides by Breakdown Services - Actors Access/gi, '')
@@ -162,12 +162,12 @@ function assessContentQuality(text, wordCount, isUpload = false) {
     // For uploads, accept everything else and let generation handle quality
     return { quality: 'good', reason: 'sufficient_content' };
   }
-  
+
   // GENERATION CHECK: Stricter validation before spending API tokens
   if (!text || wordCount < 25) {
     return { quality: 'poor', reason: 'insufficient_content' };
   }
-  
+
   // Check for repetitive content patterns
   const repetitivePatterns = [
     /\b\d{5,}\b/g, // Numeric watermarks
@@ -176,14 +176,14 @@ function assessContentQuality(text, wordCount, isUpload = false) {
     /- Aug \d{1,2}, \d{4} \d{1,2}:\d{2} (AM|PM) -/g, // Specific timestamp pattern from logs
     /^\d{1,2}:\d{2} (AM|PM) -/gm, // Time AM/PM pattern
   ];
-  
+
   // Check for repetitive content
   const repetitiveMatches = repetitivePatterns.reduce((count, pattern) => {
     return count + (text.match(pattern) || []).length;
   }, 0);
-  
+
   const repetitiveRatio = repetitiveMatches / Math.max(wordCount, 1);
-  
+
   // Check for high repetition of the same phrases
   const words = text.toLowerCase().split(/\s+/);
   const wordFreq = {};
@@ -192,23 +192,23 @@ function assessContentQuality(text, wordCount, isUpload = false) {
       wordFreq[word] = (wordFreq[word] || 0) + 1;
     }
   });
-  
+
   const maxFreq = Math.max(...Object.values(wordFreq));
   const repetitionRatio = maxFreq / Math.max(wordCount, 1);
-  
+
   // Lenient criteria - only reject truly corrupted content
   if (repetitiveRatio > 0.5) { // More than 50% repetitive patterns
     return { quality: 'poor', reason: 'repetitive_content', repetitiveRatio };
   }
-  
+
   if (repetitionRatio > 0.5) { // More than 50% of content is the same word
     return { quality: 'poor', reason: 'high_repetition', repetitionRatio };
   }
-  
+
   if (wordCount < 100) {
     return { quality: 'low', reason: 'minimal_content' };
   }
-  
+
   return { quality: 'good', reason: 'sufficient_content' };
 }
 
@@ -231,18 +231,18 @@ async function extractWithBasic(pdfBuffer) {
 async function extractWithOCR(pdfBuffer) {
   try {
     console.log('[OCR] Starting OCR extraction with Claude Vision...');
-    
+
     // Convert PDF to images first
     const pdf2pic = require('pdf2pic');
     const fs = require('fs');
     const os = require('os');
     const path = require('path');
-    
+
     // Create temporary directory for images
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdf-ocr-'));
     const tempPdfPath = path.join(tempDir, 'input.pdf');
     fs.writeFileSync(tempPdfPath, pdfBuffer);
-    
+
     // Convert PDF to images
     const options = {
       density: 300,
@@ -252,13 +252,13 @@ async function extractWithOCR(pdfBuffer) {
       width: 2048,
       height: 2048
     };
-    
+
     const convert = pdf2pic.fromPath(tempPdfPath, options);
-    
+
     // Try to get page count by attempting to convert pages until it fails
     let pageCount = 0;
     let maxPages = 10; // Reasonable limit for sides
-    
+
     for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
       try {
         const testPage = await convert(pageNum);
@@ -271,30 +271,30 @@ async function extractWithOCR(pdfBuffer) {
         break;
       }
     }
-    
+
     console.log(`[OCR] PDF has ${pageCount} pages`);
-    
+
     if (pageCount === 0) {
       throw new Error('Failed to detect any pages in PDF');
     }
-    
+
     let allText = '';
-    
+
     // Process each page
     for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
       console.log(`[OCR] Processing page ${pageNum}/${pageCount}...`);
-      
+
       const pageData = await convert(pageNum);
-      
+
       if (!pageData || !pageData.path) {
         console.log(`[OCR] Failed to convert page ${pageNum}, skipping...`);
         continue;
       }
-      
+
       // Read the image file
       const imageBuffer = fs.readFileSync(pageData.path);
       const base64Image = imageBuffer.toString('base64');
-      
+
       // Prepare the message for Claude Vision
       const message = {
         role: 'user',
@@ -343,19 +343,19 @@ Ignore watermarks, timestamps, page numbers, and other metadata. Return only the
 
       const result = await response.json();
       const pageText = result.content[0].text || '';
-      
+
       // Add page text to total (with separator)
       if (pageText.trim()) {
         allText += (allText ? '\n\n' : '') + pageText.trim();
       }
     }
-    
+
     // Clean up temporary files
     fs.rmSync(tempDir, { recursive: true, force: true });
-    
+
     // Clean the extracted text from all pages
     let text = cleanBasicText(allText);
-    
+
     const wordCount = (text.match(/\b\w+\b/g) || []).length;
     const confidence = wordCount > 600 ? 'high' : wordCount > 300 ? 'medium' : 'low';
 
@@ -364,9 +364,9 @@ Ignore watermarks, timestamps, page numbers, and other metadata. Return only the
     const characterNames = [...new Set((text.match(characterPattern) || []).map(n => n.replace(':', '').trim()))];
 
     console.log(`[OCR] Extraction completed: ${wordCount} words, ${characterNames.length} characters found`);
-    
+
     return { text, method: 'ocr', wordCount, confidence, characterNames };
-    
+
   } catch (error) {
     console.error('[OCR] Extraction failed:', error.message);
     throw new Error(`OCR extraction failed: ${error.message}`);
@@ -382,13 +382,13 @@ try {
   console.log('⚠️  Auth routes not available:', error.message);
   // Add fallback routes for when auth routes fail to load
   app.get('/api/auth/dashboard', (req, res) => {
-    res.status(503).json({ 
+    res.status(503).json({
       error: 'Authentication service temporarily unavailable',
       message: 'Database connection required for authentication features'
     });
   });
   app.get('/api/auth/profile', (req, res) => {
-    res.status(503).json({ 
+    res.status(503).json({
       error: 'Authentication service temporarily unavailable',
       message: 'Database connection required for authentication features'
     });
@@ -403,7 +403,7 @@ try {
   console.log('⚠️  Payment routes not available:', error.message);
   // Add fallback routes for when payment routes fail to load
   app.get('/api/payments/*', (req, res) => {
-    res.status(503).json({ 
+    res.status(503).json({
       error: 'Payment service temporarily unavailable',
       message: 'Database connection required for payment features'
     });
@@ -434,7 +434,7 @@ try {
   console.log('⚠️  Stripe routes not available:', error.message);
   // Add fallback routes for when Stripe routes fail to load
   app.get('/api/stripe/*', (req, res) => {
-    res.status(503).json({ 
+    res.status(503).json({
       error: 'Stripe service temporarily unavailable',
       message: 'Database connection required for Stripe features'
     });
@@ -511,7 +511,7 @@ async function initializeDatabase() {
     console.log('⚠️  Database not available - skipping initialization');
     return;
   }
-  
+
   try {
     await testConnection();
     await sequelize.sync({ alter: true });
@@ -528,22 +528,22 @@ async function initializeDatabase() {
 
 function loadMethodologyFiles() {
   const methodologyPath = path.join(__dirname, 'methodology');
-  
+
   if (!fs.existsSync(methodologyPath)) {
     console.error('❌ Methodology folder not found! Please create ./methodology/ with your files');
     return;
   }
-  
+
   console.log('📚 Loading methodology files for RAG...');
-  
+
   try {
     const files = fs.readdirSync(methodologyPath);
     console.log(`📁 Found ${files.length} methodology files:`, files);
-    
+
     files.forEach(filename => {
       const filePath = path.join(methodologyPath, filename);
       const content = fs.readFileSync(filePath, 'utf8');
-      
+
       // Store with metadata for intelligent searching
       methodologyDatabase[filename] = {
         content: content,
@@ -552,12 +552,12 @@ function loadMethodologyFiles() {
         type: determineFileType(filename),
         keywords: extractKeywords(filename, content)
       };
-      
+
       console.log(`✅ Loaded: ${filename} (${content.length} characters)`);
     });
-    
+
     console.log(`🧠 RAG Database Ready: ${Object.keys(methodologyDatabase).length} methodology files loaded`);
-    
+
   } catch (error) {
     console.error('❌ Failed to load methodology files:', error);
   }
@@ -577,13 +577,13 @@ function determineFileType(filename) {
 function extractKeywords(filename, content) {
   const keywords = [];
   const name = filename.toLowerCase();
-  
+
   // Add filename-based keywords
   if (name.includes('character')) keywords.push('character', 'development', 'psychology');
   if (name.includes('scene')) keywords.push('scene', 'breakdown', 'analysis');
   if (name.includes('comedy')) keywords.push('comedy', 'timing', 'humor');
   if (name.includes('uta')) keywords.push('uta hagen', '9 questions', 'methodology');
-  
+
   // Extract content-based keywords (simple approach)
   const contentLower = content.toLowerCase();
   if (contentLower.includes('subtext')) keywords.push('subtext');
@@ -592,14 +592,14 @@ function extractKeywords(filename, content) {
   if (contentLower.includes('voice')) keywords.push('voice');
   if (contentLower.includes('audition')) keywords.push('audition');
   if (contentLower.includes('self-tape')) keywords.push('self-tape');
-  
+
   return keywords;
 }
 
 // Intelligent RAG search through methodology files
 function searchMethodology(characterName, productionType, sceneContext) {
   console.log(`🔍 RAG Search: ${characterName} | ${productionType} | Context: ${sceneContext.substring(0, 100)}...`);
-  
+
   const searchTerms = [
     characterName.toLowerCase(),
     productionType.toLowerCase(),
@@ -608,7 +608,7 @@ function searchMethodology(characterName, productionType, sceneContext) {
     'uta hagen',
     'acting guide'
   ];
-  
+
   // Add production-type specific terms
   if (productionType.toLowerCase().includes('comedy')) {
     searchTerms.push('comedy', 'timing', 'humor');
@@ -616,30 +616,30 @@ function searchMethodology(characterName, productionType, sceneContext) {
   if (productionType.toLowerCase().includes('drama')) {
     searchTerms.push('drama', 'emotion', 'truth');
   }
-  
+
   const relevantFiles = [];
-  
+
   // Score each methodology file based on relevance
   Object.values(methodologyDatabase).forEach(file => {
     let relevanceScore = 0;
     const fileContent = file.content.toLowerCase();
     const fileKeywords = file.keywords;
-    
+
     // Score based on keywords
     searchTerms.forEach(term => {
       if (fileKeywords.includes(term)) relevanceScore += 3;
       if (fileContent.includes(term)) relevanceScore += 1;
     });
-    
+
     // Boost example guides
     if (file.type === 'example-guide') relevanceScore += 5;
-    
+
     // Boost Uta Hagen methodology
     if (file.type === 'uta-hagen') relevanceScore += 4;
-    
+
     // Boost character development for all requests
     if (file.type === 'character-development') relevanceScore += 3;
-    
+
     if (relevanceScore > 0) {
       relevantFiles.push({
         ...file,
@@ -647,17 +647,17 @@ function searchMethodology(characterName, productionType, sceneContext) {
       });
     }
   });
-  
+
   // Sort by relevance and return top results
   const topResults = relevantFiles
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
     .slice(0, 6); // Top 6 most relevant files
-  
+
   console.log(`🎯 RAG Results: Found ${topResults.length} relevant methodology files`);
   topResults.forEach(file => {
     console.log(`   📄 ${file.filename} (score: ${file.relevanceScore}, type: ${file.type})`);
   });
-  
+
   return topResults;
 }
 
@@ -703,7 +703,7 @@ async function extractTextWithAdobe(pdfBuffer) {
     // Create and submit the job
     const job = new ExtractPDFJob({inputAsset, params});
     const pollingURL = await pdfServices.submit({job});
-    
+
     // Wait for completion and get result
     const pdfServicesResponse = await pdfServices.getJobResult({
       pollingURL,
@@ -713,7 +713,7 @@ async function extractTextWithAdobe(pdfBuffer) {
     // Get the extracted text content
     const resultAsset = pdfServicesResponse.result.resource;
     const streamAsset = await pdfServices.getContent({asset: resultAsset});
-    
+
     // Convert stream to text
     const chunks = [];
     for await (const chunk of streamAsset.readStream) {
@@ -722,9 +722,9 @@ async function extractTextWithAdobe(pdfBuffer) {
     const extractedText = Buffer.concat(chunks).toString('utf8');
 
     console.log('🔍 Adobe raw response (first 200 chars):', extractedText.substring(0, 200));
-    
+
     let fullText = '';
-    
+
     // Try to parse as JSON first (structured format)
     try {
       const textData = JSON.parse(extractedText);
@@ -780,7 +780,7 @@ async function extractTextWithAdobe(pdfBuffer) {
 
   } catch (error) {
     console.error('❌ Adobe PDF Services extraction failed:', error);
-    
+
     // Fallback to basic extraction if Adobe fails
     console.log('🔄 Falling back to basic pdf-parse extraction...');
     return await extractTextBasic(pdfBuffer);
@@ -827,28 +827,28 @@ async function extractTextBasic(pdfBuffer) {
 // RAG-Enhanced Guide Generation using your methodology files
 async function generateActingGuideWithRAG(data) {
   const fetch = require('node-fetch');
-  
+
   try {
     console.log('🧠 Step 1: RAG - Searching your methodology files...');
-    
+
     // Search your methodology files for relevant content
     const relevantMethodology = searchMethodology(
-      data.characterName, 
-      data.productionType, 
+      data.characterName,
+      data.productionType,
       data.sceneText
     );
-    
+
     // Build context from your methodology files
     let methodologyContext = '';
     if (relevantMethodology.length > 0) {
-      methodologyContext = relevantMethodology.map(file => 
+      methodologyContext = relevantMethodology.map(file =>
         `=== COREY RALSTON METHODOLOGY: ${file.filename} (Relevance: ${file.relevanceScore}) ===\n${file.content}\n\n`
       ).join('');
     }
-    
+
     console.log(`🎭 Step 2: Generating guide using ${relevantMethodology.length} methodology files...`);
     console.log(`📊 Total methodology context: ${methodologyContext.length} characters`);
-    
+
     // Build file type context for the AI
     let fileTypeContext = '';
     if (data.hasFullScript) {
@@ -869,29 +869,29 @@ You have access to BOTH audition sides AND the full script. Use this to your adv
 **FILE TYPE CONTEXT:**
 You are working with audition sides only. Focus your analysis on what's provided in the uploaded scenes.`;
     }
-    
+
     // Generate guide using your methodology as context with timeout and retry logic
     const maxRetries = 3;
     let lastError = null;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`🔄 Attempt ${attempt}/${maxRetries} to generate guide...`);
-        
+
         // Create AbortController for timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
-        
+
         // Debug scene content
         console.log('📄 Scene text preview (first 500 chars):', data.sceneText.substring(0, 500));
         console.log('📄 Scene text length:', data.sceneText.length);
-        
+
         // Log what the model actually sees
-        console.log('🧾 SCRIPT PREVIEW:', 
-          (data.sceneText || '').slice(0, 800).replace(/\n/g,'⏎'), 
+        console.log('🧾 SCRIPT PREVIEW:',
+          (data.sceneText || '').slice(0, 800).replace(/\n/g,'⏎'),
           '... (len:', (data.sceneText||'').length, ')'
         );
-        
+
         const POLICY = `
 STRICT SCRIPT POLICY:
 - Use ONLY facts present in SCRIPT below. If a fact (title, studio, franchise, comps, location, time period) is not present, write "Not stated in sides".
@@ -930,7 +930,7 @@ ${data.sceneText}${fileTypeContext}
 **CRITICAL STYLE REQUIREMENTS - "ACTOR MOTIVATOR" VOICE:**
 
 1. **Use Corey's signature empowering language:**
-   - "This scene is DYNAMITE" / "This is GOLD" 
+   - "This scene is DYNAMITE" / "This is GOLD"
    - "Bold Choice:" callouts
    - "Gold Acting Moment:" highlights
    - Direct, confident statements
@@ -974,25 +974,25 @@ ${data.sceneText}${fileTypeContext}
           }),
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`❌ RAG Guide Generation Error (Attempt ${attempt}) [model=${DEFAULT_CLAUDE_MODEL}]:`, response.status, response.statusText, errorText);
-          
+
           if (response.status === 504 && attempt < maxRetries) {
             console.log(`⏰ Gateway timeout, retrying in ${attempt * 2} seconds...`);
             await new Promise(resolve => setTimeout(resolve, attempt * 2000));
             lastError = new Error(`Gateway timeout (Attempt ${attempt})`);
             continue;
           }
-          
+
           throw new Error(`Anthropic ${response.status}: ${errorText}`);
         }
 
         const result = await response.json();
-        
+
         if (result.content && result.content[0] && result.content[0].text) {
           console.log(`✅ RAG Guide generated using Corey's methodology!`);
           console.log(`📊 Guide length: ${result.content[0].text.length} characters`);
@@ -1001,10 +1001,10 @@ ${data.sceneText}${fileTypeContext}
         } else {
           throw new Error('Invalid response format from API');
         }
-        
+
       } catch (error) {
         lastError = error;
-        
+
         if (error.name === 'AbortError') {
           console.error(`⏰ Request timeout on attempt ${attempt}`);
           if (attempt < maxRetries) {
@@ -1013,18 +1013,18 @@ ${data.sceneText}${fileTypeContext}
             continue;
           }
         }
-        
+
         if (attempt < maxRetries) {
           console.log(`🔄 Attempt ${attempt} failed, retrying in ${attempt * 2} seconds...`);
           await new Promise(resolve => setTimeout(resolve, attempt * 2000));
           continue;
         }
-        
+
         console.error(`❌ All ${maxRetries} attempts failed`);
         throw error;
       }
     }
-    
+
     throw lastError || new Error('Failed to generate guide after all retry attempts');
 
  } catch (error) {
@@ -1036,12 +1036,12 @@ ${data.sceneText}${fileTypeContext}
 // Analyze script content to determine color theme
 function determineColorTheme(characterName, productionTitle, productionType, sceneText) {
   const text = `${characterName} ${productionTitle} ${productionType} ${sceneText}`.toLowerCase();
-  
+
   // Gender-specific themes (check character names first)
   const characterNameLower = characterName.toLowerCase();
-  
+
   // Princess/Female character themes
-  if (characterNameLower.includes('princess') || characterNameLower.includes('queen') || 
+  if (characterNameLower.includes('princess') || characterNameLower.includes('queen') ||
       characterNameLower.includes('fairy') || characterNameLower.includes('rose') ||
       characterNameLower.includes('lily') || characterNameLower.includes('belle') ||
       characterNameLower.includes('ariel') || characterNameLower.includes('snow')) {
@@ -1053,9 +1053,9 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Princess'
     };
   }
-  
+
   // Prince/Male character themes
-  if (characterNameLower.includes('prince') || characterNameLower.includes('king') || 
+  if (characterNameLower.includes('prince') || characterNameLower.includes('king') ||
       characterNameLower.includes('knight') || characterNameLower.includes('hero') ||
       characterNameLower.includes('warrior') || characterNameLower.includes('dragon') ||
       characterNameLower.includes('max') || characterNameLower.includes('leo')) {
@@ -1067,9 +1067,9 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Prince'
     };
   }
-  
+
   // Adventure/Action themes
-  if (text.includes('adventure') || text.includes('action') || text.includes('quest') || 
+  if (text.includes('adventure') || text.includes('action') || text.includes('quest') ||
       text.includes('hero') || text.includes('battle') || text.includes('journey') ||
       text.includes('explorer') || text.includes('warrior') || text.includes('knight')) {
     return {
@@ -1080,7 +1080,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Adventure'
     };
   }
-  
+
   // Comedy/Fun themes
   if (text.includes('comedy') || text.includes('funny') || text.includes('humor') ||
       text.includes('silly') || text.includes('joke') || text.includes('laugh') ||
@@ -1093,7 +1093,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Comedy'
     };
   }
-  
+
   // Fantasy/Magical themes
   if (text.includes('fantasy') || text.includes('magic') || text.includes('wizard') ||
       text.includes('fairy') || text.includes('dragon') || text.includes('spell') ||
@@ -1106,7 +1106,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Fantasy'
     };
   }
-  
+
   // Drama/Serious themes
   if (text.includes('drama') || text.includes('serious') || text.includes('emotional') ||
       text.includes('intense') || text.includes('deep') || text.includes('powerful') ||
@@ -1119,7 +1119,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Drama'
     };
   }
-  
+
   // Modern/Urban themes
   if (text.includes('modern') || text.includes('urban') || text.includes('city') ||
       text.includes('contemporary') || text.includes('trendy') || text.includes('cool') ||
@@ -1132,7 +1132,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Modern'
     };
   }
-  
+
   // Princess/Royal themes
   if (text.includes('princess') || text.includes('royal') || text.includes('queen') ||
       text.includes('king') || text.includes('crown') || text.includes('castle') ||
@@ -1145,7 +1145,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Royal'
     };
   }
-  
+
   // Superhero themes
   if (text.includes('superhero') || text.includes('hero') || text.includes('power') ||
       text.includes('save') || text.includes('rescue') || text.includes('strong') ||
@@ -1158,7 +1158,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Superhero'
     };
   }
-  
+
   // Nature/Outdoor themes
   if (text.includes('nature') || text.includes('outdoor') || text.includes('forest') ||
       text.includes('garden') || text.includes('animal') || text.includes('tree') ||
@@ -1171,7 +1171,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Nature'
     };
   }
-  
+
   // Production type specific themes
   if (productionType.toLowerCase().includes('musical')) {
     return {
@@ -1182,7 +1182,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Musical'
     };
   }
-  
+
   if (productionType.toLowerCase().includes('comedy')) {
     return {
       primary: '#F59E0B',    // Yellow
@@ -1192,7 +1192,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Comedy'
     };
   }
-  
+
   if (productionType.toLowerCase().includes('drama')) {
     return {
       primary: '#7C3AED',    // Purple
@@ -1202,7 +1202,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Drama'
     };
   }
-  
+
     if (productionType.toLowerCase().includes('action') || productionType.toLowerCase().includes('adventure')) {
     return {
       primary: '#EF4444',    // Red
@@ -1212,7 +1212,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Action'
     };
   }
-  
+
   // Seasonal and holiday themes
   if (text.includes('christmas') || text.includes('holiday') || text.includes('winter')) {
     return {
@@ -1223,7 +1223,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Christmas'
     };
   }
-  
+
   if (text.includes('halloween') || text.includes('spooky') || text.includes('ghost')) {
     return {
       primary: '#8B5CF6',    // Purple
@@ -1233,7 +1233,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Halloween'
     };
   }
-  
+
   if (text.includes('easter') || text.includes('spring') || text.includes('bunny')) {
     return {
       primary: '#EC4899',    // Pink
@@ -1243,7 +1243,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Easter'
     };
   }
-  
+
   if (text.includes('summer') || text.includes('beach') || text.includes('ocean')) {
     return {
       primary: '#3B82F6',    // Blue
@@ -1253,7 +1253,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
       name: 'Summer'
     };
   }
-  
+
   // Default: Friendly and approachable
   let theme = {
     primary: '#10B981',      // Green
@@ -1262,7 +1262,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
     background: '#F0FDF4',   // Light green
     name: 'Friendly'
   };
-  
+
   // Age-specific color adjustments
   if (text.includes('baby') || text.includes('toddler') || text.includes('little')) {
     // Softer, pastel colors for very young characters
@@ -1279,7 +1279,7 @@ function determineColorTheme(characterName, productionTitle, productionType, sce
     theme.background = '#F8FAFC'; // Light gray
     theme.name = 'Teen-Friendly';
   }
-  
+
   return theme;
 }
 
@@ -1298,7 +1298,7 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Comic Neue', cursive;
             background: linear-gradient(135deg, ${colorTheme.background} 0%, #ffffff 100%);
@@ -1306,7 +1306,7 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             line-height: 1.6;
             padding: 20px;
         }
-        
+
         .container {
             max-width: 800px;
             margin: 0 auto;
@@ -1315,30 +1315,30 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             overflow: hidden;
         }
-        
+
         .header {
             background: linear-gradient(135deg, ${colorTheme.primary} 0%, ${colorTheme.secondary} 100%);
             color: white;
             padding: 30px;
             text-align: center;
         }
-        
+
         .header h1 {
             font-family: 'Fredoka One', cursive;
             font-size: 2.5rem;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
-        
+
         .header p {
             font-size: 1.2rem;
             opacity: 0.9;
         }
-        
+
         .content {
             padding: 30px;
         }
-        
+
         .section {
             margin-bottom: 30px;
             padding: 25px;
@@ -1347,7 +1347,7 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             border-left: 5px solid ${colorTheme.accent};
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-        
+
         .section h2 {
             font-family: 'Bubblegum Sans', cursive;
             color: ${colorTheme.primary};
@@ -1357,14 +1357,14 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             align-items: center;
             gap: 10px;
         }
-        
+
         .section h3 {
             color: ${colorTheme.secondary};
             font-size: 1.4rem;
             margin: 20px 0 10px 0;
             font-weight: 700;
         }
-        
+
         .highlight-box {
             background: ${colorTheme.accent};
             color: white;
@@ -1373,7 +1373,7 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             margin: 15px 0;
             font-weight: 700;
         }
-        
+
         .tip-box {
             background: ${colorTheme.secondary};
             color: white;
@@ -1382,12 +1382,12 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             margin: 15px 0;
             font-weight: 700;
         }
-        
+
         .number-list {
             list-style: none;
             counter-reset: item;
         }
-        
+
         .number-list li {
             counter-increment: item;
             margin-bottom: 15px;
@@ -1397,7 +1397,7 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             border: 2px solid ${colorTheme.primary};
             position: relative;
         }
-        
+
         .number-list li::before {
             content: counter(item);
             background: ${colorTheme.primary};
@@ -1414,16 +1414,16 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             transform: translateY(-50%);
             font-weight: 700;
         }
-        
+
         .number-list li strong {
             color: ${colorTheme.primary};
             font-weight: 700;
         }
-        
+
         .emoji {
             font-size: 1.5rem;
         }
-        
+
         .footer {
             background: linear-gradient(135deg, ${colorTheme.secondary} 0%, ${colorTheme.primary} 100%);
             color: white;
@@ -1431,7 +1431,7 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             padding: 20px;
             font-weight: 700;
         }
-        
+
         @media (max-width: 600px) {
             .header h1 { font-size: 2rem; }
             .content { padding: 20px; }
@@ -1445,11 +1445,11 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             <h1>🌟 ${characterName} 🌟</h1>
             <p>Your Awesome Acting Guide for ${productionTitle}</p>
         </div>
-        
+
         <div class="content">
             <!-- Your guide content will go here -->
         </div>
-        
+
         <div class="footer">
             <p>🎭 You've got this! Break a leg! 🎭</p>
         </div>
@@ -1461,36 +1461,36 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
 // Child's Guide Generation Function
 async function generateChildGuide(data) {
   const fetch = require('node-fetch');
-  
+
   try {
     console.log('🌟 Generating simplified Child\'s Guide...');
-    
+
     // Search methodology for child-friendly examples
     const childMethodology = searchMethodology(
-      data.characterName, 
-      data.productionType, 
+      data.characterName,
+      data.productionType,
       data.sceneText
     );
-    
+
     // Build context from child-friendly methodology
     let childMethodologyContext = '';
     if (childMethodology.length > 0) {
-      childMethodologyContext = childMethodology.map(file => 
+      childMethodologyContext = childMethodology.map(file =>
         `=== CHILD-FRIENDLY METHODOLOGY: ${file.filename} ===\n${file.content}\n\n`
       ).join('');
     }
 
          console.log(`🎭 Generating child guide using ${childMethodology.length} methodology files...`);
-     
+
      // Determine color theme based on content
      const colorTheme = determineColorTheme(
-       data.characterName, 
-       data.productionTitle, 
-       data.productionType, 
+       data.characterName,
+       data.productionTitle,
+       data.productionType,
        data.sceneText
      );
      console.log(`🎨 Using ${colorTheme.name} color theme for child guide`);
-     
+
      // Generate child guide using the parent guide as reference
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -1504,15 +1504,15 @@ async function generateChildGuide(data) {
           max_tokens: 6000,
           messages: [{
             role: "user",
-            content: `You are Corey Ralston, a witty, experienced youth acting coach.  
-Your task is to create a simplified, fun, and empowering "Child's Guide" for young actors (ages 8–12), based on the parent-facing audition prep guide.  
+            content: `You are Corey Ralston, a witty, experienced youth acting coach.
+Your task is to create a simplified, fun, and empowering "Child's Guide" for young actors (ages 8–12), based on the parent-facing audition prep guide.
 
 ## Voice & Style
-- Friendly, encouraging, and conversational — talk **to the child directly**.  
-- Keep language simple but not babyish.  
-- Fun tone with positive energy, like a coach who believes in them.  
-- Use emojis sparingly for emphasis (🌟, 🎭, 🎬) — no overuse.  
-- Add clear, bold section headers for easy reading.  
+- Friendly, encouraging, and conversational — talk **to the child directly**.
+- Keep language simple but not babyish.
+- Fun tone with positive energy, like a coach who believes in them.
+- Use emojis sparingly for emphasis (🌟, 🎭, 🎬) — no overuse.
+- Add clear, bold section headers for easy reading.
 - Keep paragraphs short and scannable.
 
 ## Structure
@@ -1541,7 +1541,7 @@ Create a complete HTML document with embedded CSS using this EXACT color theme:
 
 **${colorTheme.name.toUpperCase()} THEME COLORS:**
 - Primary: ${colorTheme.primary}
-- Secondary: ${colorTheme.secondary}  
+- Secondary: ${colorTheme.secondary}
 - Accent: ${colorTheme.accent}
 - Background: ${colorTheme.background}
 
@@ -1550,7 +1550,7 @@ Use this structure and styling approach (replace the placeholder content with yo
 
 ${generateHTMLTemplate(colorTheme, data.characterName, data.productionTitle)}
 
-**IMPORTANT:** 
+**IMPORTANT:**
 - Use the exact colors provided above
 - Follow the CSS class names from the template (.section, .highlight-box, .tip-box, .number-list)
 - Keep the fun, youthful design with rounded corners, shadows, and gradients
@@ -1579,10 +1579,10 @@ ${generateHTMLTemplate(colorTheme, data.characterName, data.productionTitle)}
 
 ## References
 Match the tone, depth, and structure of these examples:
-- Tucker's Guide (age 9)  
-- Eloise's Guide (age 10)  
-- Alanna's Guide (age 4–6)  
-- Alma's Guide (age 8)  
+- Tucker's Guide (age 9)
+- Eloise's Guide (age 10)
+- Alanna's Guide (age 4–6)
+- Alma's Guide (age 8)
 
 ## Current Project
 CHARACTER: ${data.characterName}
@@ -1609,7 +1609,7 @@ ${childMethodologyContext}
     }
 
     const result = await response.json();
-    
+
     if (result.content && result.content[0] && result.content[0].text) {
       console.log(`✅ Child's Guide generated successfully!`);
       console.log(`📊 Child guide length: ${result.content[0].text.length} characters`);
@@ -1634,9 +1634,15 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     console.log(`📄 Processing: ${req.file.originalname}`);
 
     const MIN_WC = parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10);
-    // 1) Adobe first
-    let result = await extractWithAdobe(req.file.buffer)
-      .catch(e => ({ success: false, method: 'adobe', reason: e?.message || 'adobe-extract-error' }));
+    // 1) Adobe first (only if available)
+    let result;
+    if (extractWithAdobe) {
+      result = await extractWithAdobe(req.file.buffer)
+        .catch(e => ({ success: false, method: 'adobe', reason: e?.message || 'adobe-extract-error' }));
+    } else {
+      console.log('[UPLOAD] Adobe extractor not available, using basic extraction');
+      result = { success: false, method: 'adobe', reason: 'adobe-not-available' };
+    }
 
     if (!result?.success || !result.text) {
       console.warn('[UPLOAD] Adobe failed or empty:', result?.reason || 'no-text');
@@ -1665,7 +1671,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       try {
         const ocrResult = await extractWithOCR(req.file.buffer);
         const ocrContentQuality = assessContentQuality(ocrResult.text, ocrResult.wordCount || 0, true);
-        
+
         // Use OCR result if it's better quality
         if (ocrContentQuality.quality !== 'poor') {
           console.log('[UPLOAD] OCR produced better quality content, using OCR result');
@@ -1680,17 +1686,17 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     // 2) Assess content quality and handle low-quality content (lenient check on upload)
     const contentQuality = assessContentQuality(result.text, result.wordCount || 0, true);
-    
+
     if (contentQuality.quality === 'poor') {
       console.warn(`[UPLOAD] Poor content quality detected: ${contentQuality.reason}`, {
         filename: req.file.originalname,
         wordCount: result.wordCount,
         watermarkRatio: contentQuality.watermarkRatio
       });
-      
+
       return res.status(422).json({
         success: false,
-        error: contentQuality.reason === 'watermark_heavy' 
+        error: contentQuality.reason === 'watermark_heavy'
           ? 'Limited content: please upload clean sides without watermarks or timestamps'
           : 'Limited content: please upload a script with actual dialogue and scene content',
         contentQuality: contentQuality.reason,
@@ -1700,7 +1706,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         watermarkRatio: contentQuality.watermarkRatio
       });
     }
-    
+
     if (contentQuality.quality === 'low') {
       console.log(`[UPLOAD] Low content quality - allowing fallback generation`, {
         filename: req.file.originalname,
@@ -1711,7 +1717,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     const uploadId = Date.now().toString();
     const fileType = req.body.fileType || 'sides'; // Default to sides if not specified
-    
+
     // 3) Character names (if Adobe didn’t supply them)
     const characterPattern = /^[A-Z][A-Z\s]+:/gm;
     const characterNames = result.characterNames || [...new Set((result.text.match(characterPattern) || []).map(n => n.replace(':','').trim()))];
@@ -1776,7 +1782,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 app.post('/api/guides/generate', async (req, res) => {
  try {
    const { uploadId, uploadIds, characterName, productionTitle, productionType, roleSize, genre, storyline, characterBreakdown, callbackNotes, focusArea, childGuideRequested } = req.body;
-   
+
    // Handle both single and multiple upload IDs
    const uploadIdList = uploadIds || [uploadId];
    // Debug request basics for faster triage
@@ -1787,14 +1793,14 @@ app.post('/api/guides/generate', async (req, res) => {
      hasProductionTitle: !!productionTitle,
      hasProductionType: !!productionType
    });
-   
+
    if (!uploadIdList.length || uploadIdList.some(id => !uploads[id])) {
      return res.status(400).json({ error: 'Invalid upload ID(s) or expired session' });
    }
 
    if (!characterName || !productionTitle || !productionType) {
-     return res.status(400).json({ 
-       error: 'Missing required fields' 
+     return res.status(400).json({
+       error: 'Missing required fields'
      });
    }
 
@@ -1802,7 +1808,7 @@ app.post('/api/guides/generate', async (req, res) => {
    const allUploadData = uploadIdList.map(id => uploads[id]);
    const combinedSceneText = allUploadData.map(data => data.sceneText).join('\n\n--- NEW SCENE ---\n\n');
    const combinedWordCount = allUploadData.reduce((total, data) => total + (data.wordCount || 0), 0);
-   
+
    console.log(`🎭 COREY RALSTON RAG Guide Generation...`);
    console.log(`🎬 ${characterName} | ${productionTitle} (${productionType})`);
    console.log(`🧠 Using ${Object.keys(methodologyDatabase).length} methodology files`);
@@ -1810,21 +1816,21 @@ app.post('/api/guides/generate', async (req, res) => {
    // Check if we have full script context
    const hasFullScript = allUploadData.some(data => data.fileType === 'full_script');
    const hasSides = allUploadData.some(data => data.fileType === 'sides');
-   
+
    console.log(`📚 File types detected: ${allUploadData.map(d => d.fileType).join(', ')}`);
    console.log(`🎭 Has sides: ${hasSides}, Has full script: ${hasFullScript}`);
 
    // Quality assessment - very lenient since we already validated at upload
    const contentQuality = assessContentQuality(combinedSceneText, combinedWordCount, false);
-   
+
    // Only reject if TRULY terrible (< 10 words or > 80% corrupted)
-   if (contentQuality.quality === 'poor' && 
-       (combinedWordCount < 10 || 
+   if (contentQuality.quality === 'poor' &&
+       (combinedWordCount < 10 ||
         (contentQuality.repetitiveRatio && contentQuality.repetitiveRatio > 0.8) ||
         (contentQuality.repetitionRatio && contentQuality.repetitionRatio > 0.8))) {
-     
+
      let errorMessage = 'Unable to generate guide: content appears to be corrupted or empty';
-     
+
      if (contentQuality.repetitiveRatio > 0.8) {
        errorMessage = 'Unable to generate guide: content is mostly watermarks/timestamps (>80%)';
      } else if (contentQuality.repetitionRatio > 0.8) {
@@ -1832,26 +1838,26 @@ app.post('/api/guides/generate', async (req, res) => {
      } else if (combinedWordCount < 10) {
        errorMessage = 'Unable to generate guide: insufficient content (less than 10 words)';
      }
-     
+
      console.warn('[GENERATION] Rejecting due to poor quality:', {
        wordCount: combinedWordCount,
        repetitiveRatio: contentQuality.repetitiveRatio,
        repetitionRatio: contentQuality.repetitionRatio,
        reason: contentQuality.reason
      });
-     
+
      return res.status(422).json({
        success: false,
        error: errorMessage,
        contentQuality: contentQuality.reason,
-       details: { 
-         combinedWordCount, 
+       details: {
+         combinedWordCount,
          repetitiveRatio: contentQuality.repetitiveRatio,
          repetitionRatio: contentQuality.repetitionRatio
        }
      });
    }
-   
+
    // If we made it here, content is acceptable - log for monitoring
    if (contentQuality.quality === 'low') {
      console.log('[GENERATION] Low quality content but proceeding:', {
@@ -1870,7 +1876,7 @@ app.post('/api/guides/generate', async (req, res) => {
      uploadData: allUploadData
    });
 
-   
+
 
    console.log(`✅ Corey Ralston RAG Guide Complete!`);
 
@@ -1878,20 +1884,20 @@ app.post('/api/guides/generate', async (req, res) => {
      try {
        const Guide = require('./models/Guide');
        const User = require('./models/User');
-       
+
        // Get user from auth token
        const authHeader = req.headers.authorization;
        let userId = null;
-       
+
        if (authHeader && authHeader.startsWith('Bearer ')) {
          const token = authHeader.substring(7);
          const jwt = require('jsonwebtoken');
          const JWT_SECRET = process.env.JWT_SECRET;
-         
+
          try {
            const decoded = jwt.verify(token, JWT_SECRET);
            userId = decoded.userId;
-           
+
            // Verify user exists in database
            const user = await User.findByPk(userId);
            if (!user) {
@@ -1908,7 +1914,7 @@ app.post('/api/guides/generate', async (req, res) => {
        }
 
        const guideId = `corey_rag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-       
+
        const guide = await Guide.create({
          guideId,
          userId: userId, // Now guaranteed to be valid
@@ -1940,11 +1946,11 @@ app.post('/api/guides/generate', async (req, res) => {
          sceneTextLength: combinedSceneText.length,
          parentGuideLength: guideContent.length
        });
-       
+
        try {
          console.log(`🌟 Calling generateChildGuide function...`);
          const startTime = Date.now();
-         
+
          childGuideContent = await generateChildGuide({
            sceneText: combinedSceneText,
            characterName: characterName.trim(),
@@ -2002,18 +2008,18 @@ app.post('/api/guides/generate', async (req, res) => {
          uploadedFiles: uploadIdList.map(id => uploads[id].filename)
        }
      };
-     
+
      console.log(`🌟 Sending response to frontend:`, {
        childGuideRequested: responseData.childGuideRequested,
        childGuideCompleted: responseData.childGuideCompleted,
        hasChildGuideContent: !!responseData.childGuideContent,
        childGuideContentLength: responseData.childGuideContent ? responseData.childGuideContent.length : 0
      });
-     
+
      res.json(responseData);
    } catch (dbError) {
      console.error('❌ Database save error:', dbError);
-     
+
      // Check if it's an authentication error
      if (dbError.message.includes('Authentication required') || dbError.message.includes('User not found')) {
        return res.status(401).json({
@@ -2025,7 +2031,7 @@ app.post('/api/guides/generate', async (req, res) => {
          savedToDatabase: false
        });
      }
-     
+
      // Still return the guide content even if save fails for other reasons
      res.json({
        success: true,
@@ -2053,7 +2059,7 @@ app.post('/api/guides/generate', async (req, res) => {
  } catch (error) {
    console.error('❌ Corey Ralston RAG error:', error);
    // Always surface the server-side reason for easier client debug (no secrets)
-   res.status(500).json({ 
+   res.status(500).json({
      error: 'Failed to generate Corey Ralston methodology guide. Please try again.',
      reason: error && error.message ? String(error.message) : undefined
    });
@@ -2068,7 +2074,7 @@ app.get('/api/methodology', (req, res) => {
    size: file.size,
    keywords: file.keywords
  }));
- 
+
  res.json({
    totalFiles: Object.keys(methodologyDatabase).length,
    files: summary,
@@ -2084,10 +2090,10 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
   try {
     const { id } = req.params;
     const authHeader = req.headers.authorization;
-    
+
     console.log('🔐 PDF endpoint - Auth header:', authHeader ? 'present' : 'missing');
     console.log('🔐 PDF endpoint - Full auth header:', authHeader);
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('❌ PDF endpoint - No Bearer token found');
       return res.status(401).json({ error: 'Authentication required' });
@@ -2096,13 +2102,13 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
     const token = authHeader.substring(7);
     console.log('🔐 PDF endpoint - Token length:', token.length);
     console.log('🔐 PDF endpoint - Token preview:', token.substring(0, 20) + '...');
-    
+
     const jwt = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET;
-    
+
     console.log('🔐 PDF endpoint - JWT_SECRET present:', !!JWT_SECRET);
     console.log('🔐 PDF endpoint - JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
-    
+
     let userId;
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
@@ -2139,7 +2145,7 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
     // Load Adobe credentials from JSON file
     const credentialsPath = './pdfservices-api-credentials.json';
     const credentialsData = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-    
+
     // Create credentials instance
     const credentials = new ServicePrincipalCredentials({
       clientId: credentialsData.client_credentials.client_id,
@@ -2168,7 +2174,7 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
       </head>
       <body>
         <h1>🎭 Audition Guide: ${guide.characterName}</h1>
-        
+
         <div class="character-info">
           <h2>Production Details</h2>
           <p><strong>Production:</strong> ${guide.productionTitle}</p>
@@ -2223,7 +2229,7 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
     // Create and submit the job
     const job = new HTMLToPDFJob({inputAsset, params});
     const pollingURL = await pdfServices.submit({job});
-    
+
     // Wait for job completion and get result
     const pdfServicesResponse = await pdfServices.getJobResult({
       pollingURL,
@@ -2237,7 +2243,7 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
     // Set response headers for PDF download
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="guide_${guide.characterName}_${guide.productionTitle}.pdf"`);
-    
+
     // Get content length safely
     const contentLength = streamAsset.asset?.size || 'unknown';
     if (contentLength !== 'unknown') {
@@ -2269,7 +2275,7 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
- res.json({ 
+ res.json({
    status: 'running',
    model: DEFAULT_CLAUDE_MODEL,
    maxTokens: 8000,
@@ -2306,7 +2312,7 @@ app.get('/api/health', (req, res) => {
 
 // Fast health check for Railway (no database queries)
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
+  res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
@@ -2321,7 +2327,7 @@ app.get('/health', (req, res) => {
 
 // Enhanced health check with new features (for detailed monitoring)
 app.get('/health', (req, res) => {
- res.json({ 
+ res.json({
    status: 'healthy',
    timestamp: new Date().toISOString(),
    environment: config.server.env,
@@ -2341,10 +2347,10 @@ const startServer = async () => {
   try {
     // Initialize database
     await initializeDatabase();
-    
+
     // Load methodology files
     loadMethodologyFiles();
-    
+
     // Start server
     const PORT = process.env.PORT || 5001;
     app.listen(PORT, '0.0.0.0', () => {
@@ -2372,7 +2378,7 @@ const startServer = async () => {
  console.log('');
  console.log('✅ Ready to generate authentic Corey Ralston guides with full auth & payments!');
     });
-    
+
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
