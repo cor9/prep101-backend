@@ -152,10 +152,10 @@ const Dashboard = () => {
           : {})
       };
 
-      const payload = { 
+      const payload = {
         uploadId: uploadData.uploadId || uploadData.uploadIds?.[0],
         uploadIds: uploadData.uploadIds || [uploadData.uploadId],
-        ...formData 
+        ...formData
       };
 
       console.log('🚀 Starting guide generation for:', formData.characterName);
@@ -176,7 +176,7 @@ const Dashboard = () => {
           const j = await res.json();
           message = j.error || message;
         } catch {
-          const t = await res.text(); 
+          const t = await res.text();
           if (t) message = t;
         }
         throw new Error(message);
@@ -186,12 +186,12 @@ const Dashboard = () => {
       if (ct.includes('application/json')) {
         const data = await res.json();
         console.log('🎭 Guide generation response:', data);
-        
+
         if (!data?.guideContent) throw new Error('No guide content returned.');
-        
+
         // Open parent guide
         openHtmlInNewTab(data.guideContent);
-        
+
         // If child guide was requested and completed, show both guides
         if (data.childGuideRequested && data.childGuideCompleted && data.childGuideContent) {
           console.log('🌟 Opening child guide in 1 second...');
@@ -214,7 +214,7 @@ const Dashboard = () => {
 
     } catch (err) {
       console.error('Guide generation error:', err);
-      
+
       if (err.name === 'AbortError') {
         toast.error('Guide generation timed out after 5 minutes. Please try again.');
       } else {
@@ -235,6 +235,32 @@ const Dashboard = () => {
   return (
     <>
       <Navbar />
+
+      {/* Full-screen overlay while a guide is being generated */}
+      {isGenerating && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.92)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 50
+          }}
+        >
+          <div style={{ maxWidth: 560, padding: '2rem', textAlign: 'center', color: '#e5e7eb' }}>
+            <LoadingSpinner />
+            <p style={{ marginTop: '1.5rem', fontSize: '1rem', color: '#e5e7eb' }}>
+              Crafting your Prep101 audition guide. This usually takes 2–5 minutes.
+            </p>
+            <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#9ca3af' }}>
+              You can keep this tab open and review your guide as soon as it’s ready. Please don&apos;t close the page while we work.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="page-dark">
         <div className="container-wide">
           {/* Header */}
@@ -294,77 +320,65 @@ const Dashboard = () => {
 
           {/* Body */}
           <div className="card-white">
-            {isGenerating ? (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <LoadingSpinner />
-                <p style={{ marginTop: '1rem', color: '#6b7280' }}>
-                  Crafting your guide… this usually takes 2-5 minutes.
-                </p>
-                <p style={{ marginTop: '0.5rem', color: '#9ca3af', fontSize: '0.875rem' }}>
-                  Please don't close this page while we generate your guide.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-                <FileUpload onUpload={handleFileUpload} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+              <FileUpload onUpload={handleFileUpload} />
 
-                {uploadData && (
-                  <div style={{
-                    padding: 16,
-                    background: '#f0fdfa',
-                    borderRadius: 12,
-                    border: '1px solid #2dd4bf',
-                    color: '#065f46'
+              {uploadData && (
+                <div style={{
+                  padding: 16,
+                  background: '#f0fdfa',
+                  borderRadius: 12,
+                  border: '1px solid #2dd4bf',
+                  color: '#065f46'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <span>✅</span>
+                    <strong>PDF uploaded successfully!</strong>
+                  </div>
+                  <div style={{ fontSize: '0.875rem' }}>
+                    {uploadData.uploadIds ?
+                      `${uploadData.uploadIds.length} file(s) ready for guide generation` :
+                      'File ready for guide generation'
+                    }
+                  </div>
+                </div>
+              )}
+
+              {uploadData && (
+                <div>
+                  <h3 style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 'bold',
+                    color: '#374151',
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span>✅</span>
-                      <strong>PDF uploaded successfully!</strong>
-                    </div>
-                    <div style={{ fontSize: '0.875rem' }}>
-                      {uploadData.uploadIds ? 
-                        `${uploadData.uploadIds.length} file(s) ready for guide generation` :
-                        'File ready for guide generation'
-                      }
-                    </div>
-                  </div>
-                )}
+                    🎭 Guide Details
+                  </h3>
+                  <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                    Fill in the details below to generate your personalized audition guide.
+                  </p>
 
-                {uploadData && (
-                  <div>
-                    <h3 style={{ 
-                      fontSize: '1.5rem', 
-                      fontWeight: 'bold', 
-                      color: '#374151',
-                      marginBottom: '1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      🎭 Guide Details
-                    </h3>
-                    <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-                      Fill in the details below to generate your personalized audition guide.
-                    </p>
+                  <GuideForm
+                    onSubmit={handleGenerateGuide}
+                    hasFile={!!uploadData}
+                    isSubmitting={isGenerating}
+                    disabled={!canGenerate}
+                  />
+                </div>
+              )}
 
-                    <GuideForm
-                      onSubmit={handleGenerateGuide}
-                      hasFile={!!uploadData}
-                      isSubmitting={isGenerating}
-                      disabled={!canGenerate}
-                    />
-                  </div>
-                )}
-
-                {!uploadData && (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                    <p>Upload your audition sides (PDF) to get started.</p>
-                  </div>
-                )}
-              </div>
-            )}
+              {!uploadData && (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                  <p>Upload your audition sides (PDF) to get started.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        
+
         {/* Footer */}
         <Footer />
       </div>

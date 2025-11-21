@@ -45,8 +45,8 @@
 **Status:** Success - Authentication now works with Supabase tokens
 
 ## 2025-09-09
-**Issue:** Cursor previously used wrong date (Jan 27, 2025).  
-**Decision:** Enforce date confirmation before logging.  
+**Issue:** Cursor previously used wrong date (Jan 27, 2025).
+**Decision:** Enforce date confirmation before logging.
 **Status:** Success.
 
 ## 2025-09-09
@@ -57,6 +57,26 @@
 ## 2025-09-09
 **Issue:** CORS errors and frontend-backend connectivity issues
 **Decision:** Fixed CORS configuration to allow prep101.site origin, updated frontend API URL to point to current Vercel deployment, resolved Git rebase conflicts with Supabase utilities, and successfully rebuilt frontend with correct backend endpoint.
+**Status:** Success
+
+## 2025-11-21
+**Issue:** While Prep101 guides were being generated (2–5 minutes), users did not consistently see a clear loading experience, despite a loading screen being designed.
+**Decision:** Implemented a full-screen loading overlay on the `Dashboard` page that appears whenever a guide is being generated, using the existing `LoadingSpinner` component so users always see an obvious, blocking loading state during guide creation.
+**Status:** Success
+
+## 2025-11-21 (Part 2)
+**Issue:** No admin dashboard existed to inspect user activity, guides created, or manually grant extra/free guides and adjust limits.
+**Decision:** Added admin-only backend routes under `/api/admin` (secured by beta admin access) to list users and modify guide limits, and created a protected `/admin` React page that uses the Supabase access token to show user metrics and provide “+1 free guide” and “reset usage” controls per user.
+**Status:** Success
+
+## 2025-11-21 (Part 3)
+**Issue:** Guides could not be emailed to users; the `/api/guides/:id/email` endpoint was stubbed out and MailerSend config was unused.
+**Decision:** Integrated Resend as the transactional email provider via a new `emailService`, wired `/api/guides/:id/email` to send the stored HTML guide to the user’s account email, added `RESEND_API_KEY`/`EMAIL_FROM` env vars, and exposed an “Email This Guide” button on the `GuideView` page.
+**Status:** Success
+
+## 2025-11-21 (Part 4)
+**Issue:** Claude model and token limits were hard-coded to `claude-sonnet-4-20250514` with mixed `max_tokens` values (4000–8000), limiting flexibility and context size.
+**Decision:** Updated the default model to `claude-sonnet-4-5-20250929` via `DEFAULT_CLAUDE_MODEL` in `config/models.js` and centralized output length with `DEFAULT_CLAUDE_MAX_TOKENS` (default 9000, overridable via `CLAUDE_MAX_TOKENS`), wiring all Anthropic calls to use this shared limit and exposing it in `/api/health`.
 **Status:** Success
 
 ## 2025-09-09

@@ -27,6 +27,7 @@ const GuideView = () => {
   const [guide, setGuide] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [emailSending, setEmailSending] = useState(false);
 
   useEffect(() => {
     const fetchGuide = async () => {
@@ -70,6 +71,37 @@ const GuideView = () => {
 
   const handleBack = () => {
     navigate('/account');
+  };
+
+  const handleEmailGuide = async () => {
+    if (!user?.accessToken && !user?.token) {
+      setError('Authentication required to email guide');
+      return;
+    }
+    setEmailSending(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/guides/${id}/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.accessToken || user.token}`
+        }
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const message = data.error || `Failed to email guide (HTTP ${res.status})`;
+        alert(message);
+        return;
+      }
+
+      alert('Guide emailed to your account email address.');
+    } catch (err) {
+      console.error('Error emailing guide:', err);
+      alert('Failed to email guide. Please try again later.');
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   if (loading) {
@@ -133,36 +165,45 @@ const GuideView = () => {
       <div className="page-dark">
         <div className="container">
           <div style={{ padding: '2rem 0', maxWidth: '1400px', margin: '0 auto' }}>
-            <button onClick={handleBack} className="btn btnSecondary" style={{ marginBottom: '2rem' }}>
-              ← Back to Account
-            </button>
-            
-            <div style={{ 
-              background: '#1f2937', 
-              borderRadius: '0.75rem', 
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+              <button onClick={handleBack} className="btn btnSecondary">
+                ← Back to Account
+              </button>
+              <button
+                onClick={handleEmailGuide}
+                className="btn btnPrimary"
+                disabled={emailSending}
+              >
+                {emailSending ? 'Emailing…' : 'Email This Guide'}
+              </button>
+            </div>
+
+            <div style={{
+              background: '#1f2937',
+              borderRadius: '0.75rem',
               padding: '2.5rem',
               marginBottom: '2rem',
               border: '1px solid #374151'
             }}>
-              <h1 style={{ 
-                fontSize: '2.5rem', 
-                marginBottom: '1rem', 
+              <h1 style={{
+                fontSize: '2.5rem',
+                marginBottom: '1rem',
                 color: '#fbbf24',
                 fontWeight: 'bold',
                 lineHeight: '1.2'
               }}>
                 {guide.characterName}
               </h1>
-              <div style={{ 
-                fontSize: '1.25rem', 
+              <div style={{
+                fontSize: '1.25rem',
                 marginBottom: '0.5rem',
                 color: '#f3f4f6',
                 fontWeight: '500'
               }}>
                 {guide.productionTitle}
               </div>
-              <div style={{ 
-                color: '#9ca3af', 
+              <div style={{
+                color: '#9ca3af',
                 marginBottom: '0',
                 fontSize: '1rem'
               }}>
@@ -170,12 +211,12 @@ const GuideView = () => {
               </div>
             </div>
 
-            <div 
+            <div
               className="guide-html"
               dangerouslySetInnerHTML={{ __html: safeHtml }}
-              style={{ 
-                background: '#1f2937', 
-                borderRadius: '0.75rem', 
+              style={{
+                background: '#1f2937',
+                borderRadius: '0.75rem',
                 padding: '2.5rem',
                 color: '#f3f4f6',
                 lineHeight: '1.7',

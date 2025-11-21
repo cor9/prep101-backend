@@ -18,7 +18,7 @@ router.get('/', auth, async (req, res) => {
       attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount', 'childGuideRequested', 'childGuideCompleted', 'childGuideHtml', 'isFavorite']
     });
 
-    res.json({ 
+    res.json({
       success: true,
       guides: guides,
       total: guides.length
@@ -41,7 +41,7 @@ router.get('/public', async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
       attributes: [
-        'id', 'title', 'characterName', 'productionTitle', 
+        'id', 'title', 'characterName', 'productionTitle',
         'productionType', 'createdAt', 'viewCount'
       ]
     });
@@ -70,7 +70,7 @@ router.get('/public/:id', async (req, res) => {
     const guide = await Guide.findOne({
       where: { id, isPublic: true },
       attributes: [
-        'id', 'title', 'characterName', 'productionTitle', 
+        'id', 'title', 'characterName', 'productionTitle',
         'productionType', 'createdAt', 'viewCount', 'generatedHtml'
       ]
     });
@@ -152,7 +152,7 @@ router.get('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Guide not found' });
     }
 
-    res.json({ 
+    res.json({
       success: true,
       guide: guide
     });
@@ -306,7 +306,7 @@ router.post(
 
       // Here you would integrate with your AI service to generate the guide
       // For now, we'll simulate the process
-      
+
       // Update guide status to processing
       await guide.update({ status: 'processing' });
 
@@ -380,7 +380,7 @@ router.get('/public', async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
       attributes: [
-        'id', 'title', 'characterName', 'productionTitle', 
+        'id', 'title', 'characterName', 'productionTitle',
         'productionType', 'createdAt', 'viewCount'
       ]
     });
@@ -409,7 +409,7 @@ router.get('/public/:id', async (req, res) => {
     const guide = await Guide.findOne({
       where: { id, isPublic: true },
       attributes: [
-        'id', 'title', 'characterName', 'productionTitle', 
+        'id', 'title', 'characterName', 'productionTitle',
         'productionType', 'createdAt', 'viewCount', 'generatedHtml'
       ]
     });
@@ -436,7 +436,7 @@ router.get('/search', auth, async (req, res) => {
     const { q, status, characterName, productionType, sortBy = 'createdAt', order = 'DESC' } = req.query;
 
     let whereClause = { userId };
-    
+
     // Add search filters
     if (q) {
       whereClause = {
@@ -466,7 +466,7 @@ router.get('/search', auth, async (req, res) => {
       where: whereClause,
       order: [[sortBy, order.toUpperCase()]],
       attributes: [
-        'id', 'title', 'characterName', 'productionTitle', 
+        'id', 'title', 'characterName', 'productionTitle',
         'productionType', 'status', 'createdAt', 'updatedAt',
         'viewCount', 'isPublic'
       ]
@@ -483,7 +483,7 @@ router.get('/search', auth, async (req, res) => {
 router.get('/stats', auth, async (req, res) => {
   try {
     const userId = req.userId;
-    
+
     const guides = await Guide.findAll({
       where: { userId },
       attributes: ['status', 'createdAt', 'viewCount']
@@ -581,7 +581,23 @@ router.post('/:id/email', auth, async (req, res) => {
 
     const guide = await Guide.findOne({
       where: { id, userId },
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'storyline', 'characterBreakdown', 'callbackNotes', 'focusArea', 'sceneText', 'generatedHtml', 'createdAt', 'viewCount']
+      attributes: [
+        'id',
+        'guideId',
+        'characterName',
+        'productionTitle',
+        'productionType',
+        'roleSize',
+        'genre',
+        'storyline',
+        'characterBreakdown',
+        'callbackNotes',
+        'focusArea',
+        'sceneText',
+        'generatedHtml',
+        'createdAt',
+        'viewCount'
+      ]
     });
 
     if (!guide) {
@@ -593,12 +609,31 @@ router.post('/:id/email', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log(`📧 Email functionality disabled - guide created successfully`);
-    
-    res.json({ 
-      success: true, 
-      message: 'Guide created successfully (email disabled)',
-      guideId: guide.id
+    if (!guide.generatedHtml) {
+      return res.status(400).json({ error: 'Guide content is not available for email' });
+    }
+
+    const emailService = require('../services/emailService');
+    if (!emailService.isConfigured()) {
+      return res.status(503).json({ error: 'Email service not configured. Please set RESEND_API_KEY.' });
+    }
+
+    const subject = `Your Prep101 guide for ${guide.characterName} - ${guide.productionTitle}`;
+    const html = guide.generatedHtml;
+
+    await emailService.sendGuideEmail({
+      to: user.email,
+      subject,
+      html
+    });
+
+    console.log(`📧 Guide emailed to ${user.email} for guide ${guide.id}`);
+
+    res.json({
+      success: true,
+      message: 'Guide emailed successfully',
+      guideId: guide.id,
+      to: user.email
     });
   } catch (error) {
     console.error('❌ Email sending error:', error);
@@ -614,7 +649,7 @@ router.put('/:id/favorite', auth, async (req, res) => {
 
     console.log(`⭐ Favorite toggle - Guide ID: ${id}, User ID: ${userId}`);
 
-    const guide = await Guide.findOne({ 
+    const guide = await Guide.findOne({
       where: { id, userId },
       attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'isFavorite']
     });
@@ -662,7 +697,7 @@ router.get('/favorites', auth, async (req, res) => {
 
     console.log(`⭐ Found ${guides.length} favorite guides`);
 
-    res.json({ 
+    res.json({
       success: true,
       guides: guides,
       total: guides.length

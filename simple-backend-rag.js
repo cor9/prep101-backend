@@ -1,93 +1,106 @@
-const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+const express = require("express");
+const cors = require("cors");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+require("dotenv").config();
 
 // Create app immediately for fast health checks
 const app = express();
 
 // Super fast health check - responds immediately
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).json({
-    status: 'ok',
+    status: "ok",
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    vercel: !!process.env.VERCEL
+    environment: process.env.NODE_ENV || "development",
+    vercel: !!process.env.VERCEL,
   });
 });
 
 // Even simpler test endpoint
-app.get('/test', (req, res) => {
-  res.status(200).json({ message: 'Hello from Vercel!' });
+app.get("/test", (req, res) => {
+  res.status(200).json({ message: "Hello from Vercel!" });
 });
 
 // Root route handler
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({
-    message: 'PREP101 Backend API',
-    status: 'running',
-    version: '1.0.0',
+    message: "PREP101 Backend API",
+    status: "running",
+    version: "1.0.0",
     endpoints: {
-      health: '/health',
-      apiHealth: '/api/health',
-      upload: '/api/upload',
-      guides: '/api/guides',
-      auth: '/api/auth'
+      health: "/health",
+      apiHealth: "/api/health",
+      upload: "/api/upload",
+      guides: "/api/guides",
+      auth: "/api/auth",
     },
-    documentation: 'https://github.com/cor9/prep101-backend'
+    documentation: "https://github.com/cor9/prep101-backend",
   });
 });
 
 // Trust proxy - Required for Vercel and rate limiting to work correctly
-app.set('trust proxy', true);
+app.set("trust proxy", true);
 
 // Basic middleware setup first
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // CORS - Allow specific origins including prep101.site
-app.use(cors({
-  origin: [
-    'https://prep101.site',
-    'https://prep101-api.vercel.app',
-    'http://localhost:3000',
-    'http://localhost:3001'
-  ],
-  credentials: true,
-  optionsSuccessStatus: 200,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+app.use(
+  cors({
+    origin: [
+      "https://prep101.site",
+      "https://prep101-api.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:3001",
+    ],
+    credentials: true,
+    optionsSuccessStatus: 200,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  })
+);
 
 // Continue with other imports
-const pdfParse = require('pdf-parse');
+const pdfParse = require("pdf-parse");
 // Try to load Adobe extractor, but don't fail if it's not available
 let extractWithAdobe;
 try {
-  extractWithAdobe = require('./services/extractors/adobeExtract').extractWithAdobe;
+  extractWithAdobe =
+    require("./services/extractors/adobeExtract").extractWithAdobe;
 } catch (error) {
-  console.log('⚠️  Adobe extractor not available, using basic extraction only');
+  console.log("⚠️  Adobe extractor not available, using basic extraction only");
   extractWithAdobe = null;
 }
-const { DEFAULT_CLAUDE_MODEL } = require('./config/models');
+const {
+  DEFAULT_CLAUDE_MODEL,
+  DEFAULT_CLAUDE_MAX_TOKENS,
+} = require("./config/models");
 
 // Import new authentication and payment features (with error handling)
-let config, validateConfig, authLimiter, apiLimiter, paymentLimiter, speedLimiter, corsOptions, securityHeaders;
+let config,
+  validateConfig,
+  authLimiter,
+  apiLimiter,
+  paymentLimiter,
+  speedLimiter,
+  corsOptions,
+  securityHeaders;
 
 try {
-  const configModule = require('./config/config');
+  const configModule = require("./config/config");
   config = configModule.config;
   validateConfig = configModule.validateConfig;
 } catch (error) {
-  console.log('⚠️  Config module not available:', error.message);
-  config = { jwt: { secret: 'fallback' } };
-  validateConfig = () => console.log('⚠️  Config validation skipped');
+  console.log("⚠️  Config module not available:", error.message);
+  config = { jwt: { secret: "fallback" } };
+  validateConfig = () => console.log("⚠️  Config validation skipped");
 }
 
 try {
-  const securityModule = require('./middleware/security');
+  const securityModule = require("./middleware/security");
   authLimiter = securityModule.authLimiter;
   apiLimiter = securityModule.apiLimiter;
   paymentLimiter = securityModule.paymentLimiter;
@@ -95,7 +108,7 @@ try {
   corsOptions = securityModule.corsOptions;
   securityHeaders = securityModule.securityHeaders;
 } catch (error) {
-  console.log('⚠️  Security middleware not available:', error.message);
+  console.log("⚠️  Security middleware not available:", error.message);
   // Create fallback middleware
   authLimiter = (req, res, next) => next();
   apiLimiter = (req, res, next) => next();
@@ -106,8 +119,10 @@ try {
 
 // Validate configuration (skip in Vercel if env vars not set)
 if (process.env.VERCEL) {
-  console.log('🚀 Running in Vercel serverless environment');
-  console.log('⚠️  Skipping config validation - environment variables will be set in Vercel dashboard');
+  console.log("🚀 Running in Vercel serverless environment");
+  console.log(
+    "⚠️  Skipping config validation - environment variables will be set in Vercel dashboard"
+  );
 } else {
   validateConfig();
 }
@@ -116,14 +131,14 @@ if (process.env.VERCEL) {
 app.use(securityHeaders);
 
 // Rate limiting
-app.use('/api/auth', authLimiter);
-app.use('/api/payments', paymentLimiter);
-app.use('/api', apiLimiter);
+app.use("/api/auth", authLimiter);
+app.use("/api/payments", paymentLimiter);
+app.use("/api", apiLimiter);
 app.use(speedLimiter);
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 const uploads = {};
@@ -135,20 +150,22 @@ const extractionStats = {
 
 // Enhanced text cleaning function for basic extraction
 function cleanBasicText(text) {
-  if (!text) return '';
+  if (!text) return "";
 
-  return text
-    .replace(/\r/g, '')
-    .replace(/Sides by Breakdown Services - Actors Access/gi, '')
-    .replace(/Page \d+ of \d+/gi, '')
-    // Enhanced cleaning patterns
-    .replace(/\b\d{5,}\b/g, '') // Remove numeric watermarks
-    .replace(/^\d{1,2}:\d{2}:\d{2}\s*$/gm, '') // Remove timestamp lines
-    .replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/gm, '') // Remove date-time lines
-    .replace(/^[0-9\s\-_:]+$/gm, '') // Remove lines with only numbers/symbols
-    .replace(/^[A-Za-z]{1,2}\s*$/gm, '') // Remove single/double letter lines
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return (
+    text
+      .replace(/\r/g, "")
+      .replace(/Sides by Breakdown Services - Actors Access/gi, "")
+      .replace(/Page \d+ of \d+/gi, "")
+      // Enhanced cleaning patterns
+      .replace(/\b\d{5,}\b/g, "") // Remove numeric watermarks
+      .replace(/^\d{1,2}:\d{2}:\d{2}\s*$/gm, "") // Remove timestamp lines
+      .replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/gm, "") // Remove date-time lines
+      .replace(/^[0-9\s\-_:]+$/gm, "") // Remove lines with only numbers/symbols
+      .replace(/^[A-Za-z]{1,2}\s*$/gm, "") // Remove single/double letter lines
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 // Content quality assessment function
@@ -157,15 +174,15 @@ function assessContentQuality(text, wordCount, isUpload = false) {
   // UPLOAD CHECK: Only reject completely empty/corrupted files
   if (isUpload) {
     if (!text || wordCount < 10) {
-      return { quality: 'poor', reason: 'insufficient_content' };
+      return { quality: "poor", reason: "insufficient_content" };
     }
     // For uploads, accept everything else and let generation handle quality
-    return { quality: 'good', reason: 'sufficient_content' };
+    return { quality: "good", reason: "sufficient_content" };
   }
 
   // GENERATION CHECK: Stricter validation before spending API tokens
   if (!text || wordCount < 25) {
-    return { quality: 'poor', reason: 'insufficient_content' };
+    return { quality: "poor", reason: "insufficient_content" };
   }
 
   // Check for repetitive content patterns
@@ -187,8 +204,9 @@ function assessContentQuality(text, wordCount, isUpload = false) {
   // Check for high repetition of the same phrases
   const words = text.toLowerCase().split(/\s+/);
   const wordFreq = {};
-  words.forEach(word => {
-    if (word.length > 3) { // Only count words longer than 3 chars
+  words.forEach((word) => {
+    if (word.length > 3) {
+      // Only count words longer than 3 chars
       wordFreq[word] = (wordFreq[word] || 0) + 1;
     }
   });
@@ -197,50 +215,57 @@ function assessContentQuality(text, wordCount, isUpload = false) {
   const repetitionRatio = maxFreq / Math.max(wordCount, 1);
 
   // Lenient criteria - only reject truly corrupted content
-  if (repetitiveRatio > 0.5) { // More than 50% repetitive patterns
-    return { quality: 'poor', reason: 'repetitive_content', repetitiveRatio };
+  if (repetitiveRatio > 0.5) {
+    // More than 50% repetitive patterns
+    return { quality: "poor", reason: "repetitive_content", repetitiveRatio };
   }
 
-  if (repetitionRatio > 0.5) { // More than 50% of content is the same word
-    return { quality: 'poor', reason: 'high_repetition', repetitionRatio };
+  if (repetitionRatio > 0.5) {
+    // More than 50% of content is the same word
+    return { quality: "poor", reason: "high_repetition", repetitionRatio };
   }
 
   if (wordCount < 100) {
-    return { quality: 'low', reason: 'minimal_content' };
+    return { quality: "low", reason: "minimal_content" };
   }
 
-  return { quality: 'good', reason: 'sufficient_content' };
+  return { quality: "good", reason: "sufficient_content" };
 }
 
 // Basic extraction helper used as fallback
 async function extractWithBasic(pdfBuffer) {
   const data = await pdfParse(pdfBuffer);
-  let text = cleanBasicText(data.text || '');
+  let text = cleanBasicText(data.text || "");
 
   const wordCount = (text.match(/\b\w+\b/g) || []).length;
-  const confidence = wordCount > 600 ? 'high' : wordCount > 300 ? 'medium' : 'low';
+  const confidence =
+    wordCount > 600 ? "high" : wordCount > 300 ? "medium" : "low";
 
   // Character names in ALL-CAPS ending with colon
   const characterPattern = /^[A-Z][A-Z\s]+:/gm;
-  const characterNames = [...new Set((text.match(characterPattern) || []).map(n => n.replace(':', '').trim()))];
+  const characterNames = [
+    ...new Set(
+      (text.match(characterPattern) || []).map((n) => n.replace(":", "").trim())
+    ),
+  ];
 
-  return { text, method: 'basic', wordCount, confidence, characterNames };
+  return { text, method: "basic", wordCount, confidence, characterNames };
 }
 
 // OCR extraction using Claude's vision model as fallback
 async function extractWithOCR(pdfBuffer) {
   try {
-    console.log('[OCR] Starting OCR extraction with Claude Vision...');
+    console.log("[OCR] Starting OCR extraction with Claude Vision...");
 
     // Convert PDF to images first
-    const pdf2pic = require('pdf2pic');
-    const fs = require('fs');
-    const os = require('os');
-    const path = require('path');
+    const pdf2pic = require("pdf2pic");
+    const fs = require("fs");
+    const os = require("os");
+    const path = require("path");
 
     // Create temporary directory for images
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdf-ocr-'));
-    const tempPdfPath = path.join(tempDir, 'input.pdf');
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pdf-ocr-"));
+    const tempPdfPath = path.join(tempDir, "input.pdf");
     fs.writeFileSync(tempPdfPath, pdfBuffer);
 
     // Convert PDF to images
@@ -250,7 +275,7 @@ async function extractWithOCR(pdfBuffer) {
       savePath: tempDir,
       format: "png",
       width: 2048,
-      height: 2048
+      height: 2048,
     };
 
     const convert = pdf2pic.fromPath(tempPdfPath, options);
@@ -275,10 +300,10 @@ async function extractWithOCR(pdfBuffer) {
     console.log(`[OCR] PDF has ${pageCount} pages`);
 
     if (pageCount === 0) {
-      throw new Error('Failed to detect any pages in PDF');
+      throw new Error("Failed to detect any pages in PDF");
     }
 
-    let allText = '';
+    let allText = "";
 
     // Process each page
     for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
@@ -293,46 +318,46 @@ async function extractWithOCR(pdfBuffer) {
 
       // Read the image file
       const imageBuffer = fs.readFileSync(pageData.path);
-      const base64Image = imageBuffer.toString('base64');
+      const base64Image = imageBuffer.toString("base64");
 
       // Prepare the message for Claude Vision
       const message = {
-        role: 'user',
+        role: "user",
         content: [
           {
-            type: 'text',
+            type: "text",
             text: `Please extract all the text from this script/sides image (page ${pageNum} of ${pageCount.length}). Focus on:
 1. Character names (in ALL CAPS followed by colon)
 2. Dialogue and scene descriptions
 3. Stage directions and parentheticals
 4. Scene headings and transitions
 
-Ignore watermarks, timestamps, page numbers, and other metadata. Return only the clean script content.`
+Ignore watermarks, timestamps, page numbers, and other metadata. Return only the clean script content.`,
           },
           {
-            type: 'image',
+            type: "image",
             source: {
-              type: 'base64',
-              media_type: 'image/png',
-              data: base64Image
-            }
-          }
-        ]
+              type: "base64",
+              media_type: "image/png",
+              data: base64Image,
+            },
+          },
+        ],
       };
 
       // Call Claude Vision API for this page
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01'
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 4000,
-          messages: [message]
-        })
+          model: "claude-3-5-sonnet-20241022",
+          max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
+          messages: [message],
+        }),
       });
 
       if (!response.ok) {
@@ -342,11 +367,11 @@ Ignore watermarks, timestamps, page numbers, and other metadata. Return only the
       }
 
       const result = await response.json();
-      const pageText = result.content[0].text || '';
+      const pageText = result.content[0].text || "";
 
       // Add page text to total (with separator)
       if (pageText.trim()) {
-        allText += (allText ? '\n\n' : '') + pageText.trim();
+        allText += (allText ? "\n\n" : "") + pageText.trim();
       }
     }
 
@@ -357,149 +382,168 @@ Ignore watermarks, timestamps, page numbers, and other metadata. Return only the
     let text = cleanBasicText(allText);
 
     const wordCount = (text.match(/\b\w+\b/g) || []).length;
-    const confidence = wordCount > 600 ? 'high' : wordCount > 300 ? 'medium' : 'low';
+    const confidence =
+      wordCount > 600 ? "high" : wordCount > 300 ? "medium" : "low";
 
     // Character names in ALL-CAPS ending with colon
     const characterPattern = /^[A-Z][A-Z\s]+:/gm;
-    const characterNames = [...new Set((text.match(characterPattern) || []).map(n => n.replace(':', '').trim()))];
+    const characterNames = [
+      ...new Set(
+        (text.match(characterPattern) || []).map((n) =>
+          n.replace(":", "").trim()
+        )
+      ),
+    ];
 
-    console.log(`[OCR] Extraction completed: ${wordCount} words, ${characterNames.length} characters found`);
+    console.log(
+      `[OCR] Extraction completed: ${wordCount} words, ${characterNames.length} characters found`
+    );
 
-    return { text, method: 'ocr', wordCount, confidence, characterNames };
-
+    return { text, method: "ocr", wordCount, confidence, characterNames };
   } catch (error) {
-    console.error('[OCR] Extraction failed:', error.message);
+    console.error("[OCR] Extraction failed:", error.message);
     throw new Error(`OCR extraction failed: ${error.message}`);
   }
 }
 
 // Import and mount new API routes (with error handling)
 try {
-  const authRoutes = require('./routes/auth');
-  app.use('/api/auth', authRoutes);
-  console.log('✅ Auth routes loaded');
+  const authRoutes = require("./routes/auth");
+  app.use("/api/auth", authRoutes);
+  console.log("✅ Auth routes loaded");
 } catch (error) {
-  console.log('⚠️  Auth routes not available:', error.message);
+  console.log("⚠️  Auth routes not available:", error.message);
   // Add fallback routes for when auth routes fail to load
-  app.get('/api/auth/dashboard', (req, res) => {
+  app.get("/api/auth/dashboard", (req, res) => {
     res.status(503).json({
-      error: 'Authentication service temporarily unavailable',
-      message: 'Database connection required for authentication features'
+      error: "Authentication service temporarily unavailable",
+      message: "Database connection required for authentication features",
     });
   });
-  app.get('/api/auth/profile', (req, res) => {
+  app.get("/api/auth/profile", (req, res) => {
     res.status(503).json({
-      error: 'Authentication service temporarily unavailable',
-      message: 'Database connection required for authentication features'
+      error: "Authentication service temporarily unavailable",
+      message: "Database connection required for authentication features",
     });
   });
 }
 
 try {
-  const paymentRoutes = require('./routes/payments');
-  app.use('/api/payments', paymentRoutes);
-  console.log('✅ Payment routes loaded');
+  const paymentRoutes = require("./routes/payments");
+  app.use("/api/payments", paymentRoutes);
+  console.log("✅ Payment routes loaded");
 } catch (error) {
-  console.log('⚠️  Payment routes not available:', error.message);
+  console.log("⚠️  Payment routes not available:", error.message);
   // Add fallback routes for when payment routes fail to load
-  app.get('/api/payments/*', (req, res) => {
+  app.get("/api/payments/*", (req, res) => {
     res.status(503).json({
-      error: 'Payment service temporarily unavailable',
-      message: 'Database connection required for payment features'
+      error: "Payment service temporarily unavailable",
+      message: "Database connection required for payment features",
     });
   });
 }
 
 try {
-  const guidesRoutes = require('./routes/guides');
-  app.use('/api/guides', guidesRoutes);
-  console.log('✅ Guide routes loaded');
+  const guidesRoutes = require("./routes/guides");
+  app.use("/api/guides", guidesRoutes);
+  console.log("✅ Guide routes loaded");
 } catch (error) {
-  console.log('⚠️  Guide routes not available:', error.message);
+  console.log("⚠️  Guide routes not available:", error.message);
 }
 
 try {
-  const betaRoutes = require('./routes/beta');
-  app.use('/api/beta', betaRoutes);
-  console.log('✅ Beta routes loaded');
+  const adminRoutes = require("./routes/admin");
+  app.use("/api/admin", adminRoutes);
+  console.log("✅ Admin routes loaded");
 } catch (error) {
-  console.log('⚠️  Beta routes not available:', error.message);
+  console.log("⚠️  Admin routes not available:", error.message);
 }
 
 try {
-  const stripeRoutes = require('./routes/stripe');
-  app.use('/api/stripe', stripeRoutes);
-  console.log('✅ Stripe routes loaded');
+  const betaRoutes = require("./routes/beta");
+  app.use("/api/beta", betaRoutes);
+  console.log("✅ Beta routes loaded");
 } catch (error) {
-  console.log('⚠️  Stripe routes not available:', error.message);
+  console.log("⚠️  Beta routes not available:", error.message);
+}
+
+try {
+  const stripeRoutes = require("./routes/stripe");
+  app.use("/api/stripe", stripeRoutes);
+  console.log("✅ Stripe routes loaded");
+} catch (error) {
+  console.log("⚠️  Stripe routes not available:", error.message);
   // Add fallback routes for when Stripe routes fail to load
-  app.get('/api/stripe/*', (req, res) => {
+  app.get("/api/stripe/*", (req, res) => {
     res.status(503).json({
-      error: 'Stripe service temporarily unavailable',
-      message: 'Database connection required for Stripe features'
+      error: "Stripe service temporarily unavailable",
+      message: "Database connection required for Stripe features",
     });
   });
 }
 
 try {
-  const stripeWebhookRoutes = require('./routes/stripeWebhook');
-  app.use('/api/webhooks', stripeWebhookRoutes);
-  console.log('✅ Stripe webhook routes loaded');
+  const stripeWebhookRoutes = require("./routes/stripeWebhook");
+  app.use("/api/webhooks", stripeWebhookRoutes);
+  console.log("✅ Stripe webhook routes loaded");
 } catch (error) {
-  console.log('⚠️  Stripe webhook routes not available:', error.message);
+  console.log("⚠️  Stripe webhook routes not available:", error.message);
 }
-
 
 // Secure API key handling (trim to avoid invisible whitespace issues)
-const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
+const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
 if (!ANTHROPIC_API_KEY) {
-  console.error('❌ ANTHROPIC_API_KEY not found in environment variables');
+  console.error("❌ ANTHROPIC_API_KEY not found in environment variables");
   if (process.env.VERCEL) {
-    console.log('⚠️  Anthropic API key missing in Vercel - guide generation will fail');
+    console.log(
+      "⚠️  Anthropic API key missing in Vercel - guide generation will fail"
+    );
   } else {
     process.exit(1);
   }
 }
 
 // Debug environment variables
-console.log('🔧 Environment variables loaded:');
-console.log('  - JWT_SECRET present:', !!process.env.JWT_SECRET);
+console.log("🔧 Environment variables loaded:");
+console.log("  - JWT_SECRET present:", !!process.env.JWT_SECRET);
 // Masked Anthropic key diagnostics (length only)
 try {
-  const masked = ANTHROPIC_API_KEY ? `len=${ANTHROPIC_API_KEY.length}` : 'missing';
-  console.log('  - ANTHROPIC_API_KEY:', masked);
-} catch(_) {}
+  const masked = ANTHROPIC_API_KEY
+    ? `len=${ANTHROPIC_API_KEY.length}`
+    : "missing";
+  console.log("  - ANTHROPIC_API_KEY:", masked);
+} catch (_) {}
 
-console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL);
-console.log('  - API_BASE:', process.env.API_BASE);
+console.log("  - FRONTEND_URL:", process.env.FRONTEND_URL);
+console.log("  - API_BASE:", process.env.API_BASE);
 
 // Database initialization (with error handling)
 let sequelize, testConnection, User, Guide;
 
 try {
-  const dbModule = require('./database/connection');
+  const dbModule = require("./database/connection");
   sequelize = dbModule.sequelize;
   testConnection = dbModule.testConnection;
-  console.log('✅ Database connection module loaded');
+  console.log("✅ Database connection module loaded");
 } catch (error) {
-  console.log('⚠️  Database connection module not available:', error.message);
+  console.log("⚠️  Database connection module not available:", error.message);
   sequelize = null;
-  testConnection = () => Promise.reject(new Error('Database not available'));
+  testConnection = () => Promise.reject(new Error("Database not available"));
 }
 
 try {
-  User = require('./models/User');
-  console.log('✅ User model loaded');
+  User = require("./models/User");
+  console.log("✅ User model loaded");
 } catch (error) {
-  console.log('⚠️  User model not available:', error.message);
+  console.log("⚠️  User model not available:", error.message);
   User = null;
 }
 
 try {
-  Guide = require('./models/Guide');
-  console.log('✅ Guide model loaded');
+  Guide = require("./models/Guide");
+  console.log("✅ Guide model loaded");
 } catch (error) {
-  console.log('⚠️  Guide model not available:', error.message);
+  console.log("⚠️  Guide model not available:", error.message);
   Guide = null;
 }
 
@@ -508,18 +552,20 @@ let methodologyDatabase = {};
 
 async function initializeDatabase() {
   if (!sequelize || !testConnection) {
-    console.log('⚠️  Database not available - skipping initialization');
+    console.log("⚠️  Database not available - skipping initialization");
     return;
   }
 
   try {
     await testConnection();
     await sequelize.sync({ alter: true });
-    console.log('✅ Database models synchronized');
+    console.log("✅ Database models synchronized");
   } catch (error) {
-    console.error('❌ Database initialization failed:', error);
+    console.error("❌ Database initialization failed:", error);
     if (process.env.VERCEL) {
-      console.log('⚠️  Database connection failed in Vercel - continuing without database');
+      console.log(
+        "⚠️  Database connection failed in Vercel - continuing without database"
+      );
     } else {
       process.exit(1);
     }
@@ -527,22 +573,24 @@ async function initializeDatabase() {
 }
 
 function loadMethodologyFiles() {
-  const methodologyPath = path.join(__dirname, 'methodology');
+  const methodologyPath = path.join(__dirname, "methodology");
 
   if (!fs.existsSync(methodologyPath)) {
-    console.error('❌ Methodology folder not found! Please create ./methodology/ with your files');
+    console.error(
+      "❌ Methodology folder not found! Please create ./methodology/ with your files"
+    );
     return;
   }
 
-  console.log('📚 Loading methodology files for RAG...');
+  console.log("📚 Loading methodology files for RAG...");
 
   try {
     const files = fs.readdirSync(methodologyPath);
     console.log(`📁 Found ${files.length} methodology files:`, files);
 
-    files.forEach(filename => {
+    files.forEach((filename) => {
       const filePath = path.join(methodologyPath, filename);
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = fs.readFileSync(filePath, "utf8");
 
       // Store with metadata for intelligent searching
       methodologyDatabase[filename] = {
@@ -550,28 +598,32 @@ function loadMethodologyFiles() {
         filename: filename,
         size: content.length,
         type: determineFileType(filename),
-        keywords: extractKeywords(filename, content)
+        keywords: extractKeywords(filename, content),
       };
 
       console.log(`✅ Loaded: ${filename} (${content.length} characters)`);
     });
 
-    console.log(`🧠 RAG Database Ready: ${Object.keys(methodologyDatabase).length} methodology files loaded`);
-
+    console.log(
+      `🧠 RAG Database Ready: ${
+        Object.keys(methodologyDatabase).length
+      } methodology files loaded`
+    );
   } catch (error) {
-    console.error('❌ Failed to load methodology files:', error);
+    console.error("❌ Failed to load methodology files:", error);
   }
 }
 
 function determineFileType(filename) {
   const name = filename.toLowerCase();
-  if (name.includes('character')) return 'character-development';
-  if (name.includes('scene')) return 'scene-work';
-  if (name.includes('comedy')) return 'comedy';
-  if (name.includes('uta')) return 'uta-hagen';
-  if (name.includes('cece') || name.includes('eloise')) return 'example-guide';
-  if (name.includes('guide') || name.includes('example')) return 'example-guide';
-  return 'general-methodology';
+  if (name.includes("character")) return "character-development";
+  if (name.includes("scene")) return "scene-work";
+  if (name.includes("comedy")) return "comedy";
+  if (name.includes("uta")) return "uta-hagen";
+  if (name.includes("cece") || name.includes("eloise")) return "example-guide";
+  if (name.includes("guide") || name.includes("example"))
+    return "example-guide";
+  return "general-methodology";
 }
 
 function extractKeywords(filename, content) {
@@ -579,71 +631,78 @@ function extractKeywords(filename, content) {
   const name = filename.toLowerCase();
 
   // Add filename-based keywords
-  if (name.includes('character')) keywords.push('character', 'development', 'psychology');
-  if (name.includes('scene')) keywords.push('scene', 'breakdown', 'analysis');
-  if (name.includes('comedy')) keywords.push('comedy', 'timing', 'humor');
-  if (name.includes('uta')) keywords.push('uta hagen', '9 questions', 'methodology');
+  if (name.includes("character"))
+    keywords.push("character", "development", "psychology");
+  if (name.includes("scene")) keywords.push("scene", "breakdown", "analysis");
+  if (name.includes("comedy")) keywords.push("comedy", "timing", "humor");
+  if (name.includes("uta"))
+    keywords.push("uta hagen", "9 questions", "methodology");
 
   // Extract content-based keywords (simple approach)
   const contentLower = content.toLowerCase();
-  if (contentLower.includes('subtext')) keywords.push('subtext');
-  if (contentLower.includes('objective')) keywords.push('objectives');
-  if (contentLower.includes('physicality')) keywords.push('physicality');
-  if (contentLower.includes('voice')) keywords.push('voice');
-  if (contentLower.includes('audition')) keywords.push('audition');
-  if (contentLower.includes('self-tape')) keywords.push('self-tape');
+  if (contentLower.includes("subtext")) keywords.push("subtext");
+  if (contentLower.includes("objective")) keywords.push("objectives");
+  if (contentLower.includes("physicality")) keywords.push("physicality");
+  if (contentLower.includes("voice")) keywords.push("voice");
+  if (contentLower.includes("audition")) keywords.push("audition");
+  if (contentLower.includes("self-tape")) keywords.push("self-tape");
 
   return keywords;
 }
 
 // Intelligent RAG search through methodology files
 function searchMethodology(characterName, productionType, sceneContext) {
-  console.log(`🔍 RAG Search: ${characterName} | ${productionType} | Context: ${sceneContext.substring(0, 100)}...`);
+  console.log(
+    `🔍 RAG Search: ${characterName} | ${productionType} | Context: ${sceneContext.substring(
+      0,
+      100
+    )}...`
+  );
 
   const searchTerms = [
     characterName.toLowerCase(),
     productionType.toLowerCase(),
-    'character development',
-    'scene analysis',
-    'uta hagen',
-    'acting guide'
+    "character development",
+    "scene analysis",
+    "uta hagen",
+    "acting guide",
   ];
 
   // Add production-type specific terms
-  if (productionType.toLowerCase().includes('comedy')) {
-    searchTerms.push('comedy', 'timing', 'humor');
+  if (productionType.toLowerCase().includes("comedy")) {
+    searchTerms.push("comedy", "timing", "humor");
   }
-  if (productionType.toLowerCase().includes('drama')) {
-    searchTerms.push('drama', 'emotion', 'truth');
+  if (productionType.toLowerCase().includes("drama")) {
+    searchTerms.push("drama", "emotion", "truth");
   }
 
   const relevantFiles = [];
 
   // Score each methodology file based on relevance
-  Object.values(methodologyDatabase).forEach(file => {
+  Object.values(methodologyDatabase).forEach((file) => {
     let relevanceScore = 0;
     const fileContent = file.content.toLowerCase();
     const fileKeywords = file.keywords;
 
     // Score based on keywords
-    searchTerms.forEach(term => {
+    searchTerms.forEach((term) => {
       if (fileKeywords.includes(term)) relevanceScore += 3;
       if (fileContent.includes(term)) relevanceScore += 1;
     });
 
     // Boost example guides
-    if (file.type === 'example-guide') relevanceScore += 5;
+    if (file.type === "example-guide") relevanceScore += 5;
 
     // Boost Uta Hagen methodology
-    if (file.type === 'uta-hagen') relevanceScore += 4;
+    if (file.type === "uta-hagen") relevanceScore += 4;
 
     // Boost character development for all requests
-    if (file.type === 'character-development') relevanceScore += 3;
+    if (file.type === "character-development") relevanceScore += 3;
 
     if (relevanceScore > 0) {
       relevantFiles.push({
         ...file,
-        relevanceScore: relevanceScore
+        relevanceScore: relevanceScore,
       });
     }
   });
@@ -653,9 +712,13 @@ function searchMethodology(characterName, productionType, sceneContext) {
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
     .slice(0, 6); // Top 6 most relevant files
 
-  console.log(`🎯 RAG Results: Found ${topResults.length} relevant methodology files`);
-  topResults.forEach(file => {
-    console.log(`   📄 ${file.filename} (score: ${file.relevanceScore}, type: ${file.type})`);
+  console.log(
+    `🎯 RAG Results: Found ${topResults.length} relevant methodology files`
+  );
+  topResults.forEach((file) => {
+    console.log(
+      `   📄 ${file.filename} (score: ${file.relevanceScore}, type: ${file.type})`
+    );
   });
 
   return topResults;
@@ -673,18 +736,20 @@ async function extractTextWithAdobe(pdfBuffer) {
     ExtractPDFResult,
     SDKError,
     ServiceUsageError,
-    ServiceApiError
+    ServiceApiError,
   } = require("@adobe/pdfservices-node-sdk");
 
   try {
     // Create credentials from the credentials file
-    const credentials = ServicePrincipalCredentials.fromFile("pdfservices-api-credentials.json");
+    const credentials = ServicePrincipalCredentials.fromFile(
+      "pdfservices-api-credentials.json"
+    );
 
     // Create PDF Services instance
-    const pdfServices = new PDFServices({credentials});
+    const pdfServices = new PDFServices({ credentials });
 
     // Create a readable stream from the buffer
-    const { Readable } = require('stream');
+    const { Readable } = require("stream");
     const stream = new Readable();
     stream.push(pdfBuffer);
     stream.push(null);
@@ -692,144 +757,152 @@ async function extractTextWithAdobe(pdfBuffer) {
     // Upload the PDF
     const inputAsset = await pdfServices.upload({
       readStream: stream,
-      mimeType: MimeType.PDF
+      mimeType: MimeType.PDF,
     });
 
     // Create parameters for text extraction
     const params = new ExtractPDFParams({
-      elementsToExtract: [ExtractElementType.TEXT]
+      elementsToExtract: [ExtractElementType.TEXT],
     });
 
     // Create and submit the job
-    const job = new ExtractPDFJob({inputAsset, params});
-    const pollingURL = await pdfServices.submit({job});
+    const job = new ExtractPDFJob({ inputAsset, params });
+    const pollingURL = await pdfServices.submit({ job });
 
     // Wait for completion and get result
     const pdfServicesResponse = await pdfServices.getJobResult({
       pollingURL,
-      resultType: ExtractPDFResult
+      resultType: ExtractPDFResult,
     });
 
     // Get the extracted text content
     const resultAsset = pdfServicesResponse.result.resource;
-    const streamAsset = await pdfServices.getContent({asset: resultAsset});
+    const streamAsset = await pdfServices.getContent({ asset: resultAsset });
 
     // Convert stream to text
     const chunks = [];
     for await (const chunk of streamAsset.readStream) {
       chunks.push(chunk);
     }
-    const extractedText = Buffer.concat(chunks).toString('utf8');
+    const extractedText = Buffer.concat(chunks).toString("utf8");
 
-    console.log('🔍 Adobe raw response (first 200 chars):', extractedText.substring(0, 200));
+    console.log(
+      "🔍 Adobe raw response (first 200 chars):",
+      extractedText.substring(0, 200)
+    );
 
-    let fullText = '';
+    let fullText = "";
 
     // Try to parse as JSON first (structured format)
     try {
       const textData = JSON.parse(extractedText);
       if (textData.elements) {
-        textData.elements.forEach(element => {
+        textData.elements.forEach((element) => {
           if (element.Text) {
-            fullText += element.Text + '\n';
+            fullText += element.Text + "\n";
           }
         });
       }
     } catch (jsonError) {
       // If JSON parsing fails, treat as plain text
-      console.log('🔍 JSON parsing failed, treating as plain text');
+      console.log("🔍 JSON parsing failed, treating as plain text");
       fullText = extractedText;
     }
 
     // Clean up the text while preserving structure
     let cleanText = fullText
-      .replace(/\r\n/g, '\n')
-      .replace(/[ \t]+\n/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\r\n/g, "\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
       .trim();
 
     // Remove only known watermarks/footers
     cleanText = cleanText
-      .replace(/Sides by Breakdown Services - Actors Access/gi, '')
-      .replace(/Page \d+\s+of\s+\d+/gi, '')
-      .replace(/B568CR-|74222 - .*? -/g, '')
+      .replace(/Sides by Breakdown Services - Actors Access/gi, "")
+      .replace(/Page \d+\s+of\s+\d+/gi, "")
+      .replace(/B568CR-|74222 - .*? -/g, "")
       .trim();
 
     // Character tags: keep multiline, after we preserved \n
     const characterPattern = /^(?:[A-Z][A-Z][A-Z\s]{1,40}):/gm; // e.g., "BRAD:" or "MRS. CARRUTHERS:"
-    const characterNames = [...new Set(
-      (cleanText.match(characterPattern) || []).map(n => n.replace(':','').trim())
-    )];
+    const characterNames = [
+      ...new Set(
+        (cleanText.match(characterPattern) || []).map((n) =>
+          n.replace(":", "").trim()
+        )
+      ),
+    ];
 
     // Basic quality signal
     const wordCount = (cleanText.match(/\b\w+\b/g) || []).length;
 
-    console.log('🔍 Adobe PDF Services Extraction:');
-    console.log('🔍 Text length:', cleanText.length);
-    console.log('🔍 Word count:', wordCount);
-    console.log('🔍 Character names found:', characterNames);
-    console.log('🔍 First 300 chars:', cleanText.substring(0, 300));
+    console.log("🔍 Adobe PDF Services Extraction:");
+    console.log("🔍 Text length:", cleanText.length);
+    console.log("🔍 Word count:", wordCount);
+    console.log("🔍 Character names found:", characterNames);
+    console.log("🔍 First 300 chars:", cleanText.substring(0, 300));
 
     return {
       text: cleanText,
-      method: 'adobe-pdf-services',
-      confidence: wordCount > 120 ? 'high' : wordCount > 40 ? 'medium' : 'low',
+      method: "adobe-pdf-services",
+      confidence: wordCount > 120 ? "high" : wordCount > 40 ? "medium" : "low",
       characterNames,
-      wordCount
+      wordCount,
     };
-
   } catch (error) {
-    console.error('❌ Adobe PDF Services extraction failed:', error);
+    console.error("❌ Adobe PDF Services extraction failed:", error);
 
     // Fallback to basic extraction if Adobe fails
-    console.log('🔄 Falling back to basic pdf-parse extraction...');
+    console.log("🔄 Falling back to basic pdf-parse extraction...");
     return await extractTextBasic(pdfBuffer);
   }
 }
 
 // Fallback PDF extraction (keep the old function as backup)
 async function extractTextBasic(pdfBuffer) {
-  const pdfParse = require('pdf-parse');
+  const pdfParse = require("pdf-parse");
   const data = await pdfParse(pdfBuffer);
 
   // Preserve line breaks. Normalize only CRLF->LF and trim trailing spaces.
   let text = data.text
-    .replace(/\r\n/g, '\n')
-    .replace(/[ \t]+\n/g, '\n')     // strip end-of-line spaces
-    .replace(/\n{3,}/g, '\n\n')     // collapse >2 blank lines to 1 blank line
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n") // strip end-of-line spaces
+    .replace(/\n{3,}/g, "\n\n") // collapse >2 blank lines to 1 blank line
     .trim();
 
   // Remove only known watermarks/footers; DO NOT blanket-replace digits or spaces
   text = text
-    .replace(/Sides by Breakdown Services - Actors Access/gi, '')
-    .replace(/Page \d+\s+of\s+\d+/gi, '')
-    .replace(/B568CR-|74222 - .*? -/g, '')
+    .replace(/Sides by Breakdown Services - Actors Access/gi, "")
+    .replace(/Page \d+\s+of\s+\d+/gi, "")
+    .replace(/B568CR-|74222 - .*? -/g, "")
     .trim();
 
   // Character tags: keep multiline, after we preserved \n
   const characterPattern = /^(?:[A-Z][A-Z][A-Z\s]{1,40}):/gm; // e.g., "BRAD:" or "MRS. CARRUTHERS:"
-  const characterNames = [...new Set(
-    (text.match(characterPattern) || []).map(n => n.replace(':','').trim())
-  )];
+  const characterNames = [
+    ...new Set(
+      (text.match(characterPattern) || []).map((n) => n.replace(":", "").trim())
+    ),
+  ];
 
   // Basic quality signal
   const wordCount = (text.match(/\b\w+\b/g) || []).length;
 
   return {
     text,
-    method: 'basic',
-    confidence: wordCount > 120 ? 'high' : wordCount > 40 ? 'medium' : 'low',
+    method: "basic",
+    confidence: wordCount > 120 ? "high" : wordCount > 40 ? "medium" : "low",
     characterNames,
-    wordCount
+    wordCount,
   };
 }
 
 // RAG-Enhanced Guide Generation using your methodology files
 async function generateActingGuideWithRAG(data) {
-  const fetch = require('node-fetch');
+  const fetch = require("node-fetch");
 
   try {
-    console.log('🧠 Step 1: RAG - Searching your methodology files...');
+    console.log("🧠 Step 1: RAG - Searching your methodology files...");
 
     // Search your methodology files for relevant content
     const relevantMethodology = searchMethodology(
@@ -839,18 +912,25 @@ async function generateActingGuideWithRAG(data) {
     );
 
     // Build context from your methodology files
-    let methodologyContext = '';
+    let methodologyContext = "";
     if (relevantMethodology.length > 0) {
-      methodologyContext = relevantMethodology.map(file =>
-        `=== COREY RALSTON METHODOLOGY: ${file.filename} (Relevance: ${file.relevanceScore}) ===\n${file.content}\n\n`
-      ).join('');
+      methodologyContext = relevantMethodology
+        .map(
+          (file) =>
+            `=== COREY RALSTON METHODOLOGY: ${file.filename} (Relevance: ${file.relevanceScore}) ===\n${file.content}\n\n`
+        )
+        .join("");
     }
 
-    console.log(`🎭 Step 2: Generating guide using ${relevantMethodology.length} methodology files...`);
-    console.log(`📊 Total methodology context: ${methodologyContext.length} characters`);
+    console.log(
+      `🎭 Step 2: Generating guide using ${relevantMethodology.length} methodology files...`
+    );
+    console.log(
+      `📊 Total methodology context: ${methodologyContext.length} characters`
+    );
 
     // Build file type context for the AI
-    let fileTypeContext = '';
+    let fileTypeContext = "";
     if (data.hasFullScript) {
       fileTypeContext = `
 
@@ -883,13 +963,19 @@ You are working with audition sides only. Focus your analysis on what's provided
         const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
 
         // Debug scene content
-        console.log('📄 Scene text preview (first 500 chars):', data.sceneText.substring(0, 500));
-        console.log('📄 Scene text length:', data.sceneText.length);
+        console.log(
+          "📄 Scene text preview (first 500 chars):",
+          data.sceneText.substring(0, 500)
+        );
+        console.log("📄 Scene text length:", data.sceneText.length);
 
         // Log what the model actually sees
-        console.log('🧾 SCRIPT PREVIEW:',
-          (data.sceneText || '').slice(0, 800).replace(/\n/g,'⏎'),
-          '... (len:', (data.sceneText||'').length, ')'
+        console.log(
+          "🧾 SCRIPT PREVIEW:",
+          (data.sceneText || "").slice(0, 800).replace(/\n/g, "⏎"),
+          "... (len:",
+          (data.sceneText || "").length,
+          ")"
         );
 
         const POLICY = `
@@ -901,19 +987,20 @@ STRICT SCRIPT POLICY:
 - Tone: professional coaching; avoid hype metaphors ("warrior", "dominate", "pure gold") unless the user explicitly opts into pep mode.
 `;
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01'
+            "Content-Type": "application/json",
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
             model: DEFAULT_CLAUDE_MODEL,
-            max_tokens: 8000,
-            messages: [{
-              role: "user",
-              content: `${POLICY}
+            max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
+            messages: [
+              {
+                role: "user",
+                content: `${POLICY}
 
 You are PREP101, created by Corey Ralston. You have access to Corey's complete methodology and example guides below. Generate a professional acting guide that perfectly matches Corey's distinctive "Actor Motivator" coaching voice and methodology.
 
@@ -967,23 +1054,35 @@ ${data.sceneText}${fileTypeContext}
 - Feels encouraging and empowering
 - Provides actionable choices, not just theory
 - Matches the energy and enthusiasm of the example guides
-- ${data.hasFullScript ? 'Uses full script context intelligently to enrich sides analysis' : 'Focuses analysis on the provided audition sides'}
+- ${
+                  data.hasFullScript
+                    ? "Uses full script context intelligently to enrich sides analysis"
+                    : "Focuses analysis on the provided audition sides"
+                }
 
-**OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be pure HTML that can be directly inserted into a web page. Make it worthy of the PREP101 brand and indistinguishable from Corey's personal coaching.`
-            }]
+**OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be pure HTML that can be directly inserted into a web page. Make it worthy of the PREP101 brand and indistinguishable from Corey's personal coaching.`,
+              },
+            ],
           }),
-          signal: controller.signal
+          signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`❌ RAG Guide Generation Error (Attempt ${attempt}) [model=${DEFAULT_CLAUDE_MODEL}]:`, response.status, response.statusText, errorText);
+          console.error(
+            `❌ RAG Guide Generation Error (Attempt ${attempt}) [model=${DEFAULT_CLAUDE_MODEL}]:`,
+            response.status,
+            response.statusText,
+            errorText
+          );
 
           if (response.status === 504 && attempt < maxRetries) {
-            console.log(`⏰ Gateway timeout, retrying in ${attempt * 2} seconds...`);
-            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+            console.log(
+              `⏰ Gateway timeout, retrying in ${attempt * 2} seconds...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
             lastError = new Error(`Gateway timeout (Attempt ${attempt})`);
             continue;
           }
@@ -995,28 +1094,35 @@ ${data.sceneText}${fileTypeContext}
 
         if (result.content && result.content[0] && result.content[0].text) {
           console.log(`✅ RAG Guide generated using Corey's methodology!`);
-          console.log(`📊 Guide length: ${result.content[0].text.length} characters`);
-          console.log(`🎯 Methodology files used: ${relevantMethodology.length}`);
+          console.log(
+            `📊 Guide length: ${result.content[0].text.length} characters`
+          );
+          console.log(
+            `🎯 Methodology files used: ${relevantMethodology.length}`
+          );
           return result.content[0].text;
         } else {
-          throw new Error('Invalid response format from API');
+          throw new Error("Invalid response format from API");
         }
-
       } catch (error) {
         lastError = error;
 
-        if (error.name === 'AbortError') {
+        if (error.name === "AbortError") {
           console.error(`⏰ Request timeout on attempt ${attempt}`);
           if (attempt < maxRetries) {
             console.log(`🔄 Retrying after timeout...`);
-            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+            await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
             continue;
           }
         }
 
         if (attempt < maxRetries) {
-          console.log(`🔄 Attempt ${attempt} failed, retrying in ${attempt * 2} seconds...`);
-          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          console.log(
+            `🔄 Attempt ${attempt} failed, retrying in ${
+              attempt * 2
+            } seconds...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
           continue;
         }
 
@@ -1025,259 +1131,370 @@ ${data.sceneText}${fileTypeContext}
       }
     }
 
-    throw lastError || new Error('Failed to generate guide after all retry attempts');
-
- } catch (error) {
-   console.error('❌ RAG guide generation failed:', error.message);
-   throw error;
- }
- }
+    throw (
+      lastError ||
+      new Error("Failed to generate guide after all retry attempts")
+    );
+  } catch (error) {
+    console.error("❌ RAG guide generation failed:", error.message);
+    throw error;
+  }
+}
 
 // Analyze script content to determine color theme
-function determineColorTheme(characterName, productionTitle, productionType, sceneText) {
-  const text = `${characterName} ${productionTitle} ${productionType} ${sceneText}`.toLowerCase();
+function determineColorTheme(
+  characterName,
+  productionTitle,
+  productionType,
+  sceneText
+) {
+  const text =
+    `${characterName} ${productionTitle} ${productionType} ${sceneText}`.toLowerCase();
 
   // Gender-specific themes (check character names first)
   const characterNameLower = characterName.toLowerCase();
 
   // Princess/Female character themes
-  if (characterNameLower.includes('princess') || characterNameLower.includes('queen') ||
-      characterNameLower.includes('fairy') || characterNameLower.includes('rose') ||
-      characterNameLower.includes('lily') || characterNameLower.includes('belle') ||
-      characterNameLower.includes('ariel') || characterNameLower.includes('snow')) {
+  if (
+    characterNameLower.includes("princess") ||
+    characterNameLower.includes("queen") ||
+    characterNameLower.includes("fairy") ||
+    characterNameLower.includes("rose") ||
+    characterNameLower.includes("lily") ||
+    characterNameLower.includes("belle") ||
+    characterNameLower.includes("ariel") ||
+    characterNameLower.includes("snow")
+  ) {
     return {
-      primary: '#EC4899',    // Pink
-      secondary: '#F59E0B',  // Gold
-      accent: '#8B5CF6',     // Purple
-      background: '#FDF2F8', // Light pink
-      name: 'Princess'
+      primary: "#EC4899", // Pink
+      secondary: "#F59E0B", // Gold
+      accent: "#8B5CF6", // Purple
+      background: "#FDF2F8", // Light pink
+      name: "Princess",
     };
   }
 
   // Prince/Male character themes
-  if (characterNameLower.includes('prince') || characterNameLower.includes('king') ||
-      characterNameLower.includes('knight') || characterNameLower.includes('hero') ||
-      characterNameLower.includes('warrior') || characterNameLower.includes('dragon') ||
-      characterNameLower.includes('max') || characterNameLower.includes('leo')) {
+  if (
+    characterNameLower.includes("prince") ||
+    characterNameLower.includes("king") ||
+    characterNameLower.includes("knight") ||
+    characterNameLower.includes("hero") ||
+    characterNameLower.includes("warrior") ||
+    characterNameLower.includes("dragon") ||
+    characterNameLower.includes("max") ||
+    characterNameLower.includes("leo")
+  ) {
     return {
-      primary: '#3B82F6',    // Blue
-      secondary: '#F59E0B',  // Gold
-      accent: '#10B981',     // Green
-      background: '#EFF6FF', // Light blue
-      name: 'Prince'
+      primary: "#3B82F6", // Blue
+      secondary: "#F59E0B", // Gold
+      accent: "#10B981", // Green
+      background: "#EFF6FF", // Light blue
+      name: "Prince",
     };
   }
 
   // Adventure/Action themes
-  if (text.includes('adventure') || text.includes('action') || text.includes('quest') ||
-      text.includes('hero') || text.includes('battle') || text.includes('journey') ||
-      text.includes('explorer') || text.includes('warrior') || text.includes('knight')) {
+  if (
+    text.includes("adventure") ||
+    text.includes("action") ||
+    text.includes("quest") ||
+    text.includes("hero") ||
+    text.includes("battle") ||
+    text.includes("journey") ||
+    text.includes("explorer") ||
+    text.includes("warrior") ||
+    text.includes("knight")
+  ) {
     return {
-      primary: '#4F46E5',    // Vibrant blue
-      secondary: '#F59E0B',  // Orange
-      accent: '#10B981',     // Green
-      background: '#EFF6FF', // Light blue
-      name: 'Adventure'
+      primary: "#4F46E5", // Vibrant blue
+      secondary: "#F59E0B", // Orange
+      accent: "#10B981", // Green
+      background: "#EFF6FF", // Light blue
+      name: "Adventure",
     };
   }
 
   // Comedy/Fun themes
-  if (text.includes('comedy') || text.includes('funny') || text.includes('humor') ||
-      text.includes('silly') || text.includes('joke') || text.includes('laugh') ||
-      text.includes('playful') || text.includes('wacky') || text.includes('goofy')) {
+  if (
+    text.includes("comedy") ||
+    text.includes("funny") ||
+    text.includes("humor") ||
+    text.includes("silly") ||
+    text.includes("joke") ||
+    text.includes("laugh") ||
+    text.includes("playful") ||
+    text.includes("wacky") ||
+    text.includes("goofy")
+  ) {
     return {
-      primary: '#EC4899',    // Pink
-      secondary: '#F59E0B',  // Yellow
-      accent: '#8B5CF6',     // Purple
-      background: '#FDF2F8', // Light pink
-      name: 'Comedy'
+      primary: "#EC4899", // Pink
+      secondary: "#F59E0B", // Yellow
+      accent: "#8B5CF6", // Purple
+      background: "#FDF2F8", // Light pink
+      name: "Comedy",
     };
   }
 
   // Fantasy/Magical themes
-  if (text.includes('fantasy') || text.includes('magic') || text.includes('wizard') ||
-      text.includes('fairy') || text.includes('dragon') || text.includes('spell') ||
-      text.includes('enchanted') || text.includes('mythical') || text.includes('wonder')) {
+  if (
+    text.includes("fantasy") ||
+    text.includes("magic") ||
+    text.includes("wizard") ||
+    text.includes("fairy") ||
+    text.includes("dragon") ||
+    text.includes("spell") ||
+    text.includes("enchanted") ||
+    text.includes("mythical") ||
+    text.includes("wonder")
+  ) {
     return {
-      primary: '#8B5CF6',    // Purple
-      secondary: '#EC4899',  // Pink
-      accent: '#F59E0B',     // Gold
-      background: '#F5F3FF', // Light purple
-      name: 'Fantasy'
+      primary: "#8B5CF6", // Purple
+      secondary: "#EC4899", // Pink
+      accent: "#F59E0B", // Gold
+      background: "#F5F3FF", // Light purple
+      name: "Fantasy",
     };
   }
 
   // Drama/Serious themes
-  if (text.includes('drama') || text.includes('serious') || text.includes('emotional') ||
-      text.includes('intense') || text.includes('deep') || text.includes('powerful') ||
-      text.includes('meaningful') || text.includes('touching') || text.includes('heartfelt')) {
+  if (
+    text.includes("drama") ||
+    text.includes("serious") ||
+    text.includes("emotional") ||
+    text.includes("intense") ||
+    text.includes("deep") ||
+    text.includes("powerful") ||
+    text.includes("meaningful") ||
+    text.includes("touching") ||
+    text.includes("heartfelt")
+  ) {
     return {
-      primary: '#7C3AED',    // Purple
-      secondary: '#14B8A6',  // Teal
-      accent: '#6B7280',     // Gray
-      background: '#F0FDFA', // Light teal
-      name: 'Drama'
+      primary: "#7C3AED", // Purple
+      secondary: "#14B8A6", // Teal
+      accent: "#6B7280", // Gray
+      background: "#F0FDFA", // Light teal
+      name: "Drama",
     };
   }
 
   // Modern/Urban themes
-  if (text.includes('modern') || text.includes('urban') || text.includes('city') ||
-      text.includes('contemporary') || text.includes('trendy') || text.includes('cool') ||
-      text.includes('street') || text.includes('hip') || text.includes('current')) {
+  if (
+    text.includes("modern") ||
+    text.includes("urban") ||
+    text.includes("city") ||
+    text.includes("contemporary") ||
+    text.includes("trendy") ||
+    text.includes("cool") ||
+    text.includes("street") ||
+    text.includes("hip") ||
+    text.includes("current")
+  ) {
     return {
-      primary: '#3B82F6',    // Blue
-      secondary: '#6B7280',  // Gray
-      accent: '#EF4444',     // Red
-      background: '#F8FAFC', // Light gray
-      name: 'Modern'
+      primary: "#3B82F6", // Blue
+      secondary: "#6B7280", // Gray
+      accent: "#EF4444", // Red
+      background: "#F8FAFC", // Light gray
+      name: "Modern",
     };
   }
 
   // Princess/Royal themes
-  if (text.includes('princess') || text.includes('royal') || text.includes('queen') ||
-      text.includes('king') || text.includes('crown') || text.includes('castle') ||
-      text.includes('noble') || text.includes('elegant') || text.includes('regal')) {
+  if (
+    text.includes("princess") ||
+    text.includes("royal") ||
+    text.includes("queen") ||
+    text.includes("king") ||
+    text.includes("crown") ||
+    text.includes("castle") ||
+    text.includes("noble") ||
+    text.includes("elegant") ||
+    text.includes("regal")
+  ) {
     return {
-      primary: '#EC4899',    // Pink
-      secondary: '#F59E0B',  // Gold
-      accent: '#8B5CF6',     // Purple
-      background: '#FDF2F8', // Light pink
-      name: 'Royal'
+      primary: "#EC4899", // Pink
+      secondary: "#F59E0B", // Gold
+      accent: "#8B5CF6", // Purple
+      background: "#FDF2F8", // Light pink
+      name: "Royal",
     };
   }
 
   // Superhero themes
-  if (text.includes('superhero') || text.includes('hero') || text.includes('power') ||
-      text.includes('save') || text.includes('rescue') || text.includes('strong') ||
-      text.includes('mighty') || text.includes('brave') || text.includes('courage')) {
+  if (
+    text.includes("superhero") ||
+    text.includes("hero") ||
+    text.includes("power") ||
+    text.includes("save") ||
+    text.includes("rescue") ||
+    text.includes("strong") ||
+    text.includes("mighty") ||
+    text.includes("brave") ||
+    text.includes("courage")
+  ) {
     return {
-      primary: '#EF4444',    // Red
-      secondary: '#F59E0B',  // Gold
-      accent: '#3B82F6',     // Blue
-      background: '#FEF2F2', // Light red
-      name: 'Superhero'
+      primary: "#EF4444", // Red
+      secondary: "#F59E0B", // Gold
+      accent: "#3B82F6", // Blue
+      background: "#FEF2F2", // Light red
+      name: "Superhero",
     };
   }
 
   // Nature/Outdoor themes
-  if (text.includes('nature') || text.includes('outdoor') || text.includes('forest') ||
-      text.includes('garden') || text.includes('animal') || text.includes('tree') ||
-      text.includes('flower') || text.includes('mountain') || text.includes('river')) {
+  if (
+    text.includes("nature") ||
+    text.includes("outdoor") ||
+    text.includes("forest") ||
+    text.includes("garden") ||
+    text.includes("animal") ||
+    text.includes("tree") ||
+    text.includes("flower") ||
+    text.includes("mountain") ||
+    text.includes("river")
+  ) {
     return {
-      primary: '#10B981',    // Green
-      secondary: '#F59E0B',  // Orange
-      accent: '#8B5CF6',     // Purple
-      background: '#F0FDF4', // Light green
-      name: 'Nature'
+      primary: "#10B981", // Green
+      secondary: "#F59E0B", // Orange
+      accent: "#8B5CF6", // Purple
+      background: "#F0FDF4", // Light green
+      name: "Nature",
     };
   }
 
   // Production type specific themes
-  if (productionType.toLowerCase().includes('musical')) {
+  if (productionType.toLowerCase().includes("musical")) {
     return {
-      primary: '#EC4899',    // Pink
-      secondary: '#F59E0B',  // Gold
-      accent: '#8B5CF6',     // Purple
-      background: '#FDF2F8', // Light pink
-      name: 'Musical'
+      primary: "#EC4899", // Pink
+      secondary: "#F59E0B", // Gold
+      accent: "#8B5CF6", // Purple
+      background: "#FDF2F8", // Light pink
+      name: "Musical",
     };
   }
 
-  if (productionType.toLowerCase().includes('comedy')) {
+  if (productionType.toLowerCase().includes("comedy")) {
     return {
-      primary: '#F59E0B',    // Yellow
-      secondary: '#EC4899',  // Pink
-      accent: '#10B981',     // Green
-      background: '#FFFBEB', // Light yellow
-      name: 'Comedy'
+      primary: "#F59E0B", // Yellow
+      secondary: "#EC4899", // Pink
+      accent: "#10B981", // Green
+      background: "#FFFBEB", // Light yellow
+      name: "Comedy",
     };
   }
 
-  if (productionType.toLowerCase().includes('drama')) {
+  if (productionType.toLowerCase().includes("drama")) {
     return {
-      primary: '#7C3AED',    // Purple
-      secondary: '#14B8A6',  // Teal
-      accent: '#6B7280',     // Gray
-      background: '#F0FDFA', // Light teal
-      name: 'Drama'
+      primary: "#7C3AED", // Purple
+      secondary: "#14B8A6", // Teal
+      accent: "#6B7280", // Gray
+      background: "#F0FDFA", // Light teal
+      name: "Drama",
     };
   }
 
-    if (productionType.toLowerCase().includes('action') || productionType.toLowerCase().includes('adventure')) {
+  if (
+    productionType.toLowerCase().includes("action") ||
+    productionType.toLowerCase().includes("adventure")
+  ) {
     return {
-      primary: '#EF4444',    // Red
-      secondary: '#F59E0B',  // Gold
-      accent: '#3B82F6',     // Blue
-      background: '#FEF2F2', // Light red
-      name: 'Action'
+      primary: "#EF4444", // Red
+      secondary: "#F59E0B", // Gold
+      accent: "#3B82F6", // Blue
+      background: "#FEF2F2", // Light red
+      name: "Action",
     };
   }
 
   // Seasonal and holiday themes
-  if (text.includes('christmas') || text.includes('holiday') || text.includes('winter')) {
+  if (
+    text.includes("christmas") ||
+    text.includes("holiday") ||
+    text.includes("winter")
+  ) {
     return {
-      primary: '#EF4444',    // Red
-      secondary: '#10B981',  // Green
-      accent: '#F59E0B',     // Gold
-      background: '#FEF2F2', // Light red
-      name: 'Christmas'
+      primary: "#EF4444", // Red
+      secondary: "#10B981", // Green
+      accent: "#F59E0B", // Gold
+      background: "#FEF2F2", // Light red
+      name: "Christmas",
     };
   }
 
-  if (text.includes('halloween') || text.includes('spooky') || text.includes('ghost')) {
+  if (
+    text.includes("halloween") ||
+    text.includes("spooky") ||
+    text.includes("ghost")
+  ) {
     return {
-      primary: '#8B5CF6',    // Purple
-      secondary: '#F59E0B',  // Orange
-      accent: '#EF4444',     // Red
-      background: '#F5F3FF', // Light purple
-      name: 'Halloween'
+      primary: "#8B5CF6", // Purple
+      secondary: "#F59E0B", // Orange
+      accent: "#EF4444", // Red
+      background: "#F5F3FF", // Light purple
+      name: "Halloween",
     };
   }
 
-  if (text.includes('easter') || text.includes('spring') || text.includes('bunny')) {
+  if (
+    text.includes("easter") ||
+    text.includes("spring") ||
+    text.includes("bunny")
+  ) {
     return {
-      primary: '#EC4899',    // Pink
-      secondary: '#10B981',  // Green
-      accent: '#FCD34D',     // Yellow
-      background: '#FDF2F8', // Light pink
-      name: 'Easter'
+      primary: "#EC4899", // Pink
+      secondary: "#10B981", // Green
+      accent: "#FCD34D", // Yellow
+      background: "#FDF2F8", // Light pink
+      name: "Easter",
     };
   }
 
-  if (text.includes('summer') || text.includes('beach') || text.includes('ocean')) {
+  if (
+    text.includes("summer") ||
+    text.includes("beach") ||
+    text.includes("ocean")
+  ) {
     return {
-      primary: '#3B82F6',    // Blue
-      secondary: '#FCD34D',  // Yellow
-      accent: '#10B981',     // Green
-      background: '#EFF6FF', // Light blue
-      name: 'Summer'
+      primary: "#3B82F6", // Blue
+      secondary: "#FCD34D", // Yellow
+      accent: "#10B981", // Green
+      background: "#EFF6FF", // Light blue
+      name: "Summer",
     };
   }
 
   // Default: Friendly and approachable
   let theme = {
-    primary: '#10B981',      // Green
-    secondary: '#F59E0B',    // Orange
-    accent: '#3B82F6',       // Blue
-    background: '#F0FDF4',   // Light green
-    name: 'Friendly'
+    primary: "#10B981", // Green
+    secondary: "#F59E0B", // Orange
+    accent: "#3B82F6", // Blue
+    background: "#F0FDF4", // Light green
+    name: "Friendly",
   };
 
   // Age-specific color adjustments
-  if (text.includes('baby') || text.includes('toddler') || text.includes('little')) {
+  if (
+    text.includes("baby") ||
+    text.includes("toddler") ||
+    text.includes("little")
+  ) {
     // Softer, pastel colors for very young characters
-    theme.primary = '#F472B6';   // Soft pink
-    theme.secondary = '#FCD34D'; // Soft yellow
-    theme.accent = '#A78BFA';    // Soft purple
-    theme.background = '#FDF2F8'; // Very light pink
-    theme.name = 'Baby-Friendly';
-  } else if (text.includes('teen') || text.includes('older') || text.includes('mature')) {
+    theme.primary = "#F472B6"; // Soft pink
+    theme.secondary = "#FCD34D"; // Soft yellow
+    theme.accent = "#A78BFA"; // Soft purple
+    theme.background = "#FDF2F8"; // Very light pink
+    theme.name = "Baby-Friendly";
+  } else if (
+    text.includes("teen") ||
+    text.includes("older") ||
+    text.includes("mature")
+  ) {
     // More sophisticated colors for older characters
-    theme.primary = '#7C3AED';   // Deeper purple
-    theme.secondary = '#14B8A6'; // Teal
-    theme.accent = '#6B7280';    // Gray
-    theme.background = '#F8FAFC'; // Light gray
-    theme.name = 'Teen-Friendly';
+    theme.primary = "#7C3AED"; // Deeper purple
+    theme.secondary = "#14B8A6"; // Teal
+    theme.accent = "#6B7280"; // Gray
+    theme.background = "#F8FAFC"; // Light gray
+    theme.name = "Teen-Friendly";
   }
 
   return theme;
@@ -1460,10 +1677,10 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
 
 // Child's Guide Generation Function
 async function generateChildGuide(data) {
-  const fetch = require('node-fetch');
+  const fetch = require("node-fetch");
 
   try {
-    console.log('🌟 Generating simplified Child\'s Guide...');
+    console.log("🌟 Generating simplified Child's Guide...");
 
     // Search methodology for child-friendly examples
     const childMethodology = searchMethodology(
@@ -1473,36 +1690,42 @@ async function generateChildGuide(data) {
     );
 
     // Build context from child-friendly methodology
-    let childMethodologyContext = '';
+    let childMethodologyContext = "";
     if (childMethodology.length > 0) {
-      childMethodologyContext = childMethodology.map(file =>
-        `=== CHILD-FRIENDLY METHODOLOGY: ${file.filename} ===\n${file.content}\n\n`
-      ).join('');
+      childMethodologyContext = childMethodology
+        .map(
+          (file) =>
+            `=== CHILD-FRIENDLY METHODOLOGY: ${file.filename} ===\n${file.content}\n\n`
+        )
+        .join("");
     }
 
-         console.log(`🎭 Generating child guide using ${childMethodology.length} methodology files...`);
+    console.log(
+      `🎭 Generating child guide using ${childMethodology.length} methodology files...`
+    );
 
-     // Determine color theme based on content
-     const colorTheme = determineColorTheme(
-       data.characterName,
-       data.productionTitle,
-       data.productionType,
-       data.sceneText
-     );
-     console.log(`🎨 Using ${colorTheme.name} color theme for child guide`);
+    // Determine color theme based on content
+    const colorTheme = determineColorTheme(
+      data.characterName,
+      data.productionTitle,
+      data.productionType,
+      data.sceneText
+    );
+    console.log(`🎨 Using ${colorTheme.name} color theme for child guide`);
 
-     // Generate child guide using the parent guide as reference
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+    // Generate child guide using the parent guide as reference
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
       },
-              body: JSON.stringify({
-          model: DEFAULT_CLAUDE_MODEL,
-          max_tokens: 6000,
-          messages: [{
+      body: JSON.stringify({
+        model: DEFAULT_CLAUDE_MODEL,
+        max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
+        messages: [
+          {
             role: "user",
             content: `You are Corey Ralston, a witty, experienced youth acting coach.
 Your task is to create a simplified, fun, and empowering "Child's Guide" for young actors (ages 8–12), based on the parent-facing audition prep guide.
@@ -1597,14 +1820,19 @@ ${data.parentGuideContent.substring(0, 2000)}...
 ## Child-Friendly Methodology
 ${childMethodologyContext}
 
-**OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be a complete HTML document with embedded CSS styling, fun colors, and perfect for young actors!`
-        }]
-      })
+**OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be a complete HTML document with embedded CSS styling, fun colors, and perfect for young actors!`,
+          },
+        ],
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Child Guide Generation Error:', response.status, errorText);
+      console.error(
+        "❌ Child Guide Generation Error:",
+        response.status,
+        errorText
+      );
       throw new Error(`API Error: ${response.status} - ${errorText}`);
     }
 
@@ -1612,115 +1840,159 @@ ${childMethodologyContext}
 
     if (result.content && result.content[0] && result.content[0].text) {
       console.log(`✅ Child's Guide generated successfully!`);
-      console.log(`📊 Child guide length: ${result.content[0].text.length} characters`);
+      console.log(
+        `📊 Child guide length: ${result.content[0].text.length} characters`
+      );
       return result.content[0].text;
     } else {
-      throw new Error('Invalid response format from API');
+      throw new Error("Invalid response format from API");
     }
-
   } catch (error) {
-    console.error('❌ Child guide generation failed:', error.message);
+    console.error("❌ Child guide generation failed:", error.message);
     throw error;
   }
 }
 
 // PDF Upload endpoint
-app.post('/api/upload', upload.single('file'), async (req, res) => {
+app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {
-    if (!req.file || req.file.mimetype !== 'application/pdf') {
-      return res.status(400).json({ error: 'Please upload a PDF file' });
+    if (!req.file || req.file.mimetype !== "application/pdf") {
+      return res.status(400).json({ error: "Please upload a PDF file" });
     }
 
     console.log(`📄 Processing: ${req.file.originalname}`);
 
-    const MIN_WC = parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10);
+    const MIN_WC = parseInt(process.env.MIN_EXTRACT_WORDS || "200", 10);
     // 1) Adobe first (only if available)
     let result;
     if (extractWithAdobe) {
-      result = await extractWithAdobe(req.file.buffer)
-        .catch(e => ({ success: false, method: 'adobe', reason: e?.message || 'adobe-extract-error' }));
+      result = await extractWithAdobe(req.file.buffer).catch((e) => ({
+        success: false,
+        method: "adobe",
+        reason: e?.message || "adobe-extract-error",
+      }));
     } else {
-      console.log('[UPLOAD] Adobe extractor not available, using basic extraction');
-      result = { success: false, method: 'adobe', reason: 'adobe-not-available' };
+      console.log(
+        "[UPLOAD] Adobe extractor not available, using basic extraction"
+      );
+      result = {
+        success: false,
+        method: "adobe",
+        reason: "adobe-not-available",
+      };
     }
 
     if (!result?.success || !result.text) {
-      console.warn('[UPLOAD] Adobe failed or empty:', result?.reason || 'no-text');
+      console.warn(
+        "[UPLOAD] Adobe failed or empty:",
+        result?.reason || "no-text"
+      );
       result = await extractWithBasic(req.file.buffer);
     }
 
     // OCR Fallback: If basic extraction fails or produces poor quality content, try OCR
     if (!result?.text || result.text.length < 100) {
-      console.log('[UPLOAD] Basic extraction failed, trying OCR fallback...');
+      console.log("[UPLOAD] Basic extraction failed, trying OCR fallback...");
       try {
         result = await extractWithOCR(req.file.buffer);
-        console.log('[UPLOAD] OCR extraction completed:', {
+        console.log("[UPLOAD] OCR extraction completed:", {
           method: result.method,
           wordCount: result.wordCount,
-          confidence: result.confidence
+          confidence: result.confidence,
         });
       } catch (ocrError) {
-        console.error('[UPLOAD] OCR fallback failed:', ocrError.message);
+        console.error("[UPLOAD] OCR fallback failed:", ocrError.message);
       }
     }
 
     // Additional OCR fallback: If content quality is poor, try OCR
-    const initialContentQuality = assessContentQuality(result.text, result.wordCount || 0, true);
-    if (initialContentQuality.quality === 'poor' && result.method === 'basic') {
-      console.log('[UPLOAD] Basic extraction produced poor quality content, trying OCR fallback...');
+    const initialContentQuality = assessContentQuality(
+      result.text,
+      result.wordCount || 0,
+      true
+    );
+    if (initialContentQuality.quality === "poor" && result.method === "basic") {
+      console.log(
+        "[UPLOAD] Basic extraction produced poor quality content, trying OCR fallback..."
+      );
       try {
         const ocrResult = await extractWithOCR(req.file.buffer);
-        const ocrContentQuality = assessContentQuality(ocrResult.text, ocrResult.wordCount || 0, true);
+        const ocrContentQuality = assessContentQuality(
+          ocrResult.text,
+          ocrResult.wordCount || 0,
+          true
+        );
 
         // Use OCR result if it's better quality
-        if (ocrContentQuality.quality !== 'poor') {
-          console.log('[UPLOAD] OCR produced better quality content, using OCR result');
+        if (ocrContentQuality.quality !== "poor") {
+          console.log(
+            "[UPLOAD] OCR produced better quality content, using OCR result"
+          );
           result = ocrResult;
         } else {
-          console.log('[UPLOAD] OCR also produced poor quality content, keeping basic result');
+          console.log(
+            "[UPLOAD] OCR also produced poor quality content, keeping basic result"
+          );
         }
       } catch (ocrError) {
-        console.error('[UPLOAD] OCR fallback failed:', ocrError.message);
+        console.error("[UPLOAD] OCR fallback failed:", ocrError.message);
       }
     }
 
     // 2) Assess content quality and handle low-quality content (lenient check on upload)
-    const contentQuality = assessContentQuality(result.text, result.wordCount || 0, true);
+    const contentQuality = assessContentQuality(
+      result.text,
+      result.wordCount || 0,
+      true
+    );
 
-    if (contentQuality.quality === 'poor') {
-      console.warn(`[UPLOAD] Poor content quality detected: ${contentQuality.reason}`, {
-        filename: req.file.originalname,
-        wordCount: result.wordCount,
-        watermarkRatio: contentQuality.watermarkRatio
-      });
+    if (contentQuality.quality === "poor") {
+      console.warn(
+        `[UPLOAD] Poor content quality detected: ${contentQuality.reason}`,
+        {
+          filename: req.file.originalname,
+          wordCount: result.wordCount,
+          watermarkRatio: contentQuality.watermarkRatio,
+        }
+      );
 
       return res.status(422).json({
         success: false,
-        error: contentQuality.reason === 'watermark_heavy'
-          ? 'Limited content: please upload clean sides without watermarks or timestamps'
-          : 'Limited content: please upload a script with actual dialogue and scene content',
+        error:
+          contentQuality.reason === "watermark_heavy"
+            ? "Limited content: please upload clean sides without watermarks or timestamps"
+            : "Limited content: please upload a script with actual dialogue and scene content",
         contentQuality: contentQuality.reason,
         extractionMethod: result.method,
-        extractionConfidence: result.confidence || 'low',
+        extractionConfidence: result.confidence || "low",
         wordCount: result.wordCount,
-        watermarkRatio: contentQuality.watermarkRatio
+        watermarkRatio: contentQuality.watermarkRatio,
       });
     }
 
-    if (contentQuality.quality === 'low') {
-      console.log(`[UPLOAD] Low content quality - allowing fallback generation`, {
-        filename: req.file.originalname,
-        wordCount: result.wordCount,
-        reason: contentQuality.reason
-      });
+    if (contentQuality.quality === "low") {
+      console.log(
+        `[UPLOAD] Low content quality - allowing fallback generation`,
+        {
+          filename: req.file.originalname,
+          wordCount: result.wordCount,
+          reason: contentQuality.reason,
+        }
+      );
     }
 
     const uploadId = Date.now().toString();
-    const fileType = req.body.fileType || 'sides'; // Default to sides if not specified
+    const fileType = req.body.fileType || "sides"; // Default to sides if not specified
 
     // 3) Character names (if Adobe didn’t supply them)
     const characterPattern = /^[A-Z][A-Z\s]+:/gm;
-    const characterNames = result.characterNames || [...new Set((result.text.match(characterPattern) || []).map(n => n.replace(':','').trim()))];
+    const characterNames = result.characterNames || [
+      ...new Set(
+        (result.text.match(characterPattern) || []).map((n) =>
+          n.replace(":", "").trim()
+        )
+      ),
+    ];
 
     uploads[uploadId] = {
       filename: req.file.originalname,
@@ -1730,24 +2002,25 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       extractionConfidence: result.confidence,
       uploadTime: new Date(),
       wordCount: result.wordCount,
-      fileType: fileType // Store the file type
+      fileType: fileType, // Store the file type
     };
 
     // 5) Log triage with enhanced preview
-    const preview = (result.text || '').slice(0, 300).replace(/\n/g, '⏎');
-    console.log('[UPLOAD]', {
+    const preview = (result.text || "").slice(0, 300).replace(/\n/g, "⏎");
+    console.log("[UPLOAD]", {
       file: req.file.originalname,
       method: result.method,
       confidence: result.confidence,
       words: result.wordCount,
       contentQuality: contentQuality.quality,
-      preview: `"${preview}..."`
+      preview: `"${preview}..."`,
     });
 
     // Update extraction diagnostics for /api/health
     try {
-      const m = result.method || 'unknown';
-      if (extractionStats.totals[m] !== undefined) extractionStats.totals[m] += 1;
+      const m = result.method || "unknown";
+      if (extractionStats.totals[m] !== undefined)
+        extractionStats.totals[m] += 1;
       extractionStats.last = {
         method: result.method,
         confidence: result.confidence,
@@ -1767,369 +2040,459 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       characterNames,
       extractionMethod: result.method,
       extractionConfidence: result.confidence,
-      preview: (result.text || '').slice(0, 400) + '...'
+      preview: (result.text || "").slice(0, 400) + "...",
     });
-
   } catch (error) {
-    console.error('❌ Upload error:', error);
-    res.status(500).json({ error: 'Failed to process PDF: ' + error.message });
+    console.error("❌ Upload error:", error);
+    res.status(500).json({ error: "Failed to process PDF: " + error.message });
   }
 });
 
-
-
 // RAG-Enhanced Guide Generation Endpoint
-app.post('/api/guides/generate', async (req, res) => {
- try {
-   const { uploadId, uploadIds, characterName, productionTitle, productionType, roleSize, genre, storyline, characterBreakdown, callbackNotes, focusArea, childGuideRequested } = req.body;
+app.post("/api/guides/generate", async (req, res) => {
+  try {
+    const {
+      uploadId,
+      uploadIds,
+      characterName,
+      productionTitle,
+      productionType,
+      roleSize,
+      genre,
+      storyline,
+      characterBreakdown,
+      callbackNotes,
+      focusArea,
+      childGuideRequested,
+    } = req.body;
 
-   // Handle both single and multiple upload IDs
-   const uploadIdList = uploadIds || [uploadId];
-   // Debug request basics for faster triage
-   console.log('📝 Generate request:', {
-     uploadIdsCount: Array.isArray(uploadIds) ? uploadIds.length : (uploadId ? 1 : 0),
-     hasAuthHeader: !!req.headers.authorization,
-     hasCharacterName: !!characterName,
-     hasProductionTitle: !!productionTitle,
-     hasProductionType: !!productionType
-   });
+    // Handle both single and multiple upload IDs
+    const uploadIdList = uploadIds || [uploadId];
+    // Debug request basics for faster triage
+    console.log("📝 Generate request:", {
+      uploadIdsCount: Array.isArray(uploadIds)
+        ? uploadIds.length
+        : uploadId
+        ? 1
+        : 0,
+      hasAuthHeader: !!req.headers.authorization,
+      hasCharacterName: !!characterName,
+      hasProductionTitle: !!productionTitle,
+      hasProductionType: !!productionType,
+    });
 
-   if (!uploadIdList.length || uploadIdList.some(id => !uploads[id])) {
-     return res.status(400).json({ error: 'Invalid upload ID(s) or expired session' });
-   }
+    if (!uploadIdList.length || uploadIdList.some((id) => !uploads[id])) {
+      return res
+        .status(400)
+        .json({ error: "Invalid upload ID(s) or expired session" });
+    }
 
-   if (!characterName || !productionTitle || !productionType) {
-     return res.status(400).json({
-       error: 'Missing required fields'
-     });
-   }
+    if (!characterName || !productionTitle || !productionType) {
+      return res.status(400).json({
+        error: "Missing required fields",
+      });
+    }
 
-   // Combine all upload data
-   const allUploadData = uploadIdList.map(id => uploads[id]);
-   const combinedSceneText = allUploadData.map(data => data.sceneText).join('\n\n--- NEW SCENE ---\n\n');
-   const combinedWordCount = allUploadData.reduce((total, data) => total + (data.wordCount || 0), 0);
+    // Combine all upload data
+    const allUploadData = uploadIdList.map((id) => uploads[id]);
+    const combinedSceneText = allUploadData
+      .map((data) => data.sceneText)
+      .join("\n\n--- NEW SCENE ---\n\n");
+    const combinedWordCount = allUploadData.reduce(
+      (total, data) => total + (data.wordCount || 0),
+      0
+    );
 
-   console.log(`🎭 COREY RALSTON RAG Guide Generation...`);
-   console.log(`🎬 ${characterName} | ${productionTitle} (${productionType})`);
-   console.log(`🧠 Using ${Object.keys(methodologyDatabase).length} methodology files`);
+    console.log(`🎭 COREY RALSTON RAG Guide Generation...`);
+    console.log(`🎬 ${characterName} | ${productionTitle} (${productionType})`);
+    console.log(
+      `🧠 Using ${Object.keys(methodologyDatabase).length} methodology files`
+    );
 
-   // Check if we have full script context
-   const hasFullScript = allUploadData.some(data => data.fileType === 'full_script');
-   const hasSides = allUploadData.some(data => data.fileType === 'sides');
+    // Check if we have full script context
+    const hasFullScript = allUploadData.some(
+      (data) => data.fileType === "full_script"
+    );
+    const hasSides = allUploadData.some((data) => data.fileType === "sides");
 
-   console.log(`📚 File types detected: ${allUploadData.map(d => d.fileType).join(', ')}`);
-   console.log(`🎭 Has sides: ${hasSides}, Has full script: ${hasFullScript}`);
+    console.log(
+      `📚 File types detected: ${allUploadData
+        .map((d) => d.fileType)
+        .join(", ")}`
+    );
+    console.log(`🎭 Has sides: ${hasSides}, Has full script: ${hasFullScript}`);
 
-   // Quality assessment - very lenient since we already validated at upload
-   const contentQuality = assessContentQuality(combinedSceneText, combinedWordCount, false);
+    // Quality assessment - very lenient since we already validated at upload
+    const contentQuality = assessContentQuality(
+      combinedSceneText,
+      combinedWordCount,
+      false
+    );
 
-   // Only reject if TRULY terrible (< 10 words or > 80% corrupted)
-   if (contentQuality.quality === 'poor' &&
-       (combinedWordCount < 10 ||
-        (contentQuality.repetitiveRatio && contentQuality.repetitiveRatio > 0.8) ||
-        (contentQuality.repetitionRatio && contentQuality.repetitionRatio > 0.8))) {
+    // Only reject if TRULY terrible (< 10 words or > 80% corrupted)
+    if (
+      contentQuality.quality === "poor" &&
+      (combinedWordCount < 10 ||
+        (contentQuality.repetitiveRatio &&
+          contentQuality.repetitiveRatio > 0.8) ||
+        (contentQuality.repetitionRatio &&
+          contentQuality.repetitionRatio > 0.8))
+    ) {
+      let errorMessage =
+        "Unable to generate guide: content appears to be corrupted or empty";
 
-     let errorMessage = 'Unable to generate guide: content appears to be corrupted or empty';
+      if (contentQuality.repetitiveRatio > 0.8) {
+        errorMessage =
+          "Unable to generate guide: content is mostly watermarks/timestamps (>80%)";
+      } else if (contentQuality.repetitionRatio > 0.8) {
+        errorMessage =
+          "Unable to generate guide: content is mostly repetitive text (>80%)";
+      } else if (combinedWordCount < 10) {
+        errorMessage =
+          "Unable to generate guide: insufficient content (less than 10 words)";
+      }
 
-     if (contentQuality.repetitiveRatio > 0.8) {
-       errorMessage = 'Unable to generate guide: content is mostly watermarks/timestamps (>80%)';
-     } else if (contentQuality.repetitionRatio > 0.8) {
-       errorMessage = 'Unable to generate guide: content is mostly repetitive text (>80%)';
-     } else if (combinedWordCount < 10) {
-       errorMessage = 'Unable to generate guide: insufficient content (less than 10 words)';
-     }
+      console.warn("[GENERATION] Rejecting due to poor quality:", {
+        wordCount: combinedWordCount,
+        repetitiveRatio: contentQuality.repetitiveRatio,
+        repetitionRatio: contentQuality.repetitionRatio,
+        reason: contentQuality.reason,
+      });
 
-     console.warn('[GENERATION] Rejecting due to poor quality:', {
-       wordCount: combinedWordCount,
-       repetitiveRatio: contentQuality.repetitiveRatio,
-       repetitionRatio: contentQuality.repetitionRatio,
-       reason: contentQuality.reason
-     });
+      return res.status(422).json({
+        success: false,
+        error: errorMessage,
+        contentQuality: contentQuality.reason,
+        details: {
+          combinedWordCount,
+          repetitiveRatio: contentQuality.repetitiveRatio,
+          repetitionRatio: contentQuality.repetitionRatio,
+        },
+      });
+    }
 
-     return res.status(422).json({
-       success: false,
-       error: errorMessage,
-       contentQuality: contentQuality.reason,
-       details: {
-         combinedWordCount,
-         repetitiveRatio: contentQuality.repetitiveRatio,
-         repetitionRatio: contentQuality.repetitionRatio
-       }
-     });
-   }
+    // If we made it here, content is acceptable - log for monitoring
+    if (contentQuality.quality === "low") {
+      console.log("[GENERATION] Low quality content but proceeding:", {
+        wordCount: combinedWordCount,
+        reason: contentQuality.reason,
+      });
+    }
 
-   // If we made it here, content is acceptable - log for monitoring
-   if (contentQuality.quality === 'low') {
-     console.log('[GENERATION] Low quality content but proceeding:', {
-       wordCount: combinedWordCount,
-       reason: contentQuality.reason
-     });
-   }
+    const guideContent = await generateActingGuideWithRAG({
+      sceneText: combinedSceneText,
+      characterName: characterName.trim(),
+      productionTitle: productionTitle.trim(),
+      productionType: productionType.trim(),
+      extractionMethod: allUploadData[0].extractionMethod,
+      hasFullScript: hasFullScript,
+      uploadData: allUploadData,
+    });
 
-   const guideContent = await generateActingGuideWithRAG({
-     sceneText: combinedSceneText,
-     characterName: characterName.trim(),
-     productionTitle: productionTitle.trim(),
-     productionType: productionType.trim(),
-     extractionMethod: allUploadData[0].extractionMethod,
-     hasFullScript: hasFullScript,
-     uploadData: allUploadData
-   });
+    console.log(`✅ Corey Ralston RAG Guide Complete!`);
 
+    // Save guide to database
+    try {
+      const Guide = require("./models/Guide");
+      const User = require("./models/User");
 
+      // Get user from auth token
+      const authHeader = req.headers.authorization;
+      let userId = null;
 
-   console.log(`✅ Corey Ralston RAG Guide Complete!`);
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.substring(7);
+        const jwt = require("jsonwebtoken");
+        const JWT_SECRET = process.env.JWT_SECRET;
 
-        // Save guide to database
-     try {
-       const Guide = require('./models/Guide');
-       const User = require('./models/User');
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET);
+          userId = decoded.userId;
 
-       // Get user from auth token
-       const authHeader = req.headers.authorization;
-       let userId = null;
+          // Verify user exists in database
+          const user = await User.findByPk(userId);
+          if (!user) {
+            console.log("User not found in database, cannot save guide");
+            throw new Error("User not found");
+          }
+        } catch (jwtError) {
+          console.log(
+            "JWT verification failed or user not found, cannot save guide to database"
+          );
+          throw new Error("Authentication required to save guide");
+        }
+      } else {
+        console.log("No authorization header, cannot save guide to database");
+        throw new Error("Authentication required to save guide");
+      }
 
-       if (authHeader && authHeader.startsWith('Bearer ')) {
-         const token = authHeader.substring(7);
-         const jwt = require('jsonwebtoken');
-         const JWT_SECRET = process.env.JWT_SECRET;
+      const guideId = `corey_rag_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
 
-         try {
-           const decoded = jwt.verify(token, JWT_SECRET);
-           userId = decoded.userId;
+      const guide = await Guide.create({
+        guideId,
+        userId: userId, // Now guaranteed to be valid
+        characterName: characterName.trim(),
+        productionTitle: productionTitle.trim(),
+        productionType: productionType.trim(),
+        roleSize: roleSize || "Supporting",
+        genre: genre || "Drama",
+        storyline: storyline || "",
+        characterBreakdown: characterBreakdown || "",
+        callbackNotes: callbackNotes || "",
+        focusArea: focusArea || "",
+        sceneText: combinedSceneText,
+        generatedHtml: guideContent,
+        childGuideRequested: childGuideRequested || false,
+        childGuideCompleted: false,
+      });
 
-           // Verify user exists in database
-           const user = await User.findByPk(userId);
-           if (!user) {
-             console.log('User not found in database, cannot save guide');
-             throw new Error('User not found');
-           }
-         } catch (jwtError) {
-           console.log('JWT verification failed or user not found, cannot save guide to database');
-           throw new Error('Authentication required to save guide');
-         }
-       } else {
-         console.log('No authorization header, cannot save guide to database');
-         throw new Error('Authentication required to save guide');
-       }
+      console.log(`💾 Guide saved to database with ID: ${guide.id}`);
 
-       const guideId = `corey_rag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Second Pass: Generate Child's Guide if requested
+      let childGuideContent = null;
+      if (childGuideRequested) {
+        console.log(
+          `🌟 Starting second pass: Child's Guide generation for ${characterName}`
+        );
+        console.log(`🌟 Child guide request details:`, {
+          characterName: characterName.trim(),
+          productionTitle: productionTitle.trim(),
+          productionType: productionType.trim(),
+          sceneTextLength: combinedSceneText.length,
+          parentGuideLength: guideContent.length,
+        });
 
-       const guide = await Guide.create({
-         guideId,
-         userId: userId, // Now guaranteed to be valid
-         characterName: characterName.trim(),
-         productionTitle: productionTitle.trim(),
-         productionType: productionType.trim(),
-         roleSize: roleSize || 'Supporting',
-         genre: genre || 'Drama',
-         storyline: storyline || '',
-         characterBreakdown: characterBreakdown || '',
-         callbackNotes: callbackNotes || '',
-         focusArea: focusArea || '',
-         sceneText: combinedSceneText,
-         generatedHtml: guideContent,
-         childGuideRequested: childGuideRequested || false,
-         childGuideCompleted: false
-       });
+        try {
+          console.log(`🌟 Calling generateChildGuide function...`);
+          const startTime = Date.now();
 
-     console.log(`💾 Guide saved to database with ID: ${guide.id}`);
+          childGuideContent = await generateChildGuide({
+            sceneText: combinedSceneText,
+            characterName: characterName.trim(),
+            productionTitle: productionTitle.trim(),
+            productionType: productionType.trim(),
+            parentGuideContent: guideContent,
+            extractionMethod: allUploadData[0].extractionMethod,
+          });
 
-     // Second Pass: Generate Child's Guide if requested
-     let childGuideContent = null;
-     if (childGuideRequested) {
-       console.log(`🌟 Starting second pass: Child's Guide generation for ${characterName}`);
-       console.log(`🌟 Child guide request details:`, {
-         characterName: characterName.trim(),
-         productionTitle: productionTitle.trim(),
-         productionType: productionType.trim(),
-         sceneTextLength: combinedSceneText.length,
-         parentGuideLength: guideContent.length
-       });
+          const endTime = Date.now();
+          console.log(
+            `🌟 Child guide generation completed in ${endTime - startTime}ms`
+          );
+          console.log(
+            `🌟 Child guide content length: ${
+              childGuideContent ? childGuideContent.length : 0
+            }`
+          );
 
-       try {
-         console.log(`🌟 Calling generateChildGuide function...`);
-         const startTime = Date.now();
+          // Update guide with child guide content
+          await guide.update({
+            childGuideHtml: childGuideContent,
+            childGuideCompleted: true,
+          });
 
-         childGuideContent = await generateChildGuide({
-           sceneText: combinedSceneText,
-           characterName: characterName.trim(),
-           productionTitle: productionTitle.trim(),
-           productionType: productionType.trim(),
-           parentGuideContent: guideContent,
-           extractionMethod: allUploadData[0].extractionMethod
-         });
+          console.log(
+            `✅ Child's Guide completed and saved for ${characterName}`
+          );
+        } catch (childGuideError) {
+          console.error("❌ Child guide generation error:", childGuideError);
+          console.error("❌ Error stack:", childGuideError.stack);
+          // Don't fail the entire request, just log the error
+          await guide.update({
+            childGuideCompleted: false,
+          });
+        }
+      } else {
+        console.log(`🌟 Child guide not requested for ${characterName}`);
+      }
 
-         const endTime = Date.now();
-         console.log(`🌟 Child guide generation completed in ${endTime - startTime}ms`);
-         console.log(`🌟 Child guide content length: ${childGuideContent ? childGuideContent.length : 0}`);
+      // Log the response being sent
+      const responseData = {
+        success: true,
+        guideId: guide.guideId,
+        guideContent: guideContent,
+        childGuideRequested: childGuideRequested || false,
+        childGuideCompleted: childGuideRequested ? !!childGuideContent : false,
+        childGuideContent: childGuideContent,
+        generatedAt: new Date(),
+        savedToDatabase: true,
+        metadata: {
+          characterName,
+          productionTitle,
+          productionType,
+          scriptWordCount: combinedWordCount,
+          guideLength: guideContent.length,
+          childGuideLength: childGuideContent ? childGuideContent.length : 0,
+          model: "claude-sonnet-4-20250514",
+          ragEnabled: true,
+          methodologyFiles: Object.keys(methodologyDatabase).length,
+          contentQuality: "corey-ralston-methodology-enhanced",
+          fileCount: uploadIdList.length,
+          uploadedFiles: uploadIdList.map((id) => uploads[id].filename),
+        },
+      };
 
-         // Update guide with child guide content
-         await guide.update({
-           childGuideHtml: childGuideContent,
-           childGuideCompleted: true
-         });
+      console.log(`🌟 Sending response to frontend:`, {
+        childGuideRequested: responseData.childGuideRequested,
+        childGuideCompleted: responseData.childGuideCompleted,
+        hasChildGuideContent: !!responseData.childGuideContent,
+        childGuideContentLength: responseData.childGuideContent
+          ? responseData.childGuideContent.length
+          : 0,
+      });
 
-         console.log(`✅ Child's Guide completed and saved for ${characterName}`);
-       } catch (childGuideError) {
-         console.error('❌ Child guide generation error:', childGuideError);
-         console.error('❌ Error stack:', childGuideError.stack);
-         // Don't fail the entire request, just log the error
-         await guide.update({
-           childGuideCompleted: false
-         });
-       }
-     } else {
-       console.log(`🌟 Child guide not requested for ${characterName}`);
-     }
+      res.json(responseData);
+    } catch (dbError) {
+      console.error("❌ Database save error:", dbError);
 
-     // Log the response being sent
-     const responseData = {
-       success: true,
-       guideId: guide.guideId,
-       guideContent: guideContent,
-       childGuideRequested: childGuideRequested || false,
-       childGuideCompleted: childGuideRequested ? !!childGuideContent : false,
-       childGuideContent: childGuideContent,
-       generatedAt: new Date(),
-       savedToDatabase: true,
-       metadata: {
-         characterName,
-         productionTitle,
-         productionType,
-         scriptWordCount: combinedWordCount,
-         guideLength: guideContent.length,
-         childGuideLength: childGuideContent ? childGuideContent.length : 0,
-         model: 'claude-sonnet-4-20250514',
-         ragEnabled: true,
-         methodologyFiles: Object.keys(methodologyDatabase).length,
-         contentQuality: 'corey-ralston-methodology-enhanced',
-         fileCount: uploadIdList.length,
-         uploadedFiles: uploadIdList.map(id => uploads[id].filename)
-       }
-     };
+      // Check if it's an authentication error
+      if (
+        dbError.message.includes("Authentication required") ||
+        dbError.message.includes("User not found")
+      ) {
+        return res.status(401).json({
+          success: false,
+          error: "Authentication required to save guide",
+          message: "Please log in to save your guide to your account",
+          guideContent: guideContent, // Still provide the guide content
+          generatedAt: new Date(),
+          savedToDatabase: false,
+        });
+      }
 
-     console.log(`🌟 Sending response to frontend:`, {
-       childGuideRequested: responseData.childGuideRequested,
-       childGuideCompleted: responseData.childGuideCompleted,
-       hasChildGuideContent: !!responseData.childGuideContent,
-       childGuideContentLength: responseData.childGuideContent ? responseData.childGuideContent.length : 0
-     });
-
-     res.json(responseData);
-   } catch (dbError) {
-     console.error('❌ Database save error:', dbError);
-
-     // Check if it's an authentication error
-     if (dbError.message.includes('Authentication required') || dbError.message.includes('User not found')) {
-       return res.status(401).json({
-         success: false,
-         error: 'Authentication required to save guide',
-         message: 'Please log in to save your guide to your account',
-         guideContent: guideContent, // Still provide the guide content
-         generatedAt: new Date(),
-         savedToDatabase: false
-       });
-     }
-
-     // Still return the guide content even if save fails for other reasons
-     res.json({
-       success: true,
-       guideId: `corey_rag_${uploadIdList[0] || uploadId}`,
-       guideContent: guideContent,
-       generatedAt: new Date(),
-       savedToDatabase: false,
-       saveError: dbError.message,
-       metadata: {
-         characterName,
-         productionTitle,
-         productionType,
-         scriptWordCount: combinedWordCount,
-         guideLength: guideContent.length,
-         model: 'claude-sonnet-4-20250514',
-         ragEnabled: true,
-         methodologyFiles: Object.keys(methodologyDatabase).length,
-         contentQuality: 'corey-ralston-methodology-enhanced',
-         fileCount: uploadIdList.length,
-         uploadedFiles: uploadIdList.map(id => uploads[id].filename)
-       }
-     });
-   }
-
- } catch (error) {
-   console.error('❌ Corey Ralston RAG error:', error);
-   // Always surface the server-side reason for easier client debug (no secrets)
-   res.status(500).json({
-     error: 'Failed to generate Corey Ralston methodology guide. Please try again.',
-     reason: error && error.message ? String(error.message) : undefined
-   });
- }
+      // Still return the guide content even if save fails for other reasons
+      res.json({
+        success: true,
+        guideId: `corey_rag_${uploadIdList[0] || uploadId}`,
+        guideContent: guideContent,
+        generatedAt: new Date(),
+        savedToDatabase: false,
+        saveError: dbError.message,
+        metadata: {
+          characterName,
+          productionTitle,
+          productionType,
+          scriptWordCount: combinedWordCount,
+          guideLength: guideContent.length,
+          model: "claude-sonnet-4-20250514",
+          ragEnabled: true,
+          methodologyFiles: Object.keys(methodologyDatabase).length,
+          contentQuality: "corey-ralston-methodology-enhanced",
+          fileCount: uploadIdList.length,
+          uploadedFiles: uploadIdList.map((id) => uploads[id].filename),
+        },
+      });
+    }
+  } catch (error) {
+    console.error("❌ Corey Ralston RAG error:", error);
+    // Always surface the server-side reason for easier client debug (no secrets)
+    res.status(500).json({
+      error:
+        "Failed to generate Corey Ralston methodology guide. Please try again.",
+      reason: error && error.message ? String(error.message) : undefined,
+    });
+  }
 });
 
 // Methodology API endpoint to view loaded files
-app.get('/api/methodology', (req, res) => {
- const summary = Object.values(methodologyDatabase).map(file => ({
-   filename: file.filename,
-   type: file.type,
-   size: file.size,
-   keywords: file.keywords
- }));
+app.get("/api/methodology", (req, res) => {
+  const summary = Object.values(methodologyDatabase).map((file) => ({
+    filename: file.filename,
+    type: file.type,
+    size: file.size,
+    keywords: file.keywords,
+  }));
 
- res.json({
-   totalFiles: Object.keys(methodologyDatabase).length,
-   files: summary,
-   ragEnabled: true,
-   message: 'Corey Ralston methodology files loaded and ready for RAG'
- });
+  res.json({
+    totalFiles: Object.keys(methodologyDatabase).length,
+    files: summary,
+    ragEnabled: true,
+    message: "Corey Ralston methodology files loaded and ready for RAG",
+  });
 });
 
 // Note: Guide endpoints are now handled by the mounted routes in ./routes/guides.js
 
 // Download guide as PDF
-app.get('/api/guides/:id/pdf', async (req, res) => {
+app.get("/api/guides/:id/pdf", async (req, res) => {
   try {
     const { id } = req.params;
     const authHeader = req.headers.authorization;
 
-    console.log('🔐 PDF endpoint - Auth header:', authHeader ? 'present' : 'missing');
-    console.log('🔐 PDF endpoint - Full auth header:', authHeader);
+    console.log(
+      "🔐 PDF endpoint - Auth header:",
+      authHeader ? "present" : "missing"
+    );
+    console.log("🔐 PDF endpoint - Full auth header:", authHeader);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ PDF endpoint - No Bearer token found');
-      return res.status(401).json({ error: 'Authentication required' });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("❌ PDF endpoint - No Bearer token found");
+      return res.status(401).json({ error: "Authentication required" });
     }
 
     const token = authHeader.substring(7);
-    console.log('🔐 PDF endpoint - Token length:', token.length);
-    console.log('🔐 PDF endpoint - Token preview:', token.substring(0, 20) + '...');
+    console.log("🔐 PDF endpoint - Token length:", token.length);
+    console.log(
+      "🔐 PDF endpoint - Token preview:",
+      token.substring(0, 20) + "..."
+    );
 
-    const jwt = require('jsonwebtoken');
+    const jwt = require("jsonwebtoken");
     const JWT_SECRET = process.env.JWT_SECRET;
 
-    console.log('🔐 PDF endpoint - JWT_SECRET present:', !!JWT_SECRET);
-    console.log('🔐 PDF endpoint - JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
+    console.log("🔐 PDF endpoint - JWT_SECRET present:", !!JWT_SECRET);
+    console.log(
+      "🔐 PDF endpoint - JWT_SECRET length:",
+      JWT_SECRET ? JWT_SECRET.length : 0
+    );
 
     let userId;
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      console.log('🔐 PDF endpoint - JWT decoded successfully, userId:', decoded.userId);
+      console.log(
+        "🔐 PDF endpoint - JWT decoded successfully, userId:",
+        decoded.userId
+      );
       userId = decoded.userId;
     } catch (jwtError) {
-      console.log('❌ PDF endpoint - JWT verification failed:', jwtError.message);
-      return res.status(401).json({ error: 'Invalid token' });
+      console.log(
+        "❌ PDF endpoint - JWT verification failed:",
+        jwtError.message
+      );
+      return res.status(401).json({ error: "Invalid token" });
     }
 
-    const Guide = require('./models/Guide');
+    const Guide = require("./models/Guide");
     const guide = await Guide.findOne({
       where: { id, userId },
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'storyline', 'characterBreakdown', 'callbackNotes', 'focusArea', 'sceneText', 'generatedHtml', 'createdAt', 'viewCount']
+      attributes: [
+        "id",
+        "guideId",
+        "characterName",
+        "productionTitle",
+        "productionType",
+        "roleSize",
+        "genre",
+        "storyline",
+        "characterBreakdown",
+        "callbackNotes",
+        "focusArea",
+        "sceneText",
+        "generatedHtml",
+        "createdAt",
+        "viewCount",
+      ],
     });
 
     if (!guide) {
-      return res.status(404).json({ error: 'Guide not found' });
+      return res.status(404).json({ error: "Guide not found" });
     }
 
-    console.log(`📄 Generating PDF for guide: ${guide.characterName} - ${guide.productionTitle}`);
+    console.log(
+      `📄 Generating PDF for guide: ${guide.characterName} - ${guide.productionTitle}`
+    );
 
     // Use Adobe PDF Services to convert HTML to PDF
     const {
@@ -2139,21 +2502,23 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
       HTMLToPDFJob,
       HTMLToPDFResult,
       PageLayout,
-      HTMLToPDFParams
+      HTMLToPDFParams,
     } = require("@adobe/pdfservices-node-sdk");
 
     // Load Adobe credentials from JSON file
-    const credentialsPath = './pdfservices-api-credentials.json';
-    const credentialsData = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    const credentialsPath = "./pdfservices-api-credentials.json";
+    const credentialsData = JSON.parse(
+      fs.readFileSync(credentialsPath, "utf8")
+    );
 
     // Create credentials instance
     const credentials = new ServicePrincipalCredentials({
       clientId: credentialsData.client_credentials.client_id,
-      clientSecret: credentialsData.client_credentials.client_secret
+      clientSecret: credentialsData.client_credentials.client_secret,
     });
 
     // Create PDF Services instance
-    const pdfServices = new PDFServices({credentials});
+    const pdfServices = new PDFServices({ credentials });
 
     // Create HTML content with proper styling
     const htmlContent = `
@@ -2181,14 +2546,28 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
           <p><strong>Type:</strong> ${guide.productionType}</p>
           <p><strong>Role Size:</strong> ${guide.roleSize}</p>
           <p><strong>Genre:</strong> ${guide.genre}</p>
-          <p><strong>Created:</strong> ${new Date(guide.createdAt).toLocaleDateString()}</p>
+          <p><strong>Created:</strong> ${new Date(
+            guide.createdAt
+          ).toLocaleDateString()}</p>
         </div>
 
         <div class="guide-section">
           <h2>Character Analysis</h2>
-          ${guide.storyline ? `<p><strong>Storyline:</strong> ${guide.storyline}</p>` : ''}
-          ${guide.characterBreakdown ? `<p><strong>Character Breakdown:</strong> ${guide.characterBreakdown}</p>` : ''}
-          ${guide.focusArea ? `<p><strong>Focus Area:</strong> ${guide.focusArea}</p>` : ''}
+          ${
+            guide.storyline
+              ? `<p><strong>Storyline:</strong> ${guide.storyline}</p>`
+              : ""
+          }
+          ${
+            guide.characterBreakdown
+              ? `<p><strong>Character Breakdown:</strong> ${guide.characterBreakdown}</p>`
+              : ""
+          }
+          ${
+            guide.focusArea
+              ? `<p><strong>Focus Area:</strong> ${guide.focusArea}</p>`
+              : ""
+          }
         </div>
 
         <div class="guide-section">
@@ -2212,42 +2591,45 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
     const readStream = fs.createReadStream(tempHtmlPath);
     const inputAsset = await pdfServices.upload({
       readStream,
-      mimeType: MimeType.HTML
+      mimeType: MimeType.HTML,
     });
 
     // Create parameters for the job
     const pageLayout = new PageLayout({
       pageHeight: 11,
-      pageWidth: 8.5
+      pageWidth: 8.5,
     });
 
     const params = new HTMLToPDFParams({
       pageLayout,
-      includeHeaderFooter: false
+      includeHeaderFooter: false,
     });
 
     // Create and submit the job
-    const job = new HTMLToPDFJob({inputAsset, params});
-    const pollingURL = await pdfServices.submit({job});
+    const job = new HTMLToPDFJob({ inputAsset, params });
+    const pollingURL = await pdfServices.submit({ job });
 
     // Wait for job completion and get result
     const pdfServicesResponse = await pdfServices.getJobResult({
       pollingURL,
-      resultType: HTMLToPDFResult
+      resultType: HTMLToPDFResult,
     });
 
     // Get content from the resulting asset
     const resultAsset = pdfServicesResponse.result.asset;
-    const streamAsset = await pdfServices.getContent({asset: resultAsset});
+    const streamAsset = await pdfServices.getContent({ asset: resultAsset });
 
     // Set response headers for PDF download
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="guide_${guide.characterName}_${guide.productionTitle}.pdf"`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="guide_${guide.characterName}_${guide.productionTitle}.pdf"`
+    );
 
     // Get content length safely
-    const contentLength = streamAsset.asset?.size || 'unknown';
-    if (contentLength !== 'unknown') {
-      res.setHeader('Content-Length', contentLength);
+    const contentLength = streamAsset.asset?.size || "unknown";
+    if (contentLength !== "unknown") {
+      res.setHeader("Content-Length", contentLength);
     }
 
     // Stream the PDF to the response
@@ -2258,13 +2640,12 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
       try {
         fs.unlinkSync(tempHtmlPath);
       } catch (err) {
-        console.log('Could not delete temp HTML file:', err.message);
+        console.log("Could not delete temp HTML file:", err.message);
       }
     }, 5000);
-
   } catch (error) {
-    console.error('❌ PDF generation error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    console.error("❌ PDF generation error:", error);
+    res.status(500).json({ error: "Failed to generate PDF" });
   }
 });
 
@@ -2272,74 +2653,75 @@ app.get('/api/guides/:id/pdf', async (req, res) => {
 
 // Test email configuration
 
-
 // Health check
-app.get('/api/health', (req, res) => {
- res.json({
-   status: 'running',
-   model: DEFAULT_CLAUDE_MODEL,
-   maxTokens: 8000,
-   ragEnabled: true,
-   methodologyFiles: Object.keys(methodologyDatabase).length,
-   coreyRalstonMethodology: true,
-   apiKey: ANTHROPIC_API_KEY ? 'configured' : 'missing',
-   anthropicKeyLen: ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.length : 0,
-   uploadsCount: Object.keys(uploads).length,
-   adobeExtract: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true' ? 'enabled' : 'disabled',
-   minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10),
-   extraction: {
-     adobeEnabled: process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true',
-     minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || '200', 10)
-   },
-  extractionTotals: extractionStats.totals,
-  extractionLast: extractionStats.last,
-   features: [
-     'True RAG with Corey Ralston methodology',
-     'Intelligent methodology search',
-     'Example guide pattern matching',
-     'Professional coaching voice replication',
-     'Claude Sonnet 4 + 16K tokens',
-     'PREP101 authentic methodology',
-     'Actor Motivator writing style',
-     'User authentication & authorization',
-     'Stripe payment integration',
-     'Subscription management',
-     'Guide usage tracking'
-   ],
-   message: 'PREP101 Corey Ralston RAG-Enhanced Guide Generator with Actor Motivator Style + Full Auth & Payment System'
- });
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "running",
+    model: DEFAULT_CLAUDE_MODEL,
+    maxTokens: DEFAULT_CLAUDE_MAX_TOKENS,
+    ragEnabled: true,
+    methodologyFiles: Object.keys(methodologyDatabase).length,
+    coreyRalstonMethodology: true,
+    apiKey: ANTHROPIC_API_KEY ? "configured" : "missing",
+    anthropicKeyLen: ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.length : 0,
+    uploadsCount: Object.keys(uploads).length,
+    adobeExtract:
+      process.env.ADOBE_PDF_EXTRACT_ENABLED === "true" ? "enabled" : "disabled",
+    minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || "200", 10),
+    extraction: {
+      adobeEnabled: process.env.ADOBE_PDF_EXTRACT_ENABLED === "true",
+      minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || "200", 10),
+    },
+    extractionTotals: extractionStats.totals,
+    extractionLast: extractionStats.last,
+    features: [
+      "True RAG with Corey Ralston methodology",
+      "Intelligent methodology search",
+      "Example guide pattern matching",
+      "Professional coaching voice replication",
+      "Claude Sonnet 4 + 16K tokens",
+      "PREP101 authentic methodology",
+      "Actor Motivator writing style",
+      "User authentication & authorization",
+      "Stripe payment integration",
+      "Subscription management",
+      "Guide usage tracking",
+    ],
+    message:
+      "PREP101 Corey Ralston RAG-Enhanced Guide Generator with Actor Motivator Style + Full Auth & Payment System",
+  });
 });
 
 // Fast health check for Railway (no database queries)
-app.get('/api/health', (req, res) => {
+app.get("/api/health", (req, res) => {
   res.status(200).json({
-    status: 'healthy',
+    status: "healthy",
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    server: 'PREP101 Enhanced Backend'
+    environment: process.env.NODE_ENV || "development",
+    server: "PREP101 Enhanced Backend",
   });
 });
 
 // Even faster health check for Railway deployment
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
 });
 
 // Enhanced health check with new features (for detailed monitoring)
-app.get('/health', (req, res) => {
- res.json({
-   status: 'healthy',
-   timestamp: new Date().toISOString(),
-   environment: config.server.env,
-   features: {
-     rag: true,
-     authentication: true,
-     payments: true,
-     guides: true,
-     uploads: true
-   },
-   server: 'PREP101 Enhanced Backend'
- });
+app.get("/health", (req, res) => {
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    environment: config.server.env,
+    features: {
+      rag: true,
+      authentication: true,
+      payments: true,
+      guides: true,
+      uploads: true,
+    },
+    server: "PREP101 Enhanced Backend",
+  });
 });
 
 // Initialize server
@@ -2353,34 +2735,37 @@ const startServer = async () => {
 
     // Start server
     const PORT = process.env.PORT || 5001;
-    app.listen(PORT, '0.0.0.0', () => {
- console.log('🎭 PREP101 COREY RALSTON RAG-ENHANCED GENERATOR');
- console.log(`🚀 Server running on port ${PORT}`);
- console.log(`🤖 Model: Claude Sonnet 4 ✅`);
- console.log(`⚡ Max Tokens: 16,000 ✅`);
- console.log(`🧠 RAG: Corey Ralston Methodology ✅`);
- console.log(`📚 Files Loaded: ${Object.keys(methodologyDatabase).length} ✅`);
- console.log(`🎯 Actor Motivator Style: ENABLED ✅`);
- console.log('');
- console.log('🎯 Corey Ralston RAG Features:');
- console.log('   • True file-based RAG system');
- console.log('   • Intelligent methodology search');
- console.log('   • Example guide pattern matching');
- console.log('   • Professional coaching voice replication');
- console.log('   • PREP101 authentic methodology');
- console.log('   • Actor Motivator writing style');
- console.log('');
- console.log('🔐 NEW: Authentication & Payment System');
- console.log('   • User registration & login');
- console.log('   • Stripe subscription management');
- console.log('   • Guide usage tracking');
- console.log('   • Subscription-based access control');
- console.log('');
- console.log('✅ Ready to generate authentic Corey Ralston guides with full auth & payments!');
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log("🎭 PREP101 COREY RALSTON RAG-ENHANCED GENERATOR");
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🤖 Model: Claude Sonnet 4 ✅`);
+      console.log(`⚡ Max Tokens: 16,000 ✅`);
+      console.log(`🧠 RAG: Corey Ralston Methodology ✅`);
+      console.log(
+        `📚 Files Loaded: ${Object.keys(methodologyDatabase).length} ✅`
+      );
+      console.log(`🎯 Actor Motivator Style: ENABLED ✅`);
+      console.log("");
+      console.log("🎯 Corey Ralston RAG Features:");
+      console.log("   • True file-based RAG system");
+      console.log("   • Intelligent methodology search");
+      console.log("   • Example guide pattern matching");
+      console.log("   • Professional coaching voice replication");
+      console.log("   • PREP101 authentic methodology");
+      console.log("   • Actor Motivator writing style");
+      console.log("");
+      console.log("🔐 NEW: Authentication & Payment System");
+      console.log("   • User registration & login");
+      console.log("   • Stripe subscription management");
+      console.log("   • Guide usage tracking");
+      console.log("   • Subscription-based access control");
+      console.log("");
+      console.log(
+        "✅ Ready to generate authentic Corey Ralston guides with full auth & payments!"
+      );
     });
-
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 };
@@ -2390,9 +2775,9 @@ const initializeForServerless = async () => {
   try {
     // Load methodology files immediately for serverless
     loadMethodologyFiles();
-    console.log('🧠 Methodology files loaded for serverless');
+    console.log("🧠 Methodology files loaded for serverless");
   } catch (error) {
-    console.error('❌ Failed to initialize for serverless:', error);
+    console.error("❌ Failed to initialize for serverless:", error);
   }
 };
 
@@ -2403,19 +2788,19 @@ initializeForServerless();
 module.exports = app;
 
 // Only start server if not in Vercel environment
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
   // Start the server
   startServer();
 
   // Graceful shutdown
-  process.on('SIGTERM', async () => {
-    console.log('🛑 SIGTERM received, shutting down gracefully');
+  process.on("SIGTERM", async () => {
+    console.log("🛑 SIGTERM received, shutting down gracefully");
     await sequelize.close();
     process.exit(0);
   });
 
-  process.on('SIGINT', async () => {
-    console.log('🛑 SIGINT received, shutting down gracefully');
+  process.on("SIGINT", async () => {
+    console.log("🛑 SIGINT received, shutting down gracefully");
     await sequelize.close();
     process.exit(0);
   });

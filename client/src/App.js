@@ -17,6 +17,7 @@ import GuideView from './pages/GuideView';
 import StripeSuccess from './pages/StripeSuccess';
 import SubscriptionManager from './components/SubscriptionManager';
 import Terms from './pages/Terms';
+import AdminDashboard from './pages/AdminDashboard';
 import './App.css';
 
 // Initialize Stripe
@@ -24,17 +25,17 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  
+
   console.log('🔒 ProtectedRoute - user:', user ? 'logged in' : 'not logged in');
   console.log('🔒 ProtectedRoute - loading:', loading);
-  
+
   if (loading) {
     console.log('🔒 ProtectedRoute - showing loading screen');
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         height: '100vh',
         background: '#111827',
         color: '#f3f4f6'
@@ -43,12 +44,12 @@ function ProtectedRoute({ children }) {
       </div>
     );
   }
-  
+
   if (!user) {
     console.log('🔒 ProtectedRoute - redirecting to login');
     return <Navigate to="/login" />;
   }
-  
+
   console.log('🔒 ProtectedRoute - rendering protected content');
   return children;
 }
@@ -67,45 +68,53 @@ function App() {
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/examples" element={<Examples />} />
-                <Route 
-                  path="/account" 
+                <Route
+                  path="/account"
                   element={
                     <ProtectedRoute>
                       <Account />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/dashboard" 
+                <Route
+                  path="/dashboard"
                   element={
                     <ProtectedRoute>
                       <Dashboard />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/create-guide" 
+                <Route
+                  path="/create-guide"
                   element={
                     <ProtectedRoute>
                       <Dashboard />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/guide/:id" 
+                <Route
+                  path="/guide/:id"
                   element={
                     <ProtectedRoute>
                       <GuideView />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/subscription" 
+                <Route
+                  path="/subscription"
                   element={
                     <ProtectedRoute>
                       <SubscriptionManager />
                     </ProtectedRoute>
-                  } 
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
                 />
                 <Route path="/app/stripe/success" element={<StripeSuccess />} />
                 <Route path="/terms" element={<Terms />} />
