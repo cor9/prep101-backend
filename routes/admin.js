@@ -7,11 +7,16 @@ const { sequelize } = require('../database/connection');
 
 const router = express.Router();
 
-// Require that the current user is an admin (beta admin for now)
+// Require that the current user is an admin.
+// Primary check: beta admin flags from the database.
+// Safety net: allow the known owner email to access admin even if flags ever drift.
 const requireAdmin = async (req, res, next) => {
   try {
     const user = req.user;
-    if (!user || !user.isBetaTester || user.betaAccessLevel !== 'admin') {
+    const isBetaAdmin = user && user.isBetaTester && user.betaAccessLevel === 'admin';
+    const isOwnerEmail = user && user.email === 'corey@childactor101.com';
+
+    if (!isBetaAdmin && !isOwnerEmail) {
       return res.status(403).json({ message: 'Admin access required' });
     }
     next();
