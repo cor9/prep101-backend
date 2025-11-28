@@ -15,6 +15,7 @@ import Examples from './pages/Examples';
 import Account from './pages/Account';
 import GuideView from './pages/GuideView';
 import StripeSuccess from './pages/StripeSuccess';
+import PaymentSuccess from './pages/PaymentSuccess';
 import SubscriptionManager from './components/SubscriptionManager';
 import Terms from './pages/Terms';
 import AdminDashboard from './pages/AdminDashboard';
@@ -117,6 +118,7 @@ function App() {
                   }
                 />
                 <Route path="/app/stripe/success" element={<StripeSuccess />} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/" element={<Home />} />
               </Routes>

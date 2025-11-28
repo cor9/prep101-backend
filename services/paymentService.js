@@ -179,8 +179,8 @@ class PaymentService {
           },
         ],
         mode: 'subscription',
-        success_url: successUrl || 'https://childactor101.sbs/app/stripe/success',
-        cancel_url: cancelUrl || 'https://childactor101.sbs/pricing',
+        success_url: successUrl || 'https://prep101.site/payment-success',
+        cancel_url: cancelUrl || 'https://prep101.site/pricing',
         allow_promotion_codes: true,
         billing_address_collection: 'required',
         metadata: {
@@ -206,21 +206,21 @@ class PaymentService {
       },
       starter: {
         name: 'Starter',
-        price: 29.99,
+        price: 19.99,
         priceId: process.env.STRIPE_STARTER_PRICE_ID,
         guidesLimit: 3,
         features: ['3 guides per month', 'Detailed beats, subtext & buttons', 'Genre-aware notes', 'Parent deep-dive + kid-ready guide', 'Priority email support', 'Printable PDF delivery']
       },
       alacarte: {
         name: 'A la carte',
-        price: 14.99,
+        price: 11.99,
         priceId: process.env.STRIPE_ALACARTE_PRICE_ID,
         guidesLimit: 1,
         features: ['1 guide (one-time purchase)', 'Same depth as Starter guides', 'Parent + kid versions', 'PDF delivery']
       },
       premium: {
         name: 'Premium',
-        price: 99.99,
+        price: 79.99,
         priceId: process.env.STRIPE_PREMIUM_PRICE_ID,
         guidesLimit: 10,
         features: ['10 guides per month', 'Advanced scene & character analysis', '2 Self-Tape Feedbacks included', 'Parent deep-dive + kid-ready guide', 'Rush-friendly priority support', 'PDF delivery + rehearsal variations']
