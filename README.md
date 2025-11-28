@@ -20,9 +20,16 @@ PREP101 is a comprehensive acting coaching platform that combines AI-powered gui
 
 ### **Payment & Subscriptions**
 - **Stripe Integration**: Professional payment processing
-- **Subscription Tiers**: Free (1 guide/month), Basic (10 guides/month), Premium (25 guides/month)
+- **Subscription Tiers**: Free (promo codes only), Basic (10 guides/month), Premium (25 guides/month)
 - **Usage Tracking**: Monitor guide generation usage and subscription limits
 - **Billing History**: Complete invoice and payment history
+
+### **Promo Code System**
+- **Free Guide Distribution**: Free guides only available via promo codes (no automatic monthly free guide)
+- **Code Management**: Admins can create, track, and deactivate promo codes
+- **Usage Controls**: Set max redemptions globally and per user
+- **Flexible Types**: Support for free guides, discounts, and upgrades
+- **Redemption Tracking**: Complete history of code redemptions per user
 
 ### **Guide Management**
 - **Guide Creation**: Generate guides from uploaded scripts
@@ -135,6 +142,12 @@ git push
 - `GET /api/payments/plans` - Subscription plans
 - `POST /api/payments/create-subscription` - Create subscription
 - `GET /api/payments/subscription-status` - Current subscription
+
+### **Promo Codes**
+- `POST /api/promo-codes/redeem` - Redeem promo code
+- `GET /api/promo-codes/my-redemptions` - User's redemption history
+- `POST /api/promo-codes/create` - Create promo code (admin)
+- `GET /api/promo-codes/admin/all` - List all codes (admin)
 
 ### **Beta Testing**
 - `GET /api/beta/features` - Available beta features

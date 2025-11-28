@@ -12,9 +12,9 @@ const Pricing = () => {
   // Stripe checkout URLs
   const STRIPE = {
     FREE:  '#',                 // e.g., /register or a $0 checkout if you want
-    STARTER: 'https://buy.stripe.com/6oU9AT4lVaPR8MBekG2wU3E',               // Stripe price link for 3/mo @ 29.99
-    ALA_CARTE: 'https://buy.stripe.com/7sY7sL9Gfe23d2Ra4q2wU3D',             // Stripe link for single guide @ 14.99
-    PREMIUM: 'https://buy.stripe.com/00w9AT2dNf679QFccy2wU3F',               // Stripe price link for 10/mo + 2 feedbacks @ 99.99
+    STARTER: 'https://buy.stripe.com/00wfZh5pZ8HJ2odgsO2wU40',               // Stripe price link for 3/mo @ $19.99
+    ALA_CARTE: 'https://buy.stripe.com/6oU3cv8Cb2jlbYN0tQ2wU3Z',             // Stripe link for single guide @ $11.99
+    PREMIUM: 'https://buy.stripe.com/4gM28rg4D6zBaUJ1xU2wU3Y',               // Stripe price link for 10/mo + 2 feedbacks @ $79.99
     ADDON_COACH: 'https://buy.stripe.com/fZu00j8Cb9LN8MB4K62wU3H',           // $50 30-min coaching
     ADDON_FEEDBACK: 'https://buy.stripe.com/6oU3cv9Gf1fhgf31xU2wU3G',        // $22 self-tape feedback
     EXAMPLES: '/examples'
@@ -30,24 +30,24 @@ const Pricing = () => {
 
   const plans = [
     {
-      name: 'Free',
-      price: '$0',
-      period: '/month',
-      tagline: 'One guide on us every month.',
+      name: 'A la carte',
+      price: '$11.99',
+      period: '/guide',
+      tagline: 'Buy a single guide whenever you need it.',
       features: [
-        '1 guide per month',
-        'Core scene breakdown & tips',
-        'Parent + kid versions included',
-        'Email support'
+        '1 guide (one-time purchase)',
+        'Same depth as Starter guides',
+        'Parent + kid versions',
+        'PDF delivery'
       ],
-      cta: 'Start Free',
-      href: STRIPE.FREE,
+      cta: 'Buy Single Guide',
+      href: STRIPE.ALA_CARTE,
       popular: false,
-      badge: 'Great for first-timers'
+      badge: 'Pay as you go'
     },
     {
       name: 'Starter',
-      price: '$29.99',
+      price: '$19.99',
       period: '/month',
       tagline: 'Smart monthly rhythm for most actors.',
       features: [
@@ -64,28 +64,12 @@ const Pricing = () => {
       badge: 'Most Popular'
     },
     {
-      name: 'A la carte',
-      price: '$14.99',
-      period: '/guide',
-      tagline: 'Buy a single guide whenever you need it.',
-      features: [
-        '1 guide (one-time purchase)',
-        'Same depth as Starter guides',
-        'Parent + kid versions',
-        'PDF delivery'
-      ],
-      cta: 'Buy Single Guide',
-      href: STRIPE.ALA_CARTE,
-      popular: false,
-      badge: 'Pay as you go'
-    },
-    {
       name: 'Premium',
-      price: '$99.99',
+      price: '$79.99',
       period: '/month',
       tagline: 'Serious prep, serious value.',
       features: [
-        '10 guides per month',
+        'Unlimited guides per month',
         'Advanced scene & character analysis',
         '2 Self-Tape Feedbacks included (save $44)',
         'Parent deep-dive + kid-ready guide',
@@ -352,7 +336,7 @@ const Pricing = () => {
                   margin: 0,
                   lineHeight: '1.6'
                 }}>
-                  You can purchase additional guides individually at $14.99 each, or upgrade to a higher tier plan.
+                  You can purchase additional guides individually at $11.99 each, or upgrade to a higher tier plan.
                 </p>
               </div>
               <div style={{ marginBottom: '1.5rem' }}>
@@ -391,14 +375,14 @@ const Pricing = () => {
                 margin: '0 0 1.5rem 0',
                 fontSize: '1.1rem'
               }}>
-                Start with our free plan and upgrade when you're ready for more.
+                Create your account and choose the plan that works for you. Have a promo code? Redeem it for free guides!
               </p>
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button
                   className="btn btnPrimary"
                   onClick={() => navigate('/register')}
                 >
-                  Start Free
+                  Get Started
                 </button>
                 <button
                   className="btn btnSecondary"

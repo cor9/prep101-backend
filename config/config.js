@@ -72,20 +72,26 @@ const config = {
     free: {
       name: 'Free',
       price: 0,
-      guidesLimit: 1,
-      features: ['1 guide per month', 'Basic methodology access']
+      guidesLimit: 0,
+      features: ['Use promo codes for free guides', 'Basic methodology access']
     },
-    basic: {
-      name: 'Basic',
-      price: 9.99,
-      guidesLimit: 10,
-      features: ['10 guides per month', 'Full methodology access', 'Priority support']
+    starter: {
+      name: 'Starter',
+      price: 19.99,
+      guidesLimit: 3,
+      features: ['3 guides per month', 'Full methodology access', 'Priority support']
+    },
+    alacarte: {
+      name: 'A la carte',
+      price: 11.99,
+      guidesLimit: 1,
+      features: ['1 guide (one-time purchase)', 'Full methodology access']
     },
     premium: {
       name: 'Premium',
-      price: 19.99,
-      guidesLimit: 50,
-      features: ['50 guides per month', 'Full methodology access', 'Priority support', 'Custom requests']
+      price: 79.99,
+      guidesLimit: 999, // Unlimited
+      features: ['Unlimited guides per month', 'Full methodology access', 'Priority support', '2 Self-Tape Feedbacks included']
     }
   },
 

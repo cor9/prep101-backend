@@ -114,12 +114,17 @@ const checkSubscription = (requiredPlan = 'free') => {
         });
       }
 
-      // Check guides limit for free users
-      if (user.subscription === 'free' && user.guidesUsed >= user.guidesLimit) {
-        return res.status(403).json({ 
-          message: 'Monthly guide limit reached. Upgrade your subscription for more guides.',
+      // Check guides limit for all users
+      if (user.guidesUsed >= user.guidesLimit) {
+        const message = user.subscription === 'free'
+          ? 'You have no guides available. Use a promo code to get free guides or upgrade your subscription.'
+          : 'Monthly guide limit reached. Upgrade your subscription for more guides.';
+
+        return res.status(403).json({
+          message,
           guidesUsed: user.guidesUsed,
-          guidesLimit: user.guidesLimit
+          guidesLimit: user.guidesLimit,
+          subscription: user.subscription
         });
       }
 

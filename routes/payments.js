@@ -164,7 +164,7 @@ router.post('/cancel-subscription', auth, async (req, res) => {
     await user.update({
       subscription: 'free',
       subscriptionId: null,
-      guidesLimit: 1
+      guidesLimit: 0 // Free tier has no guides without promo codes
     });
 
     res.json({ message: 'Subscription cancelled successfully' });
@@ -478,7 +478,7 @@ async function handleSubscriptionChange(result) {
       if (result.status === 'canceled' || result.status === 'unpaid') {
         await user.update({
           subscription: 'free',
-          guidesLimit: 1
+          guidesLimit: 0 // Free tier has no guides without promo codes
         });
       }
     }
@@ -562,8 +562,8 @@ router.post(
           },
         ],
         mode: 'payment', // One-time payment, not subscription
-        success_url: 'https://childactor101.sbs/app/stripe/success',
-        cancel_url: 'https://childactor101.sbs/pricing',
+        success_url: 'https://prep101.site/payment-success',
+        cancel_url: 'https://prep101.site/pricing',
         allow_promotion_codes: true,
         billing_address_collection: 'required',
         metadata: {
