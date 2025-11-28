@@ -179,8 +179,8 @@ class PaymentService {
           },
         ],
         mode: 'subscription',
-        success_url: successUrl || 'https://prep101.site/payment-success',
-        cancel_url: cancelUrl || 'https://prep101.site/pricing',
+        success_url: successUrl || 'https://childactor101.sbs/app/stripe/success',
+        cancel_url: cancelUrl || 'https://childactor101.sbs/pricing',
         allow_promotion_codes: true,
         billing_address_collection: 'required',
         metadata: {

@@ -562,8 +562,8 @@ router.post(
           },
         ],
         mode: 'payment', // One-time payment, not subscription
-        success_url: 'https://prep101.site/payment-success',
-        cancel_url: 'https://prep101.site/pricing',
+        success_url: 'https://childactor101.sbs/app/stripe/success',
+        cancel_url: 'https://childactor101.sbs/pricing',
         allow_promotion_codes: true,
         billing_address_collection: 'required',
         metadata: {
