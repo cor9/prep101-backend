@@ -222,8 +222,8 @@ class PaymentService {
         name: 'Premium',
         price: 79.99,
         priceId: process.env.STRIPE_PREMIUM_PRICE_ID,
-        guidesLimit: 10,
-        features: ['10 guides per month', 'Advanced scene & character analysis', '2 Self-Tape Feedbacks included', 'Parent deep-dive + kid-ready guide', 'Rush-friendly priority support', 'PDF delivery + rehearsal variations']
+        guidesLimit: 999, // Unlimited
+        features: ['Unlimited guides per month', 'Advanced scene & character analysis', '2 Self-Tape Feedbacks included', 'Parent deep-dive + kid-ready guide', 'Rush-friendly priority support', 'PDF delivery + rehearsal variations']
       }
     };
   }

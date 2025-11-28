@@ -69,7 +69,7 @@ const Pricing = () => {
       period: '/month',
       tagline: 'Serious prep, serious value.',
       features: [
-        '10 guides per month',
+        'Unlimited guides per month',
         'Advanced scene & character analysis',
         '2 Self-Tape Feedbacks included (save $44)',
         'Parent deep-dive + kid-ready guide',
