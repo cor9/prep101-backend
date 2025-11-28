@@ -46,7 +46,7 @@ const User = sequelize.define('User', {
   },
   guidesLimit: {
     type: DataTypes.INTEGER,
-    defaultValue: 1
+    defaultValue: 0 // Free users get 0 guides by default, must use promo codes
   },
   // Beta tester fields
   isBetaTester: {

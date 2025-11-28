@@ -468,6 +468,14 @@ try {
 }
 
 try {
+  const promoCodeRoutes = require("./routes/promoCodes");
+  app.use("/api/promo-codes", promoCodeRoutes);
+  console.log("✅ Promo code routes loaded");
+} catch (error) {
+  console.log("⚠️  Promo code routes not available:", error.message);
+}
+
+try {
   const stripeRoutes = require("./routes/stripe");
   app.use("/api/stripe", stripeRoutes);
   console.log("✅ Stripe routes loaded");

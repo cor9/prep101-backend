@@ -201,8 +201,8 @@ class PaymentService {
       free: {
         name: 'Free',
         price: 0,
-        guidesLimit: 1,
-        features: ['1 guide per month', 'Core scene breakdown & tips', 'Parent + kid versions included', 'Email support']
+        guidesLimit: 0,
+        features: ['Redeem promo codes for free guides', 'Core scene breakdown & tips', 'Parent + kid versions included', 'Email support']
       },
       starter: {
         name: 'Starter',

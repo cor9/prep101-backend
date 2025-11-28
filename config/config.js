@@ -72,8 +72,8 @@ const config = {
     free: {
       name: 'Free',
       price: 0,
-      guidesLimit: 1,
-      features: ['1 guide per month', 'Basic methodology access']
+      guidesLimit: 0,
+      features: ['Use promo codes for free guides', 'Basic methodology access']
     },
     basic: {
       name: 'Basic',

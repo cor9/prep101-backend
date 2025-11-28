@@ -230,7 +230,7 @@ PREP101 will become the #1 digital acting coach, helping thousands of actors boo
 
 | Tier | Price | Guides/Month | Features |
 |------|-------|--------------|----------|
-| **Free** | $0 | 1 | Basic guide, watermarked |
+| **Free** | $0 | 0 (promo codes only) | Redeem promo codes for free guides |
 | **Starter** | $9 | 5 | Full guides, child guides |
 | **Pro** | $19 | 20 | Priority generation, no watermark |
 | **Premium** | $39 | Unlimited | All features, priority support |

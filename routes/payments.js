@@ -164,7 +164,7 @@ router.post('/cancel-subscription', auth, async (req, res) => {
     await user.update({
       subscription: 'free',
       subscriptionId: null,
-      guidesLimit: 1
+      guidesLimit: 0 // Free tier has no guides without promo codes
     });
 
     res.json({ message: 'Subscription cancelled successfully' });
@@ -478,7 +478,7 @@ async function handleSubscriptionChange(result) {
       if (result.status === 'canceled' || result.status === 'unpaid') {
         await user.update({
           subscription: 'free',
-          guidesLimit: 1
+          guidesLimit: 0 // Free tier has no guides without promo codes
         });
       }
     }
