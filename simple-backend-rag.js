@@ -997,6 +997,7 @@ STRICT SCRIPT POLICY:
 `;
 
         const response = await fetch("https://api.anthropic.com/v1/messages", {
+          signal: controller.signal,
           method: "POST",
           headers: {
             "Content-Type": "application/json",
