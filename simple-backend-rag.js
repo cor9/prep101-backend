@@ -959,7 +959,7 @@ You are working with audition sides only. Focus your analysis on what's provided
     }
 
     // Generate guide using your methodology as context with timeout and retry logic
-    // Single attempt with extended timeout to stay within Vercel's 5-minute limit
+    // Single attempt with aggressive timeout to stay within Vercel's 5-minute limit
     const maxRetries = 1; // No retries - fail fast if timeout occurs
     let lastError = null;
 
@@ -969,7 +969,7 @@ You are working with audition sides only. Focus your analysis on what's provided
 
         // Create AbortController for timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes per guide
+        const timeoutId = setTimeout(() => controller.abort(), 150000); // 2.5 minutes max for parent guide
 
         // Debug scene content
         console.log(
@@ -1725,7 +1725,7 @@ async function generateChildGuide(data) {
 
     // Add timeout to child guide generation to prevent Vercel timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for child guide
+    const timeoutId = setTimeout(() => controller.abort(), 100000); // 100 second timeout for child guide
 
     try {
       // Generate child guide using the parent guide as reference
@@ -2079,6 +2079,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
 // RAG-Enhanced Guide Generation Endpoint
 app.post("/api/guides/generate", async (req, res) => {
+  const requestStartTime = Date.now(); // Track start time for Vercel timeout management
+
   try {
     const {
       uploadId,
@@ -2282,6 +2284,28 @@ app.post("/api/guides/generate", async (req, res) => {
       // Second Pass: Generate Child's Guide if requested
       let childGuideContent = null;
       if (childGuideRequested) {
+        // Check if we have enough time left for child guide (need ~120s, require 180s buffer)
+        const elapsedSeconds = (Date.now() - requestStartTime) / 1000;
+        const remainingSeconds = 300 - elapsedSeconds; // Vercel's 5-minute limit
+
+        console.log(`⏱️  Time check: ${elapsedSeconds.toFixed(1)}s elapsed, ${remainingSeconds.toFixed(1)}s remaining`);
+
+        if (remainingSeconds < 180) {
+          console.log(`⚠️  Insufficient time for child guide (need 180s buffer, have ${remainingSeconds.toFixed(1)}s)`);
+          console.log(`✅ Returning parent guide only to prevent timeout`);
+
+          // Return parent guide immediately without child guide
+          return res.json({
+            success: true,
+            guideId: guide.guideId,
+            guideContent,
+            childGuideRequested: true,
+            childGuideCompleted: false,
+            message: "Parent guide generated successfully. Child guide skipped due to time constraints.",
+            timeElapsed: elapsedSeconds.toFixed(1) + "s"
+          });
+        }
+
         console.log(
           `🌟 Starting second pass: Child's Guide generation for ${characterName}`
         );
