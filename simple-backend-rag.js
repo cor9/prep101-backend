@@ -1722,8 +1722,14 @@ async function generateChildGuide(data) {
     );
     console.log(`🎨 Using ${colorTheme.name} color theme for child guide`);
 
-    // Generate child guide using the parent guide as reference
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    // Add timeout to child guide generation to prevent Vercel timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+
+    try {
+      // Generate child guide using the parent guide as reference
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        signal: controller.signal,
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1833,31 +1839,44 @@ ${childMethodologyContext}
           },
         ],
       }),
-    });
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        "❌ Child Guide Generation Error:",
-        response.status,
-        errorText
-      );
-      throw new Error(`API Error: ${response.status} - ${errorText}`);
-    }
+      clearTimeout(timeoutId); // Clear timeout if request completes
 
-    const result = await response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          "❌ Child Guide Generation Error:",
+          response.status,
+          errorText
+        );
+        throw new Error(`API Error: ${response.status} - ${errorText}`);
+      }
 
-    if (result.content && result.content[0] && result.content[0].text) {
-      console.log(`✅ Child's Guide generated successfully!`);
-      console.log(
-        `📊 Child guide length: ${result.content[0].text.length} characters`
-      );
-      return result.content[0].text;
-    } else {
-      throw new Error("Invalid response format from API");
+      const result = await response.json();
+
+      if (result.content && result.content[0] && result.content[0].text) {
+        console.log(`✅ Child's Guide generated successfully!`);
+        console.log(
+          `📊 Child guide length: ${result.content[0].text.length} characters`
+        );
+        return result.content[0].text;
+      } else {
+        throw new Error("Invalid response format from API");
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error.name === 'AbortError') {
+        console.error('⏰ Child guide generation timeout after 90 seconds');
+        throw new Error('Child guide generation timed out');
+      }
+
+      console.error("❌ Child guide generation failed:", error.message);
+      throw error;
     }
   } catch (error) {
-    console.error("❌ Child guide generation failed:", error.message);
+    console.error("❌ Child guide generation outer error:", error.message);
     throw error;
   }
 }
