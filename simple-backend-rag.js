@@ -959,8 +959,8 @@ You are working with audition sides only. Focus your analysis on what's provided
     }
 
     // Generate guide using your methodology as context with timeout and retry logic
-    // Reduced timeout and retries to stay within Vercel's 5-minute function limit
-    const maxRetries = 2; // Reduced from 3 to fit within Vercel timeout
+    // Single attempt with extended timeout to stay within Vercel's 5-minute limit
+    const maxRetries = 1; // No retries - fail fast if timeout occurs
     let lastError = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -969,7 +969,7 @@ You are working with audition sides only. Focus your analysis on what's provided
 
         // Create AbortController for timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 90000); // Reduced to 90 seconds (was 120s)
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes per guide
 
         // Debug scene content
         console.log(
@@ -1725,7 +1725,7 @@ async function generateChildGuide(data) {
 
     // Add timeout to child guide generation to prevent Vercel timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for child guide
 
     try {
       // Generate child guide using the parent guide as reference
