@@ -179,7 +179,7 @@ class PaymentService {
           },
         ],
         mode: 'subscription',
-        success_url: successUrl || 'https://prep101.site/payment-success',
+        success_url: successUrl || 'https://prep101.site/app/stripe/success',
         cancel_url: cancelUrl || 'https://prep101.site/pricing',
         allow_promotion_codes: true,
         billing_address_collection: 'required',

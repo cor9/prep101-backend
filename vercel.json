@@ -5,7 +5,8 @@
       "src": "simple-backend-rag.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["methodology/**"]
+        "includeFiles": ["methodology/**"],
+        "maxDuration": 300
       }
     }
   ],
@@ -15,6 +16,11 @@
       "dest": "simple-backend-rag.js"
     }
   ],
+  "functions": {
+    "simple-backend-rag.js": {
+      "maxDuration": 300
+    }
+  },
   "env": {
     "NODE_ENV": "production"
   }

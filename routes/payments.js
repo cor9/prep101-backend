@@ -562,7 +562,7 @@ router.post(
           },
         ],
         mode: 'payment', // One-time payment, not subscription
-        success_url: 'https://prep101.site/payment-success',
+        success_url: 'https://prep101.site/app/stripe/success',
         cancel_url: 'https://prep101.site/pricing',
         allow_promotion_codes: true,
         billing_address_collection: 'required',

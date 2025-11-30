@@ -9,7 +9,9 @@ const authLimiter = rateLimit({
   message: 'Too many authentication attempts, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true
+  skipSuccessfulRequests: true,
+  // Vercel/proxy configuration
+  validate: { trustProxy: false } // Disable validation for serverless environments
 });
 
 // Rate limiting for general API endpoints
@@ -18,7 +20,9 @@ const apiLimiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later',
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  // Vercel/proxy configuration
+  validate: { trustProxy: false } // Disable validation for serverless environments
 });
 
 // Rate limiting for payment endpoints
@@ -27,7 +31,9 @@ const paymentLimiter = rateLimit({
   max: 10, // limit each IP to 10 payment requests per windowMs
   message: 'Too many payment attempts, please try again later',
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  // Vercel/proxy configuration
+  validate: { trustProxy: false } // Disable validation for serverless environments
 });
 
 // Slow down repeated requests
