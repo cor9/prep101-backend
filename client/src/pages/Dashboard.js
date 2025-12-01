@@ -170,34 +170,35 @@ const Dashboard = () => {
 
       clearTimeout(timeoutId);
 
-      if (!res.ok) {
-        let message = `Failed to generate guide (HTTP ${res.status})`;
-        try {
-          const j = await res.json();
-          message = j.error || message;
-        } catch {
-          const t = await res.text();
-          if (t) message = t;
-        }
-        throw new Error(message);
-      }
-
       const ct = res.headers.get('content-type') || '';
+      let data;
+      
       if (ct.includes('application/json')) {
-        const data = await res.json();
+        data = await res.json();
         console.log('🎭 Guide generation response:', data);
-
-        if (!data?.guideContent) throw new Error('No guide content returned.');
-
-        // Open parent guide
-        openHtmlInNewTab(data.guideContent);
-
-        // If child guide was requested and completed, show both guides
-        if (data.childGuideRequested && data.childGuideCompleted && data.childGuideContent) {
-          console.log('🌟 Opening child guide in 1 second...');
-          setTimeout(() => {
-            openHtmlInNewTab(data.childGuideContent, 'Child Guide');
-          }, 1000);
+        
+        // If we have guide content, show it even if auth failed (401)
+        if (data?.guideContent) {
+          // Show the guide regardless of success status
+          openHtmlInNewTab(data.guideContent);
+          
+          // Warn user if guide wasn't saved
+          if (data.savedToDatabase === false) {
+            toast('Guide created but not saved to your account. Please log in to save guides.', { icon: '⚠️' });
+          }
+          
+          // If child guide was requested and completed, show both guides
+          if (data.childGuideRequested && data.childGuideCompleted && data.childGuideContent) {
+            console.log('🌟 Opening child guide in 1 second...');
+            setTimeout(() => {
+              openHtmlInNewTab(data.childGuideContent, 'Child Guide');
+            }, 1000);
+          }
+        } else if (!res.ok) {
+          // No guide content and request failed
+          throw new Error(data?.error || `Failed to generate guide (HTTP ${res.status})`);
+        } else {
+          throw new Error('No guide content returned.');
         }
       } else {
         const html = await res.text();
