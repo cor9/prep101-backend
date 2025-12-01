@@ -1,5 +1,5 @@
 const DEFAULT_CLAUDE_MODEL =
-  process.env.CLAUDE_MODEL || 'claude-sonnet-4-5-20250929';
+  process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514';
 
 // Central place to control maximum output tokens for Claude
 // Can be overridden via CLAUDE_MAX_TOKENS if needed.

@@ -961,15 +961,23 @@ async function generateActingGuideWithRAG(data) {
       data.sceneText
     );
 
-    // Build context from your methodology files
+    // Build context from your methodology files (limit to ~50k chars to prevent timeouts)
     let methodologyContext = "";
+    const MAX_METHODOLOGY_CHARS = 50000;
+    let currentChars = 0;
+    
     if (relevantMethodology.length > 0) {
-      methodologyContext = relevantMethodology
-        .map(
-          (file) =>
-            `=== COREY RALSTON METHODOLOGY: ${file.filename} (Relevance: ${file.relevanceScore}) ===\n${file.content}\n\n`
-        )
-        .join("");
+      const contextParts = [];
+      for (const file of relevantMethodology) {
+        const fileContext = `=== COREY RALSTON METHODOLOGY: ${file.filename} (Relevance: ${file.relevanceScore}) ===\n${file.content}\n\n`;
+        if (currentChars + fileContext.length <= MAX_METHODOLOGY_CHARS) {
+          contextParts.push(fileContext);
+          currentChars += fileContext.length;
+        } else {
+          console.log(`⚠️ Skipping ${file.filename} to keep context under ${MAX_METHODOLOGY_CHARS} chars`);
+        }
+      }
+      methodologyContext = contextParts.join("");
     }
 
     console.log(
@@ -1001,8 +1009,8 @@ You are working with audition sides only. Focus your analysis on what's provided
     }
 
     // Generate guide using your methodology as context with timeout and retry logic
-    // Single attempt with aggressive timeout to stay within Vercel's 5-minute limit
-    const maxRetries = 1; // No retries - fail fast if timeout occurs
+    // Allow 4 minutes for Claude to generate (Vercel has 5-minute max)
+    const maxRetries = 2; // Allow one retry on timeout
     let lastError = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1011,7 +1019,7 @@ You are working with audition sides only. Focus your analysis on what's provided
 
         // Create AbortController for timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 150000); // 2.5 minutes max for parent guide
+        const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minutes max for parent guide
 
         // Debug scene content
         console.log(
