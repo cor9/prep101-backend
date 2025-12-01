@@ -2,6 +2,13 @@ const { DataTypes } = require('sequelize');
 const { sequelize } = require('../database/connection');
 const User = require('./User');
 
+// If sequelize is not available, export null
+if (!sequelize) {
+  console.warn('⚠️  Guide model not available - database connection missing');
+  module.exports = null;
+  return;
+}
+
 const Guide = sequelize.define('Guide', {
   id: {
     type: DataTypes.UUID,

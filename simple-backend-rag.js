@@ -23,6 +23,48 @@ app.get("/test", (req, res) => {
   res.status(200).json({ message: "Hello from Vercel!" });
 });
 
+// Diagnostic endpoint to check system status
+app.get("/api/diagnostics", async (req, res) => {
+  let dbStatus = "not_configured";
+  let dbError = null;
+
+  try {
+    const { sequelize } = require("./database/connection");
+    if (sequelize) {
+      await sequelize.authenticate();
+      dbStatus = "connected";
+    } else {
+      dbStatus = "sequelize_null";
+    }
+  } catch (error) {
+    dbStatus = "error";
+    dbError = error.message;
+  }
+
+  res.json({
+    status: "running",
+    timestamp: new Date().toISOString(),
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: !!process.env.VERCEL,
+      DATABASE_URL: !!process.env.DATABASE_URL,
+      ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
+      STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
+      JWT_SECRET: !!process.env.JWT_SECRET
+    },
+    database: {
+      status: dbStatus,
+      error: dbError
+    },
+    endpoints: {
+      health: "✅ Available",
+      test: "✅ Available",
+      guidesGenerate: "✅ Available (POST /api/guides/generate)",
+      diagnostics: "✅ Available (GET /api/diagnostics)"
+    }
+  });
+});
+
 // Root route handler
 app.get("/", (req, res) => {
   res.json({
@@ -959,7 +1001,8 @@ You are working with audition sides only. Focus your analysis on what's provided
     }
 
     // Generate guide using your methodology as context with timeout and retry logic
-    const maxRetries = 3;
+    // Single attempt with aggressive timeout to stay within Vercel's 5-minute limit
+    const maxRetries = 1; // No retries - fail fast if timeout occurs
     let lastError = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -968,7 +1011,7 @@ You are working with audition sides only. Focus your analysis on what's provided
 
         // Create AbortController for timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+        const timeoutId = setTimeout(() => controller.abort(), 150000); // 2.5 minutes max for parent guide
 
         // Debug scene content
         console.log(
@@ -996,6 +1039,7 @@ STRICT SCRIPT POLICY:
 `;
 
         const response = await fetch("https://api.anthropic.com/v1/messages", {
+          signal: controller.signal,
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1721,8 +1765,14 @@ async function generateChildGuide(data) {
     );
     console.log(`🎨 Using ${colorTheme.name} color theme for child guide`);
 
-    // Generate child guide using the parent guide as reference
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    // Add timeout to child guide generation to prevent Vercel timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 100000); // 100 second timeout for child guide
+
+    try {
+      // Generate child guide using the parent guide as reference
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        signal: controller.signal,
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1832,31 +1882,44 @@ ${childMethodologyContext}
           },
         ],
       }),
-    });
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        "❌ Child Guide Generation Error:",
-        response.status,
-        errorText
-      );
-      throw new Error(`API Error: ${response.status} - ${errorText}`);
-    }
+      clearTimeout(timeoutId); // Clear timeout if request completes
 
-    const result = await response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          "❌ Child Guide Generation Error:",
+          response.status,
+          errorText
+        );
+        throw new Error(`API Error: ${response.status} - ${errorText}`);
+      }
 
-    if (result.content && result.content[0] && result.content[0].text) {
-      console.log(`✅ Child's Guide generated successfully!`);
-      console.log(
-        `📊 Child guide length: ${result.content[0].text.length} characters`
-      );
-      return result.content[0].text;
-    } else {
-      throw new Error("Invalid response format from API");
+      const result = await response.json();
+
+      if (result.content && result.content[0] && result.content[0].text) {
+        console.log(`✅ Child's Guide generated successfully!`);
+        console.log(
+          `📊 Child guide length: ${result.content[0].text.length} characters`
+        );
+        return result.content[0].text;
+      } else {
+        throw new Error("Invalid response format from API");
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error.name === 'AbortError') {
+        console.error('⏰ Child guide generation timeout after 90 seconds');
+        throw new Error('Child guide generation timed out');
+      }
+
+      console.error("❌ Child guide generation failed:", error.message);
+      throw error;
     }
   } catch (error) {
-    console.error("❌ Child guide generation failed:", error.message);
+    console.error("❌ Child guide generation outer error:", error.message);
     throw error;
   }
 }
@@ -2058,6 +2121,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
 // RAG-Enhanced Guide Generation Endpoint
 app.post("/api/guides/generate", async (req, res) => {
+  const requestStartTime = Date.now(); // Track start time for Vercel timeout management
+
   try {
     const {
       uploadId,
@@ -2261,6 +2326,28 @@ app.post("/api/guides/generate", async (req, res) => {
       // Second Pass: Generate Child's Guide if requested
       let childGuideContent = null;
       if (childGuideRequested) {
+        // Check if we have enough time left for child guide (need ~120s, require 180s buffer)
+        const elapsedSeconds = (Date.now() - requestStartTime) / 1000;
+        const remainingSeconds = 300 - elapsedSeconds; // Vercel's 5-minute limit
+
+        console.log(`⏱️  Time check: ${elapsedSeconds.toFixed(1)}s elapsed, ${remainingSeconds.toFixed(1)}s remaining`);
+
+        if (remainingSeconds < 180) {
+          console.log(`⚠️  Insufficient time for child guide (need 180s buffer, have ${remainingSeconds.toFixed(1)}s)`);
+          console.log(`✅ Returning parent guide only to prevent timeout`);
+
+          // Return parent guide immediately without child guide
+          return res.json({
+            success: true,
+            guideId: guide.guideId,
+            guideContent,
+            childGuideRequested: true,
+            childGuideCompleted: false,
+            message: "Parent guide generated successfully. Child guide skipped due to time constraints.",
+            timeElapsed: elapsedSeconds.toFixed(1) + "s"
+          });
+        }
+
         console.log(
           `🌟 Starting second pass: Child's Guide generation for ${characterName}`
         );

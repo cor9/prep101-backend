@@ -2,6 +2,13 @@ const { DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const { sequelize } = require('../database/connection');
 
+// If sequelize is not available, export a dummy model
+if (!sequelize) {
+  console.warn('⚠️  User model not available - database connection missing');
+  module.exports = null;
+  return;
+}
+
 const User = sequelize.define('User', {
   id: {
     type: DataTypes.UUID,
