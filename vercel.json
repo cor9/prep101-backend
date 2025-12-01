@@ -1,27 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "simple-backend-rag.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["methodology/**"],
-        "maxDuration": 300
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "simple-backend-rag.js"
-    }
-  ],
   "functions": {
     "simple-backend-rag.js": {
-      "maxDuration": 300
+      "maxDuration": 300,
+      "memory": 1024,
+      "includeFiles": "methodology/**"
     }
   },
-  "env": {
-    "NODE_ENV": "production"
-  }
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/simple-backend-rag.js"
+    }
+  ]
 }
