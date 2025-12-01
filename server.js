@@ -116,7 +116,7 @@ function loadMethodologyFiles() {
     return;
   }
   
-  console.log('📚 Loading methodology files for RAG...');
+  console.log('Loading methodology files for RAG...');
   
   try {
     const files = fs.readdirSync(methodologyPath);
