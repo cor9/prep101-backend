@@ -3,7 +3,8 @@
   "functions": {
     "api/simple-backend-rag.js": {
       "maxDuration": 300,
-      "memory": 1024
+      "memory": 1024,
+      "includeFiles": "methodology/**"
     }
   },
   "rewrites": [
