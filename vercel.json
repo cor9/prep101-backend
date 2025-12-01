@@ -1,16 +1,15 @@
 {
   "version": 2,
   "functions": {
-    "simple-backend-rag.js": {
+    "api/simple-backend-rag.js": {
       "maxDuration": 300,
-      "memory": 1024,
-      "includeFiles": "methodology/**"
+      "memory": 1024
     }
   },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/simple-backend-rag.js"
+      "destination": "/api/simple-backend-rag"
     }
   ]
 }
