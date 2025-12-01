@@ -23,6 +23,27 @@ app.get("/test", (req, res) => {
   res.status(200).json({ message: "Hello from Vercel!" });
 });
 
+// Diagnostic endpoint to check system status
+app.get("/api/diagnostics", (req, res) => {
+  res.json({
+    status: "running",
+    timestamp: new Date().toISOString(),
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: !!process.env.VERCEL,
+      DATABASE_URL: !!process.env.DATABASE_URL,
+      ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
+      STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
+      JWT_SECRET: !!process.env.JWT_SECRET
+    },
+    endpoints: {
+      health: "✅ Available",
+      test: "✅ Available",
+      guidesGenerate: "✅ Available (POST /api/guides/generate)"
+    }
+  });
+});
+
 // Root route handler
 app.get("/", (req, res) => {
   res.json({
