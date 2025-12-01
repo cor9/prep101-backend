@@ -24,7 +24,23 @@ app.get("/test", (req, res) => {
 });
 
 // Diagnostic endpoint to check system status
-app.get("/api/diagnostics", (req, res) => {
+app.get("/api/diagnostics", async (req, res) => {
+  let dbStatus = "not_configured";
+  let dbError = null;
+
+  try {
+    const { sequelize } = require("./database/connection");
+    if (sequelize) {
+      await sequelize.authenticate();
+      dbStatus = "connected";
+    } else {
+      dbStatus = "sequelize_null";
+    }
+  } catch (error) {
+    dbStatus = "error";
+    dbError = error.message;
+  }
+
   res.json({
     status: "running",
     timestamp: new Date().toISOString(),
@@ -36,10 +52,15 @@ app.get("/api/diagnostics", (req, res) => {
       STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
       JWT_SECRET: !!process.env.JWT_SECRET
     },
+    database: {
+      status: dbStatus,
+      error: dbError
+    },
     endpoints: {
       health: "✅ Available",
       test: "✅ Available",
-      guidesGenerate: "✅ Available (POST /api/guides/generate)"
+      guidesGenerate: "✅ Available (POST /api/guides/generate)",
+      diagnostics: "✅ Available (GET /api/diagnostics)"
     }
   });
 });
