@@ -6,8 +6,10 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 console.log('=== Database Connection Debug ===');
 console.log('DATABASE_URL loaded:', !!process.env.DATABASE_URL);
+console.log('DATABASE_URL length:', process.env.DATABASE_URL?.length);
+console.log('DATABASE_URL first 50 chars:', process.env.DATABASE_URL?.substring(0, 50));
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL?.trim(); // Trim whitespace/newlines
 
 let sequelize = null;
 
@@ -51,6 +53,8 @@ if (!databaseUrl) {
     console.log('✅ Sequelize instance created');
   } catch (error) {
     console.error('❌ Failed to create Sequelize instance:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ DATABASE_URL format issue - check for whitespace/newlines');
     // Don't throw - let routes handle null sequelize
   }
 }
