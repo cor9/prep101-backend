@@ -1,6 +1,13 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../database/connection');
 
+// If sequelize is not available, export null
+if (!sequelize) {
+  console.warn('⚠️  PromoCodeRedemption model not available - database connection missing');
+  module.exports = null;
+  return;
+}
+
 const PromoCodeRedemption = sequelize.define('PromoCodeRedemption', {
   id: {
     type: DataTypes.UUID,
