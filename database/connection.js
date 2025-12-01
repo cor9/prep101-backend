@@ -13,6 +13,11 @@ if (!databaseUrl) {
   console.error('❌ DATABASE_URL not found in environment variables');
   console.error('Please set DATABASE_URL in your environment variables');
   console.error('For Supabase, it should look like: postgresql://postgres:[password]@[host]:5432/postgres');
+
+  // Don't exit in serverless - throw error instead
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    throw new Error('DATABASE_URL environment variable is required');
+  }
   process.exit(1);
 }
 
@@ -47,6 +52,11 @@ const testConnection = async () => {
     console.log('✅ Connected to PostgreSQL database');
   } catch (error) {
     console.error('❌ Unable to connect to database:', error.message);
+
+    // Don't exit in serverless - throw error instead
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      throw error;
+    }
     process.exit(1);
   }
 };
