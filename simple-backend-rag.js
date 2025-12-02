@@ -1219,7 +1219,7 @@ async function generateActingGuideWithRAG(data) {
 
     // Build context from your methodology files (limit to ~50k chars to prevent timeouts)
     let methodologyContext = "";
-    const MAX_METHODOLOGY_CHARS = 50000;
+    const MAX_METHODOLOGY_CHARS = 80000;
     let currentChars = 0;
     
     if (relevantMethodology.length > 0) {
@@ -1308,6 +1308,11 @@ You are working with audition sides only. Focus your analysis on what's provided
 
         const POLICY = `
 STRICT SCRIPT POLICY:
+- Ground plot, relationship, and timeline facts in SCRIPT below. If a fact is missing, state "Not stated in sides" and do not invent story specifics.
+- You MAY add industry comps, genre insights, and rehearsal strategies beyond the SCRIPT, but never claim they appear in the sides.
+- If SCRIPT appears sparse or generic, say "Limited content in sides" and keep story-specific claims minimal while still offering motivating guidance.
+- Weave supporting words from the SCRIPT directly into the prose—no brackets, meta tags, evidence labels, or markdown fences.
+- Output must be pure HTML (no code blocks) and free of meta markers.
 - Use ONLY facts present in SCRIPT below. If a fact (title, studio, franchise, comps, location, time period) is not present, write "Not stated in sides".
 - Do NOT invent project names or comparable titles unless they appear verbatim in SCRIPT.
 - If SCRIPT appears sparse or generic, state "Limited content in sides" and keep genre/comparable guidance neutral.
@@ -1363,6 +1368,34 @@ ${data.sceneText}${fileTypeContext}
 
 **CRITICAL STYLE REQUIREMENTS - "ACTOR MOTIVATOR" VOICE:**
 
+- Write like you're personally coaching this actor over coffee. Use "you" and "your" liberally.
+- Lean into Corey-level hype: "This is GOLD!", "This scene is DYNAMITE!", "Gold Acting Moment:" and "Bold Choice:" callouts.
+- Drop "Pro Tip:" and insider nuggets that feel like mentorship, not a textbook.
+- Weave script phrases into sentences (no citations or brackets) and celebrate risks that pop on camera.
+
+**REQUIRED SECTIONS (USE THIS ORDER WITH H2 HEADERS + EMOJI SIGNPOSTS):**
+1. Opening Hook — Fast, emotional hook on why this scene/character is special.
+2. Project Overview — Include comparable projects with SPECIFIC characters (e.g., "Leslie Knope (Parks and Rec)").
+3. Character Breakdown — Psychology, "How She/He Sees Themself" vs. "How Others See Them", plus Casting Director Mindset.
+4. Uta Hagen's 9 Questions — Complete and specific to this scene.
+5. Scene Action & Physicality — Physical comedy/grounded movement, plus Physical Signature Ideas.
+6. Subtext & Emotional Layers — What each key line REALLY means.
+7. Bold Acting Choices — Include a line-by-line "Delivery Trap vs Bold Choice" table for pivotal moments.
+8. 10+ Takes Strategy — Numbered rehearsal takes with varied approaches (tempo, stakes, humor, vulnerability).
+9. Alternative Take Strategy (Callback) — Redirect-ready adjustments (tone, pacing, relationship frame, eye-line, physicality).
+10. Final Pep Talk — Inspiring, personal close with a memorable mantra.
+
+**MUST-HAVE ELEMENTS THROUGHOUT:**
+- Character POV and chronological beat map with pivot lines called out.
+- Key Emotional Notes and Acting Choices with playable verbs and genre-aware tactics.
+- Comparable projects and characters even if not in the sides (clear they are comps, not script facts).
+- "Traps to Avoid" paired with bolder alternatives.
+- Memorization Strategy, Self-Tape specifics, and industry insider perspective.
+- ${genreSpecificGuidance}
+
+**EVIDENCE & CREATIVITY RULES:**
+- Use script wording naturally in prose—no labels or brackets. Make comps and industry knowledge additive even when not in the script.
+- If information is absent, say "Not stated in sides" and move on; do not halt the guide.
 1. **Use Corey's signature empowering language:**
    - "This scene is DYNAMITE" / "This is GOLD"
    - "Bold Choice:" callouts
@@ -1406,12 +1439,12 @@ ${data.sceneText}${fileTypeContext}
 - Quick Action Plan (bullet checklist the actor can execute today)
 
 **GENERATE A COMPLETE HTML ACTING GUIDE THAT:**
-- Sounds exactly like Corey Ralston wrote it personally
-- Uses the "Actor Motivator" voice throughout
-- Includes bold callouts and specific direction
-- Feels encouraging and empowering
-- Provides actionable choices, not just theory
-- Matches the energy and enthusiasm of the example guides
+- Sounds exactly like Corey Ralston wrote it personally.
+- Uses the "Actor Motivator" voice throughout with bold, memorable language.
+- Includes bold callouts and specific direction.
+- Feels encouraging and empowering.
+- Provides actionable choices, not just theory.
+- Matches the energy and enthusiasm of the example guides.
 - ${
                   data.hasFullScript
                     ? "Uses full script context intelligently to enrich sides analysis"
