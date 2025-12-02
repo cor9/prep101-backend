@@ -274,6 +274,121 @@ function assessContentQuality(text, wordCount, isUpload = false) {
   return { quality: "good", reason: "sufficient_content" };
 }
 
+// Post-generation quality guardrails for guide content
+function runPostGenerationChecks(content, autoAddedSections = []) {
+  const issues = [];
+
+  // Detect leftover evidence tokens
+  if (/\[evidence[^\]]*\]/i.test(content)) {
+    issues.push("Guide still contains evidence placeholder tokens");
+  }
+
+  // Detect generic filler that should never ship to users
+  const fillerPatterns = [
+    /lorem ipsum/i,
+    /as an ai language model/i,
+    /tbd\b/i,
+    /to be determined/i,
+    /\[placeholder\]/i,
+    /insert (text|details) here/i,
+  ];
+
+  if (fillerPatterns.some((pattern) => pattern.test(content))) {
+    issues.push("Guide contains generic filler or placeholder text");
+  }
+
+  // Detect missing structural sections
+  const missingSections = [];
+  if (!/casting director[’']s checklist/i.test(content)) {
+    missingSections.push("Casting Director's Checklist");
+  }
+  if (!/action plan/i.test(content)) {
+    missingSections.push("Action Plan");
+  }
+  if (!/physical[^.<]{0,120}example/i.test(content)) {
+    missingSections.push("Physical example");
+  }
+  if (!/(vocal|voice)[^.<]{0,120}example/i.test(content)) {
+    missingSections.push("Vocal example");
+  }
+
+  if (missingSections.length > 0) {
+    issues.push(
+      `Guide is missing required sections: ${missingSections.join(", ")}`
+    );
+  }
+
+  return {
+    hasIssues: issues.length > 0,
+    issues,
+    autoAddedSections,
+  };
+}
+
+// Ensure minimum specificity and required sections are present
+function enforceGuideSpecificity(content, context) {
+  let updatedContent = content;
+  const addedSections = [];
+
+  const physicalExampleBlock = `
+    <section>
+      <h3>Physical Specificity Example</h3>
+      <p><strong>Body language cue:</strong> When ${context.characterName} faces pressure in <em>${context.productionTitle}</em>, let the shoulders tighten then consciously release as you reset the beat. Step half a pace closer to your scene partner on your strongest line to claim space without breaking eye-line.</p>
+    </section>
+  `;
+
+  const vocalExampleBlock = `
+    <section>
+      <h3>Vocal Specificity Example</h3>
+      <p><strong>Voice choice:</strong> Start with a grounded, conversational pitch, then add a sharper staccato on the moment you push back. Let the breath drop on the final button to show control instead of strain.</p>
+    </section>
+  `;
+
+  const castingChecklistBlock = `
+    <section>
+      <h2>Casting Director's Checklist</h2>
+      <ul>
+        <li><strong>Frame & eyeline:</strong> Keep eyes level with camera and avoid drifting out of frame during physical beats.</li>
+        <li><strong>Story clarity:</strong> Every adjustment ties to ${context.characterName}'s objective—trim any riffing that muddies that drive.</li>
+        <li><strong>Button:</strong> Hold the final moment for a clean count of two so casting can feel the choice land.</li>
+      </ul>
+    </section>
+  `;
+
+  const actionPlanBlock = `
+    <section>
+      <h2>Action Plan</h2>
+      <ol>
+        <li><strong>10-minute table work:</strong> Mark the emotional pivot and physical beat change.</li>
+        <li><strong>3-take drill:</strong> Natural, Bold, then Vulnerable—keep the same blocking for easy comparison.</li>
+        <li><strong>Record & review:</strong> Watch once for frame/lighting, once for vocal variation, once for emotional truth.</li>
+      </ol>
+    </section>
+  `;
+
+  if (!/physical[^.<]{0,120}example/i.test(updatedContent)) {
+    updatedContent += physicalExampleBlock;
+    addedSections.push("physical_example");
+  }
+
+  if (!/(vocal|voice)[^.<]{0,120}example/i.test(updatedContent)) {
+    updatedContent += vocalExampleBlock;
+    addedSections.push("vocal_example");
+  }
+
+  if (!/casting director[’']s checklist/i.test(updatedContent)) {
+    updatedContent += castingChecklistBlock;
+    addedSections.push("casting_director_checklist");
+  }
+
+  if (!/action plan/i.test(updatedContent)) {
+    updatedContent += actionPlanBlock;
+    addedSections.push("action_plan");
+  }
+
+  return { content: updatedContent, addedSections };
+}
+
 // Basic extraction helper used as fallback
 async function extractWithBasic(pdfBuffer) {
   const data = await pdfParse(pdfBuffer);
@@ -2328,7 +2443,7 @@ app.post("/api/guides/generate", async (req, res) => {
       });
     }
 
-    const guideContent = await generateActingGuideWithRAG({
+    let guideContent = await generateActingGuideWithRAG({
       sceneText: combinedSceneText,
       characterName: characterName.trim(),
       productionTitle: productionTitle.trim(),
@@ -2339,6 +2454,18 @@ app.post("/api/guides/generate", async (req, res) => {
       hasFullScript: hasFullScript,
       uploadData: allUploadData,
     });
+
+    // Enforce required sections and specificity before persisting
+    const sectionEnforcement = enforceGuideSpecificity(guideContent, {
+      characterName: characterName.trim(),
+      productionTitle: productionTitle.trim(),
+    });
+
+    guideContent = sectionEnforcement.content;
+    const qualityFlags = runPostGenerationChecks(
+      guideContent,
+      sectionEnforcement.addedSections
+    );
 
     console.log(`✅ Corey Ralston RAG Guide Complete!`);
 
@@ -2493,6 +2620,7 @@ app.post("/api/guides/generate", async (req, res) => {
         childGuideContent: childGuideContent,
         generatedAt: new Date(),
         savedToDatabase: true,
+        quality: qualityFlags,
         metadata: {
           characterName,
           productionTitle,
@@ -2534,6 +2662,7 @@ app.post("/api/guides/generate", async (req, res) => {
           error: "Authentication required to save guide",
           message: "Please log in to save your guide to your account",
           guideContent: guideContent, // Still provide the guide content
+          quality: qualityFlags,
           generatedAt: new Date(),
           savedToDatabase: false,
         });
@@ -2547,6 +2676,7 @@ app.post("/api/guides/generate", async (req, res) => {
         generatedAt: new Date(),
         savedToDatabase: false,
         saveError: dbError.message,
+        quality: qualityFlags,
         metadata: {
           characterName,
           productionTitle,
