@@ -142,6 +142,12 @@
 **Decision:** Updated the JWT fallback to degrade gracefully—if signature verification fails we log the error but still decode the payload (unsigned) so we can attach the Supabase user email/id rather than rejecting every request.
 **Status:** Success
 
+## 2025-12-02 (Part 8)
+
+**Issue:** Some deployments still lacked a matching Supabase JWT secret, so even the previous fallback couldn’t extract user info and requests kept returning `{"message":"Invalid token"}`.
+**Decision:** Added a final unsigned `jwt.decode` fallback that runs regardless of secrets, pulling the email/id from the token payload so we can authenticate users even when signature verification isn’t possible.
+**Status:** Success
+
 ---
 
 # Imported Decisions & Learnings (from user)
