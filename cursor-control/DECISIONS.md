@@ -84,6 +84,11 @@
 **Decision:** Added fallback routes for authentication, payment, and Stripe services that return proper 503 errors when database is unavailable, allowing frontend to handle service unavailability gracefully instead of getting 404s.
 **Status:** Success
 
+## 2025-12-02
+**Issue:** Generated PREP101 guides were missing the new required structure, tone, and production-type logic outlined in the latest coaching framework, leading to inconsistent user-facing output.
+**Decision:** Rebuilt the Anthropic system prompt in `simple-backend-rag.js` to enforce the 10-section blueprint, motivational “Actor Motivator” voice, evidence tagging, and production-type adjustments. Added curated RAG resources (`methodology/example_guides_gold_standard.md`, `methodology/character_archetype_comparables.md`, `methodology/guide_voice_examples.md`) so the model can mirror Corey’s gold-standard examples, archetype comparables, and voice notes.
+**Status:** Success
+
 
 ---
 # Imported Decisions & Learnings (from user)
