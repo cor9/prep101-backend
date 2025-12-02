@@ -124,6 +124,12 @@
 **Decision:** Updated `/api/guides/generate` to detect unlimited/admin users (beta access level `admin`, non-free subscription, or `guidesLimit` null/≤0/≥999) so the limit check and `guidesUsed` increment are skipped for those accounts.
 **Status:** Success
 
+## 2025-12-02 (Part 5)
+
+**Issue:** Users were seeing “Invalid token”/401 errors whenever the backend lacked a Supabase service-role key, because the auth middleware couldn’t validate Supabase access tokens.
+**Decision:** Enhanced `middleware/auth.js` so it first tries Supabase admin validation when available, but automatically falls back to verifying JWTs locally using `SUPABASE_JWT_SECRET`/`SUPABASE_ANON_KEY`. This allows standard Supabase access tokens to work even when no service key is configured.
+**Status:** Success
+
 ---
 
 # Imported Decisions & Learnings (from user)
