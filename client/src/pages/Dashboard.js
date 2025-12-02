@@ -142,7 +142,7 @@ const Dashboard = () => {
 
     // Add timeout to prevent infinite hanging
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
+    const timeoutId = setTimeout(() => controller.abort(), 420000); // 7 minute timeout
 
     try {
       const headers = {
@@ -159,7 +159,7 @@ const Dashboard = () => {
       };
 
       console.log('🚀 Starting guide generation for:', formData.characterName);
-      toast.loading('Generating your guide... this may take 2-5 minutes.');
+      toast.loading('Generating your guide... this may take 4-7 minutes.');
 
       const res = await fetch(`${API_BASE}/api/guides/generate`, {
         method: 'POST',

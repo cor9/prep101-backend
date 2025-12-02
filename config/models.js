@@ -4,7 +4,7 @@ const DEFAULT_CLAUDE_MODEL =
 // Central place to control maximum output tokens for Claude
 // Can be overridden via CLAUDE_MAX_TOKENS if needed.
 const DEFAULT_CLAUDE_MAX_TOKENS = parseInt(
-  process.env.CLAUDE_MAX_TOKENS || '9000',
+  process.env.CLAUDE_MAX_TOKENS || '16000',
   10
 );
 

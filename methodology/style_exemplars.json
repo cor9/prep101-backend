@@ -1,0 +1,58 @@
+[
+  {
+    "id": "karniaweb",
+    "title": "Karina Kowalski - \"Wizards Beyond Waverly Place\" Audition Guide",
+    "filename": "karniaweb.html",
+    "productionType": "Multi-Camera Comedy TV Series",
+    "genre": "Tween magic multi-cam comedy",
+    "tone": "Playful, quick-witted, and brightly encouraging with clear buttoned jokes",
+    "audience": "multi-cam comedy",
+    "styleBeats": [
+      "Punchy setup-button pacing with precise landing of jokes",
+      "Physical comedy and prop interaction cues",
+      "Studio-audience energy with upbeat tempo and confident buttons"
+    ]
+  },
+  {
+    "id": "eloise",
+    "title": "Eloise Audition Guide",
+    "filename": "eloise_audition_guide.html",
+    "productionType": "Feature Film - Classic Family Adventure",
+    "genre": "Family adventure with comedic sparkle",
+    "tone": "Warm, mischievous, and charmingly confident with clear kid-friendly stakes",
+    "audience": "single-cam family film",
+    "styleBeats": [
+      "Invites playful POV and imaginative world-building",
+      "Balances sweetness with crisp comedic timing",
+      "Highlights physical beats that stay truthful and youthful"
+    ]
+  },
+  {
+    "id": "nina",
+    "title": "Nina - Buffy the Vampire Slayer Reboot Audition Guide",
+    "filename": "nina_guide.txt",
+    "productionType": "TV Series - Supernatural Action Drama",
+    "genre": "Supernatural teen drama with action and horror edges",
+    "tone": "Empowering, high-stakes, and emotionally anchored while honoring genre tension",
+    "audience": "single-cam drama",
+    "styleBeats": [
+      "Hero’s-journey stakes tied to vulnerability and agency",
+      "Rooted physical choices that support supernatural action",
+      "Direct evidence pulls from sides to prevent lore invention"
+    ]
+  },
+  {
+    "id": "bianca",
+    "title": "Bianca di Angelo - Percy Jackson Audition Guide",
+    "filename": "bianca_guide.txt",
+    "productionType": "TV Series - Fantasy Adventure Ensemble",
+    "genre": "Fantasy adventure with emotional coming-of-age arcs",
+    "tone": "Grounded, protective, and heartfelt with clear sibling-focus stakes",
+    "audience": "single-cam adventure",
+    "styleBeats": [
+      "Balances mythic stakes with intimate relationship beats",
+      "Encourages protective drive without losing playfulness",
+      "Maps physical environment and props to character objective"
+    ]
+  }
+]
