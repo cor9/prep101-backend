@@ -94,6 +94,11 @@
 **Decision:** Updated `middleware/auth.js` to validate Supabase JWTs first (via the service role key), auto-create local `User` rows, and fall back to legacy JWT only when needed. Wrapped `/api/guides/generate` and `/api/guides/:id/pdf` with the auth middleware, removed manual token parsing, enforced guide-limit checks, and ensured guide-saving/increment logic uses the authenticated Sequelize user. On the frontend, `AuthContext` and `supabase.js` now surface the Supabase `access_token` (and derived `name`) so every API call carries a valid bearer token.
 **Status:** Success
 
+## 2025-12-02 (Part 3)
+**Issue:** Guide generation still failed whenever the in-memory upload cache expired, forcing users to re-upload, and the guide viewer lacked built-in print/PDF controls despite user requests.
+**Decision:** Cached the extracted scene text on the client (`FileUpload` → `Dashboard`) and send it back as `scenePayloads` so `/api/guides/generate` can rebuild uploads even if the backend map is cleared. Also added authenticated print/download/email actions inside `GuideView` and wired the Account page to the correct `/api/guides/:id/child` download route.
+**Status:** Success
+
 
 ---
 # Imported Decisions & Learnings (from user)

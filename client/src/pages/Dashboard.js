@@ -1,34 +1,55 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
-import FileUpload from '../components/FileUpload';
-import GuideForm from '../components/GuideForm';
-import LoadingSpinner from '../components/LoadingSpinner';
-import Footer from '../components/Footer';
+import React, { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import toast from "react-hot-toast";
+import FileUpload from "../components/FileUpload";
+import GuideForm from "../components/GuideForm";
+import LoadingSpinner from "../components/LoadingSpinner";
+import Footer from "../components/Footer";
 
-import API_BASE from '../config/api';
-import '../styles/shared.css';
-import Navbar from '../components/Navbar';
+import API_BASE from "../config/api";
+import "../styles/shared.css";
+import Navbar from "../components/Navbar";
 
 // Simple progress bar
 const ProgressBar = ({ value, max }) => {
   const pct = Math.max(0, Math.min(100, max ? (value / max) * 100 : 0));
   return (
-    <div style={{ width: '100%', height: 10, background: '#e5e7eb', borderRadius: 999 }}>
-      <div style={{ width: `${pct}%`, height: '100%', background: 'var(--gold)', borderRadius: 999 }} />
+    <div
+      style={{
+        width: "100%",
+        height: 10,
+        background: "#e5e7eb",
+        borderRadius: 999,
+      }}
+    >
+      <div
+        style={{
+          width: `${pct}%`,
+          height: "100%",
+          background: "var(--gold)",
+          borderRadius: 999,
+        }}
+      />
     </div>
   );
 };
 
 const nicePlan = (p) => {
-  switch ((p || '').toLowerCase()) {
-    case 'free': return 'Free';
-    case 'basic': return 'Basic';
-    case 'premium': return 'Premium';
-    case 'starter': return 'Starter';
-    case 'alacarte': return 'A la carte';
-    case 'unlimited': return 'Unlimited';
-    default: return '—';
+  switch ((p || "").toLowerCase()) {
+    case "free":
+      return "Free";
+    case "basic":
+      return "Basic";
+    case "premium":
+      return "Premium";
+    case "starter":
+      return "Starter";
+    case "alacarte":
+      return "A la carte";
+    case "unlimited":
+      return "Unlimited";
+    default:
+      return "—";
   }
 };
 
@@ -53,36 +74,42 @@ const Dashboard = () => {
       setUsageError(null);
 
       try {
-        const headers = user?.accessToken || user?.token
-          ? { Authorization: `Bearer ${user.accessToken || user.token}` }
-          : {};
+        const headers =
+          user?.accessToken || user?.token
+            ? { Authorization: `Bearer ${user.accessToken || user.token}` }
+            : {};
 
         const res = await fetch(`${API_BASE}/api/auth/dashboard`, { headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
-        console.log('🔍 Dashboard API response:', json);
+        console.log("🔍 Dashboard API response:", json);
         if (!cancelled) {
           // Transform the complex backend response to the simple format expected by the UI
           const transformedUsage = {
-            plan: json.user?.subscription || json.subscription?.currentPlan?.name,
+            plan:
+              json.user?.subscription || json.subscription?.currentPlan?.name,
             used: json.user?.guidesUsed || 0,
             limit: json.user?.guidesLimit || 1,
-            renewsAt: json.subscription?.renewsAt || new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString()
+            renewsAt:
+              json.subscription?.renewsAt ||
+              new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
           };
-          console.log('🔍 Transformed usage data:', transformedUsage);
+          console.log("🔍 Transformed usage data:", transformedUsage);
           setUsage(transformedUsage);
         }
       } catch (err) {
         // Fallback mock so the UI still works in dev
         if (!cancelled) {
           setUsage({
-            plan: user?.subscription || 'free',
+            plan: user?.subscription || "free",
             used: user?.guidesUsed || 0,
             limit: user?.guidesLimit || 1,
-            renewsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString() // +7 days
+            renewsAt: new Date(
+              Date.now() + 1000 * 60 * 60 * 24 * 7
+            ).toISOString(), // +7 days
           });
-          setUsageError('Using fallback data until API is ready.');
+          setUsageError("Using fallback data until API is ready.");
         }
       } finally {
         if (!cancelled) setUsageLoading(false);
@@ -90,7 +117,9 @@ const Dashboard = () => {
     };
 
     fetchUsage();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const remaining = useMemo(() => {
@@ -108,32 +137,38 @@ const Dashboard = () => {
   // ====== FILE UPLOAD ======
   const handleFileUpload = (data) => {
     setUploadData(data);
-    toast.success('PDF processed — ready to generate!');
+    toast.success("PDF processed — ready to generate!");
   };
 
   // Open HTML in a new tab (Blob URL). Optionally reuse a pre-opened window.
   const openHtmlInNewTab = (htmlString, customTitle) => {
-    const blob = new Blob([htmlString], { type: 'text/html' });
+    const blob = new Blob([htmlString], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     setLastGuideUrl(url);
     // If customTitle is provided, it's a string for the window name
-    if (typeof customTitle === 'string') {
-      const w = window.open(url, customTitle, 'noopener,noreferrer');
-      if (!w) toast('Popup blocked. Use the "Open last guide" link below.', { icon: '⚠️' });
+    if (typeof customTitle === "string") {
+      const w = window.open(url, customTitle, "noopener,noreferrer");
+      if (!w)
+        toast('Popup blocked. Use the "Open last guide" link below.', {
+          icon: "⚠️",
+        });
     } else {
-      const w = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!w) toast('Popup blocked. Use the "Open last guide" link below.', { icon: '⚠️' });
+      const w = window.open(url, "_blank", "noopener,noreferrer");
+      if (!w)
+        toast('Popup blocked. Use the "Open last guide" link below.', {
+          icon: "⚠️",
+        });
     }
   };
 
   // ====== GENERATE GUIDE ======
   const handleGenerateGuide = async (formData) => {
     if (!uploadData?.uploadId && !uploadData?.uploadIds) {
-      toast.error('Please upload your sides (PDF) before generating.');
+      toast.error("Please upload your sides (PDF) before generating.");
       return;
     }
     if (!canGenerate) {
-      toast.error('You\'ve hit your guide limit. Upgrade for more this month.');
+      toast.error("You've hit your guide limit. Upgrade for more this month.");
       return;
     }
 
@@ -146,78 +181,89 @@ const Dashboard = () => {
 
     try {
       const headers = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(user?.accessToken || user?.token
           ? { Authorization: `Bearer ${user.accessToken || user.token}` }
-          : {})
+          : {}),
       };
 
       const payload = {
         uploadId: uploadData.uploadId || uploadData.uploadIds?.[0],
         uploadIds: uploadData.uploadIds || [uploadData.uploadId],
-        ...formData
+        scenePayloads: uploadData.scenePayloads || {},
+        ...formData,
       };
 
-      console.log('🚀 Starting guide generation for:', formData.characterName);
-      toast.loading('Generating your guide... this may take 4-7 minutes.');
+      console.log("🚀 Starting guide generation for:", formData.characterName);
+      toast.loading("Generating your guide... this may take 4-7 minutes.");
 
       const res = await fetch(`${API_BASE}/api/guides/generate`, {
-        method: 'POST',
+        method: "POST",
         headers,
         body: JSON.stringify(payload),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
-      const ct = res.headers.get('content-type') || '';
+      const ct = res.headers.get("content-type") || "";
       let data;
-      
-      if (ct.includes('application/json')) {
+
+      if (ct.includes("application/json")) {
         data = await res.json();
-        console.log('🎭 Guide generation response:', data);
-        
+        console.log("🎭 Guide generation response:", data);
+
         // If we have guide content, show it even if auth failed (401)
         if (data?.guideContent) {
           // Show the guide regardless of success status
           openHtmlInNewTab(data.guideContent);
-          
+
           // Warn user if guide wasn't saved
           if (data.savedToDatabase === false) {
-            toast('Guide created but not saved to your account. Please log in to save guides.', { icon: '⚠️' });
+            toast(
+              "Guide created but not saved to your account. Please log in to save guides.",
+              { icon: "⚠️" }
+            );
           }
-          
+
           // If child guide was requested and completed, show both guides
-          if (data.childGuideRequested && data.childGuideCompleted && data.childGuideContent) {
-            console.log('🌟 Opening child guide in 1 second...');
+          if (
+            data.childGuideRequested &&
+            data.childGuideCompleted &&
+            data.childGuideContent
+          ) {
+            console.log("🌟 Opening child guide in 1 second...");
             setTimeout(() => {
-              openHtmlInNewTab(data.childGuideContent, 'Child Guide');
+              openHtmlInNewTab(data.childGuideContent, "Child Guide");
             }, 1000);
           }
         } else if (!res.ok) {
           // No guide content and request failed
-          throw new Error(data?.error || `Failed to generate guide (HTTP ${res.status})`);
+          throw new Error(
+            data?.error || `Failed to generate guide (HTTP ${res.status})`
+          );
         } else {
-          throw new Error('No guide content returned.');
+          throw new Error("No guide content returned.");
         }
       } else {
         const html = await res.text();
-        if (!html || html.length < 50) throw new Error('Empty guide response.');
+        if (!html || html.length < 50) throw new Error("Empty guide response.");
         openHtmlInNewTab(html);
       }
 
-      toast.success('Guide generated successfully! Opening now...');
+      toast.success("Guide generated successfully! Opening now...");
 
       // Optimistic usage increment
       if (usage?.limit != null) {
         setUsage((u) => ({ ...u, used: (u?.used || 0) + 1 }));
       }
-
     } catch (err) {
-      console.error('Guide generation error:', err);
+      console.error("Guide generation error:", err);
 
-      if (err.name === 'AbortError') {
-        toast.error('Guide generation timed out after 5 minutes. Please try again.');
+      if (err.name === "AbortError") {
+        toast.error(
+          "Guide generation timed out after 5 minutes. Please try again."
+        );
       } else {
         toast.error(`Failed to generate guide: ${err.message}`);
       }
@@ -230,7 +276,10 @@ const Dashboard = () => {
 
   // ====== RENDER ======
   const renewText = usage?.renewsAt
-    ? new Date(usage.renewsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    ? new Date(usage.renewsAt).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      })
     : null;
 
   return (
@@ -241,22 +290,43 @@ const Dashboard = () => {
       {isGenerating && (
         <div
           style={{
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.92)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 50
+            background: "rgba(15, 23, 42, 0.92)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 50,
           }}
         >
-          <div style={{ maxWidth: 560, padding: '2rem', textAlign: 'center', color: '#e5e7eb' }}>
+          <div
+            style={{
+              maxWidth: 560,
+              padding: "2rem",
+              textAlign: "center",
+              color: "#e5e7eb",
+            }}
+          >
             <LoadingSpinner />
-            <p style={{ marginTop: '1.5rem', fontSize: '1rem', color: '#e5e7eb' }}>
-              Crafting your Prep101 audition guide. This usually takes 2–5 minutes.
+            <p
+              style={{
+                marginTop: "1.5rem",
+                fontSize: "1rem",
+                color: "#e5e7eb",
+              }}
+            >
+              Crafting your Prep101 audition guide. This usually takes 2–5
+              minutes.
             </p>
-            <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#9ca3af' }}>
-              You can keep this tab open and review your guide as soon as it’s ready. Please don&apos;t close the page while we work.
+            <p
+              style={{
+                marginTop: "0.5rem",
+                fontSize: "0.875rem",
+                color: "#9ca3af",
+              }}
+            >
+              You can keep this tab open and review your guide as soon as it’s
+              ready. Please don&apos;t close the page while we work.
             </p>
           </div>
         </div>
@@ -266,50 +336,81 @@ const Dashboard = () => {
         <div className="container-wide">
           {/* Header */}
           <div className="page-hero">
-            <img src="/preplogo.png" alt="Prep101 logo" className="logo-hero" loading="lazy" />
+            <img
+              src="/preplogo.png"
+              alt="Prep101 logo"
+              className="logo-hero"
+              loading="lazy"
+            />
             <h1 className="h1-hero">Dashboard</h1>
-            <p className="h2-hero">Upload sides, fill role details, and generate your Prep101 guide.</p>
+            <p className="h2-hero">
+              Upload sides, fill role details, and generate your Prep101 guide.
+            </p>
           </div>
 
           {/* Usage strip */}
           <div className="card-white">
             {usageLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <LoadingSpinner /><span style={{ color: '#6b7280' }}>Loading plan…</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <LoadingSpinner />
+                <span style={{ color: "#6b7280" }}>Loading plan…</span>
               </div>
             ) : (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                  <div style={{ fontWeight: 800, color: '#0f172a' }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    marginBottom: 6,
+                  }}
+                >
+                  <div style={{ fontWeight: 800, color: "#0f172a" }}>
                     Plan: {nicePlan(usage?.plan || user?.subscription)}
-                    {usageError && <span style={{ color: '#f59e0b', marginLeft: 8 }}>(demo)</span>}
+                    {usageError && (
+                      <span style={{ color: "#f59e0b", marginLeft: 8 }}>
+                        (demo)
+                      </span>
+                    )}
                   </div>
-                  <div style={{ color: '#475569', fontWeight: 700 }}>
-                    {usage?.limit == null ? 'Unlimited' : `${usage.used || 0} / ${usage.limit} used`}
+                  <div style={{ color: "#475569", fontWeight: 700 }}>
+                    {usage?.limit == null
+                      ? "Unlimited"
+                      : `${usage.used || 0} / ${usage.limit} used`}
                   </div>
                 </div>
                 {usage?.limit != null && (
                   <>
                     <ProgressBar value={usage.used || 0} max={usage.limit} />
-                    <div style={{ color: '#64748b', marginTop: 6, fontSize: 13 }}>
-                      {remaining} remaining • {renewText ? `renews ${renewText}` : 'monthly'}
+                    <div
+                      style={{ color: "#64748b", marginTop: 6, fontSize: 13 }}
+                    >
+                      {remaining} remaining •{" "}
+                      {renewText ? `renews ${renewText}` : "monthly"}
                     </div>
                   </>
                 )}
                 {!canGenerate && (
-                  <div style={{
-                    marginTop: 10,
-                    background: '#fffbeb',
-                    border: '1px solid #f59e0b',
-                    borderRadius: 10,
-                    color: '#92400e',
-                    padding: '8px 10px'
-                  }}>
-                    You've hit your monthly limit. Upgrade on the Pricing page for more guides.
+                  <div
+                    style={{
+                      marginTop: 10,
+                      background: "#fffbeb",
+                      border: "1px solid #f59e0b",
+                      borderRadius: 10,
+                      color: "#92400e",
+                      padding: "8px 10px",
+                    }}
+                  >
+                    You've hit your monthly limit. Upgrade on the Pricing page
+                    for more guides.
                     <button
-                      onClick={() => (window.location.href = '/pricing')}
+                      onClick={() => (window.location.href = "/pricing")}
                       className="btn btnPrimary"
-                      style={{ marginLeft: 10, padding: '6px 10px', fontSize: '0.875rem' }}
+                      style={{
+                        marginLeft: 10,
+                        padding: "6px 10px",
+                        fontSize: "0.875rem",
+                      }}
                     >
                       See Plans
                     </button>
@@ -321,45 +422,62 @@ const Dashboard = () => {
 
           {/* Body */}
           <div className="card-white">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.1rem",
+              }}
+            >
               <FileUpload onUpload={handleFileUpload} />
 
               {uploadData && (
-                <div style={{
-                  padding: 16,
-                  background: '#f0fdfa',
-                  borderRadius: 12,
-                  border: '1px solid #2dd4bf',
-                  color: '#065f46'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <div
+                  style={{
+                    padding: 16,
+                    background: "#f0fdfa",
+                    borderRadius: 12,
+                    border: "1px solid #2dd4bf",
+                    color: "#065f46",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
                     <span>✅</span>
                     <strong>PDF uploaded successfully!</strong>
                   </div>
-                  <div style={{ fontSize: '0.875rem' }}>
-                    {uploadData.uploadIds ?
-                      `${uploadData.uploadIds.length} file(s) ready for guide generation` :
-                      'File ready for guide generation'
-                    }
+                  <div style={{ fontSize: "0.875rem" }}>
+                    {uploadData.uploadIds
+                      ? `${uploadData.uploadIds.length} file(s) ready for guide generation`
+                      : "File ready for guide generation"}
                   </div>
                 </div>
               )}
 
               {uploadData && (
                 <div>
-                  <h3 style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 'bold',
-                    color: '#374151',
-                    marginBottom: '1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
+                  <h3
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      color: "#374151",
+                      marginBottom: "1rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                    }}
+                  >
                     🎭 Guide Details
                   </h3>
-                  <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-                    Fill in the details below to generate your personalized audition guide.
+                  <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>
+                    Fill in the details below to generate your personalized
+                    audition guide.
                   </p>
 
                   <GuideForm
@@ -372,7 +490,13 @@ const Dashboard = () => {
               )}
 
               {!uploadData && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "2rem",
+                    color: "#6b7280",
+                  }}
+                >
                   <p>Upload your audition sides (PDF) to get started.</p>
                 </div>
               )}

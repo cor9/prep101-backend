@@ -1105,7 +1105,7 @@ Finish with **FINAL PEP TALK** that sounds like Corey cheering them on.
 **CRITICAL RULES**
 - NEVER invent production facts; write "Not stated in sides" when missing. Cite all factual claims with [evidence].
 - ALWAYS include at least 3 specific comparables/projects and explain the "why".
-- Pull archetype insights from `character_archetype_comparables.md` when useful.
+- Pull archetype insights from 'character_archetype_comparables.md' when useful.
 - Follow Gold Standard examples for tone/structure; line-by-line subtext must cover every pivotal line.
 - Highlight "Bold Choice", "Gold Acting Moment", "Pitfall to Avoid", "Key Emotional Notes" where they add value.
 - ${
@@ -2119,6 +2119,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       extractionMethod: result.method,
       extractionConfidence: result.confidence,
       preview: (result.text || "").slice(0, 400) + "...",
+      sceneText: result.text,
     });
   } catch (error) {
     console.error("❌ Upload error:", error);
@@ -2206,7 +2207,32 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     }
 
     // Combine all upload data
-    const allUploadData = uploadIdList.map((id) => uploads[id]);
+    const scenePayloads = req.body.scenePayloads || {};
+    const allUploadData = uploadIdList.map((id) => {
+      if (uploads[id]) return uploads[id];
+      const fallback = scenePayloads[id];
+      if (fallback && fallback.sceneText) {
+        return {
+          filename: fallback.filename || `upload_${id}.txt`,
+          sceneText: fallback.sceneText,
+          characterNames: fallback.characterNames || [],
+          extractionMethod: fallback.extractionMethod || "client-cache",
+          extractionConfidence: fallback.extractionConfidence || "unknown",
+          uploadTime: new Date(),
+          wordCount:
+            fallback.wordCount ||
+            (fallback.sceneText.match(/\b\w+\b/g) || []).length,
+          fileType: fallback.fileType || "sides",
+        };
+      }
+      return null;
+    });
+
+    if (allUploadData.some((data) => !data)) {
+      return res
+        .status(400)
+        .json({ error: "Upload data not found or expired. Please re-upload." });
+    }
     const combinedSceneText = allUploadData
       .map((data) => data.sceneText)
       .join("\n\n--- NEW SCENE ---\n\n");
