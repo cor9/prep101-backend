@@ -148,6 +148,12 @@
 **Decision:** Added a final unsigned `jwt.decode` fallback that runs regardless of secrets, pulling the email/id from the token payload so we can authenticate users even when signature verification isn’t possible.
 **Status:** Success
 
+## 2025-12-02 (Part 9)
+
+**Issue:** In serverless deployments without a database connection, `User` models aren’t available, so the auth middleware couldn’t create/find users even after decoding the Supabase token.
+**Decision:** When the Sequelize `User` model is missing we now build a lightweight “Supabase-only” user stub (id/email/plan info) so authenticated requests still succeed, and guide generation skips the DB-only increment calls unless the model exists.
+**Status:** Success
+
 ---
 
 # Imported Decisions & Learnings (from user)

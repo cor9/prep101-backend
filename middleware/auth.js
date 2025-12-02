@@ -50,23 +50,43 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 async function findOrCreateUserFromSupabase(supabaseUser) {
-  if (!User) {
-    console.warn("⚠️  User model unavailable; cannot sync Supabase user");
-    return null;
-  }
-
   if (!supabaseUser || !supabaseUser.email) return null;
 
   const email = supabaseUser.email.toLowerCase();
+  const derivedName =
+    supabaseUser.user_metadata?.full_name ||
+    supabaseUser.user_metadata?.name ||
+    email.split("@")[0] ||
+    "Prep101 Actor";
+
+  if (!User) {
+    console.warn("⚠️  User model unavailable; using Supabase-only user stub");
+    return {
+      id: supabaseUser.id,
+      email,
+      name: derivedName,
+      subscription:
+        supabaseUser.user_metadata?.subscription ||
+        supabaseUser.app_metadata?.subscription ||
+        "free",
+      guidesLimit:
+        supabaseUser.user_metadata?.guidesLimit ??
+        supabaseUser.app_metadata?.guidesLimit ??
+        null,
+      guidesUsed:
+        supabaseUser.user_metadata?.guidesUsed ??
+        supabaseUser.app_metadata?.guidesUsed ??
+        0,
+      betaAccessLevel:
+        supabaseUser.user_metadata?.betaAccessLevel ||
+        supabaseUser.app_metadata?.betaAccessLevel ||
+        "none",
+    };
+  }
+
   let user = await User.findOne({ where: { email } });
 
   if (!user) {
-    const derivedName =
-      supabaseUser.user_metadata?.full_name ||
-      supabaseUser.user_metadata?.name ||
-      email.split("@")[0] ||
-      "Prep101 Actor";
-
     const randomPassword = crypto.randomBytes(32).toString("hex");
 
     user = await User.create({

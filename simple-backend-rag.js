@@ -2372,13 +2372,20 @@ app.post("/api/guides/generate", auth, async (req, res) => {
 
       console.log(`💾 Guide saved to database with ID: ${guide.id}`);
 
-      if (!hasUnlimitedPlan && userGuideLimit !== null && userGuideLimit > 0) {
-        await currentUser.increment("guidesUsed").catch((err) => {
-          console.error(
-            "Failed to increment guide usage:",
-            err?.message || err
-          );
-        });
+      if (
+        !hasUnlimitedPlan &&
+        userGuideLimit !== null &&
+        userGuideLimit > 0 &&
+        typeof currentUser.increment === "function"
+      ) {
+        await currentUser
+          .increment("guidesUsed")
+          .catch((err) => {
+            console.error(
+              "Failed to increment guide usage:",
+              err?.message || err
+            );
+          });
       }
 
       // Second Pass: Generate Child's Guide if requested
