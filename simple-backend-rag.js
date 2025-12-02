@@ -274,6 +274,121 @@ function assessContentQuality(text, wordCount, isUpload = false) {
   return { quality: "good", reason: "sufficient_content" };
 }
 
+// Post-generation quality guardrails for guide content
+function runPostGenerationChecks(content, autoAddedSections = []) {
+  const issues = [];
+
+  // Detect leftover evidence tokens
+  if (/\[evidence[^\]]*\]/i.test(content)) {
+    issues.push("Guide still contains evidence placeholder tokens");
+  }
+
+  // Detect generic filler that should never ship to users
+  const fillerPatterns = [
+    /lorem ipsum/i,
+    /as an ai language model/i,
+    /tbd\b/i,
+    /to be determined/i,
+    /\[placeholder\]/i,
+    /insert (text|details) here/i,
+  ];
+
+  if (fillerPatterns.some((pattern) => pattern.test(content))) {
+    issues.push("Guide contains generic filler or placeholder text");
+  }
+
+  // Detect missing structural sections
+  const missingSections = [];
+  if (!/casting director[’']s checklist/i.test(content)) {
+    missingSections.push("Casting Director's Checklist");
+  }
+  if (!/action plan/i.test(content)) {
+    missingSections.push("Action Plan");
+  }
+  if (!/physical[^.<]{0,120}example/i.test(content)) {
+    missingSections.push("Physical example");
+  }
+  if (!/(vocal|voice)[^.<]{0,120}example/i.test(content)) {
+    missingSections.push("Vocal example");
+  }
+
+  if (missingSections.length > 0) {
+    issues.push(
+      `Guide is missing required sections: ${missingSections.join(", ")}`
+    );
+  }
+
+  return {
+    hasIssues: issues.length > 0,
+    issues,
+    autoAddedSections,
+  };
+}
+
+// Ensure minimum specificity and required sections are present
+function enforceGuideSpecificity(content, context) {
+  let updatedContent = content;
+  const addedSections = [];
+
+  const physicalExampleBlock = `
+    <section>
+      <h3>Physical Specificity Example</h3>
+      <p><strong>Body language cue:</strong> When ${context.characterName} faces pressure in <em>${context.productionTitle}</em>, let the shoulders tighten then consciously release as you reset the beat. Step half a pace closer to your scene partner on your strongest line to claim space without breaking eye-line.</p>
+    </section>
+  `;
+
+  const vocalExampleBlock = `
+    <section>
+      <h3>Vocal Specificity Example</h3>
+      <p><strong>Voice choice:</strong> Start with a grounded, conversational pitch, then add a sharper staccato on the moment you push back. Let the breath drop on the final button to show control instead of strain.</p>
+    </section>
+  `;
+
+  const castingChecklistBlock = `
+    <section>
+      <h2>Casting Director's Checklist</h2>
+      <ul>
+        <li><strong>Frame & eyeline:</strong> Keep eyes level with camera and avoid drifting out of frame during physical beats.</li>
+        <li><strong>Story clarity:</strong> Every adjustment ties to ${context.characterName}'s objective—trim any riffing that muddies that drive.</li>
+        <li><strong>Button:</strong> Hold the final moment for a clean count of two so casting can feel the choice land.</li>
+      </ul>
+    </section>
+  `;
+
+  const actionPlanBlock = `
+    <section>
+      <h2>Action Plan</h2>
+      <ol>
+        <li><strong>10-minute table work:</strong> Mark the emotional pivot and physical beat change.</li>
+        <li><strong>3-take drill:</strong> Natural, Bold, then Vulnerable—keep the same blocking for easy comparison.</li>
+        <li><strong>Record & review:</strong> Watch once for frame/lighting, once for vocal variation, once for emotional truth.</li>
+      </ol>
+    </section>
+  `;
+
+  if (!/physical[^.<]{0,120}example/i.test(updatedContent)) {
+    updatedContent += physicalExampleBlock;
+    addedSections.push("physical_example");
+  }
+
+  if (!/(vocal|voice)[^.<]{0,120}example/i.test(updatedContent)) {
+    updatedContent += vocalExampleBlock;
+    addedSections.push("vocal_example");
+  }
+
+  if (!/casting director[’']s checklist/i.test(updatedContent)) {
+    updatedContent += castingChecklistBlock;
+    addedSections.push("casting_director_checklist");
+  }
+
+  if (!/action plan/i.test(updatedContent)) {
+    updatedContent += actionPlanBlock;
+    addedSections.push("action_plan");
+  }
+
+  return { content: updatedContent, addedSections };
+}
+
 // Basic extraction helper used as fallback
 async function extractWithBasic(pdfBuffer) {
   const data = await pdfParse(pdfBuffer);
@@ -599,6 +714,44 @@ try {
 
 // Load methodology files into memory for RAG
 let methodologyDatabase = {};
+let styleExemplars = [];
+
+function buildProductionEnergyContext(productionType, productionTone, stakes) {
+  const type = (productionType || "").toLowerCase();
+  const bullets = [];
+
+  if (type.includes("multi")) {
+    bullets.push(
+      "Multi-cam comedy pace — bright energy, sharper buttons, and cleaner setups/payoffs. Keep framing for laugh space while still honoring truth."
+    );
+  } else if (type.includes("single")) {
+    bullets.push(
+      "Single-cam grounding — more naturalistic pacing, smaller camera-friendly adjustments, let humor/drama breathe between beats."
+    );
+  } else if (type.includes("sketch") || type.includes("skit")) {
+    bullets.push(
+      "Sketch energy — bold physicality, fast pivots, and heightened contrast between beats while staying specific."
+    );
+  }
+
+  if (productionTone) {
+    bullets.push(
+      `Tone cue: ${productionTone}. Match rhythm, musicality, and button choices to that vibe.`
+    );
+  }
+
+  if (stakes) {
+    bullets.push(
+      `Stakes: ${stakes}. Beat map and subtext should track what can be won or lost (competition, safety, belonging, reputation).`
+    );
+  }
+
+  if (!bullets.length) {
+    return "- Use the tone implied by the sides; keep energy calibrated to the on-page style.";
+  }
+
+  return `- ${bullets.join("\n- ")}`;
+}
 
 async function initializeDatabase() {
   if (!sequelize || !testConnection) {
@@ -664,6 +817,53 @@ function loadMethodologyFiles() {
   }
 }
 
+function loadStyleExemplars() {
+  const exemplarsPath = path.join(
+    __dirname,
+    "methodology",
+    "style_exemplars.json"
+  );
+
+  if (!fs.existsSync(exemplarsPath)) {
+    console.warn("⚠️  Style exemplar file not found - skipping style retrieval");
+    return;
+  }
+
+  try {
+    const exemplars = JSON.parse(fs.readFileSync(exemplarsPath, "utf8"));
+
+    styleExemplars = exemplars.map((exemplar) => {
+      const exemplarPath = path.join(__dirname, "methodology", exemplar.filename);
+      let contentSnippet = "";
+
+      if (fs.existsSync(exemplarPath)) {
+        const fullContent = fs.readFileSync(exemplarPath, "utf8");
+        contentSnippet = fullContent.substring(0, 1200);
+      } else {
+        console.warn(`⚠️  Exemplar file missing: ${exemplar.filename}`);
+      }
+
+      return {
+        ...exemplar,
+        contentSnippet,
+        lowercaseTags: [
+          exemplar.productionType,
+          exemplar.genre,
+          exemplar.audience,
+          ...(exemplar.styleBeats || []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      };
+    });
+
+    console.log(`🎬 Loaded ${styleExemplars.length} style exemplars for retrieval`);
+  } catch (error) {
+    console.error("❌ Failed to load style exemplars:", error);
+  }
+}
+
 function determineFileType(filename) {
   const name = filename.toLowerCase();
   if (name.includes("character")) return "character-development";
@@ -725,6 +925,12 @@ function searchMethodology(characterName, productionType, sceneContext) {
   if (productionType.toLowerCase().includes("drama")) {
     searchTerms.push("drama", "emotion", "truth");
   }
+  if (productionType.toLowerCase().includes("multi")) {
+    searchTerms.push("multi-cam", "multi camera", "studio audience");
+  }
+  if (productionType.toLowerCase().includes("sketch")) {
+    searchTerms.push("sketch", "sketch comedy", "character wheel");
+  }
 
   const relevantFiles = [];
 
@@ -772,6 +978,56 @@ function searchMethodology(characterName, productionType, sceneContext) {
   });
 
   return topResults;
+}
+
+function buildStyleContext(productionType = "") {
+  if (!styleExemplars.length) return "";
+
+  const normalizedProduction = productionType.toLowerCase();
+
+  const scored = styleExemplars
+    .map((exemplar) => {
+      let score = 0;
+      const genreLower = exemplar.genre?.toLowerCase() || "";
+      const audienceLower = exemplar.audience?.toLowerCase() || "";
+
+      if (
+        normalizedProduction &&
+        exemplar.lowercaseTags.includes(normalizedProduction)
+      )
+        score += 3;
+      if (normalizedProduction.includes("multi") && audienceLower.includes("multi"))
+        score += 4;
+      if (normalizedProduction.includes("sketch") && audienceLower.includes("sketch"))
+        score += 4;
+      if (normalizedProduction.includes("comedy") && genreLower.includes("comedy"))
+        score += 3;
+      if (normalizedProduction.includes("drama") && genreLower.includes("drama"))
+        score += 2;
+      if (normalizedProduction.includes("action") && genreLower.includes("action"))
+        score += 2;
+      if (normalizedProduction.includes("family") && genreLower.includes("family"))
+        score += 2;
+
+      return { exemplar, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const selected = (scored[0]?.score || 0) > 0 ? scored.slice(0, 3) : scored.slice(0, 2);
+
+  return selected
+    .map(({ exemplar }) => {
+      return `=== STYLE EXEMPLAR: ${exemplar.title} ===
+PRODUCTION: ${exemplar.productionType}
+GENRE: ${exemplar.genre}
+TONE: ${exemplar.tone}
+AUDIENCE: ${exemplar.audience}
+STYLE BEATS: ${(exemplar.styleBeats || []).join(" | ")}
+EXCERPT (voice/tone cues):
+${exemplar.contentSnippet}
+`;
+    })
+    .join("\n");
 }
 
 // PDF extraction using Adobe PDF Services
@@ -987,6 +1243,13 @@ async function generateActingGuideWithRAG(data) {
       `📊 Total methodology context: ${methodologyContext.length} characters`
     );
 
+    const styleContext = buildStyleContext(data.productionType);
+    if (styleContext) {
+      console.log("🎨 Style exemplars included for tone matching");
+    } else {
+      console.log("⚠️  No style exemplars available for this production type");
+    }
+
     // Build file type context for the AI
     let fileTypeContext = "";
     if (data.hasFullScript) {
@@ -1008,17 +1271,14 @@ You have access to BOTH audition sides AND the full script. Use this to your adv
 You are working with audition sides only. Focus your analysis on what's provided in the uploaded scenes.`;
     }
 
-    const genreSpecificGuidance = `
-**GENRE-SPECIFIC GUIDANCE (apply the one that matches this project):**
-- **Multi-Cam Comedy:** Play to the live audience rhythm, lean into buttoned jokes, and heighten physical bits without losing truth.
-- **Single-Cam Comedy:** Keep it grounded and conversational; smaller physicality with sharper reactions.
-- **Sketch Comedy:** Build a repeatable signature move or catchphrase and a clear comedic game that can escalate.
-- **Drama:** Prioritize inner life, listening, and grounded stakes; let physicality emerge from the emotional truth.
-- **Procedural/Crime:** Let expertise and tempo drive the scene; clean, efficient beats with precise physical gestures.
-- **Genre Blend:** Honor both tones—protect authenticity while still delivering the format's pacing and energy.`;
+    const productionEnergyContext = buildProductionEnergyContext(
+      data.productionType,
+      data.productionTone,
+      data.stakes
+    );
 
     // Generate guide using your methodology as context with timeout and retry logic
-    // Allow 4 minutes for Claude to generate (Vercel has 5-minute max)
+    // Allow 6 minutes for Claude to generate to reduce premature timeouts
     const maxRetries = 2; // Allow one retry on timeout
     let lastError = null;
 
@@ -1028,7 +1288,7 @@ You are working with audition sides only. Focus your analysis on what's provided
 
         // Create AbortController for timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minutes max for parent guide
+        const timeoutId = setTimeout(() => controller.abort(), 360000); // 6-minute timeout for parent guide
 
         // Debug scene content
         console.log(
@@ -1053,6 +1313,12 @@ STRICT SCRIPT POLICY:
 - If SCRIPT appears sparse or generic, say "Limited content in sides" and keep story-specific claims minimal while still offering motivating guidance.
 - Weave supporting words from the SCRIPT directly into the prose—no brackets, meta tags, evidence labels, or markdown fences.
 - Output must be pure HTML (no code blocks) and free of meta markers.
+- Use ONLY facts present in SCRIPT below. If a fact (title, studio, franchise, comps, location, time period) is not present, write "Not stated in sides".
+- Do NOT invent project names or comparable titles unless they appear verbatim in SCRIPT.
+- If SCRIPT appears sparse or generic, state "Limited content in sides" and keep genre/comparable guidance neutral.
+- Do NOT include meta markers like [evidence], brackets, or citations; integrate supporting details naturally into prose.
+- Keep analysis focused on the audition sides (use full script only for broader context when provided) and avoid invented story beats.
+- Tone: professional coaching; avoid hype metaphors ("warrior", "dominate", "pure gold") unless the user explicitly opts into pep mode.
 `;
 
         const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1076,9 +1342,26 @@ You are PREP101, created by Corey Ralston. You have access to Corey's complete m
 **COREY RALSTON'S METHODOLOGY & EXAMPLES:**
 ${methodologyContext}
 
+**STYLE EXEMPLAR CUES (match production tone/format):**
+${
+                  styleContext ||
+                    "No style exemplars found. Match the 'Actor Motivator' tone using methodology alone."
+                }
+
 **CURRENT AUDITION:**
 CHARACTER: ${data.characterName}
 PRODUCTION: ${data.productionTitle} (${data.productionType})
+TONE: ${
+                  data.productionTone ||
+                  "Use the tone implied by the sides; don't invent genre pivots"
+                }
+STAKES: ${
+                  data.stakes ||
+                  "Base stakes on the sides only (competition, safety, reputation, belonging)."
+                }
+
+**SIZE / ENERGY CONTEXT (FORMAT-AWARE):**
+${productionEnergyContext}
 
 SCRIPT:
 ${data.sceneText}${fileTypeContext}
@@ -1113,6 +1396,47 @@ ${data.sceneText}${fileTypeContext}
 **EVIDENCE & CREATIVITY RULES:**
 - Use script wording naturally in prose—no labels or brackets. Make comps and industry knowledge additive even when not in the script.
 - If information is absent, say "Not stated in sides" and move on; do not halt the guide.
+1. **Use Corey's signature empowering language:**
+   - "This scene is DYNAMITE" / "This is GOLD"
+   - "Bold Choice:" callouts
+   - "Gold Acting Moment:" highlights
+   - Direct, confident statements
+
+2. **Include specific action-oriented sections:**
+   - "Key Emotional Notes:"
+   - "Acting Choices to Make:"
+   - "Three-Take Approach:" (Natural/Bold/Vulnerable)
+   - "Pitfalls to Avoid:"
+
+3. **Match the motivational coaching tone:**
+   - Enthusiastic and encouraging
+   - Industry-insider knowledge
+   - Specific, actionable direction (not just analysis)
+   - Personal connection to the character
+
+4. **Use Corey's structural elements:**
+   - Scene breakdowns with emotional beats
+   - Physical direction and mannerisms
+   - Subtext analysis that ties directly to the stated stakes
+   - Self-tape specific guidance
+   - "Why This Scene Works:" explanations
+
+5. **Maintain professional authenticity:**
+   - Reference specific acting techniques from the methodology
+   - Include Uta Hagen's 9 Questions when relevant
+   - Apply character development frameworks
+   - Production-type specific guidance (comedy vs drama)
+
+**MANDATORY GUIDE STRUCTURE (pure HTML, no markdown/code fences):**
+- Overview (project type/tone and why the scene matters)
+- Character POV (how the character sees themselves and others)
+- Beat Map (emotional arc from first line to button, labeled beats)
+- Subtext Line Translations (map 4-7 pivotal lines to hidden meanings)
+- Physical Signatures (gestures, stillness, posture) & Vocal Modes (tempos/tones with examples)
+- Bold Choices & Traps to Avoid (at least 3 each)
+- Buttons & Callback Alts (ending options + one alt take direction)
+- Casting Director's Checklist (what they're testing and how to show it)
+- Quick Action Plan (bullet checklist the actor can execute today)
 
 **GENERATE A COMPLETE HTML ACTING GUIDE THAT:**
 - Sounds exactly like Corey Ralston wrote it personally.
@@ -2145,6 +2469,8 @@ app.post("/api/guides/generate", async (req, res) => {
       characterName,
       productionTitle,
       productionType,
+      productionTone,
+      stakes,
       roleSize,
       genre,
       storyline,
@@ -2267,15 +2593,29 @@ app.post("/api/guides/generate", async (req, res) => {
       });
     }
 
-    const guideContent = await generateActingGuideWithRAG({
+    let guideContent = await generateActingGuideWithRAG({
       sceneText: combinedSceneText,
       characterName: characterName.trim(),
       productionTitle: productionTitle.trim(),
       productionType: productionType.trim(),
+      productionTone: productionTone?.trim(),
+      stakes: stakes?.trim(),
       extractionMethod: allUploadData[0].extractionMethod,
       hasFullScript: hasFullScript,
       uploadData: allUploadData,
     });
+
+    // Enforce required sections and specificity before persisting
+    const sectionEnforcement = enforceGuideSpecificity(guideContent, {
+      characterName: characterName.trim(),
+      productionTitle: productionTitle.trim(),
+    });
+
+    guideContent = sectionEnforcement.content;
+    const qualityFlags = runPostGenerationChecks(
+      guideContent,
+      sectionEnforcement.addedSections
+    );
 
     console.log(`✅ Corey Ralston RAG Guide Complete!`);
 
@@ -2324,6 +2664,8 @@ app.post("/api/guides/generate", async (req, res) => {
         characterName: characterName.trim(),
         productionTitle: productionTitle.trim(),
         productionType: productionType.trim(),
+        productionTone: productionTone?.trim() || null,
+        stakes: stakes?.trim() || null,
         roleSize: roleSize || "Supporting",
         genre: genre || "Drama",
         storyline: storyline || "",
@@ -2428,10 +2770,13 @@ app.post("/api/guides/generate", async (req, res) => {
         childGuideContent: childGuideContent,
         generatedAt: new Date(),
         savedToDatabase: true,
+        quality: qualityFlags,
         metadata: {
           characterName,
           productionTitle,
           productionType,
+          productionTone,
+          stakes,
           scriptWordCount: combinedWordCount,
           guideLength: guideContent.length,
           childGuideLength: childGuideContent ? childGuideContent.length : 0,
@@ -2467,6 +2812,7 @@ app.post("/api/guides/generate", async (req, res) => {
           error: "Authentication required to save guide",
           message: "Please log in to save your guide to your account",
           guideContent: guideContent, // Still provide the guide content
+          quality: qualityFlags,
           generatedAt: new Date(),
           savedToDatabase: false,
         });
@@ -2480,6 +2826,7 @@ app.post("/api/guides/generate", async (req, res) => {
         generatedAt: new Date(),
         savedToDatabase: false,
         saveError: dbError.message,
+        quality: qualityFlags,
         metadata: {
           characterName,
           productionTitle,
@@ -2842,6 +3189,7 @@ const startServer = async () => {
 
     // Load methodology files
     loadMethodologyFiles();
+    loadStyleExemplars();
 
     // Start server
     const PORT = process.env.PORT || 5001;
@@ -2885,6 +3233,7 @@ const initializeForServerless = async () => {
   try {
     // Load methodology files immediately for serverless
     loadMethodologyFiles();
+    loadStyleExemplars();
     console.log("🧠 Methodology files loaded for serverless");
   } catch (error) {
     console.error("❌ Failed to initialize for serverless:", error);
