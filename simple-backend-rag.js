@@ -987,6 +987,17 @@ async function generateActingGuideWithRAG(data) {
       `📊 Total methodology context: ${methodologyContext.length} characters`
     );
 
+    const resolvedStakes = data.stakes || data.roleSize || "Not specified";
+    const resolvedTone = data.productionTone || "Not specified";
+    const resolvedFormat = data.productionFormat || data.productionType || "Not specified";
+
+    const formatContext = `
+**FORMAT, TONE & STAKES (USER INPUT):**
+- Production format/size: ${resolvedFormat} → Multi-cam = bigger/forward energy and faster pace; Single-cam = grounded, naturalistic camera-aware work; Sketch = heightened, buttoned comedy and physicality.
+- Tonal intent: ${resolvedTone} → Match pacing, rhythm, and emotional temperature to this tone.
+- Stakes level: ${resolvedStakes} → Treat series regular/lead as long-arc stakes; guest/co-star = pop quickly but truthfully. Identify whether the pressure comes from competition, safety, belonging, reputation, or time pressure.
+- All subtext and beat mapping must explicitly reference these stakes so the actor knows what they are fighting for.`;
+
     // Build file type context for the AI
     let fileTypeContext = "";
     if (data.hasFullScript) {
@@ -1070,6 +1081,7 @@ ${methodologyContext}
 **CURRENT AUDITION:**
 CHARACTER: ${data.characterName}
 PRODUCTION: ${data.productionTitle} (${data.productionType})
+${formatContext}
 
 SCRIPT:
 ${data.sceneText}${fileTypeContext}
@@ -1097,7 +1109,7 @@ ${data.sceneText}${fileTypeContext}
 4. **Use Corey's structural elements:**
    - Scene breakdowns with emotional beats
    - Physical direction and mannerisms
-   - Subtext analysis
+   - Subtext analysis tied to stakes (${resolvedStakes})
    - Self-tape specific guidance
    - "Why This Scene Works:" explanations
 
@@ -1106,6 +1118,11 @@ ${data.sceneText}${fileTypeContext}
    - Include Uta Hagen's 9 Questions when relevant
    - Apply character development frameworks
    - Production-type specific guidance (comedy vs drama)
+
+6. **Scale performance to format & energy:**
+   - ${resolvedFormat} dictates size: multi-cam/sketch = punchier pace and clearer buttons; single-cam = camera-close, truthful, and slightly underplayed.
+   - Honor the declared tone (${resolvedTone}) when describing delivery, pace, and physicality.
+   - In beat mapping and subtext, explicitly mention the stakes (${resolvedStakes}) and what the character fears/needs (competition, safety, belonging, reputation, time).
 
 **GENERATE A COMPLETE HTML ACTING GUIDE THAT:**
 - Sounds exactly like Corey Ralston wrote it personally
@@ -2138,6 +2155,9 @@ app.post("/api/guides/generate", async (req, res) => {
       characterName,
       productionTitle,
       productionType,
+      productionTone,
+      stakes,
+      productionFormat,
       roleSize,
       genre,
       storyline,
@@ -2186,6 +2206,11 @@ app.post("/api/guides/generate", async (req, res) => {
 
     console.log(`🎭 COREY RALSTON RAG Guide Generation...`);
     console.log(`🎬 ${characterName} | ${productionTitle} (${productionType})`);
+    console.log(
+      `🎚️ Format/Tone/Stakes => format: ${productionFormat || "n/a"}, tone: ${
+        productionTone || "n/a"
+      }, stakes: ${stakes || roleSize || "n/a"}`
+    );
     console.log(
       `🧠 Using ${Object.keys(methodologyDatabase).length} methodology files`
     );
@@ -2265,6 +2290,10 @@ app.post("/api/guides/generate", async (req, res) => {
       characterName: characterName.trim(),
       productionTitle: productionTitle.trim(),
       productionType: productionType.trim(),
+      productionTone: productionTone?.trim(),
+      stakes: stakes?.trim() || roleSize,
+      productionFormat: productionFormat?.trim(),
+      roleSize: roleSize,
       extractionMethod: allUploadData[0].extractionMethod,
       hasFullScript: hasFullScript,
       uploadData: allUploadData,
