@@ -963,7 +963,7 @@ async function generateActingGuideWithRAG(data) {
 
     // Build context from your methodology files (limit to ~50k chars to prevent timeouts)
     let methodologyContext = "";
-    const MAX_METHODOLOGY_CHARS = 50000;
+    const MAX_METHODOLOGY_CHARS = 80000;
     let currentChars = 0;
     
     if (relevantMethodology.length > 0) {
@@ -1008,6 +1008,15 @@ You have access to BOTH audition sides AND the full script. Use this to your adv
 You are working with audition sides only. Focus your analysis on what's provided in the uploaded scenes.`;
     }
 
+    const genreSpecificGuidance = `
+**GENRE-SPECIFIC GUIDANCE (apply the one that matches this project):**
+- **Multi-Cam Comedy:** Play to the live audience rhythm, lean into buttoned jokes, and heighten physical bits without losing truth.
+- **Single-Cam Comedy:** Keep it grounded and conversational; smaller physicality with sharper reactions.
+- **Sketch Comedy:** Build a repeatable signature move or catchphrase and a clear comedic game that can escalate.
+- **Drama:** Prioritize inner life, listening, and grounded stakes; let physicality emerge from the emotional truth.
+- **Procedural/Crime:** Let expertise and tempo drive the scene; clean, efficient beats with precise physical gestures.
+- **Genre Blend:** Honor both tones—protect authenticity while still delivering the format's pacing and energy.`;
+
     // Generate guide using your methodology as context with timeout and retry logic
     // Allow 4 minutes for Claude to generate (Vercel has 5-minute max)
     const maxRetries = 2; // Allow one retry on timeout
@@ -1039,11 +1048,11 @@ You are working with audition sides only. Focus your analysis on what's provided
 
         const POLICY = `
 STRICT SCRIPT POLICY:
-- Use ONLY facts present in SCRIPT below. If a fact (title, studio, franchise, comps, location, time period) is not present, write "Not stated in sides".
-- Do NOT invent project names (e.g., "Scary Movie 6") or comparable titles unless they appear verbatim in SCRIPT.
-- If SCRIPT appears sparse or generic, output "Limited content in sides" and keep guidance minimal and generic (no comps, no genre labels).
-- Label each factual claim that depends on SCRIPT with [evidence] → quote 3-10 exact words and page/line if available.
-- Tone: professional coaching; avoid hype metaphors ("warrior", "dominate", "pure gold") unless the user explicitly opts into pep mode.
+- Ground plot, relationship, and timeline facts in SCRIPT below. If a fact is missing, state "Not stated in sides" and do not invent story specifics.
+- You MAY add industry comps, genre insights, and rehearsal strategies beyond the SCRIPT, but never claim they appear in the sides.
+- If SCRIPT appears sparse or generic, say "Limited content in sides" and keep story-specific claims minimal while still offering motivating guidance.
+- Weave supporting words from the SCRIPT directly into the prose—no brackets, meta tags, evidence labels, or markdown fences.
+- Output must be pure HTML (no code blocks) and free of meta markers.
 `;
 
         const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -1076,44 +1085,42 @@ ${data.sceneText}${fileTypeContext}
 
 **CRITICAL STYLE REQUIREMENTS - "ACTOR MOTIVATOR" VOICE:**
 
-1. **Use Corey's signature empowering language:**
-   - "This scene is DYNAMITE" / "This is GOLD"
-   - "Bold Choice:" callouts
-   - "Gold Acting Moment:" highlights
-   - Direct, confident statements
+- Write like you're personally coaching this actor over coffee. Use "you" and "your" liberally.
+- Lean into Corey-level hype: "This is GOLD!", "This scene is DYNAMITE!", "Gold Acting Moment:" and "Bold Choice:" callouts.
+- Drop "Pro Tip:" and insider nuggets that feel like mentorship, not a textbook.
+- Weave script phrases into sentences (no citations or brackets) and celebrate risks that pop on camera.
 
-2. **Include specific action-oriented sections:**
-   - "Key Emotional Notes:"
-   - "Acting Choices to Make:"
-   - "Three-Take Approach:" (Natural/Bold/Vulnerable)
-   - "Pitfalls to Avoid:"
+**REQUIRED SECTIONS (USE THIS ORDER WITH H2 HEADERS + EMOJI SIGNPOSTS):**
+1. Opening Hook — Fast, emotional hook on why this scene/character is special.
+2. Project Overview — Include comparable projects with SPECIFIC characters (e.g., "Leslie Knope (Parks and Rec)").
+3. Character Breakdown — Psychology, "How She/He Sees Themself" vs. "How Others See Them", plus Casting Director Mindset.
+4. Uta Hagen's 9 Questions — Complete and specific to this scene.
+5. Scene Action & Physicality — Physical comedy/grounded movement, plus Physical Signature Ideas.
+6. Subtext & Emotional Layers — What each key line REALLY means.
+7. Bold Acting Choices — Include a line-by-line "Delivery Trap vs Bold Choice" table for pivotal moments.
+8. 10+ Takes Strategy — Numbered rehearsal takes with varied approaches (tempo, stakes, humor, vulnerability).
+9. Alternative Take Strategy (Callback) — Redirect-ready adjustments (tone, pacing, relationship frame, eye-line, physicality).
+10. Final Pep Talk — Inspiring, personal close with a memorable mantra.
 
-3. **Match the motivational coaching tone:**
-   - Enthusiastic and encouraging
-   - Industry-insider knowledge
-   - Specific, actionable direction (not just analysis)
-   - Personal connection to the character
+**MUST-HAVE ELEMENTS THROUGHOUT:**
+- Character POV and chronological beat map with pivot lines called out.
+- Key Emotional Notes and Acting Choices with playable verbs and genre-aware tactics.
+- Comparable projects and characters even if not in the sides (clear they are comps, not script facts).
+- "Traps to Avoid" paired with bolder alternatives.
+- Memorization Strategy, Self-Tape specifics, and industry insider perspective.
+- ${genreSpecificGuidance}
 
-4. **Use Corey's structural elements:**
-   - Scene breakdowns with emotional beats
-   - Physical direction and mannerisms
-   - Subtext analysis
-   - Self-tape specific guidance
-   - "Why This Scene Works:" explanations
-
-5. **Maintain professional authenticity:**
-   - Reference specific acting techniques from the methodology
-   - Include Uta Hagen's 9 Questions when relevant
-   - Apply character development frameworks
-   - Production-type specific guidance (comedy vs drama)
+**EVIDENCE & CREATIVITY RULES:**
+- Use script wording naturally in prose—no labels or brackets. Make comps and industry knowledge additive even when not in the script.
+- If information is absent, say "Not stated in sides" and move on; do not halt the guide.
 
 **GENERATE A COMPLETE HTML ACTING GUIDE THAT:**
-- Sounds exactly like Corey Ralston wrote it personally
-- Uses the "Actor Motivator" voice throughout
-- Includes bold callouts and specific direction
-- Feels encouraging and empowering
-- Provides actionable choices, not just theory
-- Matches the energy and enthusiasm of the example guides
+- Sounds exactly like Corey Ralston wrote it personally.
+- Uses the "Actor Motivator" voice throughout with bold, memorable language.
+- Includes bold callouts and specific direction.
+- Feels encouraging and empowering.
+- Provides actionable choices, not just theory.
+- Matches the energy and enthusiasm of the example guides.
 - ${
                   data.hasFullScript
                     ? "Uses full script context intelligently to enrich sides analysis"
