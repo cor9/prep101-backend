@@ -5,10 +5,11 @@ const User = require("../models/User");
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const SUPABASE_JWT_SECRET =
-  process.env.SUPABASE_JWT_SECRET || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
 
 let supabaseAdmin = null;
+let supabasePublic = null;
 
 if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
   supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
@@ -21,6 +22,17 @@ if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
   console.warn(
     "⚠️  Supabase admin credentials missing - backend will fall back to legacy JWT auth"
   );
+}
+
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+} else {
+  console.warn("⚠️  Supabase anon key missing - public auth fallback disabled");
 }
 
 // Track failed login attempts
@@ -81,6 +93,20 @@ async function getSupabaseUserFromToken(token) {
     } catch (supabaseError) {
       console.error(
         "❌ Supabase admin validation failed:",
+        supabaseError.message || supabaseError
+      );
+    }
+  }
+
+  if (supabasePublic) {
+    try {
+      const { data, error } = await supabasePublic.auth.getUser(token);
+      if (!error && data?.user) {
+        return data.user;
+      }
+    } catch (supabaseError) {
+      console.error(
+        "❌ Supabase public validation failed:",
         supabaseError.message || supabaseError
       );
     }

@@ -130,6 +130,12 @@
 **Decision:** Enhanced `middleware/auth.js` so it first tries Supabase admin validation when available, but automatically falls back to verifying JWTs locally using `SUPABASE_JWT_SECRET`/`SUPABASE_ANON_KEY`. This allows standard Supabase access tokens to work even when no service key is configured.
 **Status:** Success
 
+## 2025-12-02 (Part 6)
+
+**Issue:** Some environments still couldn’t validate Supabase tokens because they only had the anon key (no service key or JWT secret), so users kept seeing “Invalid token.”
+**Decision:** Added a Supabase public client fallback that uses the anon key to call `auth.getUser(token)` directly, ensuring access tokens validate even without the service key. The middleware now tries admin client → public client → local JWT secret.
+**Status:** Success
+
 ---
 
 # Imported Decisions & Learnings (from user)
