@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
     const guides = await Guide.findAll({
       where: { userId },
       order: [['createdAt', 'DESC']],
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount', 'childGuideRequested', 'childGuideCompleted', 'childGuideHtml', 'isFavorite']
+      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'productionTone', 'stakes', 'roleSize', 'genre', 'createdAt', 'viewCount', 'childGuideRequested', 'childGuideCompleted', 'childGuideHtml', 'isFavorite']
     });
 
     res.json({
@@ -173,6 +173,8 @@ router.post(
     body('characterName').trim().isLength({ min: 1, max: 100 }),
     body('productionTitle').trim().isLength({ min: 1, max: 200 }),
     body('productionType').trim().isLength({ min: 1, max: 100 }),
+    body('productionTone').optional().trim().isLength({ min: 0, max: 200 }),
+    body('stakes').optional().trim().isLength({ min: 0, max: 200 }),
     body('scriptContent').isLength({ min: 10 })
   ],
   async (req, res) => {
@@ -183,7 +185,7 @@ router.post(
 
     try {
       const userId = req.userId;
-      const { title, characterName, productionTitle, productionType, scriptContent } = req.body;
+      const { title, characterName, productionTitle, productionType, productionTone, stakes, scriptContent } = req.body;
 
       // Create guide
       const guide = await Guide.create({
@@ -192,6 +194,8 @@ router.post(
         characterName,
         productionTitle,
         productionType,
+        productionTone,
+        stakes,
         scriptContent,
         status: 'pending'
       });

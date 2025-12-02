@@ -600,6 +600,43 @@ try {
 // Load methodology files into memory for RAG
 let methodologyDatabase = {};
 
+function buildProductionEnergyContext(productionType, productionTone, stakes) {
+  const type = (productionType || "").toLowerCase();
+  const bullets = [];
+
+  if (type.includes("multi")) {
+    bullets.push(
+      "Multi-cam comedy pace — bright energy, sharper buttons, and cleaner setups/payoffs. Keep framing for laugh space while still honoring truth."
+    );
+  } else if (type.includes("single")) {
+    bullets.push(
+      "Single-cam grounding — more naturalistic pacing, smaller camera-friendly adjustments, let humor/drama breathe between beats."
+    );
+  } else if (type.includes("sketch") || type.includes("skit")) {
+    bullets.push(
+      "Sketch energy — bold physicality, fast pivots, and heightened contrast between beats while staying specific."
+    );
+  }
+
+  if (productionTone) {
+    bullets.push(
+      `Tone cue: ${productionTone}. Match rhythm, musicality, and button choices to that vibe.`
+    );
+  }
+
+  if (stakes) {
+    bullets.push(
+      `Stakes: ${stakes}. Beat map and subtext should track what can be won or lost (competition, safety, belonging, reputation).`
+    );
+  }
+
+  if (!bullets.length) {
+    return "- Use the tone implied by the sides; keep energy calibrated to the on-page style.";
+  }
+
+  return `- ${bullets.join("\n- ")}`;
+}
+
 async function initializeDatabase() {
   if (!sequelize || !testConnection) {
     console.log("⚠️  Database not available - skipping initialization");
@@ -1008,8 +1045,14 @@ You have access to BOTH audition sides AND the full script. Use this to your adv
 You are working with audition sides only. Focus your analysis on what's provided in the uploaded scenes.`;
     }
 
+    const productionEnergyContext = buildProductionEnergyContext(
+      data.productionType,
+      data.productionTone,
+      data.stakes
+    );
+
     // Generate guide using your methodology as context with timeout and retry logic
-    // Allow 4 minutes for Claude to generate (Vercel has 5-minute max)
+    // Allow 6 minutes for Claude to generate to reduce premature timeouts
     const maxRetries = 2; // Allow one retry on timeout
     let lastError = null;
 
@@ -1019,7 +1062,7 @@ You are working with audition sides only. Focus your analysis on what's provided
 
         // Create AbortController for timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minutes max for parent guide
+        const timeoutId = setTimeout(() => controller.abort(), 360000); // 6-minute timeout for parent guide
 
         // Debug scene content
         console.log(
@@ -1070,6 +1113,17 @@ ${methodologyContext}
 **CURRENT AUDITION:**
 CHARACTER: ${data.characterName}
 PRODUCTION: ${data.productionTitle} (${data.productionType})
+TONE: ${
+                  data.productionTone ||
+                  "Use the tone implied by the sides; don't invent genre pivots"
+                }
+STAKES: ${
+                  data.stakes ||
+                  "Base stakes on the sides only (competition, safety, reputation, belonging)."
+                }
+
+**SIZE / ENERGY CONTEXT (FORMAT-AWARE):**
+${productionEnergyContext}
 
 SCRIPT:
 ${data.sceneText}${fileTypeContext}
@@ -1097,7 +1151,7 @@ ${data.sceneText}${fileTypeContext}
 4. **Use Corey's structural elements:**
    - Scene breakdowns with emotional beats
    - Physical direction and mannerisms
-   - Subtext analysis
+   - Subtext analysis that ties directly to the stated stakes
    - Self-tape specific guidance
    - "Why This Scene Works:" explanations
 
@@ -1106,6 +1160,13 @@ ${data.sceneText}${fileTypeContext}
    - Include Uta Hagen's 9 Questions when relevant
    - Apply character development frameworks
    - Production-type specific guidance (comedy vs drama)
+
+**SUBTEXT & BEAT MAP REQUIREMENTS:**
+- Build a beat map that follows how the stakes (${data.stakes ||
+                  "as defined in the sides"
+                }) rise, drop, or pivot (competition, safety, reputation, belonging).
+- Tie each beat's subtext to the stakes and the character's objective/obstacle; call out where energy should lift or settle based on multi-cam/single-cam/sketch pacing.
+- Flag any beat where the stakes spike so the actor can adjust buttons and physicality accordingly.
 
 **GENERATE A COMPLETE HTML ACTING GUIDE THAT:**
 - Sounds exactly like Corey Ralston wrote it personally
@@ -2138,6 +2199,8 @@ app.post("/api/guides/generate", async (req, res) => {
       characterName,
       productionTitle,
       productionType,
+      productionTone,
+      stakes,
       roleSize,
       genre,
       storyline,
@@ -2265,6 +2328,8 @@ app.post("/api/guides/generate", async (req, res) => {
       characterName: characterName.trim(),
       productionTitle: productionTitle.trim(),
       productionType: productionType.trim(),
+      productionTone: productionTone?.trim(),
+      stakes: stakes?.trim(),
       extractionMethod: allUploadData[0].extractionMethod,
       hasFullScript: hasFullScript,
       uploadData: allUploadData,
@@ -2317,6 +2382,8 @@ app.post("/api/guides/generate", async (req, res) => {
         characterName: characterName.trim(),
         productionTitle: productionTitle.trim(),
         productionType: productionType.trim(),
+        productionTone: productionTone?.trim() || null,
+        stakes: stakes?.trim() || null,
         roleSize: roleSize || "Supporting",
         genre: genre || "Drama",
         storyline: storyline || "",
@@ -2425,6 +2492,8 @@ app.post("/api/guides/generate", async (req, res) => {
           characterName,
           productionTitle,
           productionType,
+          productionTone,
+          stakes,
           scriptWordCount: combinedWordCount,
           guideLength: guideContent.length,
           childGuideLength: childGuideContent ? childGuideContent.length : 0,

@@ -28,6 +28,8 @@ const Guide = sequelize.define('Guide', {
   characterName: { type: DataTypes.STRING, allowNull: false },
   productionTitle: { type: DataTypes.STRING, allowNull: false },
   productionType: { type: DataTypes.STRING, allowNull: false },
+  productionTone: { type: DataTypes.STRING, allowNull: true },
+  stakes: { type: DataTypes.STRING, allowNull: true },
   roleSize: { type: DataTypes.STRING, allowNull: false },
   genre: { type: DataTypes.STRING, allowNull: false },
   storyline: DataTypes.TEXT,
