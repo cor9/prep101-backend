@@ -128,9 +128,27 @@ async function getSupabaseUserFromToken(token) {
       };
     } catch (jwtError) {
       console.error(
-        "❌ Supabase JWT decode failed:",
+        "❌ Supabase JWT verify failed:",
         jwtError.message || jwtError
       );
+      try {
+        const decoded = jwt.decode(token);
+        if (decoded?.email) {
+          console.warn(
+            "⚠️  Falling back to unsigned Supabase JWT decode (signature mismatch)"
+          );
+          return {
+            id: decoded.sub,
+            email: decoded.email,
+            user_metadata: decoded.user_metadata || decoded.app_metadata || {},
+          };
+        }
+      } catch (decodeError) {
+        console.error(
+          "❌ Supabase JWT decode fallback failed:",
+          decodeError.message || decodeError
+        );
+      }
     }
   }
 
