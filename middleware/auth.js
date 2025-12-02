@@ -1,5 +1,23 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { createClient } = require('@supabase/supabase-js');
 const User = require('../models/User');
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+let supabaseAdmin = null;
+
+if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+  supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+} else {
+  console.warn('⚠️  Supabase admin credentials missing - backend will fall back to legacy JWT auth');
+}
 
 // Track failed login attempts
 const failedAttempts = new Map();
@@ -14,6 +32,33 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
+async function findOrCreateUserFromSupabase(supabaseUser) {
+  if (!supabaseUser || !supabaseUser.email) return null;
+
+  const email = supabaseUser.email.toLowerCase();
+  let user = await User.findOne({ where: { email } });
+
+  if (!user) {
+    const derivedName =
+      supabaseUser.user_metadata?.full_name ||
+      supabaseUser.user_metadata?.name ||
+      email.split('@')[0] ||
+      'Prep101 Actor';
+
+    const randomPassword = crypto.randomBytes(32).toString('hex');
+
+    user = await User.create({
+      email,
+      password: randomPassword,
+      name: derivedName,
+      subscription: 'free',
+      guidesLimit: 1
+    });
+  }
+
+  return user;
+}
+
 module.exports = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -25,9 +70,28 @@ module.exports = async (req, res, next) => {
       return res.status(401).json({ message: 'No token, authorization denied' });
     }
 
+    // Prefer Supabase token validation when configured
+    if (supabaseAdmin) {
+      try {
+        const { data, error } = await supabaseAdmin.auth.getUser(token);
+        if (!error && data?.user) {
+          const user = await findOrCreateUserFromSupabase(data.user);
+          if (user) {
+            console.log(`✅ Supabase auth: ${user.email} (${user.id}) from IP: ${clientIP}, Path: ${req.path}`);
+            req.userId = user.id;
+            req.user = user;
+            req.clientIP = clientIP;
+            return next();
+          }
+        }
+      } catch (supabaseError) {
+        console.error('❌ Supabase token validation failed:', supabaseError.message || supabaseError);
+      }
+    }
+
+    // Fallback to legacy JWT validation
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
-    
-    // Get user from database to ensure they still exist
+
     const user = await User.findByPk(decoded.userId);
     if (!user) {
       console.log(`🔒 Invalid token - user not found: ${decoded.userId} from IP: ${clientIP}`);

@@ -9,15 +9,32 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const mapSessionToUser = (session) => {
+    if (!session || !session.user) return null;
+    const email = session.user.email || '';
+    const derivedName =
+      session.user.user_metadata?.full_name ||
+      session.user.user_metadata?.name ||
+      (email ? email.split('@')[0] : 'Prep101 Actor');
+
+    return {
+      ...session.user,
+      name: derivedName,
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      token: session.access_token
+    };
+  };
+
   // Load user on mount and listen for auth changes
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const { user, error } = await getCurrentUser();
+        const { user: currentUser, error } = await getCurrentUser();
         if (error) {
           console.error('Error loading user:', error);
         } else {
-          setUser(user);
+          setUser(currentUser);
         }
       } catch (error) {
         console.error('Error in loadUser:', error);
@@ -32,7 +49,7 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
-        setUser(session?.user || null);
+        setUser(mapSessionToUser(session));
         setLoading(false);
       }
     );

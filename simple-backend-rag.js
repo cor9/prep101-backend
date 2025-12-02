@@ -4,6 +4,7 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
+const auth = require("./middleware/auth");
 
 // Create app immediately for fast health checks
 const app = express();
@@ -2126,7 +2127,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 });
 
 // RAG-Enhanced Guide Generation Endpoint
-app.post("/api/guides/generate", async (req, res) => {
+app.post("/api/guides/generate", auth, async (req, res) => {
   const requestStartTime = Date.now(); // Track start time for Vercel timeout management
 
   try {
@@ -2169,6 +2170,38 @@ app.post("/api/guides/generate", async (req, res) => {
     if (!characterName || !productionTitle || !productionType) {
       return res.status(400).json({
         error: "Missing required fields",
+      });
+    }
+
+    const currentUser =
+      req.user ||
+      (User && req.userId ? await User.findByPk(req.userId) : null);
+
+    if (!currentUser) {
+      return res.status(401).json({
+        success: false,
+        error: "Authentication required to save guide",
+      });
+    }
+
+    const userGuidesUsed = currentUser.guidesUsed || 0;
+    const userGuideLimit =
+      typeof currentUser.guidesLimit === "number"
+        ? currentUser.guidesLimit
+        : null;
+
+    if (
+      currentUser.subscription === "free" &&
+      userGuideLimit !== null &&
+      userGuideLimit > 0 &&
+      userGuidesUsed >= userGuideLimit
+    ) {
+      return res.status(403).json({
+        success: false,
+        error:
+          "Monthly guide limit reached. Upgrade your subscription for more guides.",
+        guidesUsed: userGuidesUsed,
+        guidesLimit: userGuideLimit,
       });
     }
 
@@ -2272,46 +2305,19 @@ app.post("/api/guides/generate", async (req, res) => {
 
     // Save guide to database
     try {
-      const Guide = require("./models/Guide");
-      const User = require("./models/User");
+      const GuideModel = Guide || require("./models/Guide");
 
-      // Get user from auth token
-      const authHeader = req.headers.authorization;
-      let userId = null;
-
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        const token = authHeader.substring(7);
-        const jwt = require("jsonwebtoken");
-        const JWT_SECRET = process.env.JWT_SECRET;
-
-        try {
-          const decoded = jwt.verify(token, JWT_SECRET);
-          userId = decoded.userId;
-
-          // Verify user exists in database
-          const user = await User.findByPk(userId);
-          if (!user) {
-            console.log("User not found in database, cannot save guide");
-            throw new Error("User not found");
-          }
-        } catch (jwtError) {
-          console.log(
-            "JWT verification failed or user not found, cannot save guide to database"
-          );
-          throw new Error("Authentication required to save guide");
-        }
-      } else {
-        console.log("No authorization header, cannot save guide to database");
-        throw new Error("Authentication required to save guide");
+      if (!GuideModel) {
+        throw new Error("Guide model not available");
       }
 
       const guideId = `corey_rag_${Date.now()}_${Math.random()
         .toString(36)
         .substr(2, 9)}`;
 
-      const guide = await Guide.create({
+      const guide = await GuideModel.create({
         guideId,
-        userId: userId, // Now guaranteed to be valid
+        userId: currentUser.id,
         characterName: characterName.trim(),
         productionTitle: productionTitle.trim(),
         productionType: productionType.trim(),
@@ -2328,6 +2334,16 @@ app.post("/api/guides/generate", async (req, res) => {
       });
 
       console.log(`💾 Guide saved to database with ID: ${guide.id}`);
+
+      if (
+        currentUser.subscription === "free" &&
+        userGuideLimit !== null &&
+        userGuideLimit > 0
+      ) {
+        await currentUser.increment("guidesUsed").catch((err) => {
+          console.error("Failed to increment guide usage:", err?.message || err);
+        });
+      }
 
       // Second Pass: Generate Child's Guide if requested
       let childGuideContent = null;
@@ -2517,57 +2533,21 @@ app.get("/api/methodology", (req, res) => {
 // Note: Guide endpoints are now handled by the mounted routes in ./routes/guides.js
 
 // Download guide as PDF
-app.get("/api/guides/:id/pdf", async (req, res) => {
+app.get("/api/guides/:id/pdf", auth, async (req, res) => {
   try {
     const { id } = req.params;
-    const authHeader = req.headers.authorization;
+    const currentUser =
+      req.user ||
+      (User && req.userId ? await User.findByPk(req.userId) : null);
 
-    console.log(
-      "🔐 PDF endpoint - Auth header:",
-      authHeader ? "present" : "missing"
-    );
-    console.log("🔐 PDF endpoint - Full auth header:", authHeader);
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("❌ PDF endpoint - No Bearer token found");
+    if (!currentUser) {
+      console.log("❌ PDF endpoint - Authenticated user not found");
       return res.status(401).json({ error: "Authentication required" });
-    }
-
-    const token = authHeader.substring(7);
-    console.log("🔐 PDF endpoint - Token length:", token.length);
-    console.log(
-      "🔐 PDF endpoint - Token preview:",
-      token.substring(0, 20) + "..."
-    );
-
-    const jwt = require("jsonwebtoken");
-    const JWT_SECRET = process.env.JWT_SECRET;
-
-    console.log("🔐 PDF endpoint - JWT_SECRET present:", !!JWT_SECRET);
-    console.log(
-      "🔐 PDF endpoint - JWT_SECRET length:",
-      JWT_SECRET ? JWT_SECRET.length : 0
-    );
-
-    let userId;
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      console.log(
-        "🔐 PDF endpoint - JWT decoded successfully, userId:",
-        decoded.userId
-      );
-      userId = decoded.userId;
-    } catch (jwtError) {
-      console.log(
-        "❌ PDF endpoint - JWT verification failed:",
-        jwtError.message
-      );
-      return res.status(401).json({ error: "Invalid token" });
     }
 
     const Guide = require("./models/Guide");
     const guide = await Guide.findOne({
-      where: { id, userId },
+      where: { id, userId: currentUser.id },
       attributes: [
         "id",
         "guideId",

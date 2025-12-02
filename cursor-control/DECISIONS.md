@@ -89,6 +89,11 @@
 **Decision:** Rebuilt the Anthropic system prompt in `simple-backend-rag.js` to enforce the 10-section blueprint, motivational “Actor Motivator” voice, evidence tagging, and production-type adjustments. Added curated RAG resources (`methodology/example_guides_gold_standard.md`, `methodology/character_archetype_comparables.md`, `methodology/guide_voice_examples.md`) so the model can mirror Corey’s gold-standard examples, archetype comparables, and voice notes.
 **Status:** Success
 
+## 2025-12-02 (Part 2)
+**Issue:** Users authenticated via Supabase could generate guides, but the backend still expected legacy JWTs, so guides weren't being saved to dashboards, PDF endpoints rejected tokens, and new users never received DB records.
+**Decision:** Updated `middleware/auth.js` to validate Supabase JWTs first (via the service role key), auto-create local `User` rows, and fall back to legacy JWT only when needed. Wrapped `/api/guides/generate` and `/api/guides/:id/pdf` with the auth middleware, removed manual token parsing, enforced guide-limit checks, and ensured guide-saving/increment logic uses the authenticated Sequelize user. On the frontend, `AuthContext` and `supabase.js` now surface the Supabase `access_token` (and derived `name`) so every API call carries a valid bearer token.
+**Status:** Success
+
 
 ---
 # Imported Decisions & Learnings (from user)

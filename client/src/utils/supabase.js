@@ -41,6 +41,27 @@ export const signOut = async () => {
 }
 
 export const getCurrentUser = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  return { user, error }
+  const { data, error } = await supabase.auth.getSession()
+  if (error) return { user: null, error }
+
+  const session = data?.session
+  if (!session || !session.user) {
+    return { user: null, error: null }
+  }
+
+  const derivedName =
+    session.user.user_metadata?.full_name ||
+    session.user.user_metadata?.name ||
+    (session.user.email ? session.user.email.split('@')[0] : 'Prep101 Actor');
+
+  return {
+    user: {
+      ...session.user,
+      name: derivedName,
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      token: session.access_token
+    },
+    error: null
+  }
 }
