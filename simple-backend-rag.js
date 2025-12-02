@@ -714,6 +714,7 @@ try {
 
 // Load methodology files into memory for RAG
 let methodologyDatabase = {};
+let styleExemplars = [];
 
 function buildProductionEnergyContext(productionType, productionTone, stakes) {
   const type = (productionType || "").toLowerCase();
@@ -816,6 +817,53 @@ function loadMethodologyFiles() {
   }
 }
 
+function loadStyleExemplars() {
+  const exemplarsPath = path.join(
+    __dirname,
+    "methodology",
+    "style_exemplars.json"
+  );
+
+  if (!fs.existsSync(exemplarsPath)) {
+    console.warn("⚠️  Style exemplar file not found - skipping style retrieval");
+    return;
+  }
+
+  try {
+    const exemplars = JSON.parse(fs.readFileSync(exemplarsPath, "utf8"));
+
+    styleExemplars = exemplars.map((exemplar) => {
+      const exemplarPath = path.join(__dirname, "methodology", exemplar.filename);
+      let contentSnippet = "";
+
+      if (fs.existsSync(exemplarPath)) {
+        const fullContent = fs.readFileSync(exemplarPath, "utf8");
+        contentSnippet = fullContent.substring(0, 1200);
+      } else {
+        console.warn(`⚠️  Exemplar file missing: ${exemplar.filename}`);
+      }
+
+      return {
+        ...exemplar,
+        contentSnippet,
+        lowercaseTags: [
+          exemplar.productionType,
+          exemplar.genre,
+          exemplar.audience,
+          ...(exemplar.styleBeats || []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      };
+    });
+
+    console.log(`🎬 Loaded ${styleExemplars.length} style exemplars for retrieval`);
+  } catch (error) {
+    console.error("❌ Failed to load style exemplars:", error);
+  }
+}
+
 function determineFileType(filename) {
   const name = filename.toLowerCase();
   if (name.includes("character")) return "character-development";
@@ -877,6 +925,12 @@ function searchMethodology(characterName, productionType, sceneContext) {
   if (productionType.toLowerCase().includes("drama")) {
     searchTerms.push("drama", "emotion", "truth");
   }
+  if (productionType.toLowerCase().includes("multi")) {
+    searchTerms.push("multi-cam", "multi camera", "studio audience");
+  }
+  if (productionType.toLowerCase().includes("sketch")) {
+    searchTerms.push("sketch", "sketch comedy", "character wheel");
+  }
 
   const relevantFiles = [];
 
@@ -924,6 +978,56 @@ function searchMethodology(characterName, productionType, sceneContext) {
   });
 
   return topResults;
+}
+
+function buildStyleContext(productionType = "") {
+  if (!styleExemplars.length) return "";
+
+  const normalizedProduction = productionType.toLowerCase();
+
+  const scored = styleExemplars
+    .map((exemplar) => {
+      let score = 0;
+      const genreLower = exemplar.genre?.toLowerCase() || "";
+      const audienceLower = exemplar.audience?.toLowerCase() || "";
+
+      if (
+        normalizedProduction &&
+        exemplar.lowercaseTags.includes(normalizedProduction)
+      )
+        score += 3;
+      if (normalizedProduction.includes("multi") && audienceLower.includes("multi"))
+        score += 4;
+      if (normalizedProduction.includes("sketch") && audienceLower.includes("sketch"))
+        score += 4;
+      if (normalizedProduction.includes("comedy") && genreLower.includes("comedy"))
+        score += 3;
+      if (normalizedProduction.includes("drama") && genreLower.includes("drama"))
+        score += 2;
+      if (normalizedProduction.includes("action") && genreLower.includes("action"))
+        score += 2;
+      if (normalizedProduction.includes("family") && genreLower.includes("family"))
+        score += 2;
+
+      return { exemplar, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const selected = (scored[0]?.score || 0) > 0 ? scored.slice(0, 3) : scored.slice(0, 2);
+
+  return selected
+    .map(({ exemplar }) => {
+      return `=== STYLE EXEMPLAR: ${exemplar.title} ===
+PRODUCTION: ${exemplar.productionType}
+GENRE: ${exemplar.genre}
+TONE: ${exemplar.tone}
+AUDIENCE: ${exemplar.audience}
+STYLE BEATS: ${(exemplar.styleBeats || []).join(" | ")}
+EXCERPT (voice/tone cues):
+${exemplar.contentSnippet}
+`;
+    })
+    .join("\n");
 }
 
 // PDF extraction using Adobe PDF Services
@@ -1139,6 +1243,13 @@ async function generateActingGuideWithRAG(data) {
       `📊 Total methodology context: ${methodologyContext.length} characters`
     );
 
+    const styleContext = buildStyleContext(data.productionType);
+    if (styleContext) {
+      console.log("🎨 Style exemplars included for tone matching");
+    } else {
+      console.log("⚠️  No style exemplars available for this production type");
+    }
+
     // Build file type context for the AI
     let fileTypeContext = "";
     if (data.hasFullScript) {
@@ -1225,6 +1336,12 @@ You are PREP101, created by Corey Ralston. You have access to Corey's complete m
 
 **COREY RALSTON'S METHODOLOGY & EXAMPLES:**
 ${methodologyContext}
+
+**STYLE EXEMPLAR CUES (match production tone/format):**
+${
+                  styleContext ||
+                    "No style exemplars found. Match the 'Actor Motivator' tone using methodology alone."
+                }
 
 **CURRENT AUDITION:**
 CHARACTER: ${data.characterName}
@@ -3039,6 +3156,7 @@ const startServer = async () => {
 
     // Load methodology files
     loadMethodologyFiles();
+    loadStyleExemplars();
 
     // Start server
     const PORT = process.env.PORT || 5001;
@@ -3082,6 +3200,7 @@ const initializeForServerless = async () => {
   try {
     // Load methodology files immediately for serverless
     loadMethodologyFiles();
+    loadStyleExemplars();
     console.log("🧠 Methodology files loaded for serverless");
   } catch (error) {
     console.error("❌ Failed to initialize for serverless:", error);
