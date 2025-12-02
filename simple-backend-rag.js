@@ -51,18 +51,18 @@ app.get("/api/diagnostics", async (req, res) => {
       DATABASE_URL: !!process.env.DATABASE_URL,
       ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
       STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
-      JWT_SECRET: !!process.env.JWT_SECRET
+      JWT_SECRET: !!process.env.JWT_SECRET,
     },
     database: {
       status: dbStatus,
-      error: dbError
+      error: dbError,
     },
     endpoints: {
       health: "✅ Available",
       test: "✅ Available",
       guidesGenerate: "✅ Available (POST /api/guides/generate)",
-      diagnostics: "✅ Available (GET /api/diagnostics)"
-    }
+      diagnostics: "✅ Available (GET /api/diagnostics)",
+    },
   });
 });
 
@@ -975,7 +975,9 @@ async function generateActingGuideWithRAG(data) {
           contextParts.push(fileContext);
           currentChars += fileContext.length;
         } else {
-          console.log(`⚠️ Skipping ${file.filename} to keep context under ${MAX_METHODOLOGY_CHARS} chars`);
+          console.log(
+            `⚠️ Skipping ${file.filename} to keep context under ${MAX_METHODOLOGY_CHARS} chars`
+          );
         }
       }
       methodologyContext = contextParts.join("");
@@ -1780,19 +1782,19 @@ async function generateChildGuide(data) {
       // Generate child guide using the parent guide as reference
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         signal: controller.signal,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: DEFAULT_CLAUDE_MODEL,
-        max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
-        messages: [
-          {
-            role: "user",
-            content: `You are Corey Ralston, a witty, experienced youth acting coach.
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: DEFAULT_CLAUDE_MODEL,
+          max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
+          messages: [
+            {
+              role: "user",
+              content: `You are Corey Ralston, a witty, experienced youth acting coach.
 Your task is to create a simplified, fun, and empowering "Child's Guide" for young actors (ages 8-12), based on the parent-facing audition prep guide.
 
 ## Voice & Style
@@ -1886,9 +1888,9 @@ ${data.parentGuideContent.substring(0, 2000)}...
 ${childMethodologyContext}
 
 **OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be a complete HTML document with embedded CSS styling, fun colors, and perfect for young actors!`,
-          },
-        ],
-      }),
+            },
+          ],
+        }),
       });
 
       clearTimeout(timeoutId); // Clear timeout if request completes
@@ -1917,9 +1919,9 @@ ${childMethodologyContext}
     } catch (error) {
       clearTimeout(timeoutId);
 
-      if (error.name === 'AbortError') {
-        console.error('⏰ Child guide generation timeout after 90 seconds');
-        throw new Error('Child guide generation timed out');
+      if (error.name === "AbortError") {
+        console.error("⏰ Child guide generation timeout after 90 seconds");
+        throw new Error("Child guide generation timed out");
       }
 
       console.error("❌ Child guide generation failed:", error.message);
@@ -2175,8 +2177,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     }
 
     const currentUser =
-      req.user ||
-      (User && req.userId ? await User.findByPk(req.userId) : null);
+      req.user || (User && req.userId ? await User.findByPk(req.userId) : null);
 
     if (!currentUser) {
       return res.status(401).json({
@@ -2190,9 +2191,19 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       typeof currentUser.guidesLimit === "number"
         ? currentUser.guidesLimit
         : null;
+    const isAdminUser =
+      currentUser.betaAccessLevel === "admin" ||
+      currentUser.subscription === "admin";
+    const hasUnlimitedPlan =
+      isAdminUser ||
+      userGuideLimit === null ||
+      userGuideLimit <= 0 ||
+      userGuideLimit >= 999 ||
+      (currentUser.subscription &&
+        currentUser.subscription.toLowerCase() !== "free");
 
     if (
-      currentUser.subscription === "free" &&
+      !hasUnlimitedPlan &&
       userGuideLimit !== null &&
       userGuideLimit > 0 &&
       userGuidesUsed >= userGuideLimit
@@ -2361,13 +2372,12 @@ app.post("/api/guides/generate", auth, async (req, res) => {
 
       console.log(`💾 Guide saved to database with ID: ${guide.id}`);
 
-      if (
-        currentUser.subscription === "free" &&
-        userGuideLimit !== null &&
-        userGuideLimit > 0
-      ) {
+      if (!hasUnlimitedPlan && userGuideLimit !== null && userGuideLimit > 0) {
         await currentUser.increment("guidesUsed").catch((err) => {
-          console.error("Failed to increment guide usage:", err?.message || err);
+          console.error(
+            "Failed to increment guide usage:",
+            err?.message || err
+          );
         });
       }
 
@@ -2378,10 +2388,18 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         const elapsedSeconds = (Date.now() - requestStartTime) / 1000;
         const remainingSeconds = 300 - elapsedSeconds; // Vercel's 5-minute limit
 
-        console.log(`⏱️  Time check: ${elapsedSeconds.toFixed(1)}s elapsed, ${remainingSeconds.toFixed(1)}s remaining`);
+        console.log(
+          `⏱️  Time check: ${elapsedSeconds.toFixed(
+            1
+          )}s elapsed, ${remainingSeconds.toFixed(1)}s remaining`
+        );
 
         if (remainingSeconds < 180) {
-          console.log(`⚠️  Insufficient time for child guide (need 180s buffer, have ${remainingSeconds.toFixed(1)}s)`);
+          console.log(
+            `⚠️  Insufficient time for child guide (need 180s buffer, have ${remainingSeconds.toFixed(
+              1
+            )}s)`
+          );
           console.log(`✅ Returning parent guide only to prevent timeout`);
 
           // Return parent guide immediately without child guide
@@ -2391,8 +2409,9 @@ app.post("/api/guides/generate", auth, async (req, res) => {
             guideContent,
             childGuideRequested: true,
             childGuideCompleted: false,
-            message: "Parent guide generated successfully. Child guide skipped due to time constraints.",
-            timeElapsed: elapsedSeconds.toFixed(1) + "s"
+            message:
+              "Parent guide generated successfully. Child guide skipped due to time constraints.",
+            timeElapsed: elapsedSeconds.toFixed(1) + "s",
           });
         }
 
@@ -2563,8 +2582,7 @@ app.get("/api/guides/:id/pdf", auth, async (req, res) => {
   try {
     const { id } = req.params;
     const currentUser =
-      req.user ||
-      (User && req.userId ? await User.findByPk(req.userId) : null);
+      req.user || (User && req.userId ? await User.findByPk(req.userId) : null);
 
     if (!currentUser) {
       console.log("❌ PDF endpoint - Authenticated user not found");
