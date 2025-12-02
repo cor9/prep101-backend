@@ -1083,9 +1083,10 @@ You are working with audition sides only. Focus your analysis on what's provided
         const POLICY = `
 STRICT SCRIPT POLICY:
 - Use ONLY facts present in SCRIPT below. If a fact (title, studio, franchise, comps, location, time period) is not present, write "Not stated in sides".
-- Do NOT invent project names (e.g., "Scary Movie 6") or comparable titles unless they appear verbatim in SCRIPT.
-- If SCRIPT appears sparse or generic, output "Limited content in sides" and keep guidance minimal and generic (no comps, no genre labels).
-- Label each factual claim that depends on SCRIPT with [evidence] → quote 3-10 exact words and page/line if available.
+- Do NOT invent project names or comparable titles unless they appear verbatim in SCRIPT.
+- If SCRIPT appears sparse or generic, state "Limited content in sides" and keep genre/comparable guidance neutral.
+- Do NOT include meta markers like [evidence], brackets, or citations; integrate supporting details naturally into prose.
+- Keep analysis focused on the audition sides (use full script only for broader context when provided) and avoid invented story beats.
 - Tone: professional coaching; avoid hype metaphors ("warrior", "dominate", "pure gold") unless the user explicitly opts into pep mode.
 `;
 
@@ -1161,12 +1162,16 @@ ${data.sceneText}${fileTypeContext}
    - Apply character development frameworks
    - Production-type specific guidance (comedy vs drama)
 
-**SUBTEXT & BEAT MAP REQUIREMENTS:**
-- Build a beat map that follows how the stakes (${data.stakes ||
-                  "as defined in the sides"
-                }) rise, drop, or pivot (competition, safety, reputation, belonging).
-- Tie each beat's subtext to the stakes and the character's objective/obstacle; call out where energy should lift or settle based on multi-cam/single-cam/sketch pacing.
-- Flag any beat where the stakes spike so the actor can adjust buttons and physicality accordingly.
+**MANDATORY GUIDE STRUCTURE (pure HTML, no markdown/code fences):**
+- Overview (project type/tone and why the scene matters)
+- Character POV (how the character sees themselves and others)
+- Beat Map (emotional arc from first line to button, labeled beats)
+- Subtext Line Translations (map 4-7 pivotal lines to hidden meanings)
+- Physical Signatures (gestures, stillness, posture) & Vocal Modes (tempos/tones with examples)
+- Bold Choices & Traps to Avoid (at least 3 each)
+- Buttons & Callback Alts (ending options + one alt take direction)
+- Casting Director's Checklist (what they're testing and how to show it)
+- Quick Action Plan (bullet checklist the actor can execute today)
 
 **GENERATE A COMPLETE HTML ACTING GUIDE THAT:**
 - Sounds exactly like Corey Ralston wrote it personally
