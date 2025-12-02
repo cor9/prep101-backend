@@ -1351,6 +1351,7 @@ ${
 **CURRENT AUDITION:**
 CHARACTER: ${data.characterName}
 PRODUCTION: ${data.productionTitle} (${data.productionType})
+${formatContext}
 TONE: ${
                   data.productionTone ||
                   "Use the tone implied by the sides; don't invent genre pivots"
@@ -1427,6 +1428,10 @@ ${data.sceneText}${fileTypeContext}
    - Apply character development frameworks
    - Production-type specific guidance (comedy vs drama)
 
+6. **Scale performance to format & energy:**
+   - ${resolvedFormat} dictates size: multi-cam/sketch = punchier pace and clearer buttons; single-cam = camera-close, truthful, and slightly underplayed.
+   - Honor the declared tone (${resolvedTone}) when describing delivery, pace, and physicality.
+   - In beat mapping and subtext, explicitly mention the stakes (${resolvedStakes}) and what the character fears/needs (competition, safety, belonging, reputation, time).
 **MANDATORY GUIDE STRUCTURE (pure HTML, no markdown/code fences):**
 - Overview (project type/tone and why the scene matters)
 - Character POV (how the character sees themselves and others)
@@ -2519,6 +2524,11 @@ app.post("/api/guides/generate", async (req, res) => {
 
     console.log(`🎭 COREY RALSTON RAG Guide Generation...`);
     console.log(`🎬 ${characterName} | ${productionTitle} (${productionType})`);
+    console.log(
+      `🎚️ Format/Tone/Stakes => format: ${productionFormat || "n/a"}, tone: ${
+        productionTone || "n/a"
+      }, stakes: ${stakes || roleSize || "n/a"}`
+    );
     console.log(
       `🧠 Using ${Object.keys(methodologyDatabase).length} methodology files`
     );
