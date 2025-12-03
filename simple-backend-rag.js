@@ -601,6 +601,160 @@ try {
 // Load methodology files into memory for RAG
 let methodologyDatabase = {};
 
+function wrapGuideHtml(rawContent, meta = {}) {
+  if (!rawContent) return "";
+  const hasFullDocument =
+    rawContent.includes("<html") && rawContent.includes("</html>");
+  if (hasFullDocument) {
+    return rawContent;
+  }
+
+  const {
+    characterName = "PREP101 Actor",
+    productionTitle = "",
+    productionType = "",
+  } = meta;
+
+  return `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${characterName} • ${productionTitle} Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@300;400;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --gold: #fbbf24;
+        --midnight: #0f172a;
+        --slate: #1f2937;
+        --cloud: #e2e8f0;
+        --sunset: linear-gradient(135deg, #facc15, #f97316);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #0b1120;
+        font-family: "Libre Franklin", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #f8fafc;
+        line-height: 1.6;
+      }
+      .hero {
+        background: var(--sunset);
+        color: #0f172a;
+        padding: 3rem 1rem;
+        text-align: center;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+      }
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(2.25rem, 4vw, 3rem);
+        font-family: "Playfair Display", serif;
+        letter-spacing: 0.03em;
+      }
+      .hero p {
+        margin-top: 0.75rem;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+      }
+      .guide-shell {
+        max-width: 960px;
+        margin: -80px auto 80px;
+        padding: 0 1.5rem;
+      }
+      .guide-body {
+        background: rgba(15, 23, 42, 0.9);
+        border-radius: 24px;
+        padding: 3rem;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.45);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+      }
+      h2 {
+        font-size: 1.35rem;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        margin-top: 2.75rem;
+        margin-bottom: 1.25rem;
+        color: var(--gold);
+      }
+      h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
+        color: #cbd5f5;
+      }
+      p {
+        margin-bottom: 1rem;
+        color: #e2e8f0;
+      }
+      ul, ol {
+        color: #f1f5f9;
+        padding-left: 1.5rem;
+      }
+      strong {
+        color: #facc15;
+        font-weight: 600;
+      }
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      .info-card {
+        border: 1px solid rgba(248, 250, 252, 0.08);
+        border-radius: 18px;
+        padding: 1.25rem;
+        background: rgba(15, 23, 42, 0.65);
+      }
+      .info-card span {
+        display: block;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: #94a3b8;
+        margin-bottom: 0.45rem;
+      }
+      .info-card strong {
+        color: #f8fafc;
+        font-size: 1rem;
+      }
+      .guide-body > *:first-child {
+        margin-top: 0;
+      }
+      @media (max-width: 768px) {
+        .guide-body {
+          padding: 2rem;
+        }
+        h2 {
+          font-size: 1.1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="hero">
+      <p>Prep101 • ${productionType || "Audition Prep"}</p>
+      <h1>${characterName}</h1>
+      <p>${productionTitle || ""}</p>
+    </section>
+    <main class="guide-shell">
+      <article class="guide-body">
+        ${rawContent}
+      </article>
+    </main>
+  </body>
+  </html>`;
+}
+
 async function initializeDatabase() {
   if (!sequelize || !testConnection) {
     console.log("⚠️  Database not available - skipping initialization");
@@ -1933,6 +2087,55 @@ ${childMethodologyContext}
   }
 }
 
+function queueChildGuideGeneration({ guideId, childData }) {
+  const GuideModel = Guide || require("./models/Guide");
+  if (!GuideModel) {
+    console.warn(
+      "⚠️  Guide model unavailable - child guide queue will not run."
+    );
+    return;
+  }
+
+  setImmediate(async () => {
+    try {
+      const guideRecord = await GuideModel.findByPk(guideId);
+      if (!guideRecord) {
+        console.warn(
+          `⚠️  Child guide queue skipped - guide ${guideId} not found`
+        );
+        return;
+      }
+
+      console.log(
+        `🌟 Async child guide generation started for guide ${guideRecord.guideId}`
+      );
+      const childHtml = await generateChildGuide(childData);
+
+      await guideRecord.update({
+        childGuideHtml: childHtml,
+        childGuideCompleted: true,
+      });
+
+      console.log(
+        `✅ Child guide stored for ${guideRecord.characterName} (${guideRecord.guideId})`
+      );
+    } catch (error) {
+      console.error("❌ Async child guide generation failed:", error);
+      try {
+        await GuideModel.update(
+          { childGuideCompleted: false },
+          { where: { id: guideId } }
+        );
+      } catch (updateError) {
+        console.error(
+          "❌ Failed to persist child guide failure status:",
+          updateError
+        );
+      }
+    }
+  });
+}
+
 // PDF Upload endpoint
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {
@@ -2328,7 +2531,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       });
     }
 
-    const guideContent = await generateActingGuideWithRAG({
+    const guideContentRaw = await generateActingGuideWithRAG({
       sceneText: combinedSceneText,
       characterName: characterName.trim(),
       productionTitle: productionTitle.trim(),
@@ -2336,6 +2539,12 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       extractionMethod: allUploadData[0].extractionMethod,
       hasFullScript: hasFullScript,
       uploadData: allUploadData,
+    });
+
+    const guideContent = wrapGuideHtml(guideContentRaw, {
+      characterName: characterName.trim(),
+      productionTitle: productionTitle.trim(),
+      productionType: productionType.trim(),
     });
 
     console.log(`✅ Corey Ralston RAG Guide Complete!`);
@@ -2388,103 +2597,41 @@ app.post("/api/guides/generate", auth, async (req, res) => {
           });
       }
 
-      // Second Pass: Generate Child's Guide if requested
-      let childGuideContent = null;
+      let childGuideQueued = false;
       if (childGuideRequested) {
-        // Check if we have enough time left for child guide (need ~120s, require 180s buffer)
-        const elapsedSeconds = (Date.now() - requestStartTime) / 1000;
-        const remainingSeconds = 300 - elapsedSeconds; // Vercel's 5-minute limit
-
-        console.log(
-          `⏱️  Time check: ${elapsedSeconds.toFixed(
-            1
-          )}s elapsed, ${remainingSeconds.toFixed(1)}s remaining`
-        );
-
-        if (remainingSeconds < 180) {
-          console.log(
-            `⚠️  Insufficient time for child guide (need 180s buffer, have ${remainingSeconds.toFixed(
-              1
-            )}s)`
-          );
-          console.log(`✅ Returning parent guide only to prevent timeout`);
-
-          // Return parent guide immediately without child guide
-          return res.json({
-            success: true,
-            guideId: guide.guideId,
-            guideContent,
-            childGuideRequested: true,
-            childGuideCompleted: false,
-            message:
-              "Parent guide generated successfully. Child guide skipped due to time constraints.",
-            timeElapsed: elapsedSeconds.toFixed(1) + "s",
+        if (GuideModel) {
+          childGuideQueued = true;
+          queueChildGuideGeneration({
+            guideId: guide.id,
+            childData: {
+              sceneText: combinedSceneText,
+              characterName: characterName.trim(),
+              productionTitle: productionTitle.trim(),
+              productionType: productionType.trim(),
+              parentGuideContent: guideContentRaw,
+              extractionMethod: allUploadData[0].extractionMethod,
+            },
           });
+        } else {
+          console.warn(
+            "⚠️  Child guide requested but Guide model unavailable; skipping queue"
+          );
         }
-
-        console.log(
-          `🌟 Starting second pass: Child's Guide generation for ${characterName}`
-        );
-        console.log(`🌟 Child guide request details:`, {
-          characterName: characterName.trim(),
-          productionTitle: productionTitle.trim(),
-          productionType: productionType.trim(),
-          sceneTextLength: combinedSceneText.length,
-          parentGuideLength: guideContent.length,
-        });
-
-        try {
-          console.log(`🌟 Calling generateChildGuide function...`);
-          const startTime = Date.now();
-
-          childGuideContent = await generateChildGuide({
-            sceneText: combinedSceneText,
-            characterName: characterName.trim(),
-            productionTitle: productionTitle.trim(),
-            productionType: productionType.trim(),
-            parentGuideContent: guideContent,
-            extractionMethod: allUploadData[0].extractionMethod,
-          });
-
-          const endTime = Date.now();
-          console.log(
-            `🌟 Child guide generation completed in ${endTime - startTime}ms`
-          );
-          console.log(
-            `🌟 Child guide content length: ${
-              childGuideContent ? childGuideContent.length : 0
-            }`
-          );
-
-          // Update guide with child guide content
-          await guide.update({
-            childGuideHtml: childGuideContent,
-            childGuideCompleted: true,
-          });
-
-          console.log(
-            `✅ Child's Guide completed and saved for ${characterName}`
-          );
-        } catch (childGuideError) {
-          console.error("❌ Child guide generation error:", childGuideError);
-          console.error("❌ Error stack:", childGuideError.stack);
-          // Don't fail the entire request, just log the error
-          await guide.update({
-            childGuideCompleted: false,
-          });
-        }
-      } else {
-        console.log(`🌟 Child guide not requested for ${characterName}`);
       }
 
       // Log the response being sent
       const responseData = {
         success: true,
         guideId: guide.guideId,
-        guideContent: guideContent,
-        childGuideRequested: childGuideRequested || false,
-        childGuideCompleted: childGuideRequested ? !!childGuideContent : false,
-        childGuideContent: childGuideContent,
+        guideContent,
+        childGuideRequested: !!childGuideRequested,
+        childGuideQueued,
+        childGuideCompleted: false,
+        childGuideMessage: childGuideQueued
+          ? "Child guide is being generated in the background."
+          : childGuideRequested
+          ? "Child guide requested but queue unavailable."
+          : null,
         generatedAt: new Date(),
         savedToDatabase: true,
         metadata: {
@@ -2493,7 +2640,11 @@ app.post("/api/guides/generate", auth, async (req, res) => {
           productionType,
           scriptWordCount: combinedWordCount,
           guideLength: guideContent.length,
-          childGuideLength: childGuideContent ? childGuideContent.length : 0,
+          childGuideStatus: childGuideQueued
+            ? "queued"
+            : childGuideRequested
+            ? "pending"
+            : "not_requested",
           model: "claude-sonnet-4-20250514",
           ragEnabled: true,
           methodologyFiles: Object.keys(methodologyDatabase).length,
@@ -2505,11 +2656,8 @@ app.post("/api/guides/generate", auth, async (req, res) => {
 
       console.log(`🌟 Sending response to frontend:`, {
         childGuideRequested: responseData.childGuideRequested,
+        childGuideQueued: responseData.childGuideQueued,
         childGuideCompleted: responseData.childGuideCompleted,
-        hasChildGuideContent: !!responseData.childGuideContent,
-        childGuideContentLength: responseData.childGuideContent
-          ? responseData.childGuideContent.length
-          : 0,
       });
 
       res.json(responseData);

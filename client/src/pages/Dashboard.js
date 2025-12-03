@@ -177,7 +177,7 @@ const Dashboard = () => {
 
     // Add timeout to prevent infinite hanging
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 420000); // 7 minute timeout
+    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout
 
     try {
       const headers = {
@@ -195,7 +195,7 @@ const Dashboard = () => {
       };
 
       console.log("🚀 Starting guide generation for:", formData.characterName);
-      toast.loading("Generating your guide... this may take 4-7 minutes.");
+      toast.loading("Generating your guide... this may take 4-10 minutes.");
 
       const res = await fetch(`${API_BASE}/api/guides/generate`, {
         method: "POST",
@@ -226,16 +226,13 @@ const Dashboard = () => {
             );
           }
 
-          // If child guide was requested and completed, show both guides
-          if (
-            data.childGuideRequested &&
-            data.childGuideCompleted &&
-            data.childGuideContent
-          ) {
-            console.log("🌟 Opening child guide in 1 second...");
-            setTimeout(() => {
-              openHtmlInNewTab(data.childGuideContent, "Child Guide");
-            }, 1000);
+          if (data.childGuideMessage) {
+            toast(data.childGuideMessage, { icon: "🌟" });
+          } else if (data.childGuideQueued) {
+            toast(
+              "Child guide is being generated in the background and will appear on your dashboard shortly.",
+              { icon: "🌟" }
+            );
           }
         } else if (!res.ok) {
           // No guide content and request failed

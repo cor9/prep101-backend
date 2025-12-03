@@ -154,6 +154,12 @@
 **Decision:** When the Sequelize `User` model is missing we now build a lightweight “Supabase-only” user stub (id/email/plan info) so authenticated requests still succeed, and guide generation skips the DB-only increment calls unless the model exists.
 **Status:** Success
 
+## 2025-12-02 (Part 10)
+
+**Issue:** Core guides still looked inconsistent (LLM-only HTML) and child guides routinely timed out because they ran in the same request.
+**Decision:** Wrapped parent guides in a consistent Prep101 HTML template (brand fonts, gradients, responsive layout) and moved child-guide generation to an asynchronous queue so the parent guide returns immediately while the child version is built/saved in the background.
+**Status:** Success
+
 ---
 
 # Imported Decisions & Learnings (from user)

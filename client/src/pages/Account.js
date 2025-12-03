@@ -378,6 +378,11 @@ const Account = () => {
                             🌟 Child's Guide
                           </button>
                         )}
+                      {guide.childGuideRequested && !guide.childGuideCompleted && (
+                        <span style={{ fontSize: "0.85rem", color: "#fbbf24" }}>
+                          Child guide is being generated…
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
