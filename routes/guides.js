@@ -34,7 +34,14 @@ router.get('/', auth, async (req, res) => {
     // Use Supabase fallback if Sequelize unavailable
     if (!hasSequelize) {
       if (!hasSupabaseFallback) {
-        return res.status(503).json({ message: 'Database service unavailable' });
+        // Graceful degradation - return empty list instead of 503
+        console.warn('⚠️  No database available - returning empty guides list');
+        return res.json({
+          success: true,
+          guides: [],
+          total: 0,
+          _warning: 'Database not configured - guides not persisted'
+        });
       }
       const guides = await supabaseAdmin.listGuidesByUser(userId);
       return res.json({
@@ -835,7 +842,13 @@ router.get('/favorites', auth, async (req, res) => {
     // Supabase fallback
     if (!hasSequelize) {
       if (!hasSupabaseFallback) {
-        return res.status(503).json({ error: 'Database service unavailable' });
+        // Graceful degradation - return empty list
+        return res.json({
+          success: true,
+          guides: [],
+          total: 0,
+          _warning: 'Database not configured'
+        });
       }
       const guides = await supabaseAdmin.listGuidesByUser(userId, { isFavorite: true });
       return res.json({

@@ -503,12 +503,21 @@ router.get('/dashboard', auth, async (req, res) => {
     if (!hasSequelize) {
       // Supabase fallback mode
       if (!hasSupabaseFallback) {
-        // Fall back to req.user if available
+        // Fall back to req.user if available (from auth middleware)
         if (req.user) {
           user = req.user;
-          guides = await supabaseAdmin.listGuidesByUser(userId);
+          guides = []; // No database means no guides to show
         } else {
-          return res.status(503).json({ message: 'Database service unavailable' });
+          // Graceful degradation - create minimal user from token
+          user = {
+            id: userId,
+            email: 'unknown',
+            name: 'User',
+            subscription: 'free',
+            guidesUsed: 0,
+            guidesLimit: 3
+          };
+          guides = [];
         }
       } else {
         user = await supabaseAdmin.getUserById(userId);
