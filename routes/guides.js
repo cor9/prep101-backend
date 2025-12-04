@@ -4,7 +4,25 @@ const auth = require('../middleware/auth');
 const { checkSubscription, trackGuideUsage } = require('../middleware/security');
 const Guide = require('../models/Guide');
 const User = require('../models/User');
-const { Op } = require('sequelize'); // Added Op for search queries
+const supabaseAdmin = require('../lib/supabaseAdmin');
+
+// Check if Sequelize models are available
+const hasSequelize = Guide !== null;
+const hasSupabaseFallback = supabaseAdmin.isAvailable();
+
+if (!hasSequelize) {
+  if (hasSupabaseFallback) {
+    console.log('⚠️  Guides routes: Using Supabase fallback (Sequelize unavailable)');
+  } else {
+    console.error('❌ Guides routes: Neither Sequelize nor Supabase available!');
+  }
+}
+
+// Only import Op if Sequelize is available
+let Op = null;
+if (hasSequelize) {
+  Op = require('sequelize').Op;
+}
 
 const router = express.Router();
 
@@ -12,6 +30,21 @@ const router = express.Router();
 router.get('/', auth, async (req, res) => {
   try {
     const userId = req.userId;
+
+    // Use Supabase fallback if Sequelize unavailable
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({ message: 'Database service unavailable' });
+      }
+      const guides = await supabaseAdmin.listGuidesByUser(userId);
+      return res.json({
+        success: true,
+        guides: guides,
+        total: guides.length,
+        _fallback: 'supabase'
+      });
+    }
+
     const guides = await Guide.findAll({
       where: { userId },
       order: [['createdAt', 'DESC']],
@@ -33,8 +66,30 @@ router.get('/', auth, async (req, res) => {
 router.get('/public', async (req, res) => {
   try {
     const { page = 1, limit = 10, sortBy = 'createdAt', order = 'DESC' } = req.query;
-    const offset = (page - 1) * limit;
 
+    // Supabase fallback
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({ message: 'Database service unavailable' });
+      }
+      const { guides, count } = await supabaseAdmin.listPublicGuides({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        sortBy,
+        order: order.toUpperCase()
+      });
+      return res.json({
+        guides,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(count / limit),
+          totalGuides: count,
+          guidesPerPage: parseInt(limit)
+        }
+      });
+    }
+
+    const offset = (page - 1) * limit;
     const { count, rows: guides } = await Guide.findAndCountAll({
       where: { isPublic: true },
       order: [[sortBy, order.toUpperCase()]],
@@ -67,6 +122,19 @@ router.get('/public/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Supabase fallback
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({ message: 'Database service unavailable' });
+      }
+      const guide = await supabaseAdmin.getGuideById(id);
+      if (!guide || !guide.isPublic) {
+        return res.status(404).json({ message: 'Public guide not found' });
+      }
+      await supabaseAdmin.incrementViewCount(id);
+      return res.json({ guide });
+    }
+
     const guide = await Guide.findOne({
       where: { id, isPublic: true },
       attributes: [
@@ -98,10 +166,19 @@ router.get('/:id/child', auth, async (req, res) => {
 
     console.log(`🔍 Child guide request - Guide ID: ${id}, User ID: ${userId}`);
 
-    const guide = await Guide.findOne({
-      where: { id, userId },
-      attributes: ['id', 'characterName', 'productionTitle', 'childGuideHtml', 'childGuideCompleted']
-    });
+    // Supabase fallback
+    let guide;
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({ message: 'Database service unavailable' });
+      }
+      guide = await supabaseAdmin.getGuideById(id, userId);
+    } else {
+      guide = await Guide.findOne({
+        where: { id, userId },
+        attributes: ['id', 'characterName', 'productionTitle', 'childGuideHtml', 'childGuideCompleted']
+      });
+    }
 
     console.log(`🔍 Guide found:`, {
       found: !!guide,
@@ -142,6 +219,18 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
+
+    // Supabase fallback
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({ message: 'Database service unavailable' });
+      }
+      const guide = await supabaseAdmin.getGuideById(id, userId);
+      if (!guide) {
+        return res.status(404).json({ message: 'Guide not found' });
+      }
+      return res.json({ success: true, guide });
+    }
 
     const guide = await Guide.findOne({
       where: { id, userId },
@@ -271,6 +360,18 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
+
+    // Supabase fallback
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({ message: 'Database service unavailable' });
+      }
+      const deleted = await supabaseAdmin.deleteGuide(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ message: 'Guide not found' });
+      }
+      return res.json({ message: 'Guide deleted successfully' });
+    }
 
     const guide = await Guide.findOne({ where: { id, userId } });
     if (!guide) {
@@ -583,32 +684,46 @@ router.post('/:id/email', auth, async (req, res) => {
 
     console.log(`📧 Email endpoint - Guide ID: ${id}, User ID: ${userId}`);
 
-    const guide = await Guide.findOne({
-      where: { id, userId },
-      attributes: [
-        'id',
-        'guideId',
-        'characterName',
-        'productionTitle',
-        'productionType',
-        'roleSize',
-        'genre',
-        'storyline',
-        'characterBreakdown',
-        'callbackNotes',
-        'focusArea',
-        'sceneText',
-        'generatedHtml',
-        'createdAt',
-        'viewCount'
-      ]
-    });
+    // Supabase fallback
+    let guide, user;
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({ error: 'Database service unavailable' });
+      }
+      guide = await supabaseAdmin.getGuideById(id, userId);
+      user = await supabaseAdmin.getUserById(userId);
+    } else {
+      guide = await Guide.findOne({
+        where: { id, userId },
+        attributes: [
+          'id',
+          'guideId',
+          'characterName',
+          'productionTitle',
+          'productionType',
+          'roleSize',
+          'genre',
+          'storyline',
+          'characterBreakdown',
+          'callbackNotes',
+          'focusArea',
+          'sceneText',
+          'generatedHtml',
+          'createdAt',
+          'viewCount'
+        ]
+      });
+      user = User ? await User.findByPk(userId) : null;
+    }
 
     if (!guide) {
       return res.status(404).json({ error: 'Guide not found' });
     }
 
-    const user = await User.findByPk(userId);
+    // Fall back to req.user if User model not available
+    if (!user && req.user) {
+      user = req.user;
+    }
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -653,6 +768,30 @@ router.put('/:id/favorite', auth, async (req, res) => {
 
     console.log(`⭐ Favorite toggle - Guide ID: ${id}, User ID: ${userId}`);
 
+    // Supabase fallback
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({ error: 'Database service unavailable' });
+      }
+      const guide = await supabaseAdmin.getGuideById(id, userId);
+      if (!guide) {
+        return res.status(404).json({ error: 'Guide not found' });
+      }
+      const newFavoriteStatus = !guide.isFavorite;
+      await supabaseAdmin.updateGuide(id, { isFavorite: newFavoriteStatus }, userId);
+      return res.json({
+        success: true,
+        message: `Guide ${newFavoriteStatus ? 'added to' : 'removed from'} favorites`,
+        guide: {
+          id: guide.id,
+          guideId: guide.guideId,
+          characterName: guide.characterName,
+          productionTitle: guide.productionTitle,
+          isFavorite: newFavoriteStatus
+        }
+      });
+    }
+
     const guide = await Guide.findOne({
       where: { id, userId },
       attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'isFavorite']
@@ -692,6 +831,19 @@ router.get('/favorites', auth, async (req, res) => {
     const userId = req.userId;
 
     console.log(`⭐ Fetching favorites - User ID: ${userId}`);
+
+    // Supabase fallback
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({ error: 'Database service unavailable' });
+      }
+      const guides = await supabaseAdmin.listGuidesByUser(userId, { isFavorite: true });
+      return res.json({
+        success: true,
+        guides: guides,
+        total: guides.length
+      });
+    }
 
     const guides = await Guide.findAll({
       where: { userId, isFavorite: true },
