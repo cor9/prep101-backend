@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 const auth = require("./middleware/auth");
+const supabaseAdmin = require("./lib/supabaseAdmin");
 
 // Create app immediately for fast health checks
 const app = express();
@@ -2115,16 +2116,26 @@ ${childMethodologyContext}
 
 function queueChildGuideGeneration({ guideId, childData }) {
   const GuideModel = Guide || require("./models/Guide");
-  if (!GuideModel) {
+  const hasSupabaseFallback = supabaseAdmin.isAvailable();
+
+  if (!GuideModel && !hasSupabaseFallback) {
     console.warn(
-      "⚠️  Guide model unavailable - child guide queue will not run."
+      "⚠️  Neither Guide model nor Supabase available - child guide queue will not run."
     );
     return;
   }
 
   setImmediate(async () => {
     try {
-      const guideRecord = await GuideModel.findByPk(guideId);
+      let guideRecord;
+
+      // Try Sequelize first, then Supabase fallback
+      if (GuideModel) {
+        guideRecord = await GuideModel.findByPk(guideId);
+      } else if (hasSupabaseFallback) {
+        guideRecord = await supabaseAdmin.getGuideById(guideId);
+      }
+
       if (!guideRecord) {
         console.warn(
           `⚠️  Child guide queue skipped - guide ${guideId} not found`
@@ -2133,25 +2144,37 @@ function queueChildGuideGeneration({ guideId, childData }) {
       }
 
       console.log(
-        `🌟 Async child guide generation started for guide ${guideRecord.guideId}`
+        `🌟 Async child guide generation started for guide ${guideRecord.guideId || guideId}`
       );
       const childHtml = await generateChildGuide(childData);
 
-      await guideRecord.update({
-        childGuideHtml: childHtml,
-        childGuideCompleted: true,
-      });
+      // Update the guide with child guide content
+      if (GuideModel && typeof guideRecord.update === "function") {
+        await guideRecord.update({
+          childGuideHtml: childHtml,
+          childGuideCompleted: true,
+        });
+      } else if (hasSupabaseFallback) {
+        await supabaseAdmin.updateGuide(guideId, {
+          childGuideHtml: childHtml,
+          childGuideCompleted: true,
+        });
+      }
 
       console.log(
-        `✅ Child guide stored for ${guideRecord.characterName} (${guideRecord.guideId})`
+        `✅ Child guide stored for ${guideRecord.characterName} (${guideRecord.guideId || guideId})`
       );
     } catch (error) {
       console.error("❌ Async child guide generation failed:", error);
       try {
-        await GuideModel.update(
-          { childGuideCompleted: false },
-          { where: { id: guideId } }
-        );
+        if (GuideModel) {
+          await GuideModel.update(
+            { childGuideCompleted: false },
+            { where: { id: guideId } }
+          );
+        } else if (hasSupabaseFallback) {
+          await supabaseAdmin.updateGuide(guideId, { childGuideCompleted: false });
+        }
       } catch (updateError) {
         console.error(
           "❌ Failed to persist child guide failure status:",
@@ -2578,16 +2601,11 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     // Save guide to database
     try {
       const GuideModel = Guide || require("./models/Guide");
-
-      if (!GuideModel) {
-        throw new Error("Guide model not available");
-      }
-
       const guideId = `corey_rag_${Date.now()}_${Math.random()
         .toString(36)
         .substr(2, 9)}`;
 
-      const guide = await GuideModel.create({
+      const guideData = {
         guideId,
         userId: currentUser.id,
         characterName: characterName.trim(),
@@ -2603,9 +2621,23 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         generatedHtml: guideContent,
         childGuideRequested: childGuideRequested || false,
         childGuideCompleted: false,
-      });
+      };
 
-      console.log(`💾 Guide saved to database with ID: ${guide.id}`);
+      let guide;
+
+      // Try Sequelize first, then Supabase fallback
+      if (GuideModel) {
+        guide = await GuideModel.create(guideData);
+        console.log(`💾 Guide saved to database (Sequelize) with ID: ${guide.id}`);
+      } else if (supabaseAdmin.isAvailable()) {
+        guide = await supabaseAdmin.insertGuide(guideData);
+        if (!guide) {
+          throw new Error("Supabase insert failed");
+        }
+        console.log(`💾 Guide saved to database (Supabase) with ID: ${guide.id}`);
+      } else {
+        throw new Error("No database available (neither Sequelize nor Supabase)");
+      }
 
       if (
         !hasUnlimitedPlan &&

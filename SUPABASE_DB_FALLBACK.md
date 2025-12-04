@@ -1,6 +1,6 @@
-# Supabase & Database Fallback Authentication System
+# Supabase & Database Fallback System
 
-**Version**: 1.0
+**Version**: 2.0
 **Last Updated**: December 4, 2025
 **Status**: Production
 
@@ -8,7 +8,67 @@
 
 ## Overview
 
-PREP101's backend implements a multi-layer authentication fallback system that ensures maximum compatibility across different deployment environments. This allows the app to function with or without full database connectivity.
+PREP101's backend implements a comprehensive fallback system for both **authentication** and **data persistence**. When Sequelize/PostgreSQL is unavailable (common in serverless deployments), the system automatically falls back to Supabase's API for guide storage and retrieval.
+
+---
+
+## Quick Reference
+
+| Component | Primary | Fallback |
+|-----------|---------|----------|
+| Authentication | Supabase Admin → Public → JWT → Unsigned | req.user from auth middleware |
+| Guide CRUD | Sequelize (PostgreSQL) | `lib/supabaseAdmin.js` |
+| User Data | Sequelize User model | Supabase Auth metadata |
+| Child Guide Queue | Sequelize update | Supabase update |
+
+---
+
+## Data Persistence Fallback
+
+### lib/supabaseAdmin.js
+
+New helper module providing Supabase-based CRUD operations when Sequelize is unavailable:
+
+```javascript
+const supabaseAdmin = require('./lib/supabaseAdmin');
+
+// Check availability
+if (supabaseAdmin.isAvailable()) {
+  // Safe to use Supabase operations
+}
+
+// Available methods:
+supabaseAdmin.getUserById(userId)
+supabaseAdmin.listGuidesByUser(userId, { isFavorite: true })
+supabaseAdmin.getGuideById(guideId, userId)
+supabaseAdmin.insertGuide(guideData)
+supabaseAdmin.updateGuide(guideId, updates, userId)
+supabaseAdmin.deleteGuide(guideId, userId)
+supabaseAdmin.listPublicGuides({ page, limit, sortBy, order })
+```
+
+### Route Fallback Pattern
+
+All routes in `routes/guides.js` and `routes/auth.js` now follow this pattern:
+
+```javascript
+// At top of file
+const hasSequelize = Guide !== null;
+const hasSupabaseFallback = supabaseAdmin.isAvailable();
+
+// In route handler
+if (!hasSequelize) {
+  if (!hasSupabaseFallback) {
+    return res.status(503).json({ message: 'Database service unavailable' });
+  }
+  // Use supabaseAdmin methods instead
+  const guides = await supabaseAdmin.listGuidesByUser(userId);
+  return res.json({ guides });
+}
+
+// Normal Sequelize path
+const guides = await Guide.findAll({ where: { userId } });
+```
 
 ---
 

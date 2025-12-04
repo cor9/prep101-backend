@@ -4,6 +4,19 @@ const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const supabaseAdmin = require('../lib/supabaseAdmin');
+
+// Check if Sequelize User model is available
+const hasSequelize = User !== null;
+const hasSupabaseFallback = supabaseAdmin.isAvailable();
+
+if (!hasSequelize) {
+  if (hasSupabaseFallback) {
+    console.log('⚠️  Auth routes: Using Supabase fallback (Sequelize User unavailable)');
+  } else {
+    console.error('❌ Auth routes: Neither Sequelize nor Supabase available!');
+  }
+}
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -483,31 +496,61 @@ router.get('/verify', auth, async (req, res) => {
 router.get('/dashboard', auth, async (req, res) => {
   try {
     const userId = req.userId;
-    const user = await User.findByPk(userId, {
-      attributes: { exclude: ['password'] }
-    });
-    
+
+    // Get user - with Supabase fallback
+    let user, guides;
+
+    if (!hasSequelize) {
+      // Supabase fallback mode
+      if (!hasSupabaseFallback) {
+        // Fall back to req.user if available
+        if (req.user) {
+          user = req.user;
+          guides = await supabaseAdmin.listGuidesByUser(userId);
+        } else {
+          return res.status(503).json({ message: 'Database service unavailable' });
+        }
+      } else {
+        user = await supabaseAdmin.getUserById(userId);
+        guides = await supabaseAdmin.listGuidesByUser(userId);
+      }
+
+      // Final fallback to req.user
+      if (!user && req.user) {
+        user = req.user;
+      }
+    } else {
+      user = await User.findByPk(userId, {
+        attributes: { exclude: ['password'] }
+      });
+
+      const Guide = require('../models/Guide');
+      if (Guide) {
+        guides = await Guide.findAll({
+          where: { userId },
+          order: [['createdAt', 'DESC']],
+          attributes: [
+            'id', 'guideId', 'characterName', 'productionTitle',
+            'productionType', 'roleSize', 'genre', 'createdAt', 'updatedAt',
+            'viewCount', 'isPublic', 'childGuideRequested', 'childGuideCompleted'
+          ]
+        });
+      } else {
+        guides = await supabaseAdmin.listGuidesByUser(userId);
+      }
+    }
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Get user's guides
-    const Guide = require('../models/Guide');
-    const guides = await Guide.findAll({
-      where: { userId },
-      order: [['createdAt', 'DESC']],
-      attributes: [
-        'id', 'guideId', 'characterName', 'productionTitle', 
-        'productionType', 'roleSize', 'genre', 'createdAt', 'updatedAt',
-        'viewCount', 'isPublic', 'childGuideRequested', 'childGuideCompleted'
-      ]
-    });
+    guides = guides || [];
 
     // Get subscription plans for comparison
     const PaymentService = require('../services/paymentService');
     const paymentService = new PaymentService();
     const plans = paymentService.getSubscriptionPlans();
-    const currentPlan = plans[user.subscription];
+    const currentPlan = plans[user.subscription || 'free'];
 
     // Calculate usage statistics
     const totalGuides = guides.length;
@@ -533,9 +576,11 @@ router.get('/dashboard', auth, async (req, res) => {
         console.error('Error fetching beta info:', error);
         betaInfo = {
           isBetaTester: true,
-          betaAccessLevel: user.betaAccessLevel,
-          betaStatus: user.betaStatus,
-          accessDescription: user.getBetaAccessDescription()
+          betaAccessLevel: user.betaAccessLevel || 'none',
+          betaStatus: user.betaStatus || 'active',
+          accessDescription: typeof user.getBetaAccessDescription === 'function'
+            ? user.getBetaAccessDescription()
+            : 'Beta tester access'
         };
       }
     }
