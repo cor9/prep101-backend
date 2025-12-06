@@ -45,15 +45,15 @@ export const signUp = async (email, password, name) => {
       localStorage.setItem('prep101_user', JSON.stringify(result.user));
     }
 
-    return { 
-      data: { 
+    return {
+      data: {
         user: result.user,
-        session: { 
+        session: {
           access_token: result.token,
           user: result.user
         }
-      }, 
-      error: null 
+      },
+      error: null
     };
   } catch (error) {
     console.error('🔍 Registration error:', error);
@@ -86,15 +86,15 @@ export const signIn = async (email, password) => {
       localStorage.setItem('prep101_user', JSON.stringify(result.user));
     }
 
-    return { 
-      data: { 
+    return {
+      data: {
         user: result.user,
-        session: { 
+        session: {
           access_token: result.token,
           user: result.user
         }
-      }, 
-      error: null 
+      },
+      error: null
     };
   } catch (error) {
     console.error('🔍 Login error:', error);
@@ -118,18 +118,18 @@ export const signOut = async () => {
   } catch (e) {
     console.log('Logout cleanup error:', e);
   }
-  
+
   // Clear local storage
   localStorage.removeItem('prep101_token');
   localStorage.removeItem('prep101_user');
-  
+
   return { error: null }
 }
 
 export const getCurrentUser = async () => {
   const token = localStorage.getItem('prep101_token');
   const storedUser = localStorage.getItem('prep101_user');
-  
+
   if (!token) {
     return { user: null, error: null };
   }

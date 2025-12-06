@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, signIn, signUp, signOut, getCurrentUser } from '../utils/supabase';
+import { signIn, signUp, signOut, getCurrentUser } from '../utils/supabase';
 
 const AuthContext = createContext();
 
@@ -9,31 +9,16 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const mapSessionToUser = (session) => {
-    if (!session || !session.user) return null;
-    const email = session.user.email || '';
-    const derivedName =
-      session.user.user_metadata?.full_name ||
-      session.user.user_metadata?.name ||
-      (email ? email.split('@')[0] : 'Prep101 Actor');
-
-    return {
-      ...session.user,
-      name: derivedName,
-      accessToken: session.access_token,
-      refreshToken: session.refresh_token,
-      token: session.access_token
-    };
-  };
-
-  // Load user on mount and listen for auth changes
+  // Load user on mount
   useEffect(() => {
     const loadUser = async () => {
       try {
+        console.log('AuthContext: Loading user...');
         const { user: currentUser, error } = await getCurrentUser();
         if (error) {
           console.error('Error loading user:', error);
         } else {
+          console.log('AuthContext: User loaded:', currentUser?.email || 'none');
           setUser(currentUser);
         }
       } catch (error) {
@@ -44,17 +29,6 @@ export const AuthProvider = ({ children }) => {
     };
 
     loadUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        setUser(mapSessionToUser(session));
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email, password) => {
@@ -66,7 +40,15 @@ export const AuthProvider = ({ children }) => {
         throw new Error(error.message);
       }
 
-      console.log('✅ User logged in via Supabase');
+      console.log('✅ User logged in successfully');
+      // Update user state with the logged-in user
+      if (data?.user) {
+        setUser({
+          ...data.user,
+          accessToken: data.session?.access_token,
+          token: data.session?.access_token
+        });
+      }
       return data.user;
     } catch (error) {
       console.error('Login error:', error);
@@ -83,7 +65,15 @@ export const AuthProvider = ({ children }) => {
         throw new Error(error.message);
       }
 
-      console.log('✅ User registered via Supabase');
+      console.log('✅ User registered successfully');
+      // Update user state with the registered user
+      if (data?.user) {
+        setUser({
+          ...data.user,
+          accessToken: data.session?.access_token,
+          token: data.session?.access_token
+        });
+      }
       return data.user;
     } catch (error) {
       console.error('Registration error:', error);
