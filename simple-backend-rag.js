@@ -71,6 +71,8 @@ app.get("/api/diagnostics", async (req, res) => {
       ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
       STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
       JWT_SECRET: !!process.env.JWT_SECRET,
+      RESEND_API_KEY: !!process.env.RESEND_API_KEY,
+      EMAIL_FROM: process.env.EMAIL_FROM || 'not set',
     },
     database: {
       status: dbStatus,
@@ -2935,7 +2937,9 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         // In Vercel serverless, generate child guide SYNCHRONOUSLY before sending response
         // Fire-and-forget doesn't work because the function terminates after res.json()
         if (process.env.VERCEL) {
-          console.log(`🌟 Generating child guide synchronously for ${persistedGuide.id} (Vercel mode)`);
+          console.log(
+            `🌟 Generating child guide synchronously for ${persistedGuide.id} (Vercel mode)`
+          );
           try {
             const childResult = await generateChildGuideAsync({
               guideId: persistedGuide.id,
