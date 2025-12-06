@@ -4,7 +4,14 @@ import API_BASE from '../config/api'
 const supabaseUrl = 'https://eokqyijxubrmompozguh.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVva3F5aWp4dWJybW9tcG96Z3VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MTQxNjUsImV4cCI6MjA3Mjk5MDE2NX0.T6xlKoYDXO-iVvbrjFV5QIOg7FCFC3YVjdrjqgy7Vy0'
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+// Disable auto session refresh to prevent errors when using backend-based auth
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false
+  }
+})
 
 // Auth functions - use backend API for registration/login to ensure users are created in our database
 export const signUp = async (email, password, name) => {
