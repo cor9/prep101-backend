@@ -1319,9 +1319,9 @@ async function generateActingGuideWithRAG(data) {
       data.sceneText
     );
 
-    // Build context from your methodology files (limit to ~80k chars to allow archetype + examples)
+    // Build context from your methodology files (limit to ~120k chars to allow archetype file + examples)
     let methodologyContext = "";
-    const MAX_METHODOLOGY_CHARS = 80000;
+    const MAX_METHODOLOGY_CHARS = 120000;
     let currentChars = 0;
 
     if (relevantMethodology.length > 0) {
