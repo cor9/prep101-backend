@@ -107,8 +107,10 @@ async function fetchSupabaseUser(userId) {
 router.get("/", auth, async (req, res) => {
   try {
     const userId = req.userId;
+    console.log(`📋 GET /api/guides - userId: ${userId}, hasGuideModel: ${hasGuideModel}, hasSupabaseFallback: ${hasSupabaseFallback}`);
 
     if (hasGuideModel) {
+      console.log('📋 Using Sequelize to fetch guides');
       const guides = await Guide.findAll({
         where: { userId },
         order: [["createdAt", "DESC"]],
@@ -139,9 +141,11 @@ router.get("/", auth, async (req, res) => {
       return;
     }
 
+    console.log('📋 Using Supabase fallback to fetch guides');
     if (supabaseUnavailable(res)) return;
 
-    const { data } = await executeSupabase((client) =>
+    console.log(`📋 Querying Supabase table: ${SUPABASE_GUIDES_TABLE}, fields: ${GUIDE_SUMMARY_FIELDS}`);
+    const result = await runAdminQuery((client) =>
       client
         .from(SUPABASE_GUIDES_TABLE)
         .select(GUIDE_SUMMARY_FIELDS)
@@ -149,7 +153,19 @@ router.get("/", auth, async (req, res) => {
         .order("createdAt", { ascending: false })
     );
 
-    const guides = (data || []).map(normalizeGuideRow);
+    console.log('📋 Supabase query result:', { 
+      hasResult: !!result, 
+      hasData: !!result?.data,
+      dataLength: result?.data?.length,
+      error: result?.error
+    });
+
+    if (result?.error) {
+      console.error('📋 Supabase error:', result.error);
+      throw new Error(result.error.message || 'Supabase query failed');
+    }
+
+    const guides = (result?.data || []).map(normalizeGuideRow);
 
     res.json({
       success: true,
@@ -157,8 +173,8 @@ router.get("/", auth, async (req, res) => {
       total: guides.length,
     });
   } catch (error) {
-    console.error("Error fetching guides:", error);
-    res.status(500).json({ message: "Failed to fetch guides" });
+    console.error("Error fetching guides:", error.message, error.stack);
+    res.status(500).json({ message: "Failed to fetch guides", error: error.message });
   }
 });
 
