@@ -59,13 +59,13 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     console.log('AuthContext: login called with:', email);
-    
+
     try {
       const { data, error } = await signIn(email, password);
       if (error) {
         throw new Error(error.message);
       }
-      
+
       console.log('✅ User logged in via Supabase');
       return data.user;
     } catch (error) {
@@ -76,13 +76,13 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, password, name) => {
     console.log('AuthContext: register called with:', email, name);
-    
+
     try {
       const { data, error } = await signUp(email, password, name);
       if (error) {
         throw new Error(error.message);
       }
-      
+
       console.log('✅ User registered via Supabase');
       return data.user;
     } catch (error) {

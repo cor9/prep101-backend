@@ -195,7 +195,7 @@ const Dashboard = () => {
       };
 
       console.log("🚀 Starting guide generation for:", formData.characterName);
-      toast.loading("Generating your guide... this may take 4-10 minutes.");
+      toast.loading("Generating your guide... this may take about 3-6 minutes.");
 
       const res = await fetch(`${API_BASE}/api/guides/generate`, {
         method: "POST",
@@ -312,8 +312,8 @@ const Dashboard = () => {
                 color: "#e5e7eb",
               }}
             >
-              Crafting your Prep101 audition guide. This usually takes 2–5
-              minutes.
+              Crafting your Prep101 audition guide. This usually takes about
+              3–6 minutes.
             </p>
             <p
               style={{

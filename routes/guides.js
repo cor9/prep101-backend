@@ -4,64 +4,142 @@ const auth = require('../middleware/auth');
 const { checkSubscription, trackGuideUsage } = require('../middleware/security');
 const Guide = require('../models/Guide');
 const User = require('../models/User');
-const supabaseAdmin = require('../lib/supabaseAdmin');
-
-// Check if Sequelize models are available
-const hasSequelize = Guide !== null;
-const hasSupabaseFallback = supabaseAdmin.isAvailable();
-
-if (!hasSequelize) {
-  if (hasSupabaseFallback) {
-    console.log('⚠️  Guides routes: Using Supabase fallback (Sequelize unavailable)');
-  } else {
-    console.error('❌ Guides routes: Neither Sequelize nor Supabase available!');
-  }
-}
-
-// Only import Op if Sequelize is available
-let Op = null;
-if (hasSequelize) {
-  Op = require('sequelize').Op;
-}
+const { Op } = require('sequelize'); // Added Op for search queries
+const {
+  runAdminQuery,
+  isSupabaseAdminConfigured,
+  tables: supabaseTables,
+  normalizeGuideRow,
+  normalizeUserRow,
+} = require('../lib/supabaseAdmin');
 
 const router = express.Router();
+const SUPABASE_GUIDES_TABLE = supabaseTables.guides;
+const SUPABASE_USERS_TABLE = supabaseTables.users;
+const hasGuideModel = !!Guide;
+const hasUserModel = !!User;
+const GUIDE_SUMMARY_FIELDS = [
+  'id',
+  'guideId',
+  'characterName',
+  'productionTitle',
+  'productionType',
+  'productionTone',
+  'stakes',
+  'roleSize',
+  'genre',
+  'createdAt',
+  'viewCount',
+  'childGuideRequested',
+  'childGuideCompleted',
+  'childGuideHtml',
+  'isFavorite',
+].join(',');
+const GUIDE_DETAIL_FIELDS = [
+  'id',
+  'guideId',
+  'characterName',
+  'productionTitle',
+  'productionType',
+  'roleSize',
+  'genre',
+  'storyline',
+  'characterBreakdown',
+  'callbackNotes',
+  'focusArea',
+  'sceneText',
+  'generatedHtml',
+  'createdAt',
+  'updatedAt',
+  'viewCount',
+  'isPublic',
+  'childGuideRequested',
+  'childGuideCompleted',
+  'childGuideHtml',
+  'isFavorite',
+].join(',');
+
+function supabaseUnavailable(res) {
+  if (!isSupabaseAdminConfigured()) {
+    res
+      .status(503)
+      .json({ message: 'Guide storage unavailable. Please try again shortly.' });
+    return true;
+  }
+  return false;
+}
+
+async function executeSupabase(builderFn) {
+  const result = await runAdminQuery(builderFn);
+  if (!result) {
+    throw new Error('Supabase admin client unavailable');
+  }
+  if (result.error) {
+    throw new Error(result.error.message || 'Supabase query failed');
+  }
+  return result;
+}
+
+async function fetchSupabaseUser(userId) {
+  if (!isSupabaseAdminConfigured()) return null;
+  const result = await executeSupabase((client) =>
+    client.from(SUPABASE_USERS_TABLE).select('*').eq('id', userId).maybeSingle()
+  );
+  return normalizeUserRow(result.data);
+}
 
 // GET /api/guides - Get user's guides
 router.get('/', auth, async (req, res) => {
   try {
     const userId = req.userId;
 
-    // Use Supabase fallback if Sequelize unavailable
-    if (!hasSequelize) {
-      if (!hasSupabaseFallback) {
-        // Graceful degradation - return empty list instead of 503
-        console.warn('⚠️  No database available - returning empty guides list');
-        return res.json({
-          success: true,
-          guides: [],
-          total: 0,
-          _warning: 'Database not configured - guides not persisted'
-        });
-      }
-      const guides = await supabaseAdmin.listGuidesByUser(userId);
-      return res.json({
-        success: true,
-        guides: guides,
-        total: guides.length,
-        _fallback: 'supabase'
+    if (hasGuideModel) {
+      const guides = await Guide.findAll({
+        where: { userId },
+        order: [['createdAt', 'DESC']],
+        attributes: [
+          'id',
+          'guideId',
+          'characterName',
+          'productionTitle',
+          'productionType',
+          'productionTone',
+          'stakes',
+          'roleSize',
+          'genre',
+          'createdAt',
+          'viewCount',
+          'childGuideRequested',
+          'childGuideCompleted',
+          'childGuideHtml',
+          'isFavorite',
+        ],
       });
+
+      res.json({
+        success: true,
+        guides,
+        total: guides.length,
+      });
+      return;
     }
 
-    const guides = await Guide.findAll({
-      where: { userId },
-      order: [['createdAt', 'DESC']],
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'productionTone', 'stakes', 'roleSize', 'genre', 'createdAt', 'viewCount', 'childGuideRequested', 'childGuideCompleted', 'childGuideHtml', 'isFavorite']
-    });
+    if (supabaseUnavailable(res)) return;
+
+    const { data } = await executeSupabase((client) =>
+      client
+        .from(SUPABASE_GUIDES_TABLE)
+        .select(GUIDE_SUMMARY_FIELDS)
+        .eq('userId', userId)
+        .order('createdAt', { ascending: false })
+    );
+
+    const guides = (data || []).map(normalizeGuideRow);
 
     res.json({
       success: true,
-      guides: guides,
-      total: guides.length
+      guides,
+      total: guides.length,
     });
   } catch (error) {
     console.error('Error fetching guides:', error);
@@ -173,18 +251,32 @@ router.get('/:id/child', auth, async (req, res) => {
 
     console.log(`🔍 Child guide request - Guide ID: ${id}, User ID: ${userId}`);
 
-    // Supabase fallback
-    let guide;
-    if (!hasSequelize) {
-      if (!hasSupabaseFallback) {
-        return res.status(503).json({ message: 'Database service unavailable' });
-      }
-      guide = await supabaseAdmin.getGuideById(id, userId);
-    } else {
+    let guide = null;
+    if (hasGuideModel) {
       guide = await Guide.findOne({
         where: { id, userId },
-        attributes: ['id', 'characterName', 'productionTitle', 'childGuideHtml', 'childGuideCompleted']
+        attributes: [
+          'id',
+          'characterName',
+          'productionTitle',
+          'childGuideHtml',
+          'childGuideCompleted',
+          'childGuideRequested',
+        ],
       });
+    } else {
+      if (supabaseUnavailable(res)) return;
+      const { data } = await executeSupabase((client) =>
+        client
+          .from(SUPABASE_GUIDES_TABLE)
+          .select(
+            'id,characterName,productionTitle,childGuideHtml,childGuideCompleted,childGuideRequested'
+          )
+          .eq('id', id)
+          .eq('userId', userId)
+          .maybeSingle()
+      );
+      guide = normalizeGuideRow(data);
     }
 
     console.log(`🔍 Guide found:`, {
@@ -227,22 +319,24 @@ router.get('/:id', auth, async (req, res) => {
     const { id } = req.params;
     const userId = req.userId;
 
-    // Supabase fallback
-    if (!hasSequelize) {
-      if (!hasSupabaseFallback) {
-        return res.status(503).json({ message: 'Database service unavailable' });
-      }
-      const guide = await supabaseAdmin.getGuideById(id, userId);
-      if (!guide) {
-        return res.status(404).json({ message: 'Guide not found' });
-      }
-      return res.json({ success: true, guide });
+    let guide = null;
+    if (hasGuideModel) {
+      guide = await Guide.findOne({
+        where: { id, userId },
+        attributes: { exclude: ['scriptContent'] } // Don't send full script content
+      });
+    } else {
+      if (supabaseUnavailable(res)) return;
+      const { data } = await executeSupabase((client) =>
+        client
+          .from(SUPABASE_GUIDES_TABLE)
+          .select(GUIDE_DETAIL_FIELDS)
+          .eq('id', id)
+          .eq('userId', userId)
+          .maybeSingle()
+      );
+      guide = normalizeGuideRow(data);
     }
-
-    const guide = await Guide.findOne({
-      where: { id, userId },
-      attributes: { exclude: ['scriptContent'] } // Don't send full script content
-    });
 
     if (!guide) {
       return res.status(404).json({ message: 'Guide not found' });
@@ -367,25 +461,35 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
-
-    // Supabase fallback
-    if (!hasSequelize) {
-      if (!hasSupabaseFallback) {
-        return res.status(503).json({ message: 'Database service unavailable' });
-      }
-      const deleted = await supabaseAdmin.deleteGuide(id, userId);
-      if (!deleted) {
+    if (hasGuideModel) {
+      const guide = await Guide.findOne({ where: { id, userId } });
+      if (!guide) {
         return res.status(404).json({ message: 'Guide not found' });
       }
-      return res.json({ message: 'Guide deleted successfully' });
+
+      await guide.destroy();
+      res.json({ message: 'Guide deleted successfully' });
+      return;
     }
 
-    const guide = await Guide.findOne({ where: { id, userId } });
-    if (!guide) {
+    if (supabaseUnavailable(res)) return;
+
+    const { data: existingGuide } = await executeSupabase((client) =>
+      client
+        .from(SUPABASE_GUIDES_TABLE)
+        .select('id')
+        .eq('id', id)
+        .eq('userId', userId)
+        .maybeSingle()
+    );
+
+    if (!existingGuide) {
       return res.status(404).json({ message: 'Guide not found' });
     }
 
-    await guide.destroy();
+    await executeSupabase((client) =>
+      client.from(SUPABASE_GUIDES_TABLE).delete().eq('id', id).eq('userId', userId)
+    );
 
     res.json({ message: 'Guide deleted successfully' });
   } catch (error) {
@@ -667,9 +771,23 @@ router.get('/:id/full', auth, async (req, res) => {
     const { id } = req.params;
     const userId = req.userId;
 
-    const guide = await Guide.findOne({
-      where: { id, userId }
-    });
+    let guide = null;
+    if (hasGuideModel) {
+      guide = await Guide.findOne({
+        where: { id, userId }
+      });
+    } else {
+      if (supabaseUnavailable(res)) return;
+      const { data } = await executeSupabase((client) =>
+        client
+          .from(SUPABASE_GUIDES_TABLE)
+          .select(GUIDE_DETAIL_FIELDS)
+          .eq('id', id)
+          .eq('userId', userId)
+          .maybeSingle()
+      );
+      guide = normalizeGuideRow(data);
+    }
 
     if (!guide) {
       return res.status(404).json({ message: 'Guide not found' });
@@ -691,15 +809,8 @@ router.post('/:id/email', auth, async (req, res) => {
 
     console.log(`📧 Email endpoint - Guide ID: ${id}, User ID: ${userId}`);
 
-    // Supabase fallback
-    let guide, user;
-    if (!hasSequelize) {
-      if (!hasSupabaseFallback) {
-        return res.status(503).json({ error: 'Database service unavailable' });
-      }
-      guide = await supabaseAdmin.getGuideById(id, userId);
-      user = await supabaseAdmin.getUserById(userId);
-    } else {
+    let guide = null;
+    if (hasGuideModel) {
       guide = await Guide.findOne({
         where: { id, userId },
         attributes: [
@@ -720,16 +831,28 @@ router.post('/:id/email', auth, async (req, res) => {
           'viewCount'
         ]
       });
-      user = User ? await User.findByPk(userId) : null;
+    } else {
+      if (supabaseUnavailable(res)) return;
+      const { data } = await executeSupabase((client) =>
+        client
+          .from(SUPABASE_GUIDES_TABLE)
+          .select(GUIDE_DETAIL_FIELDS)
+          .eq('id', id)
+          .eq('userId', userId)
+          .maybeSingle()
+      );
+      guide = normalizeGuideRow(data);
     }
 
     if (!guide) {
       return res.status(404).json({ error: 'Guide not found' });
     }
 
-    // Fall back to req.user if User model not available
-    if (!user && req.user) {
-      user = req.user;
+    let user = null;
+    if (hasUserModel) {
+      user = await User.findByPk(userId);
+    } else {
+      user = await fetchSupabaseUser(userId);
     }
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -775,42 +898,47 @@ router.put('/:id/favorite', auth, async (req, res) => {
 
     console.log(`⭐ Favorite toggle - Guide ID: ${id}, User ID: ${userId}`);
 
-    // Supabase fallback
-    if (!hasSequelize) {
-      if (!hasSupabaseFallback) {
-        return res.status(503).json({ error: 'Database service unavailable' });
-      }
-      const guide = await supabaseAdmin.getGuideById(id, userId);
-      if (!guide) {
-        return res.status(404).json({ error: 'Guide not found' });
-      }
-      const newFavoriteStatus = !guide.isFavorite;
-      await supabaseAdmin.updateGuide(id, { isFavorite: newFavoriteStatus }, userId);
-      return res.json({
-        success: true,
-        message: `Guide ${newFavoriteStatus ? 'added to' : 'removed from'} favorites`,
-        guide: {
-          id: guide.id,
-          guideId: guide.guideId,
-          characterName: guide.characterName,
-          productionTitle: guide.productionTitle,
-          isFavorite: newFavoriteStatus
-        }
+    let guide = null;
+    if (hasGuideModel) {
+      guide = await Guide.findOne({
+        where: { id, userId },
+        attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'isFavorite']
       });
+    } else {
+      if (supabaseUnavailable(res)) return;
+      const { data } = await executeSupabase((client) =>
+        client
+          .from(SUPABASE_GUIDES_TABLE)
+          .select('id,guideId,characterName,productionTitle,isFavorite')
+          .eq('id', id)
+          .eq('userId', userId)
+          .maybeSingle()
+      );
+      guide = normalizeGuideRow(data);
     }
-
-    const guide = await Guide.findOne({
-      where: { id, userId },
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'isFavorite']
-    });
 
     if (!guide) {
       return res.status(404).json({ error: 'Guide not found' });
     }
 
     // Toggle favorite status
-    const newFavoriteStatus = !guide.isFavorite;
-    await guide.update({ isFavorite: newFavoriteStatus });
+    const currentFavorite =
+      typeof guide.isFavorite === 'boolean'
+        ? guide.isFavorite
+        : Boolean(guide.get?.('isFavorite'));
+    const newFavoriteStatus = !currentFavorite;
+
+    if (hasGuideModel && guide.update) {
+      await guide.update({ isFavorite: newFavoriteStatus });
+    } else {
+      await executeSupabase((client) =>
+        client
+          .from(SUPABASE_GUIDES_TABLE)
+          .update({ isFavorite: newFavoriteStatus })
+          .eq('id', id)
+          .eq('userId', userId)
+      );
+    }
 
     console.log(`⭐ Guide ${newFavoriteStatus ? 'favorited' : 'unfavorited'}: ${guide.characterName} in ${guide.productionTitle}`);
 
@@ -839,37 +967,55 @@ router.get('/favorites', auth, async (req, res) => {
 
     console.log(`⭐ Fetching favorites - User ID: ${userId}`);
 
-    // Supabase fallback
-    if (!hasSequelize) {
-      if (!hasSupabaseFallback) {
-        // Graceful degradation - return empty list
-        return res.json({
-          success: true,
-          guides: [],
-          total: 0,
-          _warning: 'Database not configured'
-        });
-      }
-      const guides = await supabaseAdmin.listGuidesByUser(userId, { isFavorite: true });
-      return res.json({
-        success: true,
-        guides: guides,
-        total: guides.length
+    if (hasGuideModel) {
+      const guides = await Guide.findAll({
+        where: { userId, isFavorite: true },
+        order: [['createdAt', 'DESC']],
+        attributes: [
+          'id',
+          'guideId',
+          'characterName',
+          'productionTitle',
+          'productionType',
+          'roleSize',
+          'genre',
+          'createdAt',
+          'viewCount',
+          'childGuideRequested',
+          'childGuideCompleted',
+          'childGuideHtml',
+          'isFavorite',
+        ],
       });
+
+      console.log(`⭐ Found ${guides.length} favorite guides`);
+
+      res.json({
+        success: true,
+        guides,
+        total: guides.length,
+      });
+      return;
     }
 
-    const guides = await Guide.findAll({
-      where: { userId, isFavorite: true },
-      order: [['createdAt', 'DESC']],
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'roleSize', 'genre', 'createdAt', 'viewCount', 'childGuideRequested', 'childGuideCompleted', 'childGuideHtml', 'isFavorite']
-    });
+    if (supabaseUnavailable(res)) return;
 
-    console.log(`⭐ Found ${guides.length} favorite guides`);
+    const { data } = await executeSupabase((client) =>
+      client
+        .from(SUPABASE_GUIDES_TABLE)
+        .select(GUIDE_SUMMARY_FIELDS)
+        .eq('userId', userId)
+        .eq('isFavorite', true)
+        .order('createdAt', { ascending: false })
+    );
+
+    const guides = (data || []).map(normalizeGuideRow);
+    console.log(`⭐ Found ${guides.length} favorite guides (Supabase fallback)`);
 
     res.json({
       success: true,
-      guides: guides,
-      total: guides.length
+      guides,
+      total: guides.length,
     });
   } catch (error) {
     console.error('❌ Error fetching favorite guides:', error);

@@ -5,7 +5,12 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 const auth = require("./middleware/auth");
-const supabaseAdmin = require("./lib/supabaseAdmin");
+const {
+  runAdminQuery,
+  isSupabaseAdminConfigured,
+  tables: supabaseTables,
+  normalizeGuideRow,
+} = require("./lib/supabaseAdmin");
 
 // Create app immediately for fast health checks
 const app = express();
@@ -597,6 +602,70 @@ try {
 } catch (error) {
   console.log("⚠️  Guide model not available:", error.message);
   Guide = null;
+}
+
+const SUPABASE_GUIDES_TABLE = supabaseTables.guides;
+
+async function supabaseFetchGuide(filters = {}) {
+  if (!isSupabaseAdminConfigured()) return null;
+
+  const result = await runAdminQuery((client) => {
+    let query = client.from(SUPABASE_GUIDES_TABLE).select("*");
+
+    if (filters.id) query = query.eq("id", filters.id);
+    if (filters.guideId) query = query.eq("guideId", filters.guideId);
+    if (filters.userId) query = query.eq("userId", filters.userId);
+
+    return query.maybeSingle();
+  });
+
+  if (!result) return null;
+  if (result.error) {
+    console.error("❌ Supabase fetch guide error:", result.error.message);
+    return null;
+  }
+
+  return normalizeGuideRow(result.data);
+}
+
+async function supabaseInsertGuide(payload) {
+  if (!isSupabaseAdminConfigured()) return null;
+
+  const result = await runAdminQuery((client) =>
+    client
+      .from(SUPABASE_GUIDES_TABLE)
+      .insert(payload)
+      .select("*")
+      .single()
+  );
+
+  if (!result) return null;
+  if (result.error) {
+    throw new Error(result.error.message || "Failed to save guide via Supabase");
+  }
+
+  return normalizeGuideRow(result.data);
+}
+
+async function supabaseUpdateGuide(id, userId, updates) {
+  if (!isSupabaseAdminConfigured()) return null;
+
+  const result = await runAdminQuery((client) =>
+    client
+      .from(SUPABASE_GUIDES_TABLE)
+      .update(updates)
+      .eq("id", id)
+      .eq("userId", userId)
+      .select("*")
+      .single()
+  );
+
+  if (!result) return null;
+  if (result.error) {
+    throw new Error(result.error.message || "Failed to update guide via Supabase");
+  }
+
+  return normalizeGuideRow(result.data);
 }
 
 // Load methodology files into memory for RAG
@@ -2115,25 +2184,28 @@ ${childMethodologyContext}
 }
 
 function queueChildGuideGeneration({ guideId, childData }) {
-  const GuideModel = Guide || require("./models/Guide");
-  const hasSupabaseFallback = supabaseAdmin.isAvailable();
-
-  if (!GuideModel && !hasSupabaseFallback) {
-    console.warn(
-      "⚠️  Neither Guide model nor Supabase available - child guide queue will not run."
-    );
-    return;
-  }
-
   setImmediate(async () => {
-    try {
-      let guideRecord;
+    let persistence = "sequelize";
+    let guideRecord = null;
+    let GuideModel = null;
 
-      // Try Sequelize first, then Supabase fallback
+    try {
+      GuideModel = Guide || require("./models/Guide");
+    } catch (_) {
+      GuideModel = null;
+    }
+
+    try {
       if (GuideModel) {
         guideRecord = await GuideModel.findByPk(guideId);
-      } else if (hasSupabaseFallback) {
-        guideRecord = await supabaseAdmin.getGuideById(guideId);
+      } else if (isSupabaseAdminConfigured()) {
+        persistence = "supabase";
+        guideRecord = await supabaseFetchGuide({ id: guideId });
+      } else {
+        console.warn(
+          "⚠️  No database models or Supabase admin client available - child guide queue skipped."
+        );
+        return;
       }
 
       if (!guideRecord) {
@@ -2147,18 +2219,27 @@ function queueChildGuideGeneration({ guideId, childData }) {
         `🌟 Async child guide generation started for guide ${guideRecord.guideId || guideId}`
       );
       const childHtml = await generateChildGuide(childData);
+      const supabaseUserId =
+        guideRecord?.userId || guideRecord?.user_id || guideRecord?.user_id;
 
-      // Update the guide with child guide content
-      if (GuideModel && typeof guideRecord.update === "function") {
+      if (
+        persistence === "sequelize" &&
+        GuideModel &&
+        typeof guideRecord.update === "function"
+      ) {
         await guideRecord.update({
           childGuideHtml: childHtml,
           childGuideCompleted: true,
         });
-      } else if (hasSupabaseFallback) {
-        await supabaseAdmin.updateGuide(guideId, {
+      } else if (supabaseUserId) {
+        await supabaseUpdateGuide(guideId, supabaseUserId, {
           childGuideHtml: childHtml,
           childGuideCompleted: true,
         });
+      } else {
+        console.warn(
+          `⚠️  Unable to persist child guide for ${guideId}: missing userId`
+        );
       }
 
       console.log(
@@ -2167,13 +2248,23 @@ function queueChildGuideGeneration({ guideId, childData }) {
     } catch (error) {
       console.error("❌ Async child guide generation failed:", error);
       try {
-        if (GuideModel) {
+        if (persistence === "sequelize" && GuideModel) {
           await GuideModel.update(
             { childGuideCompleted: false },
             { where: { id: guideId } }
           );
-        } else if (hasSupabaseFallback) {
-          await supabaseAdmin.updateGuide(guideId, { childGuideCompleted: false });
+        } else if (guideRecord) {
+          const supabaseUserId =
+            guideRecord?.userId || guideRecord?.user_id || guideRecord?.user_id;
+          if (supabaseUserId) {
+            await supabaseUpdateGuide(guideId, supabaseUserId, {
+              childGuideCompleted: false,
+            });
+          } else {
+            console.warn(
+              `⚠️  Unable to mark child guide failure for ${guideId}: missing userId`
+            );
+          }
         }
       } catch (updateError) {
         console.error(
@@ -2601,12 +2692,12 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     // Save guide to database
     try {
       const GuideModel = Guide || require("./models/Guide");
-      const guideId = `corey_rag_${Date.now()}_${Math.random()
+      const generatedGuideId = `corey_rag_${Date.now()}_${Math.random()
         .toString(36)
         .substr(2, 9)}`;
 
-      const guideData = {
-        guideId,
+      const baseGuidePayload = {
+        guideId: generatedGuideId,
         userId: currentUser.id,
         characterName: characterName.trim(),
         productionTitle: productionTitle.trim(),
@@ -2623,21 +2714,22 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         childGuideCompleted: false,
       };
 
-      let guide;
+      let persistedGuide = null;
+      let persistenceMethod = "sequelize";
 
-      // Try Sequelize first, then Supabase fallback
       if (GuideModel) {
-        guide = await GuideModel.create(guideData);
-        console.log(`💾 Guide saved to database (Sequelize) with ID: ${guide.id}`);
-      } else if (supabaseAdmin.isAvailable()) {
-        guide = await supabaseAdmin.insertGuide(guideData);
-        if (!guide) {
-          throw new Error("Supabase insert failed");
-        }
-        console.log(`💾 Guide saved to database (Supabase) with ID: ${guide.id}`);
+        persistedGuide = await GuideModel.create(baseGuidePayload);
       } else {
-        throw new Error("No database available (neither Sequelize nor Supabase)");
+        persistenceMethod = "supabase";
+        persistedGuide = await supabaseInsertGuide(baseGuidePayload);
+        if (!persistedGuide) {
+          throw new Error("Guide model unavailable and Supabase fallback failed");
+        }
       }
+
+      console.log(
+        `💾 Guide saved via ${persistenceMethod} with ID: ${persistedGuide.id}`
+      );
 
       if (
         !hasUnlimitedPlan &&
@@ -2645,42 +2737,34 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         userGuideLimit > 0 &&
         typeof currentUser.increment === "function"
       ) {
-        await currentUser
-          .increment("guidesUsed")
-          .catch((err) => {
-            console.error(
-              "Failed to increment guide usage:",
-              err?.message || err
-            );
-          });
+        await currentUser.increment("guidesUsed").catch((err) => {
+          console.error(
+            "Failed to increment guide usage:",
+            err?.message || err
+          );
+        });
       }
 
       let childGuideQueued = false;
       if (childGuideRequested) {
-        if (GuideModel) {
-          childGuideQueued = true;
-          queueChildGuideGeneration({
-            guideId: guide.id,
-            childData: {
-              sceneText: combinedSceneText,
-              characterName: characterName.trim(),
-              productionTitle: productionTitle.trim(),
-              productionType: productionType.trim(),
-              parentGuideContent: guideContentRaw,
-              extractionMethod: allUploadData[0].extractionMethod,
-            },
-          });
-        } else {
-          console.warn(
-            "⚠️  Child guide requested but Guide model unavailable; skipping queue"
-          );
-        }
+        childGuideQueued = true;
+        queueChildGuideGeneration({
+          guideId: persistedGuide.id,
+          childData: {
+            sceneText: combinedSceneText,
+            characterName: characterName.trim(),
+            productionTitle: productionTitle.trim(),
+            productionType: productionType.trim(),
+            parentGuideContent: guideContentRaw,
+            extractionMethod: allUploadData[0].extractionMethod,
+          },
+        });
       }
 
       // Log the response being sent
       const responseData = {
         success: true,
-        guideId: guide.guideId,
+        guideId: persistedGuide.guideId,
         guideContent,
         childGuideRequested: !!childGuideRequested,
         childGuideQueued,
@@ -2802,31 +2886,49 @@ app.get("/api/guides/:id/pdf", auth, async (req, res) => {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const Guide = require("./models/Guide");
-    const guide = await Guide.findOne({
-      where: { id, userId: currentUser.id },
-      attributes: [
-        "id",
-        "guideId",
-        "characterName",
-        "productionTitle",
-        "productionType",
-        "roleSize",
-        "genre",
-        "storyline",
-        "characterBreakdown",
-        "callbackNotes",
-        "focusArea",
-        "sceneText",
-        "generatedHtml",
-        "createdAt",
-        "viewCount",
-      ],
-    });
+    let guideRecord = null;
+    let GuideModel = null;
 
-    if (!guide) {
+    try {
+      GuideModel = Guide || require("./models/Guide");
+    } catch (_) {
+      GuideModel = null;
+    }
+
+    if (GuideModel) {
+      guideRecord = await GuideModel.findOne({
+        where: { id, userId: currentUser.id },
+        attributes: [
+          "id",
+          "guideId",
+          "characterName",
+          "productionTitle",
+          "productionType",
+          "roleSize",
+          "genre",
+          "storyline",
+          "characterBreakdown",
+          "callbackNotes",
+          "focusArea",
+          "sceneText",
+          "generatedHtml",
+          "createdAt",
+          "viewCount",
+        ],
+      });
+    } else if (isSupabaseAdminConfigured()) {
+      guideRecord = await supabaseFetchGuide({ id, userId: currentUser.id });
+    } else {
+      return res
+        .status(503)
+        .json({ error: "Guide storage unavailable - please try again later" });
+    }
+
+    if (!guideRecord) {
       return res.status(404).json({ error: "Guide not found" });
     }
+
+    const guide = guideRecord.dataValues ? guideRecord.dataValues : guideRecord;
 
     console.log(
       `📄 Generating PDF for guide: ${guide.characterName} - ${guide.productionTitle}`

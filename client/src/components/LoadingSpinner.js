@@ -55,7 +55,6 @@ const LoadingSpinner = () => {
           animation: 'spin 1s linear infinite',
           margin: '0 auto 1.5rem'
         }}></div>
-
         {/* Main status message */}
         <h3 style={{
           fontSize: '1.25rem',

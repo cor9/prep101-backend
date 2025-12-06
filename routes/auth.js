@@ -4,22 +4,48 @@ const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
-const supabaseAdmin = require('../lib/supabaseAdmin');
-
-// Check if Sequelize User model is available
-const hasSequelize = User !== null;
-const hasSupabaseFallback = supabaseAdmin.isAvailable();
-
-if (!hasSequelize) {
-  if (hasSupabaseFallback) {
-    console.log('⚠️  Auth routes: Using Supabase fallback (Sequelize User unavailable)');
-  } else {
-    console.error('❌ Auth routes: Neither Sequelize nor Supabase available!');
-  }
-}
+const {
+  runAdminQuery,
+  isSupabaseAdminConfigured,
+  tables: supabaseTables,
+  normalizeUserRow,
+  normalizeGuideRow,
+} = require('../lib/supabaseAdmin');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
+const SUPABASE_USERS_TABLE = supabaseTables.users;
+const SUPABASE_GUIDES_TABLE = supabaseTables.guides;
+const hasUserModel = !!User;
+
+function supabaseUnavailable(res) {
+  if (!isSupabaseAdminConfigured()) {
+    res
+      .status(503)
+      .json({ message: 'User data unavailable. Please try again shortly.' });
+    return true;
+  }
+  return false;
+}
+
+async function executeSupabase(builderFn) {
+  const result = await runAdminQuery(builderFn);
+  if (!result) {
+    throw new Error('Supabase admin client unavailable');
+  }
+  if (result.error) {
+    throw new Error(result.error.message || 'Supabase query failed');
+  }
+  return result;
+}
+
+async function fetchSupabaseUser(userId) {
+  if (!isSupabaseAdminConfigured()) return null;
+  const { data } = await executeSupabase((client) =>
+    client.from(SUPABASE_USERS_TABLE).select('*').eq('id', userId).maybeSingle()
+  );
+  return normalizeUserRow(data);
+}
 
 // POST /api/auth/register
 router.post(
@@ -35,7 +61,7 @@ router.post(
 
     const { email, password, name } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress;
-    
+
     try {
       // Check for existing user
       const existing = await User.findOne({ where: { email } });
@@ -45,29 +71,29 @@ router.post(
       }
 
       // Create new user with default free subscription
-      const user = await User.create({ 
-        email, 
-        password, 
+      const user = await User.create({
+        email,
+        password,
         name,
         subscription: 'free',
         guidesLimit: 1, // Start with 1 guide per month
         guidesUsed: 0
       });
 
-      const token = jwt.sign({ 
+      const token = jwt.sign({
         userId: user.id,
         email: user.email,
         subscription: user.subscription,
         isBetaTester: user.isBetaTester
       }, JWT_SECRET, { expiresIn: '30d' });
-      
+
       console.log(`✅ New user registered: ${email} from IP: ${clientIP}`);
-      
+
       res.status(201).json({
-        user: { 
-          id: user.id, 
-          email: user.email, 
-          name: user.name, 
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
           subscription: user.subscription,
           guidesUsed: user.guidesUsed,
           guidesLimit: user.guidesLimit,
@@ -97,16 +123,16 @@ router.post(
 
     const { email, password } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress;
-    
+
     try {
       // Check for brute force attempts
       const failedAttempts = require('../middleware/auth').failedAttempts;
       const attemptKey = `${clientIP}:${email}`;
       const attempts = failedAttempts.get(attemptKey);
-      
+
       if (attempts && attempts.count >= 5 && (Date.now() - attempts.timestamp) < 15 * 60 * 1000) {
         console.log(`🚫 Brute force attempt blocked: ${email} from IP: ${clientIP}`);
-        return res.status(429).json({ 
+        return res.status(429).json({
           message: 'Too many failed login attempts. Please try again in 15 minutes.',
           retryAfter: Math.ceil((15 * 60 * 1000 - (Date.now() - attempts.timestamp)) / 1000)
         });
@@ -119,7 +145,7 @@ router.post(
         currentAttempts.count++;
         currentAttempts.timestamp = Date.now();
         failedAttempts.set(attemptKey, currentAttempts);
-        
+
         console.log(`🔒 Failed login attempt: ${email} from IP: ${clientIP}`);
         return res.status(401).json({ message: 'Invalid credentials' });
       }
@@ -131,7 +157,7 @@ router.post(
         currentAttempts.count++;
         currentAttempts.timestamp = Date.now();
         failedAttempts.set(attemptKey, currentAttempts);
-        
+
         console.log(`🔒 Failed login attempt: ${email} from IP: ${clientIP}`);
         return res.status(401).json({ message: 'Invalid credentials' });
       }
@@ -145,20 +171,20 @@ router.post(
         return res.status(401).json({ message: 'Account access expired' });
       }
 
-      const token = jwt.sign({ 
+      const token = jwt.sign({
         userId: user.id,
         email: user.email,
         subscription: user.subscription,
         isBetaTester: user.isBetaTester
       }, JWT_SECRET, { expiresIn: '30d' });
-      
+
       console.log(`✅ Successful login: ${email} from IP: ${clientIP}`);
-      
+
       res.json({
-        user: { 
-          id: user.id, 
-          email: user.email, 
-          name: user.name, 
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
           subscription: user.subscription,
           guidesUsed: user.guidesUsed,
           guidesLimit: user.guidesLimit,
@@ -184,10 +210,10 @@ router.post('/refresh', auth, async (req, res) => {
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
     res.json({
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        name: user.name, 
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
         subscription: user.subscription,
         guidesUsed: user.guidesUsed,
         guidesLimit: user.guidesLimit
@@ -206,7 +232,7 @@ router.get('/profile', auth, async (req, res) => {
     const user = await User.findByPk(req.userId, {
       attributes: { exclude: ['password'] }
     });
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -252,10 +278,10 @@ router.put(
 
       res.json({
         message: 'Profile updated successfully',
-        user: { 
-          id: user.id, 
-          email: user.email, 
-          name: user.name, 
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
           subscription: user.subscription,
           guidesUsed: user.guidesUsed,
           guidesLimit: user.guidesLimit
@@ -318,7 +344,7 @@ router.post(
       if (user) {
         // Generate reset token (in production, send email)
         const resetToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
-        
+
         // For now, just return success (in production, send email with reset link)
         console.log(`Password reset requested for ${email}. Token: ${resetToken}`);
       }
@@ -345,7 +371,7 @@ router.post(
 
     try {
       const { token, newPassword } = req.body;
-      
+
       const decoded = jwt.verify(token, JWT_SECRET);
       const user = await User.findByPk(decoded.userId);
 
@@ -378,7 +404,7 @@ router.delete('/account', auth, async (req, res) => {
   try {
     const { password } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress;
-    
+
     if (!password) {
       return res.status(400).json({ message: 'Password required to delete account' });
     }
@@ -400,7 +426,7 @@ router.delete('/account', auth, async (req, res) => {
 
     // Delete the user
     await user.destroy();
-    
+
     console.log(`🗑️  Account deleted: ${user.email} from IP: ${clientIP}`);
     res.json({ message: 'Account deleted successfully' });
   } catch (err) {
@@ -414,7 +440,7 @@ router.get('/stats', auth, async (req, res) => {
   try {
     const userId = req.userId;
     const Guide = require('../models/Guide');
-    
+
     const guides = await Guide.findAll({
       where: { userId },
       attributes: ['createdAt', 'updatedAt', 'viewCount']
@@ -423,7 +449,7 @@ router.get('/stats', auth, async (req, res) => {
     const totalGuides = guides.length;
     const totalViews = guides.reduce((sum, guide) => sum + (guide.viewCount || 0), 0);
     const averageViews = totalGuides > 0 ? Math.round(totalViews / totalGuides) : 0;
-    
+
     // Calculate monthly stats
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -448,7 +474,7 @@ router.post('/upgrade', auth, async (req, res) => {
   try {
     const { plan } = req.body;
     const validPlans = ['basic', 'premium'];
-    
+
     if (!validPlans.includes(plan)) {
       return res.status(400).json({ message: 'Invalid plan specified' });
     }
@@ -456,8 +482,8 @@ router.post('/upgrade', auth, async (req, res) => {
     // For now, just log the upgrade request
     // In production, this would integrate with Stripe
     console.log(`💰 Upgrade request: ${req.user.email} wants ${plan} plan`);
-    
-    res.json({ 
+
+    res.json({
       message: 'Upgrade request received. You will be contacted shortly.',
       requestedPlan: plan
     });
@@ -470,17 +496,24 @@ router.post('/upgrade', auth, async (req, res) => {
 // GET /api/auth/verify - Verify token validity
 router.get('/verify', auth, async (req, res) => {
   try {
-    const user = await User.findByPk(req.userId);
+    let user = null;
+    if (hasUserModel) {
+      user = await User.findByPk(req.userId);
+    } else {
+      if (supabaseUnavailable(res)) return;
+      user = await fetchSupabaseUser(req.userId);
+    }
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     res.json({
       valid: true,
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        name: user.name, 
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
         subscription: user.subscription,
         guidesUsed: user.guidesUsed,
         guidesLimit: user.guidesLimit
@@ -492,10 +525,28 @@ router.get('/verify', auth, async (req, res) => {
   }
 });
 
+const DASHBOARD_GUIDE_FIELDS = [
+  'id',
+  'guideId',
+  'characterName',
+  'productionTitle',
+  'productionType',
+  'roleSize',
+  'genre',
+  'createdAt',
+  'updatedAt',
+  'viewCount',
+  'isPublic',
+  'childGuideRequested',
+  'childGuideCompleted',
+  'generatedHtml',
+].join(',');
+
 // GET /api/auth/dashboard - Get comprehensive user dashboard
 router.get('/dashboard', auth, async (req, res) => {
   try {
     const userId = req.userId;
+<<<<<<< HEAD
 
     // Get user - with Supabase fallback
     let user, guides;
@@ -547,13 +598,56 @@ router.get('/dashboard', auth, async (req, res) => {
       } else {
         guides = await supabaseAdmin.listGuidesByUser(userId);
       }
+=======
+    let user = null;
+    if (hasUserModel) {
+      user = await User.findByPk(userId, {
+        attributes: { exclude: ['password'] }
+      });
+    } else {
+      if (supabaseUnavailable(res)) return;
+      user = await fetchSupabaseUser(userId);
+>>>>>>> 5d8790a5 (Add Supabase persistence fallback and fix guide UI)
     }
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
+<<<<<<< HEAD
     guides = guides || [];
+=======
+    // Get user's guides
+    let guideRecords = [];
+    let GuideModel = null;
+    try {
+      GuideModel = require('../models/Guide');
+    } catch (_) {
+      GuideModel = null;
+    }
+
+    if (GuideModel) {
+      guideRecords = await GuideModel.findAll({
+        where: { userId },
+        order: [['createdAt', 'DESC']],
+        attributes: [
+          'id', 'guideId', 'characterName', 'productionTitle',
+          'productionType', 'roleSize', 'genre', 'createdAt', 'updatedAt',
+          'viewCount', 'isPublic', 'childGuideRequested', 'childGuideCompleted', 'generatedHtml'
+        ]
+      });
+    } else {
+      if (supabaseUnavailable(res)) return;
+      const { data } = await executeSupabase((client) =>
+        client
+          .from(SUPABASE_GUIDES_TABLE)
+          .select(DASHBOARD_GUIDE_FIELDS)
+          .eq('userId', userId)
+          .order('createdAt', { ascending: false })
+      );
+      guideRecords = (data || []).map(normalizeGuideRow);
+    }
+>>>>>>> 5d8790a5 (Add Supabase persistence fallback and fix guide UI)
 
     // Get subscription plans for comparison
     const PaymentService = require('../services/paymentService');
@@ -562,6 +656,7 @@ router.get('/dashboard', auth, async (req, res) => {
     const currentPlan = plans[user.subscription || 'free'];
 
     // Calculate usage statistics
+    const guides = guideRecords;
     const totalGuides = guides.length;
     const completedGuides = guides.filter(g => g.generatedHtml).length;
     const pendingGuides = guides.filter(g => !g.generatedHtml).length;
@@ -571,8 +666,13 @@ router.get('/dashboard', auth, async (req, res) => {
     const recentGuides = guides.slice(0, 5);
 
     // Calculate subscription progress
-    const usagePercentage = user.guidesLimit > 0 ? (user.guidesUsed / user.guidesLimit) * 100 : 0;
-    const guidesRemaining = Math.max(0, user.guidesLimit - user.guidesUsed);
+    const guidesLimitValue =
+      typeof user.guidesLimit === 'number' ? user.guidesLimit : Number(user.guidesLimit) || 0;
+    const guidesUsedValue =
+      typeof user.guidesUsed === 'number' ? user.guidesUsed : Number(user.guidesUsed) || 0;
+    const usagePercentage =
+      guidesLimitValue > 0 ? (guidesUsedValue / guidesLimitValue) * 100 : 0;
+    const guidesRemaining = Math.max(0, guidesLimitValue - guidesUsedValue);
 
     // Get beta tester information if applicable
     let betaInfo = null;
@@ -583,13 +683,23 @@ router.get('/dashboard', auth, async (req, res) => {
         betaInfo = await betaService.getBetaTesterDashboard(userId);
       } catch (error) {
         console.error('Error fetching beta info:', error);
+        const accessDescription =
+          typeof user.getBetaAccessDescription === 'function'
+            ? user.getBetaAccessDescription()
+            : user.betaAccessLevel || 'none';
         betaInfo = {
           isBetaTester: true,
+<<<<<<< HEAD
           betaAccessLevel: user.betaAccessLevel || 'none',
           betaStatus: user.betaStatus || 'active',
           accessDescription: typeof user.getBetaAccessDescription === 'function'
             ? user.getBetaAccessDescription()
             : 'Beta tester access'
+=======
+          betaAccessLevel: user.betaAccessLevel,
+          betaStatus: user.betaStatus,
+          accessDescription
+>>>>>>> 5d8790a5 (Add Supabase persistence fallback and fix guide UI)
         };
       }
     }
@@ -611,8 +721,8 @@ router.get('/dashboard', auth, async (req, res) => {
         currentPlan: currentPlan,
         usagePercentage: Math.round(usagePercentage * 100) / 100,
         guidesRemaining: guidesRemaining,
-        isAtLimit: user.guidesUsed >= user.guidesLimit,
-        canGenerateMore: user.guidesUsed < user.guidesLimit
+        isAtLimit: guidesLimitValue > 0 ? guidesUsedValue >= guidesLimitValue : false,
+        canGenerateMore: guidesLimitValue === 0 || guidesUsedValue < guidesLimitValue
       },
       guides: {
         total: totalGuides,
