@@ -53,7 +53,8 @@ app.get("/api/diagnostics", async (req, res) => {
   const supabaseStatus = supabaseConfigured ? "configured" : "not_configured";
   const supabaseMissing = [];
   if (!process.env.SUPABASE_URL) supabaseMissing.push("SUPABASE_URL");
-  if (!process.env.SUPABASE_SERVICE_KEY) supabaseMissing.push("SUPABASE_SERVICE_KEY");
+  if (!process.env.SUPABASE_SERVICE_KEY)
+    supabaseMissing.push("SUPABASE_SERVICE_KEY");
 
   // Determine if guide saving will work
   const canSaveGuides = dbStatus === "connected" || supabaseConfigured;
@@ -82,8 +83,15 @@ app.get("/api/diagnostics", async (req, res) => {
     },
     guideSaving: {
       enabled: canSaveGuides,
-      method: dbStatus === "connected" ? "sequelize" : supabaseConfigured ? "supabase" : "none",
-      warning: !canSaveGuides ? "Guide saving will FAIL! Configure DATABASE_URL or SUPABASE_SERVICE_KEY" : null,
+      method:
+        dbStatus === "connected"
+          ? "sequelize"
+          : supabaseConfigured
+          ? "supabase"
+          : "none",
+      warning: !canSaveGuides
+        ? "Guide saving will FAIL! Configure DATABASE_URL or SUPABASE_SERVICE_KEY"
+        : null,
     },
     endpoints: {
       health: "✅ Available",
@@ -650,16 +658,21 @@ async function supabaseFetchGuide(filters = {}) {
   return normalizeGuideRow(result.data);
 }
 
-async function supabaseInsertGuide(payload) {
+async function supabaseInsertGuide(payload, options = {}) {
   if (!isSupabaseAdminConfigured()) {
-    console.error("❌ Supabase admin client not configured - SUPABASE_URL or SUPABASE_SERVICE_KEY missing");
+    console.error(
+      "❌ Supabase admin client not configured - SUPABASE_URL or SUPABASE_SERVICE_KEY missing"
+    );
     return null;
   }
+
+  const { user, retryAttempt = 0 } = options;
 
   console.log("📝 Attempting Supabase guide insert...", {
     guideId: payload.guideId,
     userId: payload.userId,
-    characterName: payload.characterName
+    characterName: payload.characterName,
+    retryAttempt,
   });
 
   const now = new Date().toISOString();
@@ -670,18 +683,37 @@ async function supabaseInsertGuide(payload) {
   };
 
   const result = await runAdminQuery((client) =>
-    client
-      .from(SUPABASE_GUIDES_TABLE)
-      .insert(guidePayload)
-      .select("*")
-      .single()
+    client.from(SUPABASE_GUIDES_TABLE).insert(guidePayload).select("*").single()
   );
 
   if (!result) {
-    console.error("❌ Supabase runAdminQuery returned null - client unavailable");
+    console.error(
+      "❌ Supabase runAdminQuery returned null - client unavailable"
+    );
     return null;
   }
   if (result.error) {
+    const errorMessage = result.error.message || "";
+
+    if (
+      user &&
+      retryAttempt < 1 &&
+      errorMessage.includes('Guides_userId_fkey')
+    ) {
+      console.warn(
+        "⚠️  Supabase guide insert failed due to missing user reference. Retrying after ensuring user exists.",
+        { userId: user.id }
+      );
+
+      const ensured = await ensureSupabaseUser(user);
+      if (ensured) {
+        return await supabaseInsertGuide(payload, {
+          ...options,
+          retryAttempt: retryAttempt + 1,
+        });
+      }
+    }
+
     console.error("❌ Supabase insert error:", result.error);
     throw new Error(
       result.error.message || "Failed to save guide via Supabase"
@@ -2830,10 +2862,17 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         // Ensure user exists in Supabase Users table (for foreign key constraint)
         const userEnsured = await ensureSupabaseUser(currentUser);
         if (!userEnsured) {
-          console.error("❌ Failed to ensure user exists in Supabase Users table");
+          console.error(
+            "❌ Failed to ensure user exists in Supabase Users table"
+          );
+          throw new Error(
+            "Supabase Users table is not configured for guide saving"
+          );
         }
 
-        persistedGuide = await supabaseInsertGuide(baseGuidePayload);
+        persistedGuide = await supabaseInsertGuide(baseGuidePayload, {
+          user: currentUser,
+        });
         if (!persistedGuide) {
           throw new Error(
             "Guide model unavailable and Supabase fallback failed"
