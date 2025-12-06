@@ -18,6 +18,8 @@ const SUPABASE_GUIDES_TABLE = supabaseTables.guides;
 const SUPABASE_USERS_TABLE = supabaseTables.users;
 const hasGuideModel = !!Guide;
 const hasUserModel = !!User;
+const hasSequelize = hasGuideModel;
+const hasSupabaseFallback = isSupabaseAdminConfigured();
 const GUIDE_SUMMARY_FIELDS = [
   'id',
   'guideId',
@@ -151,47 +153,54 @@ router.get('/', auth, async (req, res) => {
 router.get('/public', async (req, res) => {
   try {
     const { page = 1, limit = 10, sortBy = 'createdAt', order = 'DESC' } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    // Supabase fallback
-    if (!hasSequelize) {
-      if (!hasSupabaseFallback) {
-        return res.status(503).json({ message: 'Database service unavailable' });
-      }
-      const { guides, count } = await supabaseAdmin.listPublicGuides({
-        page: parseInt(page),
+    // Sequelize (primary)
+    if (hasSequelize) {
+      const { count, rows: guides } = await Guide.findAndCountAll({
+        where: { isPublic: true },
+        order: [[sortBy, order.toUpperCase()]],
         limit: parseInt(limit),
-        sortBy,
-        order: order.toUpperCase()
+        offset: offset,
+        attributes: [
+          'id', 'guideId', 'characterName', 'productionTitle',
+          'productionType', 'createdAt', 'viewCount'
+        ]
       });
+
       return res.json({
         guides,
         pagination: {
           currentPage: parseInt(page),
-          totalPages: Math.ceil(count / limit),
+          totalPages: Math.ceil(count / parseInt(limit)),
           totalGuides: count,
           guidesPerPage: parseInt(limit)
         }
       });
     }
 
-    const offset = (page - 1) * limit;
-    const { count, rows: guides } = await Guide.findAndCountAll({
-      where: { isPublic: true },
-      order: [[sortBy, order.toUpperCase()]],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      attributes: [
-        'id', 'title', 'characterName', 'productionTitle',
-        'productionType', 'createdAt', 'viewCount'
-      ]
-    });
+    // Supabase fallback
+    if (!hasSupabaseFallback) {
+      return res.status(503).json({ message: 'Database service unavailable' });
+    }
+
+    const { data, count } = await executeSupabase((client) =>
+      client
+        .from(SUPABASE_GUIDES_TABLE)
+        .select('id,guideId,characterName,productionTitle,productionType,createdAt,viewCount', { count: 'exact' })
+        .eq('isPublic', true)
+        .order(sortBy, { ascending: order.toUpperCase() === 'ASC' })
+        .range(offset, offset + parseInt(limit) - 1)
+    );
+
+    const guides = (data || []).map(normalizeGuideRow);
 
     res.json({
       guides,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(count / limit),
-        totalGuides: count,
+        totalPages: Math.ceil((count || 0) / parseInt(limit)),
+        totalGuides: count || 0,
         guidesPerPage: parseInt(limit)
       }
     });
@@ -207,33 +216,52 @@ router.get('/public/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Supabase fallback
-    if (!hasSequelize) {
-      if (!hasSupabaseFallback) {
-        return res.status(503).json({ message: 'Database service unavailable' });
-      }
-      const guide = await supabaseAdmin.getGuideById(id);
-      if (!guide || !guide.isPublic) {
+    // Sequelize (primary)
+    if (hasSequelize) {
+      const guide = await Guide.findOne({
+        where: { id, isPublic: true },
+        attributes: [
+          'id', 'guideId', 'characterName', 'productionTitle',
+          'productionType', 'createdAt', 'viewCount', 'generatedHtml'
+        ]
+      });
+
+      if (!guide) {
         return res.status(404).json({ message: 'Public guide not found' });
       }
-      await supabaseAdmin.incrementViewCount(id);
+
+      // Increment view count
+      await guide.increment('viewCount');
+
       return res.json({ guide });
     }
 
-    const guide = await Guide.findOne({
-      where: { id, isPublic: true },
-      attributes: [
-        'id', 'title', 'characterName', 'productionTitle',
-        'productionType', 'createdAt', 'viewCount', 'generatedHtml'
-      ]
-    });
+    // Supabase fallback
+    if (!hasSupabaseFallback) {
+      return res.status(503).json({ message: 'Database service unavailable' });
+    }
 
+    const { data } = await executeSupabase((client) =>
+      client
+        .from(SUPABASE_GUIDES_TABLE)
+        .select('id,guideId,characterName,productionTitle,productionType,createdAt,viewCount,generatedHtml,isPublic')
+        .eq('id', id)
+        .eq('isPublic', true)
+        .maybeSingle()
+    );
+
+    const guide = normalizeGuideRow(data);
     if (!guide) {
       return res.status(404).json({ message: 'Public guide not found' });
     }
 
     // Increment view count
-    await guide.increment('viewCount');
+    await executeSupabase((client) =>
+      client
+        .from(SUPABASE_GUIDES_TABLE)
+        .update({ viewCount: (guide.viewCount || 0) + 1 })
+        .eq('id', id)
+    );
 
     res.json({ guide });
 
@@ -581,67 +609,6 @@ router.get('/:id/status', auth, async (req, res) => {
   } catch (error) {
     console.error('Error checking guide status:', error);
     res.status(500).json({ message: 'Failed to check guide status' });
-  }
-});
-
-// GET /api/guides/public - Get public guides (no auth required)
-router.get('/public', async (req, res) => {
-  try {
-    const { page = 1, limit = 10, sortBy = 'createdAt', order = 'DESC' } = req.query;
-    const offset = (page - 1) * limit;
-
-    const { count, rows: guides } = await Guide.findAndCountAll({
-      where: { isPublic: true },
-      order: [[sortBy, order.toUpperCase()]],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      attributes: [
-        'id', 'title', 'characterName', 'productionTitle',
-        'productionType', 'createdAt', 'viewCount'
-      ]
-    });
-
-    res.json({
-      guides,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(count / limit),
-        totalGuides: count,
-        guidesPerPage: parseInt(limit)
-      }
-    });
-
-  } catch (error) {
-    console.error('Public guides fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch public guides' });
-  }
-});
-
-// GET /api/guides/public/:id - Get specific public guide
-router.get('/public/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const guide = await Guide.findOne({
-      where: { id, isPublic: true },
-      attributes: [
-        'id', 'title', 'characterName', 'productionTitle',
-        'productionType', 'createdAt', 'viewCount', 'generatedHtml'
-      ]
-    });
-
-    if (!guide) {
-      return res.status(404).json({ message: 'Public guide not found' });
-    }
-
-    // Increment view count
-    await guide.increment('viewCount');
-
-    res.json({ guide });
-
-  } catch (error) {
-    console.error('Public guide fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch public guide' });
   }
 });
 
