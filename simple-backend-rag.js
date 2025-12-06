@@ -48,6 +48,16 @@ app.get("/api/diagnostics", async (req, res) => {
     dbError = error.message;
   }
 
+  // Check Supabase configuration
+  const supabaseConfigured = isSupabaseAdminConfigured();
+  const supabaseStatus = supabaseConfigured ? "configured" : "not_configured";
+  const supabaseMissing = [];
+  if (!process.env.SUPABASE_URL) supabaseMissing.push("SUPABASE_URL");
+  if (!process.env.SUPABASE_SERVICE_KEY) supabaseMissing.push("SUPABASE_SERVICE_KEY");
+
+  // Determine if guide saving will work
+  const canSaveGuides = dbStatus === "connected" || supabaseConfigured;
+
   res.json({
     status: "running",
     timestamp: new Date().toISOString(),
@@ -55,6 +65,8 @@ app.get("/api/diagnostics", async (req, res) => {
       NODE_ENV: process.env.NODE_ENV,
       VERCEL: !!process.env.VERCEL,
       DATABASE_URL: !!process.env.DATABASE_URL,
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
       ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
       STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
       JWT_SECRET: !!process.env.JWT_SECRET,
@@ -62,6 +74,16 @@ app.get("/api/diagnostics", async (req, res) => {
     database: {
       status: dbStatus,
       error: dbError,
+    },
+    supabase: {
+      status: supabaseStatus,
+      missing: supabaseMissing.length > 0 ? supabaseMissing : null,
+      guidesTable: supabaseTables.guides,
+    },
+    guideSaving: {
+      enabled: canSaveGuides,
+      method: dbStatus === "connected" ? "sequelize" : supabaseConfigured ? "supabase" : "none",
+      warning: !canSaveGuides ? "Guide saving will FAIL! Configure DATABASE_URL or SUPABASE_SERVICE_KEY" : null,
     },
     endpoints: {
       health: "✅ Available",
@@ -629,7 +651,16 @@ async function supabaseFetchGuide(filters = {}) {
 }
 
 async function supabaseInsertGuide(payload) {
-  if (!isSupabaseAdminConfigured()) return null;
+  if (!isSupabaseAdminConfigured()) {
+    console.error("❌ Supabase admin client not configured - SUPABASE_URL or SUPABASE_SERVICE_KEY missing");
+    return null;
+  }
+
+  console.log("📝 Attempting Supabase guide insert...", {
+    guideId: payload.guideId,
+    userId: payload.userId,
+    characterName: payload.characterName
+  });
 
   const result = await runAdminQuery((client) =>
     client
@@ -639,11 +670,16 @@ async function supabaseInsertGuide(payload) {
       .single()
   );
 
-  if (!result) return null;
+  if (!result) {
+    console.error("❌ Supabase runAdminQuery returned null - client unavailable");
+    return null;
+  }
   if (result.error) {
+    console.error("❌ Supabase insert error:", result.error);
     throw new Error(result.error.message || "Failed to save guide via Supabase");
   }
 
+  console.log("✅ Supabase guide insert successful:", result.data?.id);
   return normalizeGuideRow(result.data);
 }
 
@@ -666,6 +702,53 @@ async function supabaseUpdateGuide(id, userId, updates) {
   }
 
   return normalizeGuideRow(result.data);
+}
+
+// Ensure user exists in Supabase Users table before saving guides
+async function ensureSupabaseUser(user) {
+  if (!isSupabaseAdminConfigured()) return false;
+
+  const SUPABASE_USERS_TABLE = supabaseTables.users;
+
+  // Check if user exists
+  const checkResult = await runAdminQuery((client) =>
+    client
+      .from(SUPABASE_USERS_TABLE)
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle()
+  );
+
+  if (checkResult?.data) {
+    console.log(`✅ User ${user.id} exists in Supabase Users table`);
+    return true;
+  }
+
+  // User doesn't exist, create them
+  console.log(`📝 Creating user ${user.id} in Supabase Users table...`);
+  const insertResult = await runAdminQuery((client) =>
+    client
+      .from(SUPABASE_USERS_TABLE)
+      .insert({
+        id: user.id,
+        email: user.email,
+        name: user.name || user.email.split("@")[0],
+        password: "supabase_auth", // Placeholder - actual auth is via Supabase Auth
+        subscription: user.subscription || "free",
+        guidesUsed: 0,
+        guidesLimit: 25, // Default for beta users
+      })
+      .select("id")
+      .single()
+  );
+
+  if (insertResult?.error) {
+    console.error("❌ Failed to create user in Supabase:", insertResult.error);
+    return false;
+  }
+
+  console.log(`✅ User ${user.id} created in Supabase Users table`);
+  return true;
 }
 
 // Load methodology files into memory for RAG
@@ -2721,6 +2804,13 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         persistedGuide = await GuideModel.create(baseGuidePayload);
       } else {
         persistenceMethod = "supabase";
+
+        // Ensure user exists in Supabase Users table (for foreign key constraint)
+        const userEnsured = await ensureSupabaseUser(currentUser);
+        if (!userEnsured) {
+          console.error("❌ Failed to ensure user exists in Supabase Users table");
+        }
+
         persistedGuide = await supabaseInsertGuide(baseGuidePayload);
         if (!persistedGuide) {
           throw new Error("Guide model unavailable and Supabase fallback failed");
