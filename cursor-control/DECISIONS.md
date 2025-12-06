@@ -160,6 +160,70 @@
 **Decision:** Wrapped parent guides in a consistent Prep101 HTML template (brand fonts, gradients, responsive layout) and moved child-guide generation to an asynchronous queue so the parent guide returns immediately while the child version is built/saved in the background.
 **Status:** Success
 
+## 2025-12-06 - Major Bug Fixes Session
+
+### Registration & Login Fixes
+**Issue:** New user registration failing, login not working for admin accounts.
+**Decision:** 
+- Fixed password validation regex in routes/auth.js (used `.withMessage()` instead of passing message as regex flags)
+- Added Supabase Auth fallback for admin accounts created via Supabase dashboard
+- Frontend now calls backend API for registration/login instead of Supabase Auth directly
+- AuthContext properly clears user state on logout
+**Status:** Success
+
+### Guide Persistence & 500 Errors
+**Issue:** HTTP 500 on `/api/guides`, guides not saving to Supabase since September.
+**Decision:**
+- Fixed `hasGuideModel` check to verify Sequelize is actually functional
+- Auth middleware now supports both `userId` and `sub` fields in JWT tokens
+- Added fallback user stub when Sequelize User model unavailable
+**Status:** Success
+
+### Child Guide Generation in Vercel
+**Issue:** Child guides not being created in serverless environment (fire-and-forget doesn't work).
+**Decision:** Child guide generation now runs synchronously before sending response in Vercel environment, ensuring completion within request lifecycle.
+**Status:** Success
+
+### Email Functionality
+**Issue:** Email sending failed - domain not verified in Resend.
+**Decision:** 
+- Added detailed logging to email service
+- User verified `prep101.site` domain in Resend
+- Email endpoint now normalizes HTML and wraps in email-safe template with forced dark text on white background
+**Status:** Success
+
+### Print Functionality  
+**Issue:** Print feature blocked by popup blockers.
+**Decision:** Replaced `window.open()` with hidden iframe approach - print dialog now works regardless of popup blocker settings.
+**Status:** Success
+
+### PDF Download
+**Issue:** PDF generation failed - Adobe PDF Services credentials not deployed to Vercel.
+**Decision:** Replaced backend PDF generation with browser print-to-PDF ("Save as PDF" triggers print dialog).
+**Status:** Success
+
+### Text Contrast Issues
+**Issue:** Light text on light backgrounds making guides unreadable.
+**Decision:** 
+- Enhanced `normalizeGuide()` function to strip ALL inline colors/backgrounds from AI-generated HTML
+- CSS overrides force dark text on white background
+- Print and email templates include proper styling with `!important` rules
+**Status:** Success
+
+### Promo Code System
+**Issue:** Need promotional codes to give users free guides.
+**Decision:** 
+- Added Supabase-based `/api/promo-codes/redeem` endpoint
+- Added "Redeem Promo Code" UI section to Account page
+- Created SQL script for PromoCodes and PromoCodeRedemptions tables
+- Generated 10 promo codes for distribution
+**Status:** Success
+
+### Favicon Fix
+**Issue:** Custom favicon not showing in browser.
+**Decision:** Reordered favicon links in index.html to prioritize favicon.ico over preplogo.png.
+**Status:** Success
+
 ---
 
 # Imported Decisions & Learnings (from user)
