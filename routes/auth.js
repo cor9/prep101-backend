@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const {
+  supabaseAdmin,
   runAdminQuery,
   isSupabaseAdminConfigured,
   tables: supabaseTables,
@@ -47,6 +48,53 @@ async function fetchSupabaseUser(userId) {
   return normalizeUserRow(data);
 }
 
+async function fetchSupabaseUserByEmail(email) {
+  if (!isSupabaseAdminConfigured()) return null;
+  const { data } = await executeSupabase((client) =>
+    client.from(SUPABASE_USERS_TABLE).select('*').eq('email', email).maybeSingle()
+  );
+  return normalizeUserRow(data);
+}
+
+async function createSupabaseUser(userData) {
+  if (!isSupabaseAdminConfigured()) return null;
+  
+  const { randomUUID } = require('crypto');
+  const hashedPassword = await bcrypt.hash(userData.password, 12);
+  
+  const newUser = {
+    id: randomUUID(),
+    email: userData.email,
+    password: hashedPassword,
+    name: userData.name,
+    subscription: userData.subscription || 'free',
+    guidesLimit: userData.guidesLimit || 1,
+    guidesUsed: userData.guidesUsed || 0,
+    isBetaTester: userData.isBetaTester || false,
+    betaAccessLevel: userData.betaAccessLevel || 'none',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  
+  const { data, error } = await executeSupabase((client) =>
+    client.from(SUPABASE_USERS_TABLE).insert(newUser).select('*').single()
+  );
+  
+  if (error) {
+    throw new Error(error.message || 'Failed to create user in Supabase');
+  }
+  
+  return normalizeUserRow(data);
+}
+
+async function compareSupabasePassword(email, candidatePassword) {
+  const user = await fetchSupabaseUserByEmail(email);
+  if (!user || !user.password) return { valid: false, user: null };
+  
+  const isValid = await bcrypt.compare(candidatePassword, user.password);
+  return { valid: isValid, user: isValid ? user : null };
+}
+
 // POST /api/auth/register
 router.post(
   '/register',
@@ -63,22 +111,47 @@ router.post(
     const clientIP = req.ip || req.connection.remoteAddress;
 
     try {
-      // Check for existing user
-      const existing = await User.findOne({ where: { email } });
-      if (existing) {
-        console.log(`🔒 Registration attempt with existing email: ${email} from IP: ${clientIP}`);
-        return res.status(409).json({ message: 'Email already registered' });
+      let user = null;
+      
+      if (hasUserModel) {
+        // Sequelize path
+        const existing = await User.findOne({ where: { email } });
+        if (existing) {
+          console.log(`🔒 Registration attempt with existing email: ${email} from IP: ${clientIP}`);
+          return res.status(409).json({ message: 'Email already registered' });
+        }
+
+        user = await User.create({
+          email,
+          password,
+          name,
+          subscription: 'free',
+          guidesLimit: 1,
+          guidesUsed: 0
+        });
+      } else {
+        // Supabase fallback
+        if (supabaseUnavailable(res)) return;
+        
+        const existing = await fetchSupabaseUserByEmail(email);
+        if (existing) {
+          console.log(`🔒 Registration attempt with existing email: ${email} from IP: ${clientIP}`);
+          return res.status(409).json({ message: 'Email already registered' });
+        }
+        
+        user = await createSupabaseUser({
+          email,
+          password,
+          name,
+          subscription: 'free',
+          guidesLimit: 1,
+          guidesUsed: 0
+        });
       }
 
-      // Create new user with default free subscription
-      const user = await User.create({
-        email,
-        password,
-        name,
-        subscription: 'free',
-        guidesLimit: 1, // Start with 1 guide per month
-        guidesUsed: 0
-      });
+      if (!user) {
+        throw new Error('Failed to create user account');
+      }
 
       const token = jwt.sign({
         userId: user.id,
@@ -105,7 +178,7 @@ router.post(
       });
     } catch (err) {
       console.error('Register error:', err);
-      res.status(500).json({ message: 'Registration failed' });
+      res.status(500).json({ message: 'Registration failed: ' + (err.message || 'Unknown error') });
     }
   }
 );
@@ -138,20 +211,23 @@ router.post(
         });
       }
 
-      const user = await User.findOne({ where: { email } });
-      if (!user) {
-        // Track failed attempt
-        const currentAttempts = failedAttempts.get(attemptKey) || { count: 0, timestamp: Date.now() };
-        currentAttempts.count++;
-        currentAttempts.timestamp = Date.now();
-        failedAttempts.set(attemptKey, currentAttempts);
-
-        console.log(`🔒 Failed login attempt: ${email} from IP: ${clientIP}`);
-        return res.status(401).json({ message: 'Invalid credentials' });
+      let user = null;
+      let passwordValid = false;
+      
+      if (hasUserModel) {
+        user = await User.findOne({ where: { email } });
+        if (user) {
+          passwordValid = await user.comparePassword(password);
+        }
+      } else {
+        // Supabase fallback
+        if (supabaseUnavailable(res)) return;
+        const result = await compareSupabasePassword(email, password);
+        user = result.user;
+        passwordValid = result.valid;
       }
 
-      const ok = await user.comparePassword(password);
-      if (!ok) {
+      if (!user || !passwordValid) {
         // Track failed attempt
         const currentAttempts = failedAttempts.get(attemptKey) || { count: 0, timestamp: Date.now() };
         currentAttempts.count++;
@@ -203,7 +279,14 @@ router.post(
 // POST /api/auth/refresh - Refresh token
 router.post('/refresh', auth, async (req, res) => {
   try {
-    const user = await User.findByPk(req.userId);
+    let user = null;
+    if (hasUserModel) {
+      user = await User.findByPk(req.userId);
+    } else {
+      if (supabaseUnavailable(res)) return;
+      user = await fetchSupabaseUser(req.userId);
+    }
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -229,9 +312,16 @@ router.post('/refresh', auth, async (req, res) => {
 // GET /api/auth/profile - Get user profile
 router.get('/profile', auth, async (req, res) => {
   try {
-    const user = await User.findByPk(req.userId, {
-      attributes: { exclude: ['password'] }
-    });
+    let user = null;
+    if (hasUserModel) {
+      user = await User.findByPk(req.userId, {
+        attributes: { exclude: ['password'] }
+      });
+    } else {
+      if (supabaseUnavailable(res)) return;
+      user = await fetchSupabaseUser(req.userId);
+      if (user) delete user.password;
+    }
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -257,7 +347,14 @@ router.put(
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     try {
-      const user = await User.findByPk(req.userId);
+      let user = null;
+      if (hasUserModel) {
+        user = await User.findByPk(req.userId);
+      } else {
+        if (supabaseUnavailable(res)) return;
+        user = await fetchSupabaseUser(req.userId);
+      }
+      
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
@@ -267,14 +364,27 @@ router.put(
 
       if (name) updates.name = name;
       if (email && email !== user.email) {
-        const existing = await User.findOne({ where: { email } });
+        let existing = null;
+        if (hasUserModel) {
+          existing = await User.findOne({ where: { email } });
+        } else {
+          existing = await fetchSupabaseUserByEmail(email);
+        }
         if (existing) {
           return res.status(409).json({ message: 'Email already in use' });
         }
         updates.email = email;
       }
 
-      await user.update(updates);
+      if (hasUserModel) {
+        await user.update(updates);
+      } else {
+        updates.updatedAt = new Date().toISOString();
+        await executeSupabase((client) =>
+          client.from(SUPABASE_USERS_TABLE).update(updates).eq('id', req.userId)
+        );
+        user = { ...user, ...updates };
+      }
 
       res.json({
         message: 'Profile updated successfully',
@@ -308,18 +418,41 @@ router.post(
 
     try {
       const { currentPassword, newPassword } = req.body;
-      const user = await User.findByPk(req.userId);
+      let user = null;
+      
+      if (hasUserModel) {
+        user = await User.findByPk(req.userId);
+      } else {
+        if (supabaseUnavailable(res)) return;
+        user = await fetchSupabaseUser(req.userId);
+      }
 
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+      let isCurrentPasswordValid = false;
+      if (hasUserModel) {
+        isCurrentPasswordValid = await user.comparePassword(currentPassword);
+      } else {
+        isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      }
+      
       if (!isCurrentPasswordValid) {
         return res.status(400).json({ message: 'Current password is incorrect' });
       }
 
-      await user.update({ password: newPassword });
+      if (hasUserModel) {
+        await user.update({ password: newPassword });
+      } else {
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        await executeSupabase((client) =>
+          client.from(SUPABASE_USERS_TABLE).update({ 
+            password: hashedPassword,
+            updatedAt: new Date().toISOString()
+          }).eq('id', req.userId)
+        );
+      }
 
       res.json({ message: 'Password changed successfully' });
     } catch (err) {
@@ -339,13 +472,17 @@ router.post(
 
     try {
       const { email } = req.body;
-      const user = await User.findOne({ where: { email } });
+      let user = null;
+      
+      if (hasUserModel) {
+        user = await User.findOne({ where: { email } });
+      } else if (isSupabaseAdminConfigured()) {
+        user = await fetchSupabaseUserByEmail(email);
+      }
 
       if (user) {
         // Generate reset token (in production, send email)
         const resetToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1h' });
-
-        // For now, just return success (in production, send email with reset link)
         console.log(`Password reset requested for ${email}. Token: ${resetToken}`);
       }
 
@@ -373,13 +510,29 @@ router.post(
       const { token, newPassword } = req.body;
 
       const decoded = jwt.verify(token, JWT_SECRET);
-      const user = await User.findByPk(decoded.userId);
+      let user = null;
+      
+      if (hasUserModel) {
+        user = await User.findByPk(decoded.userId);
+      } else if (isSupabaseAdminConfigured()) {
+        user = await fetchSupabaseUser(decoded.userId);
+      }
 
       if (!user) {
         return res.status(400).json({ message: 'Invalid or expired reset token' });
       }
 
-      await user.update({ password: newPassword });
+      if (hasUserModel) {
+        await user.update({ password: newPassword });
+      } else {
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        await executeSupabase((client) =>
+          client.from(SUPABASE_USERS_TABLE).update({ 
+            password: hashedPassword,
+            updatedAt: new Date().toISOString()
+          }).eq('id', decoded.userId)
+        );
+      }
 
       res.json({ message: 'Password reset successfully' });
     } catch (err) {
@@ -395,7 +548,7 @@ router.post(
 // POST /api/auth/logout - Logout (client-side token removal)
 router.post('/logout', auth, (req, res) => {
   const clientIP = req.ip || req.connection.remoteAddress;
-  console.log(`✅ User logged out: ${req.user.email} from IP: ${clientIP}`);
+  console.log(`✅ User logged out: ${req.user?.email || req.userId} from IP: ${clientIP}`);
   res.json({ message: 'Logged out successfully' });
 });
 
@@ -409,23 +562,46 @@ router.delete('/account', auth, async (req, res) => {
       return res.status(400).json({ message: 'Password required to delete account' });
     }
 
-    const user = await User.findByPk(req.userId);
+    let user = null;
+    if (hasUserModel) {
+      user = await User.findByPk(req.userId);
+    } else {
+      if (supabaseUnavailable(res)) return;
+      user = await fetchSupabaseUser(req.userId);
+    }
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const isPasswordValid = await user.comparePassword(password);
+    let isPasswordValid = false;
+    if (hasUserModel) {
+      isPasswordValid = await user.comparePassword(password);
+    } else {
+      isPasswordValid = await bcrypt.compare(password, user.password);
+    }
+    
     if (!isPasswordValid) {
       console.log(`🔒 Failed account deletion attempt: ${user.email} from IP: ${clientIP}`);
       return res.status(401).json({ message: 'Invalid password' });
     }
 
-    // Delete user's guides first
-    const Guide = require('../models/Guide');
-    await Guide.destroy({ where: { userId: user.id } });
-
-    // Delete the user
-    await user.destroy();
+    if (hasUserModel) {
+      // Delete user's guides first
+      const Guide = require('../models/Guide');
+      if (Guide) {
+        await Guide.destroy({ where: { userId: user.id } });
+      }
+      await user.destroy();
+    } else {
+      // Delete from Supabase
+      await executeSupabase((client) =>
+        client.from(SUPABASE_GUIDES_TABLE).delete().eq('userId', req.userId)
+      );
+      await executeSupabase((client) =>
+        client.from(SUPABASE_USERS_TABLE).delete().eq('id', req.userId)
+      );
+    }
 
     console.log(`🗑️  Account deleted: ${user.email} from IP: ${clientIP}`);
     res.json({ message: 'Account deleted successfully' });
@@ -439,12 +615,24 @@ router.delete('/account', auth, async (req, res) => {
 router.get('/stats', auth, async (req, res) => {
   try {
     const userId = req.userId;
-    const Guide = require('../models/Guide');
-
-    const guides = await Guide.findAll({
-      where: { userId },
-      attributes: ['createdAt', 'updatedAt', 'viewCount']
-    });
+    let guides = [];
+    
+    if (hasUserModel) {
+      const Guide = require('../models/Guide');
+      if (Guide) {
+        guides = await Guide.findAll({
+          where: { userId },
+          attributes: ['createdAt', 'updatedAt', 'viewCount']
+        });
+      }
+    } else if (isSupabaseAdminConfigured()) {
+      const { data } = await executeSupabase((client) =>
+        client.from(SUPABASE_GUIDES_TABLE)
+          .select('createdAt,updatedAt,viewCount')
+          .eq('userId', userId)
+      );
+      guides = data || [];
+    }
 
     const totalGuides = guides.length;
     const totalViews = guides.reduce((sum, guide) => sum + (guide.viewCount || 0), 0);
@@ -453,15 +641,15 @@ router.get('/stats', auth, async (req, res) => {
     // Calculate monthly stats
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const guidesThisMonth = guides.filter(guide => guide.createdAt >= thisMonth).length;
+    const guidesThisMonth = guides.filter(guide => new Date(guide.createdAt) >= thisMonth).length;
 
     res.json({
       totalGuides,
       totalViews,
       averageViews,
       guidesThisMonth,
-      accountCreated: req.user.createdAt,
-      lastActive: req.user.updatedAt
+      accountCreated: req.user?.createdAt,
+      lastActive: req.user?.updatedAt
     });
   } catch (err) {
     console.error('Stats fetch error:', err);
@@ -479,9 +667,7 @@ router.post('/upgrade', auth, async (req, res) => {
       return res.status(400).json({ message: 'Invalid plan specified' });
     }
 
-    // For now, just log the upgrade request
-    // In production, this would integrate with Stripe
-    console.log(`💰 Upgrade request: ${req.user.email} wants ${plan} plan`);
+    console.log(`💰 Upgrade request: ${req.user?.email || req.userId} wants ${plan} plan`);
 
     res.json({
       message: 'Upgrade request received. You will be contacted shortly.',
@@ -546,60 +732,8 @@ const DASHBOARD_GUIDE_FIELDS = [
 router.get('/dashboard', auth, async (req, res) => {
   try {
     const userId = req.userId;
-<<<<<<< HEAD
-
-    // Get user - with Supabase fallback
-    let user, guides;
-
-    if (!hasSequelize) {
-      // Supabase fallback mode
-      if (!hasSupabaseFallback) {
-        // Fall back to req.user if available (from auth middleware)
-        if (req.user) {
-          user = req.user;
-          guides = []; // No database means no guides to show
-        } else {
-          // Graceful degradation - create minimal user from token
-          user = {
-            id: userId,
-            email: 'unknown',
-            name: 'User',
-            subscription: 'free',
-            guidesUsed: 0,
-            guidesLimit: 3
-          };
-          guides = [];
-        }
-      } else {
-        user = await supabaseAdmin.getUserById(userId);
-        guides = await supabaseAdmin.listGuidesByUser(userId);
-      }
-
-      // Final fallback to req.user
-      if (!user && req.user) {
-        user = req.user;
-      }
-    } else {
-      user = await User.findByPk(userId, {
-        attributes: { exclude: ['password'] }
-      });
-
-      const Guide = require('../models/Guide');
-      if (Guide) {
-        guides = await Guide.findAll({
-          where: { userId },
-          order: [['createdAt', 'DESC']],
-          attributes: [
-            'id', 'guideId', 'characterName', 'productionTitle',
-            'productionType', 'roleSize', 'genre', 'createdAt', 'updatedAt',
-            'viewCount', 'isPublic', 'childGuideRequested', 'childGuideCompleted'
-          ]
-        });
-      } else {
-        guides = await supabaseAdmin.listGuidesByUser(userId);
-      }
-=======
     let user = null;
+    
     if (hasUserModel) {
       user = await User.findByPk(userId, {
         attributes: { exclude: ['password'] }
@@ -607,16 +741,13 @@ router.get('/dashboard', auth, async (req, res) => {
     } else {
       if (supabaseUnavailable(res)) return;
       user = await fetchSupabaseUser(userId);
->>>>>>> 5d8790a5 (Add Supabase persistence fallback and fix guide UI)
+      if (user) delete user.password;
     }
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-<<<<<<< HEAD
-    guides = guides || [];
-=======
     // Get user's guides
     let guideRecords = [];
     let GuideModel = null;
@@ -636,8 +767,7 @@ router.get('/dashboard', auth, async (req, res) => {
           'viewCount', 'isPublic', 'childGuideRequested', 'childGuideCompleted', 'generatedHtml'
         ]
       });
-    } else {
-      if (supabaseUnavailable(res)) return;
+    } else if (isSupabaseAdminConfigured()) {
       const { data } = await executeSupabase((client) =>
         client
           .from(SUPABASE_GUIDES_TABLE)
@@ -647,7 +777,6 @@ router.get('/dashboard', auth, async (req, res) => {
       );
       guideRecords = (data || []).map(normalizeGuideRow);
     }
->>>>>>> 5d8790a5 (Add Supabase persistence fallback and fix guide UI)
 
     // Get subscription plans for comparison
     const PaymentService = require('../services/paymentService');
@@ -660,7 +789,7 @@ router.get('/dashboard', auth, async (req, res) => {
     const totalGuides = guides.length;
     const completedGuides = guides.filter(g => g.generatedHtml).length;
     const pendingGuides = guides.filter(g => !g.generatedHtml).length;
-    const processingGuides = 0; // No processing status in current model
+    const processingGuides = 0;
 
     // Get recent activity (last 5 guides)
     const recentGuides = guides.slice(0, 5);
@@ -689,17 +818,9 @@ router.get('/dashboard', auth, async (req, res) => {
             : user.betaAccessLevel || 'none';
         betaInfo = {
           isBetaTester: true,
-<<<<<<< HEAD
           betaAccessLevel: user.betaAccessLevel || 'none',
           betaStatus: user.betaStatus || 'active',
-          accessDescription: typeof user.getBetaAccessDescription === 'function'
-            ? user.getBetaAccessDescription()
-            : 'Beta tester access'
-=======
-          betaAccessLevel: user.betaAccessLevel,
-          betaStatus: user.betaStatus,
           accessDescription
->>>>>>> 5d8790a5 (Add Supabase persistence fallback and fix guide UI)
         };
       }
     }

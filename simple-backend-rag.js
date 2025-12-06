@@ -698,7 +698,7 @@ async function supabaseInsertGuide(payload, options = {}) {
     if (
       user &&
       retryAttempt < 1 &&
-      errorMessage.includes('Guides_userId_fkey')
+      errorMessage.includes("Guides_userId_fkey")
     ) {
       console.warn(
         "⚠️  Supabase guide insert failed due to missing user reference. Retrying after ensuring user exists.",
@@ -1975,7 +1975,7 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
 
         .header {
             background: linear-gradient(135deg, ${colorTheme.primary} 0%, ${colorTheme.secondary} 100%);
-            color: white;
+            color: #1f2937;
             padding: 30px;
             text-align: center;
         }
@@ -1984,12 +1984,13 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
             font-family: 'Fredoka One', cursive;
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+            color: #1f2937;
         }
 
         .header p {
             font-size: 1.2rem;
-            opacity: 0.9;
+            color: #374151;
         }
 
         .content {
@@ -2023,21 +2024,23 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
         }
 
         .highlight-box {
-            background: ${colorTheme.accent};
-            color: white;
+            background: #fef3c7;
+            color: #1f2937;
             padding: 15px;
             border-radius: 10px;
             margin: 15px 0;
             font-weight: 700;
+            border: 2px solid ${colorTheme.accent};
         }
 
         .tip-box {
-            background: ${colorTheme.secondary};
-            color: white;
+            background: #ecfdf5;
+            color: #1f2937;
             padding: 15px;
             border-radius: 10px;
             margin: 15px 0;
             font-weight: 700;
+            border: 2px solid ${colorTheme.secondary};
         }
 
         .number-list {
@@ -2083,10 +2086,11 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
 
         .footer {
             background: linear-gradient(135deg, ${colorTheme.secondary} 0%, ${colorTheme.primary} 100%);
-            color: white;
+            color: #1f2937;
             text-align: center;
             padding: 20px;
             font-weight: 700;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
         }
 
         @media (max-width: 600px) {
@@ -2312,100 +2316,114 @@ ${childMethodologyContext}
   }
 }
 
-function queueChildGuideGeneration({ guideId, childData }) {
-  setImmediate(async () => {
-    let persistence = "sequelize";
-    let guideRecord = null;
-    let GuideModel = null;
+// Async child guide generation - runs in background on serverful, or via separate endpoint on serverless
+async function generateChildGuideAsync({ guideId, childData, userId }) {
+  let persistence = "sequelize";
+  let guideRecord = null;
+  let GuideModel = null;
 
-    try {
-      GuideModel = Guide || require("./models/Guide");
-    } catch (_) {
-      GuideModel = null;
+  try {
+    GuideModel = Guide || require("./models/Guide");
+  } catch (_) {
+    GuideModel = null;
+  }
+
+  try {
+    if (GuideModel) {
+      guideRecord = await GuideModel.findByPk(guideId);
+    } else if (isSupabaseAdminConfigured()) {
+      persistence = "supabase";
+      guideRecord = await supabaseFetchGuide({ id: guideId });
+    } else {
+      console.warn(
+        "⚠️  No database models or Supabase admin client available - child guide generation skipped."
+      );
+      return { success: false, error: "No database available" };
     }
 
+    if (!guideRecord) {
+      console.warn(
+        `⚠️  Child guide generation skipped - guide ${guideId} not found`
+      );
+      return { success: false, error: "Guide not found" };
+    }
+
+    console.log(
+      `🌟 Child guide generation started for guide ${
+        guideRecord.guideId || guideId
+      }`
+    );
+    const childHtml = await generateChildGuide(childData);
+    const supabaseUserId =
+      userId || guideRecord?.userId || guideRecord?.user_id;
+
+    if (
+      persistence === "sequelize" &&
+      GuideModel &&
+      typeof guideRecord.update === "function"
+    ) {
+      await guideRecord.update({
+        childGuideHtml: childHtml,
+        childGuideCompleted: true,
+      });
+    } else if (supabaseUserId) {
+      await supabaseUpdateGuide(guideId, supabaseUserId, {
+        childGuideHtml: childHtml,
+        childGuideCompleted: true,
+      });
+    } else {
+      console.warn(
+        `⚠️  Unable to persist child guide for ${guideId}: missing userId`
+      );
+      return { success: false, error: "Missing userId" };
+    }
+
+    console.log(
+      `✅ Child guide stored for ${guideRecord.characterName} (${
+        guideRecord.guideId || guideId
+      })`
+    );
+    return { success: true, childHtml };
+  } catch (error) {
+    console.error("❌ Child guide generation failed:", error);
     try {
-      if (GuideModel) {
-        guideRecord = await GuideModel.findByPk(guideId);
-      } else if (isSupabaseAdminConfigured()) {
-        persistence = "supabase";
-        guideRecord = await supabaseFetchGuide({ id: guideId });
-      } else {
-        console.warn(
-          "⚠️  No database models or Supabase admin client available - child guide queue skipped."
+      if (persistence === "sequelize" && GuideModel) {
+        await GuideModel.update(
+          { childGuideCompleted: false },
+          { where: { id: guideId } }
         );
-        return;
-      }
-
-      if (!guideRecord) {
-        console.warn(
-          `⚠️  Child guide queue skipped - guide ${guideId} not found`
-        );
-        return;
-      }
-
-      console.log(
-        `🌟 Async child guide generation started for guide ${
-          guideRecord.guideId || guideId
-        }`
-      );
-      const childHtml = await generateChildGuide(childData);
-      const supabaseUserId =
-        guideRecord?.userId || guideRecord?.user_id || guideRecord?.user_id;
-
-      if (
-        persistence === "sequelize" &&
-        GuideModel &&
-        typeof guideRecord.update === "function"
-      ) {
-        await guideRecord.update({
-          childGuideHtml: childHtml,
-          childGuideCompleted: true,
-        });
-      } else if (supabaseUserId) {
-        await supabaseUpdateGuide(guideId, supabaseUserId, {
-          childGuideHtml: childHtml,
-          childGuideCompleted: true,
-        });
-      } else {
-        console.warn(
-          `⚠️  Unable to persist child guide for ${guideId}: missing userId`
-        );
-      }
-
-      console.log(
-        `✅ Child guide stored for ${guideRecord.characterName} (${
-          guideRecord.guideId || guideId
-        })`
-      );
-    } catch (error) {
-      console.error("❌ Async child guide generation failed:", error);
-      try {
-        if (persistence === "sequelize" && GuideModel) {
-          await GuideModel.update(
-            { childGuideCompleted: false },
-            { where: { id: guideId } }
-          );
-        } else if (guideRecord) {
-          const supabaseUserId =
-            guideRecord?.userId || guideRecord?.user_id || guideRecord?.user_id;
-          if (supabaseUserId) {
-            await supabaseUpdateGuide(guideId, supabaseUserId, {
-              childGuideCompleted: false,
-            });
-          } else {
-            console.warn(
-              `⚠️  Unable to mark child guide failure for ${guideId}: missing userId`
-            );
-          }
+      } else if (guideRecord) {
+        const supabaseUserId =
+          userId || guideRecord?.userId || guideRecord?.user_id;
+        if (supabaseUserId) {
+          await supabaseUpdateGuide(guideId, supabaseUserId, {
+            childGuideCompleted: false,
+          });
         }
-      } catch (updateError) {
-        console.error(
-          "❌ Failed to persist child guide failure status:",
-          updateError
-        );
       }
+    } catch (updateError) {
+      console.error(
+        "❌ Failed to persist child guide failure status:",
+        updateError
+      );
     }
+    return { success: false, error: error.message };
+  }
+}
+
+function queueChildGuideGeneration({ guideId, childData, userId }) {
+  // In Vercel serverless, setImmediate won't complete after response
+  // The child guide will be generated via a separate endpoint call
+  if (process.env.VERCEL) {
+    console.log(
+      `⏳ Child guide queued for ${guideId} - will be generated via separate request in serverless mode`
+    );
+    return;
+  }
+
+  // In serverful mode (local dev, Railway), use setImmediate for background processing
+  setImmediate(async () => {
+    await generateChildGuideAsync({ guideId, childData, userId });
   });
 }
 
@@ -3026,6 +3044,88 @@ app.get("/api/methodology", (req, res) => {
 });
 
 // Note: Guide endpoints are now handled by the mounted routes in ./routes/guides.js
+
+// Generate child guide on-demand (for serverless environments where background tasks don't complete)
+app.post("/api/guides/:id/generate-child", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUser =
+      req.user || (User && req.userId ? await User.findByPk(req.userId) : null);
+
+    if (!currentUser) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    let guideRecord = null;
+    let GuideModel = null;
+
+    try {
+      GuideModel = Guide || require("./models/Guide");
+    } catch (_) {
+      GuideModel = null;
+    }
+
+    if (GuideModel) {
+      guideRecord = await GuideModel.findOne({
+        where: { id, userId: currentUser.id },
+      });
+    } else if (isSupabaseAdminConfigured()) {
+      guideRecord = await supabaseFetchGuide({ id, userId: currentUser.id });
+    } else {
+      return res
+        .status(503)
+        .json({ error: "Guide storage unavailable" });
+    }
+
+    if (!guideRecord) {
+      return res.status(404).json({ error: "Guide not found" });
+    }
+
+    // Check if child guide was requested but not completed
+    if (!guideRecord.childGuideRequested) {
+      return res.status(400).json({ error: "Child guide was not requested for this guide" });
+    }
+
+    if (guideRecord.childGuideCompleted && guideRecord.childGuideHtml) {
+      return res.json({
+        success: true,
+        message: "Child guide already exists",
+        alreadyCompleted: true,
+      });
+    }
+
+    console.log(`🌟 On-demand child guide generation for guide ${id}`);
+
+    const result = await generateChildGuideAsync({
+      guideId: id,
+      childData: {
+        sceneText: guideRecord.sceneText,
+        characterName: guideRecord.characterName,
+        productionTitle: guideRecord.productionTitle,
+        productionType: guideRecord.productionType,
+        parentGuideContent: guideRecord.generatedHtml,
+        extractionMethod: "stored",
+      },
+      userId: currentUser.id,
+    });
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: "Child guide generated successfully",
+        childGuideCompleted: true,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.error || "Failed to generate child guide",
+      });
+    }
+  } catch (error) {
+    console.error("❌ Child guide generation error:", error);
+    res.status(500).json({ error: "Failed to generate child guide" });
+  }
+});
 
 // Download guide as PDF
 app.get("/api/guides/:id/pdf", auth, async (req, res) => {

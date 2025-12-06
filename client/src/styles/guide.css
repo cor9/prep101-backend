@@ -149,3 +149,27 @@
     font-size: 1.125rem !important;
   }
 }
+
+/* ----- Print Styles ----- */
+@media print {
+  .guide-html {
+    background: white !important;
+    color: #1f2937 !important;
+    padding: 0 !important;
+  }
+  
+  .guide-html, .guide-html * {
+    color: #1f2937 !important;
+    background: white !important;
+  }
+  
+  .guide-html h1, .guide-html h2, .guide-html h3 {
+    color: #b45309 !important;
+  }
+  
+  .guide-html .highlight-box,
+  .guide-html .tip-box {
+    border: 2px solid #fbbf24 !important;
+    background: #fffbe6 !important;
+  }
+}
