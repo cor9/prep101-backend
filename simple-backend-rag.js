@@ -48,6 +48,16 @@ app.get("/api/diagnostics", async (req, res) => {
     dbError = error.message;
   }
 
+  // Check Supabase configuration
+  const supabaseConfigured = isSupabaseAdminConfigured();
+  const supabaseStatus = supabaseConfigured ? "configured" : "not_configured";
+  const supabaseMissing = [];
+  if (!process.env.SUPABASE_URL) supabaseMissing.push("SUPABASE_URL");
+  if (!process.env.SUPABASE_SERVICE_KEY) supabaseMissing.push("SUPABASE_SERVICE_KEY");
+
+  // Determine if guide saving will work
+  const canSaveGuides = dbStatus === "connected" || supabaseConfigured;
+
   res.json({
     status: "running",
     timestamp: new Date().toISOString(),
@@ -55,6 +65,8 @@ app.get("/api/diagnostics", async (req, res) => {
       NODE_ENV: process.env.NODE_ENV,
       VERCEL: !!process.env.VERCEL,
       DATABASE_URL: !!process.env.DATABASE_URL,
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
       ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
       STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
       JWT_SECRET: !!process.env.JWT_SECRET,
@@ -62,6 +74,16 @@ app.get("/api/diagnostics", async (req, res) => {
     database: {
       status: dbStatus,
       error: dbError,
+    },
+    supabase: {
+      status: supabaseStatus,
+      missing: supabaseMissing.length > 0 ? supabaseMissing : null,
+      guidesTable: supabaseTables.guides,
+    },
+    guideSaving: {
+      enabled: canSaveGuides,
+      method: dbStatus === "connected" ? "sequelize" : supabaseConfigured ? "supabase" : "none",
+      warning: !canSaveGuides ? "Guide saving will FAIL! Configure DATABASE_URL or SUPABASE_SERVICE_KEY" : null,
     },
     endpoints: {
       health: "✅ Available",
@@ -629,7 +651,16 @@ async function supabaseFetchGuide(filters = {}) {
 }
 
 async function supabaseInsertGuide(payload) {
-  if (!isSupabaseAdminConfigured()) return null;
+  if (!isSupabaseAdminConfigured()) {
+    console.error("❌ Supabase admin client not configured - SUPABASE_URL or SUPABASE_SERVICE_KEY missing");
+    return null;
+  }
+
+  console.log("📝 Attempting Supabase guide insert...", {
+    guideId: payload.guideId,
+    userId: payload.userId,
+    characterName: payload.characterName
+  });
 
   const result = await runAdminQuery((client) =>
     client
@@ -639,11 +670,16 @@ async function supabaseInsertGuide(payload) {
       .single()
   );
 
-  if (!result) return null;
+  if (!result) {
+    console.error("❌ Supabase runAdminQuery returned null - client unavailable");
+    return null;
+  }
   if (result.error) {
+    console.error("❌ Supabase insert error:", result.error);
     throw new Error(result.error.message || "Failed to save guide via Supabase");
   }
 
+  console.log("✅ Supabase guide insert successful:", result.data?.id);
   return normalizeGuideRow(result.data);
 }
 
