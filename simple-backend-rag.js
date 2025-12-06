@@ -662,10 +662,17 @@ async function supabaseInsertGuide(payload) {
     characterName: payload.characterName
   });
 
+  const now = new Date().toISOString();
+  const guidePayload = {
+    ...payload,
+    createdAt: payload.createdAt || now,
+    updatedAt: payload.updatedAt || now,
+  };
+
   const result = await runAdminQuery((client) =>
     client
       .from(SUPABASE_GUIDES_TABLE)
-      .insert(payload)
+      .insert(guidePayload)
       .select("*")
       .single()
   );
@@ -676,7 +683,9 @@ async function supabaseInsertGuide(payload) {
   }
   if (result.error) {
     console.error("❌ Supabase insert error:", result.error);
-    throw new Error(result.error.message || "Failed to save guide via Supabase");
+    throw new Error(
+      result.error.message || "Failed to save guide via Supabase"
+    );
   }
 
   console.log("✅ Supabase guide insert successful:", result.data?.id);
@@ -689,7 +698,10 @@ async function supabaseUpdateGuide(id, userId, updates) {
   const result = await runAdminQuery((client) =>
     client
       .from(SUPABASE_GUIDES_TABLE)
-      .update(updates)
+      .update({
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
       .eq("id", id)
       .eq("userId", userId)
       .select("*")
@@ -698,7 +710,9 @@ async function supabaseUpdateGuide(id, userId, updates) {
 
   if (!result) return null;
   if (result.error) {
-    throw new Error(result.error.message || "Failed to update guide via Supabase");
+    throw new Error(
+      result.error.message || "Failed to update guide via Supabase"
+    );
   }
 
   return normalizeGuideRow(result.data);
@@ -2299,7 +2313,9 @@ function queueChildGuideGeneration({ guideId, childData }) {
       }
 
       console.log(
-        `🌟 Async child guide generation started for guide ${guideRecord.guideId || guideId}`
+        `🌟 Async child guide generation started for guide ${
+          guideRecord.guideId || guideId
+        }`
       );
       const childHtml = await generateChildGuide(childData);
       const supabaseUserId =
@@ -2326,7 +2342,9 @@ function queueChildGuideGeneration({ guideId, childData }) {
       }
 
       console.log(
-        `✅ Child guide stored for ${guideRecord.characterName} (${guideRecord.guideId || guideId})`
+        `✅ Child guide stored for ${guideRecord.characterName} (${
+          guideRecord.guideId || guideId
+        })`
       );
     } catch (error) {
       console.error("❌ Async child guide generation failed:", error);
@@ -2817,7 +2835,9 @@ app.post("/api/guides/generate", auth, async (req, res) => {
 
         persistedGuide = await supabaseInsertGuide(baseGuidePayload);
         if (!persistedGuide) {
-          throw new Error("Guide model unavailable and Supabase fallback failed");
+          throw new Error(
+            "Guide model unavailable and Supabase fallback failed"
+          );
         }
       }
 

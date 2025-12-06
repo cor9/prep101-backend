@@ -1,69 +1,74 @@
-const express = require('express');
-const { body, validationResult } = require('express-validator');
-const auth = require('../middleware/auth');
-const { checkSubscription, trackGuideUsage } = require('../middleware/security');
-const Guide = require('../models/Guide');
-const User = require('../models/User');
-const { Op } = require('sequelize'); // Added Op for search queries
+const express = require("express");
+const { body, validationResult } = require("express-validator");
+const auth = require("../middleware/auth");
+const {
+  checkSubscription,
+  trackGuideUsage,
+} = require("../middleware/security");
+const Guide = require("../models/Guide");
+const User = require("../models/User");
+const { Op } = require("sequelize"); // Added Op for search queries
 const {
   runAdminQuery,
   isSupabaseAdminConfigured,
   tables: supabaseTables,
   normalizeGuideRow,
   normalizeUserRow,
-} = require('../lib/supabaseAdmin');
+} = require("../lib/supabaseAdmin");
 
 const router = express.Router();
 const SUPABASE_GUIDES_TABLE = supabaseTables.guides;
 const SUPABASE_USERS_TABLE = supabaseTables.users;
 const hasGuideModel = !!Guide;
 const hasUserModel = !!User;
-const hasSequelize = hasGuideModel;
-const hasSupabaseFallback = isSupabaseAdminConfigured();
 const GUIDE_SUMMARY_FIELDS = [
-  'id',
-  'guideId',
-  'characterName',
-  'productionTitle',
-  'productionType',
-  'roleSize',
-  'genre',
-  'createdAt',
-  'viewCount',
-  'childGuideRequested',
-  'childGuideCompleted',
-  'childGuideHtml',
-  'isFavorite',
-].join(',');
+  "id",
+  "guideId",
+  "characterName",
+  "productionTitle",
+  "productionType",
+  "productionTone",
+  "stakes",
+  "roleSize",
+  "genre",
+  "createdAt",
+  "viewCount",
+  "childGuideRequested",
+  "childGuideCompleted",
+  "childGuideHtml",
+  "isFavorite",
+].join(",");
 const GUIDE_DETAIL_FIELDS = [
-  'id',
-  'guideId',
-  'characterName',
-  'productionTitle',
-  'productionType',
-  'roleSize',
-  'genre',
-  'storyline',
-  'characterBreakdown',
-  'callbackNotes',
-  'focusArea',
-  'sceneText',
-  'generatedHtml',
-  'createdAt',
-  'updatedAt',
-  'viewCount',
-  'isPublic',
-  'childGuideRequested',
-  'childGuideCompleted',
-  'childGuideHtml',
-  'isFavorite',
-].join(',');
+  "id",
+  "guideId",
+  "characterName",
+  "productionTitle",
+  "productionType",
+  "roleSize",
+  "genre",
+  "storyline",
+  "characterBreakdown",
+  "callbackNotes",
+  "focusArea",
+  "sceneText",
+  "generatedHtml",
+  "createdAt",
+  "updatedAt",
+  "viewCount",
+  "isPublic",
+  "childGuideRequested",
+  "childGuideCompleted",
+  "childGuideHtml",
+  "isFavorite",
+].join(",");
 
 function supabaseUnavailable(res) {
   if (!isSupabaseAdminConfigured()) {
     res
       .status(503)
-      .json({ message: 'Guide storage unavailable. Please try again shortly.' });
+      .json({
+        message: "Guide storage unavailable. Please try again shortly.",
+      });
     return true;
   }
   return false;
@@ -72,10 +77,10 @@ function supabaseUnavailable(res) {
 async function executeSupabase(builderFn) {
   const result = await runAdminQuery(builderFn);
   if (!result) {
-    throw new Error('Supabase admin client unavailable');
+    throw new Error("Supabase admin client unavailable");
   }
   if (result.error) {
-    throw new Error(result.error.message || 'Supabase query failed');
+    throw new Error(result.error.message || "Supabase query failed");
   }
   return result;
 }
@@ -83,34 +88,36 @@ async function executeSupabase(builderFn) {
 async function fetchSupabaseUser(userId) {
   if (!isSupabaseAdminConfigured()) return null;
   const result = await executeSupabase((client) =>
-    client.from(SUPABASE_USERS_TABLE).select('*').eq('id', userId).maybeSingle()
+    client.from(SUPABASE_USERS_TABLE).select("*").eq("id", userId).maybeSingle()
   );
   return normalizeUserRow(result.data);
 }
 
 // GET /api/guides - Get user's guides
-router.get('/', auth, async (req, res) => {
+router.get("/", auth, async (req, res) => {
   try {
     const userId = req.userId;
 
     if (hasGuideModel) {
       const guides = await Guide.findAll({
         where: { userId },
-        order: [['createdAt', 'DESC']],
+        order: [["createdAt", "DESC"]],
         attributes: [
-          'id',
-          'guideId',
-          'characterName',
-          'productionTitle',
-          'productionType',
-          'roleSize',
-          'genre',
-          'createdAt',
-          'viewCount',
-          'childGuideRequested',
-          'childGuideCompleted',
-          'childGuideHtml',
-          'isFavorite',
+          "id",
+          "guideId",
+          "characterName",
+          "productionTitle",
+          "productionType",
+          "productionTone",
+          "stakes",
+          "roleSize",
+          "genre",
+          "createdAt",
+          "viewCount",
+          "childGuideRequested",
+          "childGuideCompleted",
+          "childGuideHtml",
+          "isFavorite",
         ],
       });
 
@@ -128,8 +135,8 @@ router.get('/', auth, async (req, res) => {
       client
         .from(SUPABASE_GUIDES_TABLE)
         .select(GUIDE_SUMMARY_FIELDS)
-        .eq('userId', userId)
-        .order('createdAt', { ascending: false })
+        .eq("userId", userId)
+        .order("createdAt", { ascending: false })
     );
 
     const guides = (data || []).map(normalizeGuideRow);
@@ -140,135 +147,127 @@ router.get('/', auth, async (req, res) => {
       total: guides.length,
     });
   } catch (error) {
-    console.error('Error fetching guides:', error);
-    res.status(500).json({ message: 'Failed to fetch guides' });
+    console.error("Error fetching guides:", error);
+    res.status(500).json({ message: "Failed to fetch guides" });
   }
 });
 
 // GET /api/guides/public - Get public guides (no auth required)
-router.get('/public', async (req, res) => {
+router.get("/public", async (req, res) => {
   try {
-    const { page = 1, limit = 10, sortBy = 'createdAt', order = 'DESC' } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = "createdAt",
+      order = "DESC",
+    } = req.query;
 
-    // Sequelize (primary)
-    if (hasSequelize) {
-      const { count, rows: guides } = await Guide.findAndCountAll({
-        where: { isPublic: true },
-        order: [[sortBy, order.toUpperCase()]],
+    // Supabase fallback
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res
+          .status(503)
+          .json({ message: "Database service unavailable" });
+      }
+      const { guides, count } = await supabaseAdmin.listPublicGuides({
+        page: parseInt(page),
         limit: parseInt(limit),
-        offset: offset,
-        attributes: [
-          'id', 'guideId', 'characterName', 'productionTitle',
-          'productionType', 'createdAt', 'viewCount'
-        ]
+        sortBy,
+        order: order.toUpperCase(),
       });
-
       return res.json({
         guides,
         pagination: {
           currentPage: parseInt(page),
-          totalPages: Math.ceil(count / parseInt(limit)),
+          totalPages: Math.ceil(count / limit),
           totalGuides: count,
-          guidesPerPage: parseInt(limit)
-        }
+          guidesPerPage: parseInt(limit),
+        },
       });
     }
 
-    // Supabase fallback
-    if (!hasSupabaseFallback) {
-      return res.status(503).json({ message: 'Database service unavailable' });
-    }
-
-    const { data, count } = await executeSupabase((client) =>
-      client
-        .from(SUPABASE_GUIDES_TABLE)
-        .select('id,guideId,characterName,productionTitle,productionType,createdAt,viewCount', { count: 'exact' })
-        .eq('isPublic', true)
-        .order(sortBy, { ascending: order.toUpperCase() === 'ASC' })
-        .range(offset, offset + parseInt(limit) - 1)
-    );
-
-    const guides = (data || []).map(normalizeGuideRow);
+    const offset = (page - 1) * limit;
+    const { count, rows: guides } = await Guide.findAndCountAll({
+      where: { isPublic: true },
+      order: [[sortBy, order.toUpperCase()]],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      attributes: [
+        "id",
+        "title",
+        "characterName",
+        "productionTitle",
+        "productionType",
+        "createdAt",
+        "viewCount",
+      ],
+    });
 
     res.json({
       guides,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil((count || 0) / parseInt(limit)),
-        totalGuides: count || 0,
-        guidesPerPage: parseInt(limit)
-      }
+        totalPages: Math.ceil(count / limit),
+        totalGuides: count,
+        guidesPerPage: parseInt(limit),
+      },
     });
-
   } catch (error) {
-    console.error('Public guides fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch public guides' });
+    console.error("Public guides fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch public guides" });
   }
 });
 
 // GET /api/guides/public/:id - Get specific public guide
-router.get('/public/:id', async (req, res) => {
+router.get("/public/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Sequelize (primary)
-    if (hasSequelize) {
-      const guide = await Guide.findOne({
-        where: { id, isPublic: true },
-        attributes: [
-          'id', 'guideId', 'characterName', 'productionTitle',
-          'productionType', 'createdAt', 'viewCount', 'generatedHtml'
-        ]
-      });
-
-      if (!guide) {
-        return res.status(404).json({ message: 'Public guide not found' });
+    // Supabase fallback
+    if (!hasSequelize) {
+      if (!hasSupabaseFallback) {
+        return res
+          .status(503)
+          .json({ message: "Database service unavailable" });
       }
-
-      // Increment view count
-      await guide.increment('viewCount');
-
+      const guide = await supabaseAdmin.getGuideById(id);
+      if (!guide || !guide.isPublic) {
+        return res.status(404).json({ message: "Public guide not found" });
+      }
+      await supabaseAdmin.incrementViewCount(id);
       return res.json({ guide });
     }
 
-    // Supabase fallback
-    if (!hasSupabaseFallback) {
-      return res.status(503).json({ message: 'Database service unavailable' });
-    }
+    const guide = await Guide.findOne({
+      where: { id, isPublic: true },
+      attributes: [
+        "id",
+        "title",
+        "characterName",
+        "productionTitle",
+        "productionType",
+        "createdAt",
+        "viewCount",
+        "generatedHtml",
+      ],
+    });
 
-    const { data } = await executeSupabase((client) =>
-      client
-        .from(SUPABASE_GUIDES_TABLE)
-        .select('id,guideId,characterName,productionTitle,productionType,createdAt,viewCount,generatedHtml,isPublic')
-        .eq('id', id)
-        .eq('isPublic', true)
-        .maybeSingle()
-    );
-
-    const guide = normalizeGuideRow(data);
     if (!guide) {
-      return res.status(404).json({ message: 'Public guide not found' });
+      return res.status(404).json({ message: "Public guide not found" });
     }
 
     // Increment view count
-    await executeSupabase((client) =>
-      client
-        .from(SUPABASE_GUIDES_TABLE)
-        .update({ viewCount: (guide.viewCount || 0) + 1 })
-        .eq('id', id)
-    );
+    await guide.increment("viewCount");
 
     res.json({ guide });
-
   } catch (error) {
-    console.error('Public guide fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch public guide' });
+    console.error("Public guide fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch public guide" });
   }
 });
 
 // GET /api/guides/:id/child - Get child guide HTML
-router.get('/:id/child', auth, async (req, res) => {
+router.get("/:id/child", auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
@@ -280,12 +279,12 @@ router.get('/:id/child', auth, async (req, res) => {
       guide = await Guide.findOne({
         where: { id, userId },
         attributes: [
-          'id',
-          'characterName',
-          'productionTitle',
-          'childGuideHtml',
-          'childGuideCompleted',
-          'childGuideRequested',
+          "id",
+          "characterName",
+          "productionTitle",
+          "childGuideHtml",
+          "childGuideCompleted",
+          "childGuideRequested",
         ],
       });
     } else {
@@ -294,10 +293,10 @@ router.get('/:id/child', auth, async (req, res) => {
         client
           .from(SUPABASE_GUIDES_TABLE)
           .select(
-            'id,characterName,productionTitle,childGuideHtml,childGuideCompleted,childGuideRequested'
+            "id,characterName,productionTitle,childGuideHtml,childGuideCompleted,childGuideRequested"
           )
-          .eq('id', id)
-          .eq('userId', userId)
+          .eq("id", id)
+          .eq("userId", userId)
           .maybeSingle()
       );
       guide = normalizeGuideRow(data);
@@ -310,35 +309,34 @@ router.get('/:id/child', auth, async (req, res) => {
       childGuideRequested: guide?.childGuideRequested,
       childGuideCompleted: guide?.childGuideCompleted,
       hasChildGuideHtml: !!guide?.childGuideHtml,
-      childGuideHtmlLength: guide?.childGuideHtml?.length || 0
+      childGuideHtmlLength: guide?.childGuideHtml?.length || 0,
     });
 
     if (!guide) {
-      console.log('❌ Guide not found');
-      return res.status(404).json({ message: 'Guide not found' });
+      console.log("❌ Guide not found");
+      return res.status(404).json({ message: "Guide not found" });
     }
 
     if (!guide.childGuideCompleted || !guide.childGuideHtml) {
-      console.log('❌ Child guide not available:', {
+      console.log("❌ Child guide not available:", {
         completed: guide.childGuideCompleted,
-        hasHtml: !!guide.childGuideHtml
+        hasHtml: !!guide.childGuideHtml,
       });
-      return res.status(404).json({ message: 'Child guide not available' });
+      return res.status(404).json({ message: "Child guide not available" });
     }
 
-    console.log('✅ Child guide found, sending HTML content');
+    console.log("✅ Child guide found, sending HTML content");
     // Set HTML content type and send the child guide
-    res.setHeader('Content-Type', 'text/html');
+    res.setHeader("Content-Type", "text/html");
     res.send(guide.childGuideHtml);
-
   } catch (error) {
-    console.error('❌ Child guide fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch child guide' });
+    console.error("❌ Child guide fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch child guide" });
   }
 });
 
 // GET /api/guides/:id - Get specific guide
-router.get('/:id', auth, async (req, res) => {
+router.get("/:id", auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
@@ -347,7 +345,7 @@ router.get('/:id', auth, async (req, res) => {
     if (hasGuideModel) {
       guide = await Guide.findOne({
         where: { id, userId },
-        attributes: { exclude: ['scriptContent'] } // Don't send full script content
+        attributes: { exclude: ["scriptContent"] }, // Don't send full script content
       });
     } else {
       if (supabaseUnavailable(res)) return;
@@ -355,41 +353,41 @@ router.get('/:id', auth, async (req, res) => {
         client
           .from(SUPABASE_GUIDES_TABLE)
           .select(GUIDE_DETAIL_FIELDS)
-          .eq('id', id)
-          .eq('userId', userId)
+          .eq("id", id)
+          .eq("userId", userId)
           .maybeSingle()
       );
       guide = normalizeGuideRow(data);
     }
 
     if (!guide) {
-      return res.status(404).json({ message: 'Guide not found' });
+      return res.status(404).json({ message: "Guide not found" });
     }
 
     res.json({
       success: true,
-      guide: guide
+      guide: guide,
     });
   } catch (error) {
-    console.error('Error fetching guide:', error);
-    res.status(500).json({ message: 'Failed to fetch guide' });
+    console.error("Error fetching guide:", error);
+    res.status(500).json({ message: "Failed to fetch guide" });
   }
 });
 
 // POST /api/guides - Create new guide (with subscription check)
 router.post(
-  '/',
+  "/",
   [
     auth,
-    checkSubscription('free'), // Allow free users but track usage
+    checkSubscription("free"), // Allow free users but track usage
     trackGuideUsage,
-    body('title').trim().isLength({ min: 1, max: 200 }),
-    body('characterName').trim().isLength({ min: 1, max: 100 }),
-    body('productionTitle').trim().isLength({ min: 1, max: 200 }),
-    body('productionType').trim().isLength({ min: 1, max: 100 }),
-    body('productionTone').optional().trim().isLength({ min: 0, max: 200 }),
-    body('stakes').optional().trim().isLength({ min: 0, max: 200 }),
-    body('scriptContent').isLength({ min: 10 })
+    body("title").trim().isLength({ min: 1, max: 200 }),
+    body("characterName").trim().isLength({ min: 1, max: 100 }),
+    body("productionTitle").trim().isLength({ min: 1, max: 200 }),
+    body("productionType").trim().isLength({ min: 1, max: 100 }),
+    body("productionTone").optional().trim().isLength({ min: 0, max: 200 }),
+    body("stakes").optional().trim().isLength({ min: 0, max: 200 }),
+    body("scriptContent").isLength({ min: 10 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -399,7 +397,15 @@ router.post(
 
     try {
       const userId = req.userId;
-      const { title, characterName, productionTitle, productionType, productionTone, stakes, scriptContent } = req.body;
+      const {
+        title,
+        characterName,
+        productionTitle,
+        productionType,
+        productionTone,
+        stakes,
+        scriptContent,
+      } = req.body;
 
       // Create guide
       const guide = await Guide.create({
@@ -411,11 +417,11 @@ router.post(
         productionTone,
         stakes,
         scriptContent,
-        status: 'pending'
+        status: "pending",
       });
 
       res.status(201).json({
-        message: 'Guide created successfully',
+        message: "Guide created successfully",
         guide: {
           id: guide.id,
           title: guide.title,
@@ -423,25 +429,25 @@ router.post(
           productionTitle: guide.productionTitle,
           productionType: guide.productionType,
           status: guide.status,
-          createdAt: guide.createdAt
-        }
+          createdAt: guide.createdAt,
+        },
       });
     } catch (error) {
-      console.error('Error creating guide:', error);
-      res.status(500).json({ message: 'Failed to create guide' });
+      console.error("Error creating guide:", error);
+      res.status(500).json({ message: "Failed to create guide" });
     }
   }
 );
 
 // PUT /api/guides/:id - Update guide
 router.put(
-  '/:id',
+  "/:id",
   [
     auth,
-    body('title').optional().trim().isLength({ min: 1, max: 200 }),
-    body('characterName').optional().trim().isLength({ min: 1, max: 100 }),
-    body('productionTitle').optional().trim().isLength({ min: 1, max: 200 }),
-    body('productionType').optional().trim().isLength({ min: 1, max: 100 })
+    body("title").optional().trim().isLength({ min: 1, max: 200 }),
+    body("characterName").optional().trim().isLength({ min: 1, max: 100 }),
+    body("productionTitle").optional().trim().isLength({ min: 1, max: 200 }),
+    body("productionType").optional().trim().isLength({ min: 1, max: 100 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -456,13 +462,13 @@ router.put(
 
       const guide = await Guide.findOne({ where: { id, userId } });
       if (!guide) {
-        return res.status(404).json({ message: 'Guide not found' });
+        return res.status(404).json({ message: "Guide not found" });
       }
 
       await guide.update(updates);
 
       res.json({
-        message: 'Guide updated successfully',
+        message: "Guide updated successfully",
         guide: {
           id: guide.id,
           title: guide.title,
@@ -470,29 +476,29 @@ router.put(
           productionTitle: guide.productionTitle,
           productionType: guide.productionType,
           status: guide.status,
-          updatedAt: guide.updatedAt
-        }
+          updatedAt: guide.updatedAt,
+        },
       });
     } catch (error) {
-      console.error('Error updating guide:', error);
-      res.status(500).json({ message: 'Failed to update guide' });
+      console.error("Error updating guide:", error);
+      res.status(500).json({ message: "Failed to update guide" });
     }
   }
 );
 
 // DELETE /api/guides/:id - Delete guide
-router.delete('/:id', auth, async (req, res) => {
+router.delete("/:id", auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
     if (hasGuideModel) {
       const guide = await Guide.findOne({ where: { id, userId } });
       if (!guide) {
-        return res.status(404).json({ message: 'Guide not found' });
+        return res.status(404).json({ message: "Guide not found" });
       }
 
       await guide.destroy();
-      res.json({ message: 'Guide deleted successfully' });
+      res.json({ message: "Guide deleted successfully" });
       return;
     }
 
@@ -501,35 +507,35 @@ router.delete('/:id', auth, async (req, res) => {
     const { data: existingGuide } = await executeSupabase((client) =>
       client
         .from(SUPABASE_GUIDES_TABLE)
-        .select('id')
-        .eq('id', id)
-        .eq('userId', userId)
+        .select("id")
+        .eq("id", id)
+        .eq("userId", userId)
         .maybeSingle()
     );
 
     if (!existingGuide) {
-      return res.status(404).json({ message: 'Guide not found' });
+      return res.status(404).json({ message: "Guide not found" });
     }
 
     await executeSupabase((client) =>
-      client.from(SUPABASE_GUIDES_TABLE).delete().eq('id', id).eq('userId', userId)
+      client
+        .from(SUPABASE_GUIDES_TABLE)
+        .delete()
+        .eq("id", id)
+        .eq("userId", userId)
     );
 
-    res.json({ message: 'Guide deleted successfully' });
+    res.json({ message: "Guide deleted successfully" });
   } catch (error) {
-    console.error('Error deleting guide:', error);
-    res.status(500).json({ message: 'Failed to delete guide' });
+    console.error("Error deleting guide:", error);
+    res.status(500).json({ message: "Failed to delete guide" });
   }
 });
 
 // POST /api/guides/:id/generate - Generate guide content
 router.post(
-  '/:id/generate',
-  [
-    auth,
-    checkSubscription('free'),
-    trackGuideUsage
-  ],
+  "/:id/generate",
+  [auth, checkSubscription("free"), trackGuideUsage],
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -537,18 +543,18 @@ router.post(
 
       const guide = await Guide.findOne({ where: { id, userId } });
       if (!guide) {
-        return res.status(404).json({ message: 'Guide not found' });
+        return res.status(404).json({ message: "Guide not found" });
       }
 
-      if (guide.status === 'completed') {
-        return res.status(400).json({ message: 'Guide already generated' });
+      if (guide.status === "completed") {
+        return res.status(400).json({ message: "Guide already generated" });
       }
 
       // Here you would integrate with your AI service to generate the guide
       // For now, we'll simulate the process
 
       // Update guide status to processing
-      await guide.update({ status: 'processing' });
+      await guide.update({ status: "processing" });
 
       // Simulate AI processing delay
       setTimeout(async () => {
@@ -556,42 +562,41 @@ router.post(
           const generatedContent = `Generated guide for ${guide.characterName} in ${guide.productionTitle}...`;
           await guide.update({
             guideContent: generatedContent,
-            status: 'completed'
+            status: "completed",
           });
         } catch (error) {
-          console.error('Error updating guide after generation:', error);
-          await guide.update({ status: 'failed' });
+          console.error("Error updating guide after generation:", error);
+          await guide.update({ status: "failed" });
         }
       }, 2000);
 
       res.json({
-        message: 'Guide generation started',
+        message: "Guide generation started",
         guide: {
           id: guide.id,
-          status: guide.status
-        }
+          status: guide.status,
+        },
       });
-
     } catch (error) {
-      console.error('Error starting guide generation:', error);
-      res.status(500).json({ message: 'Failed to start guide generation' });
+      console.error("Error starting guide generation:", error);
+      res.status(500).json({ message: "Failed to start guide generation" });
     }
   }
 );
 
 // GET /api/guides/:id/status - Check guide generation status
-router.get('/:id/status', auth, async (req, res) => {
+router.get("/:id/status", auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
 
     const guide = await Guide.findOne({
       where: { id, userId },
-      attributes: ['id', 'status', 'guideContent', 'updatedAt']
+      attributes: ["id", "status", "guideContent", "updatedAt"],
     });
 
     if (!guide) {
-      return res.status(404).json({ message: 'Guide not found' });
+      return res.status(404).json({ message: "Guide not found" });
     }
 
     res.json({
@@ -599,20 +604,102 @@ router.get('/:id/status', auth, async (req, res) => {
         id: guide.id,
         status: guide.status,
         guideContent: guide.guideContent,
-        updatedAt: guide.updatedAt
-      }
+        updatedAt: guide.updatedAt,
+      },
     });
   } catch (error) {
-    console.error('Error checking guide status:', error);
-    res.status(500).json({ message: 'Failed to check guide status' });
+    console.error("Error checking guide status:", error);
+    res.status(500).json({ message: "Failed to check guide status" });
+  }
+});
+
+// GET /api/guides/public - Get public guides (no auth required)
+router.get("/public", async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = "createdAt",
+      order = "DESC",
+    } = req.query;
+    const offset = (page - 1) * limit;
+
+    const { count, rows: guides } = await Guide.findAndCountAll({
+      where: { isPublic: true },
+      order: [[sortBy, order.toUpperCase()]],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      attributes: [
+        "id",
+        "title",
+        "characterName",
+        "productionTitle",
+        "productionType",
+        "createdAt",
+        "viewCount",
+      ],
+    });
+
+    res.json({
+      guides,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / limit),
+        totalGuides: count,
+        guidesPerPage: parseInt(limit),
+      },
+    });
+  } catch (error) {
+    console.error("Public guides fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch public guides" });
+  }
+});
+
+// GET /api/guides/public/:id - Get specific public guide
+router.get("/public/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const guide = await Guide.findOne({
+      where: { id, isPublic: true },
+      attributes: [
+        "id",
+        "title",
+        "characterName",
+        "productionTitle",
+        "productionType",
+        "createdAt",
+        "viewCount",
+        "generatedHtml",
+      ],
+    });
+
+    if (!guide) {
+      return res.status(404).json({ message: "Public guide not found" });
+    }
+
+    // Increment view count
+    await guide.increment("viewCount");
+
+    res.json({ guide });
+  } catch (error) {
+    console.error("Public guide fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch public guide" });
   }
 });
 
 // GET /api/guides/search - Search user's guides
-router.get('/search', auth, async (req, res) => {
+router.get("/search", auth, async (req, res) => {
   try {
     const userId = req.userId;
-    const { q, status, characterName, productionType, sortBy = 'createdAt', order = 'DESC' } = req.query;
+    const {
+      q,
+      status,
+      characterName,
+      productionType,
+      sortBy = "createdAt",
+      order = "DESC",
+    } = req.query;
 
     let whereClause = { userId };
 
@@ -624,8 +711,8 @@ router.get('/search', auth, async (req, res) => {
           { title: { [Op.iLike]: `%${q}%` } },
           { characterName: { [Op.iLike]: `%${q}%` } },
           { productionTitle: { [Op.iLike]: `%${q}%` } },
-          { productionType: { [Op.iLike]: `%${q}%` } }
-        ]
+          { productionType: { [Op.iLike]: `%${q}%` } },
+        ],
       };
     }
 
@@ -645,27 +732,34 @@ router.get('/search', auth, async (req, res) => {
       where: whereClause,
       order: [[sortBy, order.toUpperCase()]],
       attributes: [
-        'id', 'title', 'characterName', 'productionTitle',
-        'productionType', 'status', 'createdAt', 'updatedAt',
-        'viewCount', 'isPublic'
-      ]
+        "id",
+        "title",
+        "characterName",
+        "productionTitle",
+        "productionType",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "viewCount",
+        "isPublic",
+      ],
     });
 
     res.json({ guides, total: guides.length });
   } catch (error) {
-    console.error('Guide search error:', error);
-    res.status(500).json({ message: 'Failed to search guides' });
+    console.error("Guide search error:", error);
+    res.status(500).json({ message: "Failed to search guides" });
   }
 });
 
 // GET /api/guides/stats - Get user's guide statistics
-router.get('/stats', auth, async (req, res) => {
+router.get("/stats", auth, async (req, res) => {
   try {
     const userId = req.userId;
 
     const guides = await Guide.findAll({
       where: { userId },
-      attributes: ['status', 'createdAt', 'viewCount']
+      attributes: ["status", "createdAt", "viewCount"],
     });
 
     // Calculate statistics
@@ -682,8 +776,12 @@ router.get('/stats', auth, async (req, res) => {
       return acc;
     }, {});
 
-    const totalViews = guides.reduce((sum, guide) => sum + (guide.viewCount || 0), 0);
-    const averageViews = totalGuides > 0 ? Math.round(totalViews / totalGuides * 100) / 100 : 0;
+    const totalViews = guides.reduce(
+      (sum, guide) => sum + (guide.viewCount || 0),
+      0
+    );
+    const averageViews =
+      totalGuides > 0 ? Math.round((totalViews / totalGuides) * 100) / 100 : 0;
 
     res.json({
       totalGuides,
@@ -691,17 +789,16 @@ router.get('/stats', auth, async (req, res) => {
       monthlyStats,
       totalViews,
       averageViews,
-      recentMonths: Object.keys(monthlyStats).sort().slice(-6) // Last 6 months
+      recentMonths: Object.keys(monthlyStats).sort().slice(-6), // Last 6 months
     });
-
   } catch (error) {
-    console.error('Guide stats error:', error);
-    res.status(500).json({ message: 'Failed to fetch guide statistics' });
+    console.error("Guide stats error:", error);
+    res.status(500).json({ message: "Failed to fetch guide statistics" });
   }
 });
 
 // PUT /api/guides/:id/share - Toggle guide public/private status
-router.put('/:id/share', auth, async (req, res) => {
+router.put("/:id/share", auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
@@ -709,27 +806,26 @@ router.put('/:id/share', auth, async (req, res) => {
 
     const guide = await Guide.findOne({ where: { id, userId } });
     if (!guide) {
-      return res.status(404).json({ message: 'Guide not found' });
+      return res.status(404).json({ message: "Guide not found" });
     }
 
     await guide.update({ isPublic: Boolean(isPublic) });
 
     res.json({
-      message: `Guide ${isPublic ? 'made public' : 'made private'}`,
+      message: `Guide ${isPublic ? "made public" : "made private"}`,
       guide: {
         id: guide.id,
-        isPublic: guide.isPublic
-      }
+        isPublic: guide.isPublic,
+      },
     });
-
   } catch (error) {
-    console.error('Guide share toggle error:', error);
-    res.status(500).json({ message: 'Failed to update guide sharing' });
+    console.error("Guide share toggle error:", error);
+    res.status(500).json({ message: "Failed to update guide sharing" });
   }
 });
 
 // GET /api/guides/:id/full - Get full guide details (for user's own guides)
-router.get('/:id/full', auth, async (req, res) => {
+router.get("/:id/full", auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
@@ -737,7 +833,7 @@ router.get('/:id/full', auth, async (req, res) => {
     let guide = null;
     if (hasGuideModel) {
       guide = await Guide.findOne({
-        where: { id, userId }
+        where: { id, userId },
       });
     } else {
       if (supabaseUnavailable(res)) return;
@@ -745,27 +841,26 @@ router.get('/:id/full', auth, async (req, res) => {
         client
           .from(SUPABASE_GUIDES_TABLE)
           .select(GUIDE_DETAIL_FIELDS)
-          .eq('id', id)
-          .eq('userId', userId)
+          .eq("id", id)
+          .eq("userId", userId)
           .maybeSingle()
       );
       guide = normalizeGuideRow(data);
     }
 
     if (!guide) {
-      return res.status(404).json({ message: 'Guide not found' });
+      return res.status(404).json({ message: "Guide not found" });
     }
 
     res.json({ guide });
-
   } catch (error) {
-    console.error('Full guide fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch guide details' });
+    console.error("Full guide fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch guide details" });
   }
 });
 
 // POST /api/guides/:id/email - Send guide via email
-router.post('/:id/email', auth, async (req, res) => {
+router.post("/:id/email", auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
@@ -777,22 +872,22 @@ router.post('/:id/email', auth, async (req, res) => {
       guide = await Guide.findOne({
         where: { id, userId },
         attributes: [
-          'id',
-          'guideId',
-          'characterName',
-          'productionTitle',
-          'productionType',
-          'roleSize',
-          'genre',
-          'storyline',
-          'characterBreakdown',
-          'callbackNotes',
-          'focusArea',
-          'sceneText',
-          'generatedHtml',
-          'createdAt',
-          'viewCount'
-        ]
+          "id",
+          "guideId",
+          "characterName",
+          "productionTitle",
+          "productionType",
+          "roleSize",
+          "genre",
+          "storyline",
+          "characterBreakdown",
+          "callbackNotes",
+          "focusArea",
+          "sceneText",
+          "generatedHtml",
+          "createdAt",
+          "viewCount",
+        ],
       });
     } else {
       if (supabaseUnavailable(res)) return;
@@ -800,34 +895,41 @@ router.post('/:id/email', auth, async (req, res) => {
         client
           .from(SUPABASE_GUIDES_TABLE)
           .select(GUIDE_DETAIL_FIELDS)
-          .eq('id', id)
-          .eq('userId', userId)
+          .eq("id", id)
+          .eq("userId", userId)
           .maybeSingle()
       );
       guide = normalizeGuideRow(data);
     }
 
     if (!guide) {
-      return res.status(404).json({ error: 'Guide not found' });
+      return res.status(404).json({ error: "Guide not found" });
     }
 
     let user = null;
     if (hasUserModel) {
       user = await User.findByPk(userId);
     } else {
+      if (supabaseUnavailable(res)) return;
       user = await fetchSupabaseUser(userId);
     }
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
 
     if (!guide.generatedHtml) {
-      return res.status(400).json({ error: 'Guide content is not available for email' });
+      return res
+        .status(400)
+        .json({ error: "Guide content is not available for email" });
     }
 
-    const emailService = require('../services/emailService');
+    const emailService = require("../services/emailService");
     if (!emailService.isConfigured()) {
-      return res.status(503).json({ error: 'Email service not configured. Please set RESEND_API_KEY.' });
+      return res
+        .status(503)
+        .json({
+          error: "Email service not configured. Please set RESEND_API_KEY.",
+        });
     }
 
     const subject = `Your Prep101 guide for ${guide.characterName} - ${guide.productionTitle}`;
@@ -836,25 +938,25 @@ router.post('/:id/email', auth, async (req, res) => {
     await emailService.sendGuideEmail({
       to: user.email,
       subject,
-      html
+      html,
     });
 
     console.log(`📧 Guide emailed to ${user.email} for guide ${guide.id}`);
 
     res.json({
       success: true,
-      message: 'Guide emailed successfully',
+      message: "Guide emailed successfully",
       guideId: guide.id,
-      to: user.email
+      to: user.email,
     });
   } catch (error) {
-    console.error('❌ Email sending error:', error);
-    res.status(500).json({ error: 'Failed to send email' });
+    console.error("❌ Email sending error:", error);
+    res.status(500).json({ error: "Failed to send email" });
   }
 });
 
 // PUT /api/guides/:id/favorite - Toggle guide favorite status
-router.put('/:id/favorite', auth, async (req, res) => {
+router.put("/:id/favorite", auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
@@ -865,30 +967,36 @@ router.put('/:id/favorite', auth, async (req, res) => {
     if (hasGuideModel) {
       guide = await Guide.findOne({
         where: { id, userId },
-        attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'isFavorite']
+        attributes: [
+          "id",
+          "guideId",
+          "characterName",
+          "productionTitle",
+          "isFavorite",
+        ],
       });
     } else {
       if (supabaseUnavailable(res)) return;
       const { data } = await executeSupabase((client) =>
         client
           .from(SUPABASE_GUIDES_TABLE)
-          .select('id,guideId,characterName,productionTitle,isFavorite')
-          .eq('id', id)
-          .eq('userId', userId)
+          .select("id,guideId,characterName,productionTitle,isFavorite")
+          .eq("id", id)
+          .eq("userId", userId)
           .maybeSingle()
       );
       guide = normalizeGuideRow(data);
     }
 
     if (!guide) {
-      return res.status(404).json({ error: 'Guide not found' });
+      return res.status(404).json({ error: "Guide not found" });
     }
 
     // Toggle favorite status
     const currentFavorite =
-      typeof guide.isFavorite === 'boolean'
+      typeof guide.isFavorite === "boolean"
         ? guide.isFavorite
-        : Boolean(guide.get?.('isFavorite'));
+        : Boolean(guide.get?.("isFavorite"));
     const newFavoriteStatus = !currentFavorite;
 
     if (hasGuideModel && guide.update) {
@@ -898,33 +1006,38 @@ router.put('/:id/favorite', auth, async (req, res) => {
         client
           .from(SUPABASE_GUIDES_TABLE)
           .update({ isFavorite: newFavoriteStatus })
-          .eq('id', id)
-          .eq('userId', userId)
+          .eq("id", id)
+          .eq("userId", userId)
       );
     }
 
-    console.log(`⭐ Guide ${newFavoriteStatus ? 'favorited' : 'unfavorited'}: ${guide.characterName} in ${guide.productionTitle}`);
+    console.log(
+      `⭐ Guide ${newFavoriteStatus ? "favorited" : "unfavorited"}: ${
+        guide.characterName
+      } in ${guide.productionTitle}`
+    );
 
     res.json({
       success: true,
-      message: `Guide ${newFavoriteStatus ? 'added to' : 'removed from'} favorites`,
+      message: `Guide ${
+        newFavoriteStatus ? "added to" : "removed from"
+      } favorites`,
       guide: {
         id: guide.id,
         guideId: guide.guideId,
         characterName: guide.characterName,
         productionTitle: guide.productionTitle,
-        isFavorite: newFavoriteStatus
-      }
+        isFavorite: newFavoriteStatus,
+      },
     });
-
   } catch (error) {
-    console.error('❌ Favorite toggle error:', error);
-    res.status(500).json({ error: 'Failed to toggle favorite status' });
+    console.error("❌ Favorite toggle error:", error);
+    res.status(500).json({ error: "Failed to toggle favorite status" });
   }
 });
 
 // GET /api/guides/favorites - Get user's favorite guides
-router.get('/favorites', auth, async (req, res) => {
+router.get("/favorites", auth, async (req, res) => {
   try {
     const userId = req.userId;
 
@@ -933,21 +1046,21 @@ router.get('/favorites', auth, async (req, res) => {
     if (hasGuideModel) {
       const guides = await Guide.findAll({
         where: { userId, isFavorite: true },
-        order: [['createdAt', 'DESC']],
+        order: [["createdAt", "DESC"]],
         attributes: [
-          'id',
-          'guideId',
-          'characterName',
-          'productionTitle',
-          'productionType',
-          'roleSize',
-          'genre',
-          'createdAt',
-          'viewCount',
-          'childGuideRequested',
-          'childGuideCompleted',
-          'childGuideHtml',
-          'isFavorite',
+          "id",
+          "guideId",
+          "characterName",
+          "productionTitle",
+          "productionType",
+          "roleSize",
+          "genre",
+          "createdAt",
+          "viewCount",
+          "childGuideRequested",
+          "childGuideCompleted",
+          "childGuideHtml",
+          "isFavorite",
         ],
       });
 
@@ -967,13 +1080,15 @@ router.get('/favorites', auth, async (req, res) => {
       client
         .from(SUPABASE_GUIDES_TABLE)
         .select(GUIDE_SUMMARY_FIELDS)
-        .eq('userId', userId)
-        .eq('isFavorite', true)
-        .order('createdAt', { ascending: false })
+        .eq("userId", userId)
+        .eq("isFavorite", true)
+        .order("createdAt", { ascending: false })
     );
 
     const guides = (data || []).map(normalizeGuideRow);
-    console.log(`⭐ Found ${guides.length} favorite guides (Supabase fallback)`);
+    console.log(
+      `⭐ Found ${guides.length} favorite guides (Supabase fallback)`
+    );
 
     res.json({
       success: true,
@@ -981,8 +1096,8 @@ router.get('/favorites', auth, async (req, res) => {
       total: guides.length,
     });
   } catch (error) {
-    console.error('❌ Error fetching favorite guides:', error);
-    res.status(500).json({ error: 'Failed to fetch favorite guides' });
+    console.error("❌ Error fetching favorite guides:", error);
+    res.status(500).json({ error: "Failed to fetch favorite guides" });
   }
 });
 
