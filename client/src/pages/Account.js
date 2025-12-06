@@ -14,6 +14,9 @@ const Account = () => {
   const [guidesError, setGuidesError] = useState(null);
   const [showFavorites, setShowFavorites] = useState(false);
   const [emailingGuideId, setEmailingGuideId] = useState(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoMessage, setPromoMessage] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -94,10 +97,10 @@ const Account = () => {
             <title>${guide.characterName} - Prep101 Guide</title>
             <style>
               * { box-sizing: border-box; }
-              body { 
-                font-family: 'Inter', -apple-system, sans-serif; 
-                padding: 24px; 
-                color: #1f2937 !important; 
+              body {
+                font-family: 'Inter', -apple-system, sans-serif;
+                padding: 24px;
+                color: #1f2937 !important;
                 background: white !important;
                 line-height: 1.6;
               }
@@ -179,6 +182,53 @@ const Account = () => {
       alert("Failed to email guide. Please try again later.");
     } finally {
       setEmailingGuideId(null);
+    }
+  };
+
+  const handleRedeemPromo = async (e) => {
+    e.preventDefault();
+    if (!promoCode.trim()) return;
+
+    const token = user?.accessToken || user?.token || localStorage.getItem('prep101_token');
+    if (!token) {
+      setPromoMessage({ type: 'error', text: 'Please log in to redeem a code' });
+      return;
+    }
+
+    setPromoLoading(true);
+    setPromoMessage(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/promo-codes/redeem`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code: promoCode.toUpperCase() }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setPromoMessage({ 
+          type: 'success', 
+          text: data.message || `Success! You received ${data.redemption?.guidesGranted || 1} free guide(s)` 
+        });
+        setPromoCode('');
+        // Optionally refresh the page to show updated guide count
+        window.location.reload();
+      } else {
+        setPromoMessage({ 
+          type: 'error', 
+          text: data.message || 'Failed to redeem code' 
+        });
+      }
+    } catch (err) {
+      console.error('Promo code error:', err);
+      setPromoMessage({ type: 'error', text: 'Failed to redeem code. Please try again.' });
+    } finally {
+      setPromoLoading(false);
     }
   };
 
@@ -270,6 +320,61 @@ const Account = () => {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Promo Code Section */}
+          <div className="card-white" style={{ marginTop: "1.5rem" }}>
+            <h2
+              style={{
+                fontSize: "1.4rem",
+                fontWeight: 900,
+                color: "#0f172a",
+                marginBottom: "1rem",
+              }}
+            >
+              🎟️ Redeem Promo Code
+            </h2>
+            <form onSubmit={handleRedeemPromo} style={{ display: "flex", gap: "1rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div style={{ flex: "1", minWidth: "200px" }}>
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="Enter promo code"
+                  className="form-input"
+                  style={{ 
+                    width: "100%",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    fontWeight: "bold"
+                  }}
+                  disabled={promoLoading}
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="btn btnPrimary"
+                disabled={promoLoading || !promoCode.trim()}
+                style={{ whiteSpace: "nowrap" }}
+              >
+                {promoLoading ? "Redeeming..." : "Redeem Code"}
+              </button>
+            </form>
+            {promoMessage && (
+              <div
+                style={{
+                  marginTop: "1rem",
+                  padding: "0.75rem 1rem",
+                  borderRadius: "0.5rem",
+                  background: promoMessage.type === "success" ? "#ecfdf5" : "#fef2f2",
+                  color: promoMessage.type === "success" ? "#065f46" : "#b91c1c",
+                  fontWeight: "600",
+                }}
+              >
+                {promoMessage.type === "success" ? "✅ " : "❌ "}
+                {promoMessage.text}
+              </div>
+            )}
           </div>
 
           {/* Guides Section */}

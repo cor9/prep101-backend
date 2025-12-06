@@ -72,7 +72,7 @@ app.get("/api/diagnostics", async (req, res) => {
       STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
       JWT_SECRET: !!process.env.JWT_SECRET,
       RESEND_API_KEY: !!process.env.RESEND_API_KEY,
-      EMAIL_FROM: process.env.EMAIL_FROM || 'not set',
+      EMAIL_FROM: process.env.EMAIL_FROM || "not set",
     },
     database: {
       status: dbStatus,
@@ -3175,6 +3175,112 @@ app.post("/api/guides/:id/generate-child", auth, async (req, res) => {
   } catch (error) {
     console.error("❌ Child guide generation error:", error);
     res.status(500).json({ error: "Failed to generate child guide" });
+  }
+});
+
+// Promo Code Redemption (Supabase-based)
+app.post("/api/promo-codes/redeem", auth, async (req, res) => {
+  try {
+    const { code } = req.body;
+    const userId = req.userId;
+
+    if (!code) {
+      return res.status(400).json({ success: false, message: "Promo code is required" });
+    }
+
+    console.log(`🎟️  Promo code redemption attempt - Code: ${code}, User: ${userId}`);
+
+    if (!isSupabaseAdminConfigured()) {
+      return res.status(503).json({ success: false, message: "Promo code service unavailable" });
+    }
+
+    // Find the promo code in Supabase
+    const { data: promoCode, error: promoError } = await runAdminQuery((client) =>
+      client
+        .from("PromoCodes")
+        .select("*")
+        .eq("code", code.toUpperCase())
+        .eq("isActive", true)
+        .maybeSingle()
+    );
+
+    if (promoError || !promoCode) {
+      console.log(`❌ Promo code not found: ${code}`);
+      return res.status(404).json({ success: false, message: "Invalid promo code" });
+    }
+
+    // Check if expired
+    if (promoCode.expiresAt && new Date(promoCode.expiresAt) < new Date()) {
+      return res.status(400).json({ success: false, message: "Promo code has expired" });
+    }
+
+    // Check max redemptions
+    if (promoCode.maxRedemptions && promoCode.currentRedemptions >= promoCode.maxRedemptions) {
+      return res.status(400).json({ success: false, message: "Promo code has reached maximum redemptions" });
+    }
+
+    // Check if user already redeemed this code
+    const { data: existingRedemption } = await runAdminQuery((client) =>
+      client
+        .from("PromoCodeRedemptions")
+        .select("id")
+        .eq("promoCodeId", promoCode.id)
+        .eq("userId", userId)
+        .maybeSingle()
+    );
+
+    if (existingRedemption) {
+      return res.status(400).json({ success: false, message: "You have already redeemed this code" });
+    }
+
+    // Create redemption record
+    const { error: redemptionError } = await runAdminQuery((client) =>
+      client.from("PromoCodeRedemptions").insert({
+        id: require("crypto").randomUUID(),
+        promoCodeId: promoCode.id,
+        userId: userId,
+        guidesGranted: promoCode.guidesGranted || 1,
+        redeemedAt: new Date().toISOString(),
+      })
+    );
+
+    if (redemptionError) {
+      console.error("❌ Failed to create redemption record:", redemptionError);
+      // Continue anyway - the important part is granting the guides
+    }
+
+    // Increment promo code redemption count
+    await runAdminQuery((client) =>
+      client
+        .from("PromoCodes")
+        .update({ currentRedemptions: (promoCode.currentRedemptions || 0) + 1 })
+        .eq("id", promoCode.id)
+    );
+
+    // Grant guides to user - update their guidesLimit
+    const { data: currentUser } = await runAdminQuery((client) =>
+      client.from("Users").select("guidesLimit").eq("id", userId).maybeSingle()
+    );
+
+    const newLimit = (currentUser?.guidesLimit || 0) + (promoCode.guidesGranted || 1);
+
+    await runAdminQuery((client) =>
+      client.from("Users").update({ guidesLimit: newLimit }).eq("id", userId)
+    );
+
+    console.log(`🎉 Promo code redeemed - Code: ${code}, User: ${userId}, Guides granted: ${promoCode.guidesGranted || 1}`);
+
+    res.json({
+      success: true,
+      message: `Promo code redeemed! You received ${promoCode.guidesGranted || 1} free guide${(promoCode.guidesGranted || 1) > 1 ? "s" : ""}!`,
+      redemption: {
+        guidesGranted: promoCode.guidesGranted || 1,
+        redeemedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("❌ Promo code redemption error:", error);
+    res.status(500).json({ success: false, message: "Failed to redeem promo code" });
   }
 });
 
