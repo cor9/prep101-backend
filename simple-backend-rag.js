@@ -1039,6 +1039,8 @@ function extractKeywords(filename, content) {
   // Add filename-based keywords
   if (name.includes("character"))
     keywords.push("character", "development", "psychology");
+  if (name.includes("archetype") || name.includes("comparable"))
+    keywords.push("archetype", "comparable", "reference", "similar characters");
   if (name.includes("scene")) keywords.push("scene", "breakdown", "analysis");
   if (name.includes("comedy")) keywords.push("comedy", "timing", "humor");
   if (name.includes("uta"))
@@ -1317,9 +1319,9 @@ async function generateActingGuideWithRAG(data) {
       data.sceneText
     );
 
-    // Build context from your methodology files (limit to ~50k chars to prevent timeouts)
+    // Build context from your methodology files (limit to ~80k chars to allow archetype + examples)
     let methodologyContext = "";
-    const MAX_METHODOLOGY_CHARS = 50000;
+    const MAX_METHODOLOGY_CHARS = 80000;
     let currentChars = 0;
 
     if (relevantMethodology.length > 0) {
@@ -3185,38 +3187,55 @@ app.post("/api/promo-codes/redeem", auth, async (req, res) => {
     const userId = req.userId;
 
     if (!code) {
-      return res.status(400).json({ success: false, message: "Promo code is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Promo code is required" });
     }
 
-    console.log(`🎟️  Promo code redemption attempt - Code: ${code}, User: ${userId}`);
+    console.log(
+      `🎟️  Promo code redemption attempt - Code: ${code}, User: ${userId}`
+    );
 
     if (!isSupabaseAdminConfigured()) {
-      return res.status(503).json({ success: false, message: "Promo code service unavailable" });
+      return res
+        .status(503)
+        .json({ success: false, message: "Promo code service unavailable" });
     }
 
     // Find the promo code in Supabase
-    const { data: promoCode, error: promoError } = await runAdminQuery((client) =>
-      client
-        .from("PromoCodes")
-        .select("*")
-        .eq("code", code.toUpperCase())
-        .eq("isActive", true)
-        .maybeSingle()
+    const { data: promoCode, error: promoError } = await runAdminQuery(
+      (client) =>
+        client
+          .from("PromoCodes")
+          .select("*")
+          .eq("code", code.toUpperCase())
+          .eq("isActive", true)
+          .maybeSingle()
     );
 
     if (promoError || !promoCode) {
       console.log(`❌ Promo code not found: ${code}`);
-      return res.status(404).json({ success: false, message: "Invalid promo code" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Invalid promo code" });
     }
 
     // Check if expired
     if (promoCode.expiresAt && new Date(promoCode.expiresAt) < new Date()) {
-      return res.status(400).json({ success: false, message: "Promo code has expired" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Promo code has expired" });
     }
 
     // Check max redemptions
-    if (promoCode.maxRedemptions && promoCode.currentRedemptions >= promoCode.maxRedemptions) {
-      return res.status(400).json({ success: false, message: "Promo code has reached maximum redemptions" });
+    if (
+      promoCode.maxRedemptions &&
+      promoCode.currentRedemptions >= promoCode.maxRedemptions
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Promo code has reached maximum redemptions",
+      });
     }
 
     // Check if user already redeemed this code
@@ -3230,7 +3249,10 @@ app.post("/api/promo-codes/redeem", auth, async (req, res) => {
     );
 
     if (existingRedemption) {
-      return res.status(400).json({ success: false, message: "You have already redeemed this code" });
+      return res.status(400).json({
+        success: false,
+        message: "You have already redeemed this code",
+      });
     }
 
     // Create redemption record
@@ -3262,17 +3284,24 @@ app.post("/api/promo-codes/redeem", auth, async (req, res) => {
       client.from("Users").select("guidesLimit").eq("id", userId).maybeSingle()
     );
 
-    const newLimit = (currentUser?.guidesLimit || 0) + (promoCode.guidesGranted || 1);
+    const newLimit =
+      (currentUser?.guidesLimit || 0) + (promoCode.guidesGranted || 1);
 
     await runAdminQuery((client) =>
       client.from("Users").update({ guidesLimit: newLimit }).eq("id", userId)
     );
 
-    console.log(`🎉 Promo code redeemed - Code: ${code}, User: ${userId}, Guides granted: ${promoCode.guidesGranted || 1}`);
+    console.log(
+      `🎉 Promo code redeemed - Code: ${code}, User: ${userId}, Guides granted: ${
+        promoCode.guidesGranted || 1
+      }`
+    );
 
     res.json({
       success: true,
-      message: `Promo code redeemed! You received ${promoCode.guidesGranted || 1} free guide${(promoCode.guidesGranted || 1) > 1 ? "s" : ""}!`,
+      message: `Promo code redeemed! You received ${
+        promoCode.guidesGranted || 1
+      } free guide${(promoCode.guidesGranted || 1) > 1 ? "s" : ""}!`,
       redemption: {
         guidesGranted: promoCode.guidesGranted || 1,
         redeemedAt: new Date().toISOString(),
@@ -3280,7 +3309,9 @@ app.post("/api/promo-codes/redeem", auth, async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Promo code redemption error:", error);
-    res.status(500).json({ success: false, message: "Failed to redeem promo code" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to redeem promo code" });
   }
 });
 
