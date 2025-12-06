@@ -3072,9 +3072,7 @@ app.post("/api/guides/:id/generate-child", auth, async (req, res) => {
     } else if (isSupabaseAdminConfigured()) {
       guideRecord = await supabaseFetchGuide({ id, userId: currentUser.id });
     } else {
-      return res
-        .status(503)
-        .json({ error: "Guide storage unavailable" });
+      return res.status(503).json({ error: "Guide storage unavailable" });
     }
 
     if (!guideRecord) {
@@ -3083,7 +3081,9 @@ app.post("/api/guides/:id/generate-child", auth, async (req, res) => {
 
     // Check if child guide was requested but not completed
     if (!guideRecord.childGuideRequested) {
-      return res.status(400).json({ error: "Child guide was not requested for this guide" });
+      return res
+        .status(400)
+        .json({ error: "Child guide was not requested for this guide" });
     }
 
     if (guideRecord.childGuideCompleted && guideRecord.childGuideHtml) {

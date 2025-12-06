@@ -58,7 +58,7 @@
 /* the pink/green info cards the model loves to emit */
 .guide-html [style*="background: linear-gradient"],
 .guide-html [style*="background:linear-gradient"],
-.guide-html .info-card, 
+.guide-html .info-card,
 .guide-html .note-card {
   background: var(--guide-card) !important;
   color: var(--guide-strong) !important;
@@ -136,15 +136,15 @@
   .guide-html {
     font-size: 0.95rem !important;
   }
-  
+
   .guide-html h1 {
     font-size: 1.5rem !important;
   }
-  
+
   .guide-html h2 {
     font-size: 1.25rem !important;
   }
-  
+
   .guide-html h3 {
     font-size: 1.125rem !important;
   }
@@ -157,16 +157,16 @@
     color: #1f2937 !important;
     padding: 0 !important;
   }
-  
+
   .guide-html, .guide-html * {
     color: #1f2937 !important;
     background: white !important;
   }
-  
+
   .guide-html h1, .guide-html h2, .guide-html h3 {
     color: #b45309 !important;
   }
-  
+
   .guide-html .highlight-box,
   .guide-html .tip-box {
     border: 2px solid #fbbf24 !important;
