@@ -10,7 +10,7 @@ import "../styles/guide.css";
 const stripInlineStyles = (html) =>
   html.replace(/<style[\s\S]*?<\/style>/gi, "");
 
-// Normalize the worst inline styles from the model
+// Normalize the worst inline styles from the model for better readability
 const normalizeGuide = (html) => {
   // strip embedded <style> blocks
   html = html.replace(/<style[\s\S]*?<\/style>/gi, "");
@@ -18,6 +18,14 @@ const normalizeGuide = (html) => {
   html = html.replace(/text-shadow\s*:\s*[^;"']+;?/gi, "");
   // downgrade super low opacity text
   html = html.replace(/opacity\s*:\s*0\.[0-3]\d*;?/gi, "opacity:1;");
+  // remove inline color styles that cause contrast issues
+  html = html.replace(/\bcolor\s*:\s*(?:#[0-9a-fA-F]{3,8}|rgb[a]?\([^)]+\)|white|#fff|#ffffff)[^;"']*(;|(?=['"]))*/gi, "");
+  // remove problematic background colors
+  html = html.replace(/background(?:-color)?\s*:\s*(?:linear-gradient[^;]+|#[0-9a-fA-F]{3,8}|rgb[a]?\([^)]+\))[^;"']*(;|(?=['"]))*/gi, "");
+  // remove filter effects that might dim text
+  html = html.replace(/filter\s*:\s*[^;"']+;?/gi, "");
+  // remove mix-blend-mode that can cause contrast issues
+  html = html.replace(/mix-blend-mode\s*:\s*[^;"']+;?/gi, "");
   return html;
 };
 

@@ -14,6 +14,17 @@
 .guide-html, .guide-html * {
   color: var(--guide-text) !important;
   text-shadow: none !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  -webkit-text-stroke: unset !important;
+}
+
+/* Force all backgrounds to be readable */
+.guide-html [style*="background"],
+.guide-html div,
+.guide-html section,
+.guide-html article {
+  background: transparent !important;
 }
 
 /* headings pop in amber, strong contrast */

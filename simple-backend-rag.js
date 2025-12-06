@@ -704,6 +704,53 @@ async function supabaseUpdateGuide(id, userId, updates) {
   return normalizeGuideRow(result.data);
 }
 
+// Ensure user exists in Supabase Users table before saving guides
+async function ensureSupabaseUser(user) {
+  if (!isSupabaseAdminConfigured()) return false;
+
+  const SUPABASE_USERS_TABLE = supabaseTables.users;
+
+  // Check if user exists
+  const checkResult = await runAdminQuery((client) =>
+    client
+      .from(SUPABASE_USERS_TABLE)
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle()
+  );
+
+  if (checkResult?.data) {
+    console.log(`✅ User ${user.id} exists in Supabase Users table`);
+    return true;
+  }
+
+  // User doesn't exist, create them
+  console.log(`📝 Creating user ${user.id} in Supabase Users table...`);
+  const insertResult = await runAdminQuery((client) =>
+    client
+      .from(SUPABASE_USERS_TABLE)
+      .insert({
+        id: user.id,
+        email: user.email,
+        name: user.name || user.email.split("@")[0],
+        password: "supabase_auth", // Placeholder - actual auth is via Supabase Auth
+        subscription: user.subscription || "free",
+        guidesUsed: 0,
+        guidesLimit: 25, // Default for beta users
+      })
+      .select("id")
+      .single()
+  );
+
+  if (insertResult?.error) {
+    console.error("❌ Failed to create user in Supabase:", insertResult.error);
+    return false;
+  }
+
+  console.log(`✅ User ${user.id} created in Supabase Users table`);
+  return true;
+}
+
 // Load methodology files into memory for RAG
 let methodologyDatabase = {};
 
@@ -2757,6 +2804,13 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         persistedGuide = await GuideModel.create(baseGuidePayload);
       } else {
         persistenceMethod = "supabase";
+
+        // Ensure user exists in Supabase Users table (for foreign key constraint)
+        const userEnsured = await ensureSupabaseUser(currentUser);
+        if (!userEnsured) {
+          console.error("❌ Failed to ensure user exists in Supabase Users table");
+        }
+
         persistedGuide = await supabaseInsertGuide(baseGuidePayload);
         if (!persistedGuide) {
           throw new Error("Guide model unavailable and Supabase fallback failed");
