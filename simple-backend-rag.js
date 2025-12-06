@@ -2412,12 +2412,22 @@ async function generateChildGuideAsync({ guideId, childData, userId }) {
 }
 
 function queueChildGuideGeneration({ guideId, childData, userId }) {
-  // In Vercel serverless, setImmediate won't complete after response
-  // The child guide will be generated via a separate endpoint call
+  // In Vercel serverless, run synchronously but don't await (fire and forget with internal error handling)
+  // This works because Vercel keeps the function alive for a bit after response is sent
   if (process.env.VERCEL) {
-    console.log(
-      `⏳ Child guide queued for ${guideId} - will be generated via separate request in serverless mode`
-    );
+    console.log(`🌟 Starting child guide generation for ${guideId} (Vercel serverless mode)`);
+    // Fire and forget - the function has internal error handling
+    generateChildGuideAsync({ guideId, childData, userId })
+      .then(result => {
+        if (result.success) {
+          console.log(`✅ Child guide generated for ${guideId} in Vercel mode`);
+        } else {
+          console.error(`❌ Child guide failed for ${guideId}:`, result.error);
+        }
+      })
+      .catch(err => {
+        console.error(`❌ Child guide error for ${guideId}:`, err);
+      });
     return;
   }
 

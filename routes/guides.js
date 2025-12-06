@@ -19,10 +19,20 @@ const {
 const router = express.Router();
 const SUPABASE_GUIDES_TABLE = supabaseTables.guides;
 const SUPABASE_USERS_TABLE = supabaseTables.users;
-const hasGuideModel = !!Guide;
-const hasUserModel = !!User;
+// Check if Sequelize models are properly initialized (not just that they exist)
+const hasGuideModel = Guide && typeof Guide.findAll === 'function';
+const hasUserModel = User && typeof User.findByPk === 'function';
 const hasSequelize = hasGuideModel;
 const hasSupabaseFallback = isSupabaseAdminConfigured();
+
+// Log which data source we're using
+console.log('📊 Guides route initialized:', {
+  hasGuideModel,
+  hasUserModel,
+  hasSequelize,
+  hasSupabaseFallback,
+  willUse: hasSequelize ? 'Sequelize' : hasSupabaseFallback ? 'Supabase' : 'NONE'
+});
 const GUIDE_SUMMARY_FIELDS = [
   "id",
   "guideId",
