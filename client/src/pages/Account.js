@@ -57,9 +57,15 @@ const Account = () => {
 
   const handlePrintGuide = async (guide) => {
     try {
+      const token = user?.accessToken || user?.token || localStorage.getItem('prep101_token');
+      if (!token) {
+        alert("Please log in to print guides");
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/api/guides/${guide.id}/full`, {
         headers: {
-          Authorization: `Bearer ${user.accessToken || user.token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -74,6 +80,12 @@ const Account = () => {
         return;
       }
 
+      // Normalize HTML to remove problematic inline styles
+      let html = data.guide.generatedHtml;
+      html = html.replace(/<style[\s\S]*?<\/style>/gi, "");
+      html = html.replace(/text-shadow\s*:\s*[^;"']+;?/gi, "");
+      html = html.replace(/\bcolor\s*:\s*(?:#[0-9a-fA-F]{3,8}|rgb[a]?\([^)]+\)|white|#fff|#ffffff)[^;"']*(;|(?=['"]))*/gi, "");
+
       const printWindow = window.open("", "_blank", "noopener,noreferrer");
       if (!printWindow) {
         alert("Popup blocked. Please allow popups to print your guide.");
@@ -85,14 +97,30 @@ const Account = () => {
           <head>
             <title>${guide.characterName} - Prep101 Guide</title>
             <style>
-              body { font-family: 'Inter', sans-serif; padding: 24px; color: #1f2937; }
-              h1 { color: #b45309; }
-              h2 { color: #374151; }
-              .section { margin-bottom: 24px; }
+              * { box-sizing: border-box; }
+              body { 
+                font-family: 'Inter', -apple-system, sans-serif; 
+                padding: 24px; 
+                color: #1f2937 !important; 
+                background: white !important;
+                line-height: 1.6;
+              }
+              h1, h2, h3, h4, h5, h6 { color: #b45309 !important; margin-top: 1.5em; }
+              p, li, span, div { color: #1f2937 !important; }
+              .section { margin-bottom: 24px; padding: 16px; border-left: 4px solid #f59e0b; background: #fffbeb; }
+              .highlight-box, .tip-box { background: #fef3c7 !important; color: #1f2937 !important; padding: 16px; border-radius: 8px; margin: 16px 0; }
+              ul, ol { padding-left: 24px; }
+              li { margin: 8px 0; }
+              strong { color: #92400e !important; }
+              @media print {
+                body { padding: 0; }
+                * { color: #1f2937 !important; background: white !important; }
+                h1, h2, h3 { color: #b45309 !important; }
+              }
             </style>
           </head>
           <body>
-            ${data.guide.generatedHtml}
+            ${html}
           </body>
         </html>
       `);
@@ -106,8 +134,9 @@ const Account = () => {
   };
 
   const handleEmailGuide = async (guideId) => {
-    if (!user?.accessToken && !user?.token) {
-      alert("Authentication required to email guide");
+    const token = user?.accessToken || user?.token || localStorage.getItem('prep101_token');
+    if (!token) {
+      alert("Please log in to email guides");
       return;
     }
 
@@ -117,7 +146,7 @@ const Account = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${user.accessToken || user.token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
