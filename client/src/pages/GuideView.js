@@ -39,7 +39,6 @@ const GuideView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [emailSending, setEmailSending] = useState(false);
-  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   useEffect(() => {
     const fetchGuide = async () => {
@@ -137,10 +136,10 @@ const GuideView = () => {
           <title>${guide.characterName} - Prep101 Guide</title>
           <style>
             * { box-sizing: border-box; }
-            body { 
-              font-family: 'Inter', -apple-system, sans-serif; 
-              padding: 24px; 
-              color: #1f2937 !important; 
+            body {
+              font-family: 'Inter', -apple-system, sans-serif;
+              padding: 24px;
+              color: #1f2937 !important;
               background: white !important;
               line-height: 1.6;
             }
@@ -187,43 +186,9 @@ const GuideView = () => {
     };
   };
 
-  const handleDownloadPdf = async () => {
-    const token = user?.accessToken || user?.token || localStorage.getItem('prep101_token');
-    if (!token) {
-      alert("Please log in to download PDF.");
-      return;
-    }
-
-    setPdfDownloading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/guides/${id}/pdf`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data.error || `Failed to download PDF (HTTP ${res.status})`
-        );
-      }
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${guide.characterName}_${guide.productionTitle}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Error downloading PDF:", err);
-      alert(err.message || "Failed to download PDF.");
-    } finally {
-      setPdfDownloading(false);
-    }
+  const handleDownloadPdf = () => {
+    // Use browser print dialog - user can select "Save as PDF"
+    handlePrintGuide();
   };
 
   if (loading) {
@@ -320,9 +285,8 @@ const GuideView = () => {
                 <button
                   onClick={handleDownloadPdf}
                   className="btn btnGhost"
-                  disabled={pdfDownloading}
                 >
-                  {pdfDownloading ? "Preparing PDF…" : "⬇️ Download PDF"}
+                  📄 Save as PDF
                 </button>
                 <button
                   onClick={handleEmailGuide}
