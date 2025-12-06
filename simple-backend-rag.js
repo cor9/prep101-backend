@@ -2805,6 +2805,10 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       } else {
         persistenceMethod = "supabase";
 
+        // Generate UUID for Supabase (it doesn't auto-generate like Sequelize)
+        const { randomUUID } = require("crypto");
+        baseGuidePayload.id = randomUUID();
+
         // Ensure user exists in Supabase Users table (for foreign key constraint)
         const userEnsured = await ensureSupabaseUser(currentUser);
         if (!userEnsured) {
