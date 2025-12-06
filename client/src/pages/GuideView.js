@@ -128,15 +128,10 @@ const GuideView = () => {
     let html = guide.generatedHtml;
     html = html.replace(/<style[\s\S]*?<\/style>/gi, "");
     html = html.replace(/text-shadow\s*:\s*[^;"']+;?/gi, "");
-    html = html.replace(/\bcolor\s*:\s*(?:#[0-9a-fA-F]{3,8}|rgb[a]?\([^)]+\)|white|#fff|#ffffff)[^;"']*(;|(?=['"]))*/gi, "");
+    html = html.replace(/\bcolor\s*:\s*[^;"']+[;]?/gi, "");
+    html = html.replace(/background(?:-color)?\s*:\s*[^;"']+[;]?/gi, "");
 
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
-    if (!printWindow) {
-      alert("Popup blocked. Please allow popups to print your guide.");
-      return;
-    }
-
-    printWindow.document.write(`
+    const printContent = `
       <html>
         <head>
           <title>${guide.characterName} - Prep101 Guide</title>
@@ -156,21 +151,40 @@ const GuideView = () => {
             ul, ol { padding-left: 24px; }
             li { margin: 8px 0; }
             strong { color: #92400e !important; }
-            @media print {
-              body { padding: 0; }
-              * { color: #1f2937 !important; background: white !important; }
-              h1, h2, h3 { color: #b45309 !important; }
-            }
           </style>
         </head>
         <body>
           ${html}
         </body>
       </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    `;
+
+    // Use iframe instead of popup to avoid popup blockers
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.style.left = '-9999px';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentWindow || iframe.contentDocument;
+    const doc = iframeDoc.document || iframeDoc;
+    doc.open();
+    doc.write(printContent);
+    doc.close();
+
+    // Wait for content to load then print
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (e) {
+        console.error("Print error:", e);
+      }
+      // Remove iframe after printing
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    };
   };
 
   const handleDownloadPdf = async () => {
