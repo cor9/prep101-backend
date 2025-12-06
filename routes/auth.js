@@ -58,10 +58,10 @@ async function fetchSupabaseUserByEmail(email) {
 
 async function createSupabaseUser(userData) {
   if (!isSupabaseAdminConfigured()) return null;
-  
+
   const { randomUUID } = require('crypto');
   const hashedPassword = await bcrypt.hash(userData.password, 12);
-  
+
   const newUser = {
     id: randomUUID(),
     email: userData.email,
@@ -75,22 +75,22 @@ async function createSupabaseUser(userData) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  
+
   const { data, error } = await executeSupabase((client) =>
     client.from(SUPABASE_USERS_TABLE).insert(newUser).select('*').single()
   );
-  
+
   if (error) {
     throw new Error(error.message || 'Failed to create user in Supabase');
   }
-  
+
   return normalizeUserRow(data);
 }
 
 async function compareSupabasePassword(email, candidatePassword) {
   const user = await fetchSupabaseUserByEmail(email);
   if (!user || !user.password) return { valid: false, user: null };
-  
+
   const isValid = await bcrypt.compare(candidatePassword, user.password);
   return { valid: isValid, user: isValid ? user : null };
 }
@@ -99,9 +99,11 @@ async function compareSupabasePassword(email, candidatePassword) {
 router.post(
   '/register',
   [
-    body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 8 }).matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one uppercase letter, one lowercase letter, and one number'),
-    body('name').trim().isLength({ min: 2, max: 100 })
+    body('email').isEmail().withMessage('Please provide a valid email').normalizeEmail(),
+    body('password')
+      .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    body('name').trim().isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters')
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -112,7 +114,7 @@ router.post(
 
     try {
       let user = null;
-      
+
       if (hasUserModel) {
         // Sequelize path
         const existing = await User.findOne({ where: { email } });
@@ -132,13 +134,13 @@ router.post(
       } else {
         // Supabase fallback
         if (supabaseUnavailable(res)) return;
-        
+
         const existing = await fetchSupabaseUserByEmail(email);
         if (existing) {
           console.log(`🔒 Registration attempt with existing email: ${email} from IP: ${clientIP}`);
           return res.status(409).json({ message: 'Email already registered' });
         }
-        
+
         user = await createSupabaseUser({
           email,
           password,
@@ -213,7 +215,7 @@ router.post(
 
       let user = null;
       let passwordValid = false;
-      
+
       if (hasUserModel) {
         user = await User.findOne({ where: { email } });
         if (user) {
@@ -286,7 +288,7 @@ router.post('/refresh', auth, async (req, res) => {
       if (supabaseUnavailable(res)) return;
       user = await fetchSupabaseUser(req.userId);
     }
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -354,7 +356,7 @@ router.put(
         if (supabaseUnavailable(res)) return;
         user = await fetchSupabaseUser(req.userId);
       }
-      
+
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
@@ -419,7 +421,7 @@ router.post(
     try {
       const { currentPassword, newPassword } = req.body;
       let user = null;
-      
+
       if (hasUserModel) {
         user = await User.findByPk(req.userId);
       } else {
@@ -437,7 +439,7 @@ router.post(
       } else {
         isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
       }
-      
+
       if (!isCurrentPasswordValid) {
         return res.status(400).json({ message: 'Current password is incorrect' });
       }
@@ -447,7 +449,7 @@ router.post(
       } else {
         const hashedPassword = await bcrypt.hash(newPassword, 12);
         await executeSupabase((client) =>
-          client.from(SUPABASE_USERS_TABLE).update({ 
+          client.from(SUPABASE_USERS_TABLE).update({
             password: hashedPassword,
             updatedAt: new Date().toISOString()
           }).eq('id', req.userId)
@@ -473,7 +475,7 @@ router.post(
     try {
       const { email } = req.body;
       let user = null;
-      
+
       if (hasUserModel) {
         user = await User.findOne({ where: { email } });
       } else if (isSupabaseAdminConfigured()) {
@@ -511,7 +513,7 @@ router.post(
 
       const decoded = jwt.verify(token, JWT_SECRET);
       let user = null;
-      
+
       if (hasUserModel) {
         user = await User.findByPk(decoded.userId);
       } else if (isSupabaseAdminConfigured()) {
@@ -527,7 +529,7 @@ router.post(
       } else {
         const hashedPassword = await bcrypt.hash(newPassword, 12);
         await executeSupabase((client) =>
-          client.from(SUPABASE_USERS_TABLE).update({ 
+          client.from(SUPABASE_USERS_TABLE).update({
             password: hashedPassword,
             updatedAt: new Date().toISOString()
           }).eq('id', decoded.userId)
@@ -569,7 +571,7 @@ router.delete('/account', auth, async (req, res) => {
       if (supabaseUnavailable(res)) return;
       user = await fetchSupabaseUser(req.userId);
     }
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -580,7 +582,7 @@ router.delete('/account', auth, async (req, res) => {
     } else {
       isPasswordValid = await bcrypt.compare(password, user.password);
     }
-    
+
     if (!isPasswordValid) {
       console.log(`🔒 Failed account deletion attempt: ${user.email} from IP: ${clientIP}`);
       return res.status(401).json({ message: 'Invalid password' });
@@ -616,7 +618,7 @@ router.get('/stats', auth, async (req, res) => {
   try {
     const userId = req.userId;
     let guides = [];
-    
+
     if (hasUserModel) {
       const Guide = require('../models/Guide');
       if (Guide) {
@@ -733,7 +735,7 @@ router.get('/dashboard', auth, async (req, res) => {
   try {
     const userId = req.userId;
     let user = null;
-    
+
     if (hasUserModel) {
       user = await User.findByPk(userId, {
         attributes: { exclude: ['password'] }
