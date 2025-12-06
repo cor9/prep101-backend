@@ -13,6 +13,7 @@ const Account = () => {
   const [guidesLoading, setGuidesLoading] = useState(false);
   const [guidesError, setGuidesError] = useState(null);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [emailingGuideId, setEmailingGuideId] = useState(null);
 
   const handleLogout = () => {
     logout();
@@ -51,6 +52,89 @@ const Account = () => {
       }
     } catch (error) {
       console.error("Error toggling favorite:", error);
+    }
+  };
+
+  const handlePrintGuide = async (guide) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/guides/${guide.id}/full`, {
+        headers: {
+          Authorization: `Bearer ${user.accessToken || user.token}`,
+        },
+      });
+
+      if (!response.ok) {
+        alert("Failed to load guide for printing");
+        return;
+      }
+
+      const data = await response.json();
+      if (!data.guide?.generatedHtml) {
+        alert("Guide content not available for printing");
+        return;
+      }
+
+      const printWindow = window.open("", "_blank", "noopener,noreferrer");
+      if (!printWindow) {
+        alert("Popup blocked. Please allow popups to print your guide.");
+        return;
+      }
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>${guide.characterName} - Prep101 Guide</title>
+            <style>
+              body { font-family: 'Inter', sans-serif; padding: 24px; color: #1f2937; }
+              h1 { color: #b45309; }
+              h2 { color: #374151; }
+              .section { margin-bottom: 24px; }
+            </style>
+          </head>
+          <body>
+            ${data.guide.generatedHtml}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    } catch (err) {
+      console.error("Error printing guide:", err);
+      alert("Failed to print guide. Please try again.");
+    }
+  };
+
+  const handleEmailGuide = async (guideId) => {
+    if (!user?.accessToken && !user?.token) {
+      alert("Authentication required to email guide");
+      return;
+    }
+
+    setEmailingGuideId(guideId);
+    try {
+      const res = await fetch(`${API_BASE}/api/guides/${guideId}/email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.accessToken || user.token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const message =
+          data.error || `Failed to email guide (HTTP ${res.status})`;
+        alert(message);
+        return;
+      }
+
+      alert("Guide emailed to your account email address.");
+    } catch (err) {
+      console.error("Error emailing guide:", err);
+      alert("Failed to email guide. Please try again later.");
+    } finally {
+      setEmailingGuideId(null);
     }
   };
 
@@ -314,6 +398,21 @@ const Account = () => {
                         style={{ padding: "0.5rem 1rem", fontSize: "0.875rem" }}
                       >
                         📖 View Guide
+                      </button>
+                      <button
+                        onClick={() => handlePrintGuide(guide)}
+                        className="btn btnGhost"
+                        style={{ padding: "0.5rem 1rem", fontSize: "0.875rem" }}
+                      >
+                        🖨️ Print
+                      </button>
+                      <button
+                        onClick={() => handleEmailGuide(guide.id)}
+                        className="btn btnSecondary"
+                        style={{ padding: "0.5rem 1rem", fontSize: "0.875rem" }}
+                        disabled={emailingGuideId === guide.id}
+                      >
+                        {emailingGuideId === guide.id ? "Emailing…" : "📧 Email"}
                       </button>
                       {guide.childGuideRequested &&
                         guide.childGuideCompleted && (
