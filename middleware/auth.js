@@ -214,20 +214,44 @@ module.exports = async (req, res, next) => {
       process.env.JWT_SECRET || "fallback_secret"
     );
 
-    const user = await User.findByPk(decoded.userId);
-    if (!user) {
-      console.log(
-        `🔒 Invalid token - user not found: ${decoded.userId} from IP: ${clientIP}`
-      );
-      return res.status(401).json({ message: "User not found" });
+    // Get userId from token - check both userId and sub (Supabase-style)
+    const tokenUserId = decoded.userId || decoded.sub;
+    
+    if (!tokenUserId) {
+      console.log(`🔒 Token missing userId from IP: ${clientIP}`);
+      return res.status(401).json({ message: "Invalid token - missing user ID" });
     }
 
-    // Check if user account is active (for future use)
-    if (user.betaStatus === "expired") {
-      console.log(
-        `🔒 Expired beta account access attempt: ${user.email} from IP: ${clientIP}`
-      );
-      return res.status(401).json({ message: "Account access expired" });
+    let user = null;
+    
+    // Try to load user from database if User model is available
+    if (User && typeof User.findByPk === 'function') {
+      user = await User.findByPk(tokenUserId);
+      if (!user) {
+        console.log(
+          `🔒 Invalid token - user not found: ${tokenUserId} from IP: ${clientIP}`
+        );
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      // Check if user account is active (for future use)
+      if (user.betaStatus === "expired") {
+        console.log(
+          `🔒 Expired beta account access attempt: ${user.email} from IP: ${clientIP}`
+        );
+        return res.status(401).json({ message: "Account access expired" });
+      }
+    } else {
+      // User model not available - create stub from token data
+      console.warn(`⚠️  User model unavailable, using token data for auth`);
+      user = {
+        id: tokenUserId,
+        email: decoded.email || 'unknown',
+        name: decoded.name || decoded.email?.split('@')[0] || 'User',
+        subscription: decoded.subscription || 'free',
+        guidesUsed: decoded.guidesUsed || 0,
+        guidesLimit: decoded.guidesLimit || 1,
+      };
     }
 
     // Log successful authentication
@@ -236,7 +260,7 @@ module.exports = async (req, res, next) => {
     );
 
     // Add user info to request
-    req.userId = decoded.userId;
+    req.userId = tokenUserId;
     req.user = user;
     req.clientIP = clientIP;
 
