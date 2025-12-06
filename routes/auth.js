@@ -222,11 +222,49 @@ router.post(
           passwordValid = await user.comparePassword(password);
         }
       } else {
-        // Supabase fallback
+        // Supabase Users table fallback
         if (supabaseUnavailable(res)) return;
         const result = await compareSupabasePassword(email, password);
         user = result.user;
         passwordValid = result.valid;
+      }
+
+      // If user not found in Users table, try Supabase Auth (for admin accounts)
+      if (!user && isSupabaseAdminConfigured() && supabaseAdmin) {
+        console.log(`🔍 Trying Supabase Auth for: ${email}`);
+        try {
+          const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          if (!authError && authData?.user) {
+            console.log(`✅ Supabase Auth login successful for: ${email}`);
+            passwordValid = true;
+            
+            // Create/sync user to Users table for future logins
+            const existingUser = await fetchSupabaseUserByEmail(email);
+            if (existingUser) {
+              user = existingUser;
+            } else {
+              // Create user in Users table
+              const hashedPassword = await bcrypt.hash(password, 10);
+              user = await createSupabaseUser({
+                email,
+                password: hashedPassword,
+                name: authData.user.user_metadata?.name || authData.user.email?.split('@')[0] || 'User',
+                subscription: authData.user.user_metadata?.subscription || 'admin',
+                guidesLimit: 999,
+                guidesUsed: 0,
+                isBetaTester: true,
+                betaAccessLevel: 'admin'
+              });
+              console.log(`✅ Created Users table entry for admin: ${email}`);
+            }
+          }
+        } catch (authErr) {
+          console.log(`🔍 Supabase Auth fallback failed: ${authErr.message}`);
+        }
       }
 
       if (!user || !passwordValid) {
