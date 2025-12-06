@@ -91,6 +91,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     }
+    // Always clear user state regardless of errors
+    setUser(null);
+    console.log('✅ User logged out, state cleared');
   };
 
   return (

@@ -2415,17 +2415,19 @@ function queueChildGuideGeneration({ guideId, childData, userId }) {
   // In Vercel serverless, run synchronously but don't await (fire and forget with internal error handling)
   // This works because Vercel keeps the function alive for a bit after response is sent
   if (process.env.VERCEL) {
-    console.log(`🌟 Starting child guide generation for ${guideId} (Vercel serverless mode)`);
+    console.log(
+      `🌟 Starting child guide generation for ${guideId} (Vercel serverless mode)`
+    );
     // Fire and forget - the function has internal error handling
     generateChildGuideAsync({ guideId, childData, userId })
-      .then(result => {
+      .then((result) => {
         if (result.success) {
           console.log(`✅ Child guide generated for ${guideId} in Vercel mode`);
         } else {
           console.error(`❌ Child guide failed for ${guideId}:`, result.error);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(`❌ Child guide error for ${guideId}:`, err);
       });
     return;
@@ -2927,19 +2929,50 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       }
 
       let childGuideQueued = false;
+      let childGuideCompleted = false;
       if (childGuideRequested) {
         childGuideQueued = true;
-        queueChildGuideGeneration({
-          guideId: persistedGuide.id,
-          childData: {
-            sceneText: combinedSceneText,
-            characterName: characterName.trim(),
-            productionTitle: productionTitle.trim(),
-            productionType: productionType.trim(),
-            parentGuideContent: guideContentRaw,
-            extractionMethod: allUploadData[0].extractionMethod,
-          },
-        });
+        // In Vercel serverless, generate child guide SYNCHRONOUSLY before sending response
+        // Fire-and-forget doesn't work because the function terminates after res.json()
+        if (process.env.VERCEL) {
+          console.log(`🌟 Generating child guide synchronously for ${persistedGuide.id} (Vercel mode)`);
+          try {
+            const childResult = await generateChildGuideAsync({
+              guideId: persistedGuide.id,
+              childData: {
+                sceneText: combinedSceneText,
+                characterName: characterName.trim(),
+                productionTitle: productionTitle.trim(),
+                productionType: productionType.trim(),
+                parentGuideContent: guideContentRaw,
+                extractionMethod: allUploadData[0].extractionMethod,
+              },
+              userId: currentUser?.id,
+            });
+            if (childResult.success) {
+              childGuideCompleted = true;
+              console.log(`✅ Child guide completed for ${persistedGuide.id}`);
+            } else {
+              console.error(`❌ Child guide failed: ${childResult.error}`);
+            }
+          } catch (childErr) {
+            console.error(`❌ Child guide error:`, childErr);
+          }
+        } else {
+          // Non-Vercel: queue for background processing
+          queueChildGuideGeneration({
+            guideId: persistedGuide.id,
+            childData: {
+              sceneText: combinedSceneText,
+              characterName: characterName.trim(),
+              productionTitle: productionTitle.trim(),
+              productionType: productionType.trim(),
+              parentGuideContent: guideContentRaw,
+              extractionMethod: allUploadData[0].extractionMethod,
+            },
+            userId: currentUser?.id,
+          });
+        }
       }
 
       // Log the response being sent
@@ -2949,8 +2982,10 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         guideContent,
         childGuideRequested: !!childGuideRequested,
         childGuideQueued,
-        childGuideCompleted: false,
-        childGuideMessage: childGuideQueued
+        childGuideCompleted: childGuideCompleted,
+        childGuideMessage: childGuideCompleted
+          ? "Child guide generated successfully!"
+          : childGuideQueued
           ? "Child guide is being generated in the background."
           : childGuideRequested
           ? "Child guide requested but queue unavailable."
@@ -2963,7 +2998,9 @@ app.post("/api/guides/generate", auth, async (req, res) => {
           productionType,
           scriptWordCount: combinedWordCount,
           guideLength: guideContent.length,
-          childGuideStatus: childGuideQueued
+          childGuideStatus: childGuideCompleted
+            ? "completed"
+            : childGuideQueued
             ? "queued"
             : childGuideRequested
             ? "pending"
