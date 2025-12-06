@@ -160,17 +160,19 @@ async function getSupabaseUserFromToken(token) {
       decoded?.email ||
       decoded?.user_metadata?.email ||
       decoded?.app_metadata?.email;
-    if (decoded && decodedEmail) {
-      console.warn("⚠️  Using unsigned Supabase JWT decode fallback");
+    // Support both Supabase-style (sub) and our backend-style (userId) tokens
+    const decodedId = decoded?.sub || decoded?.userId;
+    if (decoded && decodedEmail && decodedId) {
+      console.warn("⚠️  Using unsigned JWT decode fallback");
       return {
-        id: decoded.sub,
+        id: decodedId,
         email: decodedEmail,
         user_metadata: decoded.user_metadata || decoded.app_metadata || {},
       };
     }
   } catch (decodeError) {
     console.error(
-      "❌ Supabase JWT decode fallback failed:",
+      "❌ JWT decode fallback failed:",
       decodeError.message || decodeError
     );
   }
