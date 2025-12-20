@@ -14,6 +14,15 @@ const router = express.Router();
 const hasDatabase = User !== null && Guide !== null;
 const hasSupabaseFallback = isSupabaseAdminConfigured();
 
+// Log database status on module load
+console.log('🔍 Admin routes - Database status:', {
+  hasDatabase,
+  hasSupabaseFallback,
+  UserModel: User ? 'loaded' : 'null',
+  GuideModel: Guide ? 'loaded' : 'null',
+  sequelize: sequelize ? 'available' : 'null'
+});
+
 // ============================================================================
 // ADMIN MIDDLEWARE
 // ============================================================================

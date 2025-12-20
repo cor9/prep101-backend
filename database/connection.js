@@ -48,9 +48,42 @@ if (!databaseUrl) {
         min: 0,
         acquire: 30000,
         idle: 10000
+      },
+      // Add retry logic for serverless
+      retry: {
+        max: 3,
+        match: [
+          /ETIMEDOUT/,
+          /EHOSTUNREACH/,
+          /ECONNRESET/,
+          /ECONNREFUSED/,
+          /ETIMEDOUT/,
+          /ESOCKETTIMEDOUT/,
+          /EHOSTUNREACH/,
+          /EPIPE/,
+          /EAI_AGAIN/,
+          /SequelizeConnectionError/,
+          /SequelizeConnectionRefusedError/,
+          /SequelizeHostNotFoundError/,
+          /SequelizeHostNotReachableError/,
+          /SequelizeInvalidConnectionError/,
+          /SequelizeConnectionTimedOutError/
+        ]
       }
     });
     console.log('✅ Sequelize instance created');
+    
+    // Test connection immediately in serverless environments
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      sequelize.authenticate()
+        .then(() => {
+          console.log('✅ Database connection verified on startup');
+        })
+        .catch((err) => {
+          console.error('❌ Database connection failed on startup:', err.message);
+          console.error('❌ This will cause models to be null. Check DATABASE_URL format and network access.');
+        });
+    }
   } catch (error) {
     console.error('❌ Failed to create Sequelize instance:', error.message);
     console.error('❌ Error stack:', error.stack);
