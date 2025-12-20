@@ -11,6 +11,7 @@ const {
   tables: supabaseTables,
   normalizeGuideRow,
 } = require("./lib/supabaseAdmin");
+const { createClient } = require("@supabase/supabase-js");
 
 // Create app immediately for fast health checks
 const app = express();
@@ -506,6 +507,110 @@ try {
       error: "Authentication service temporarily unavailable",
       message: "Database connection required for authentication features",
     });
+  });
+  // Add fallback login route - use Supabase directly
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email & password required" });
+      }
+
+      // Create Supabase client for login if not available
+      const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+      
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+          const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+          });
+
+          const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (error) {
+            return res.status(401).json({ message: error.message || "Invalid credentials" });
+          }
+
+          if (data?.user && data?.session) {
+            // Try to find or create user in database if User model is available
+            let user = null;
+            if (User) {
+              const userEmail = data.user.email.toLowerCase();
+              user = await User.findOne({ where: { email: userEmail } });
+              
+              if (!user) {
+                const crypto = require("crypto");
+                const randomPassword = crypto.randomBytes(32).toString("hex");
+                const derivedName = data.user.user_metadata?.name || email.split("@")[0];
+                const betaAccessLevel = data.user.user_metadata?.betaAccessLevel || data.user.app_metadata?.betaAccessLevel || "none";
+                const isBetaTester = betaAccessLevel !== "none";
+                
+                user = await User.create({
+                  email: userEmail,
+                  password: randomPassword,
+                  name: derivedName,
+                  subscription: "free",
+                  guidesLimit: 1,
+                  isBetaTester,
+                  betaAccessLevel,
+                });
+              }
+            }
+
+            return res.json({
+              message: "Login successful",
+              token: data.session.access_token,
+              user: {
+                id: user?.id || data.user.id,
+                email: user?.email || data.user.email,
+                name: user?.name || data.user.user_metadata?.name || email.split("@")[0],
+              },
+            });
+          }
+        } catch (supabaseError) {
+          console.error("Supabase login error:", supabaseError);
+        }
+      }
+
+      // Fallback: try database login if User model is available
+      if (User) {
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
+        const bcrypt = require("bcryptjs");
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
+        const jwt = require("jsonwebtoken");
+        const token = jwt.sign(
+          { userId: user.id },
+          process.env.JWT_SECRET || "fallback_secret",
+          { expiresIn: "24h" }
+        );
+        return res.json({
+          message: "Login successful",
+          token,
+          user: { id: user.id, name: user.name, email: user.email },
+        });
+      }
+
+      return res.status(503).json({
+        message: "Authentication service unavailable",
+        error: "No authentication method available. Please configure SUPABASE_URL and SUPABASE_ANON_KEY.",
+      });
+    } catch (err) {
+      console.error("Login error:", err);
+      return res.status(500).json({ message: "Login error", error: err.message });
+    }
   });
 }
 
