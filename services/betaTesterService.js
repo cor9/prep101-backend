@@ -16,9 +16,18 @@ class BetaTesterService {
 
   // Helper method to check if User model is available
   _checkUserModel() {
-    if (!User) {
+    // Re-require User model in case it was null at module load time
+    const UserModel = require('../models/User');
+    if (!UserModel) {
+      console.error('❌ User model is null - database connection unavailable');
       throw new Error('Database service unavailable. User model not loaded.');
     }
+    // Update the module-level User reference
+    if (User !== UserModel) {
+      // User model might have been loaded after this module
+      console.log('⚠️  User model was null at module load, but is now available');
+    }
+    return UserModel;
   }
 
   // Invite a new beta tester
@@ -301,8 +310,8 @@ class BetaTesterService {
   // Get beta tester dashboard data
   async getBetaTesterDashboard(userId) {
     try {
-      this._checkUserModel();
-      const user = await User.findByPk(userId);
+      const UserModel = this._checkUserModel();
+      const user = await UserModel.findByPk(userId);
       if (!user || !user.isBetaTester) {
         throw new Error('User is not a beta tester');
       }
