@@ -29,6 +29,20 @@ if (!databaseUrl) {
   } else {
   try {
     console.log('🔧 Attempting to create Sequelize connection...');
+    
+    // Check if pg package is available
+    try {
+      require('pg');
+      console.log('✅ pg package is available');
+    } catch (pgError) {
+      console.error('❌ pg package not found:', pgError.message);
+      console.error('❌ This is likely a Vercel build issue. Check that:');
+      console.error('   1. package.json includes "pg" in dependencies');
+      console.error('   2. Vercel build logs show pg being installed');
+      console.error('   3. Node.js version matches (pg requires compatible Node version)');
+      throw new Error('pg package not installed. Please ensure pg is in package.json dependencies and Vercel build completes successfully.');
+    }
+    
     // Parse the database URL to extract components
     const url = new URL(databaseUrl);
     const isSupabase = url.hostname.includes('supabase') || url.hostname.includes('supabase.co');
