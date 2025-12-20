@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "npm install",
+  "installCommand": "npm install",
   "functions": {
     "api/simple-backend-rag.js": {
       "maxDuration": 300,
