@@ -622,7 +622,12 @@ try {
 
 try {
   User = require("./models/User");
-  console.log("✅ User model loaded");
+  if (User) {
+    console.log("✅ User model loaded successfully");
+  } else {
+    console.log("⚠️  User model is null - sequelize connection likely failed");
+    console.log("   Check DATABASE_URL and database connection logs above");
+  }
 } catch (error) {
   console.log("⚠️  User model not available:", error.message);
   User = null;
@@ -630,7 +635,12 @@ try {
 
 try {
   Guide = require("./models/Guide");
-  console.log("✅ Guide model loaded");
+  if (Guide) {
+    console.log("✅ Guide model loaded successfully");
+  } else {
+    console.log("⚠️  Guide model is null - sequelize connection likely failed");
+    console.log("   Check DATABASE_URL and database connection logs above");
+  }
 } catch (error) {
   console.log("⚠️  Guide model not available:", error.message);
   Guide = null;

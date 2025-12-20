@@ -8,6 +8,8 @@ console.log('=== Database Connection Debug ===');
 console.log('DATABASE_URL loaded:', !!process.env.DATABASE_URL);
 console.log('DATABASE_URL length:', process.env.DATABASE_URL?.length);
 console.log('DATABASE_URL first 50 chars:', process.env.DATABASE_URL?.substring(0, 50));
+console.log('VERCEL environment:', !!process.env.VERCEL);
+console.log('NODE_ENV:', process.env.NODE_ENV);
 
 const databaseUrl = process.env.DATABASE_URL?.trim(); // Trim whitespace/newlines
 
@@ -24,11 +26,14 @@ if (!databaseUrl) {
     // Only exit in local development
     process.exit(1);
   }
-} else {
+  } else {
   try {
+    console.log('🔧 Attempting to create Sequelize connection...');
     // Parse the database URL to extract components
     const url = new URL(databaseUrl);
     const isSupabase = url.hostname.includes('supabase') || url.hostname.includes('supabase.co');
+    console.log('🔧 Database hostname:', url.hostname);
+    console.log('🔧 Is Supabase:', isSupabase);
 
     sequelize = new Sequelize(databaseUrl, {
       dialect: 'postgres',
@@ -75,13 +80,17 @@ if (!databaseUrl) {
     
     // Test connection immediately in serverless environments
     if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      console.log('🔧 Testing database connection in serverless environment...');
       sequelize.authenticate()
         .then(() => {
           console.log('✅ Database connection verified on startup');
         })
         .catch((err) => {
           console.error('❌ Database connection failed on startup:', err.message);
+          console.error('❌ Error code:', err.code);
+          console.error('❌ Error name:', err.name);
           console.error('❌ This will cause models to be null. Check DATABASE_URL format and network access.');
+          // Don't set sequelize to null - keep the instance for retry
         });
     }
   } catch (error) {
