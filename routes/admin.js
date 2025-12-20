@@ -21,13 +21,31 @@ const router = express.Router();
 const requireAdmin = async (req, res, next) => {
   try {
     const user = req.user;
+
+    // Debug logging to help diagnose admin access issues
+    console.log('🔍 Admin check:', {
+      userId: user?.id,
+      email: user?.email,
+      isBetaTester: user?.isBetaTester,
+      betaAccessLevel: user?.betaAccessLevel,
+      isOwnerEmail: user?.email === 'corey@childactor101.com'
+    });
+
     const isBetaAdmin = user && user.isBetaTester && user.betaAccessLevel === 'admin';
     const ownerEmail = process.env.OWNER_EMAIL || 'corey@childactor101.com';
     const isOwnerEmail = user && user.email === ownerEmail;
 
     if (!isBetaAdmin && !isOwnerEmail) {
+      console.log('❌ Admin access denied:', {
+        email: user?.email,
+        isBetaTester: user?.isBetaTester,
+        betaAccessLevel: user?.betaAccessLevel,
+        isOwnerEmail
+      });
       return res.status(403).json({ message: 'Admin access required' });
     }
+
+    console.log('✅ Admin access granted:', user?.email);
     next();
   } catch (error) {
     console.error('Admin check failed:', error);

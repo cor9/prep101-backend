@@ -59,6 +59,13 @@ async function findOrCreateUserFromSupabase(supabaseUser) {
     email.split("@")[0] ||
     "Prep101 Actor";
 
+  // Extract beta tester info from Supabase metadata
+  const betaAccessLevel =
+    supabaseUser.user_metadata?.betaAccessLevel ||
+    supabaseUser.app_metadata?.betaAccessLevel ||
+    "none";
+  const isBetaTester = betaAccessLevel !== "none";
+
   if (!User) {
     console.warn("⚠️  User model unavailable; using Supabase-only user stub");
     return {
@@ -77,10 +84,8 @@ async function findOrCreateUserFromSupabase(supabaseUser) {
         supabaseUser.user_metadata?.guidesUsed ??
         supabaseUser.app_metadata?.guidesUsed ??
         0,
-      betaAccessLevel:
-        supabaseUser.user_metadata?.betaAccessLevel ||
-        supabaseUser.app_metadata?.betaAccessLevel ||
-        "none",
+      isBetaTester,
+      betaAccessLevel,
     };
   }
 
@@ -95,7 +100,24 @@ async function findOrCreateUserFromSupabase(supabaseUser) {
       name: derivedName,
       subscription: "free",
       guidesLimit: 1,
+      isBetaTester,
+      betaAccessLevel,
     });
+  } else {
+    // Sync beta tester fields from Supabase metadata to database
+    // Only update if they differ to avoid unnecessary database writes
+    const needsUpdate =
+      user.isBetaTester !== isBetaTester ||
+      user.betaAccessLevel !== betaAccessLevel;
+
+    if (needsUpdate) {
+      await user.update({
+        isBetaTester,
+        betaAccessLevel,
+      });
+      // Reload to get updated values
+      await user.reload();
+    }
   }
 
   return user;
@@ -218,16 +240,18 @@ module.exports = async (req, res, next) => {
 
     // Get userId from token - check both userId and sub (Supabase-style)
     const tokenUserId = decoded.userId || decoded.sub;
-    
+
     if (!tokenUserId) {
       console.log(`🔒 Token missing userId from IP: ${clientIP}`);
-      return res.status(401).json({ message: "Invalid token - missing user ID" });
+      return res
+        .status(401)
+        .json({ message: "Invalid token - missing user ID" });
     }
 
     let user = null;
-    
+
     // Try to load user from database if User model is available
-    if (User && typeof User.findByPk === 'function') {
+    if (User && typeof User.findByPk === "function") {
       user = await User.findByPk(tokenUserId);
       if (!user) {
         console.log(
@@ -248,9 +272,9 @@ module.exports = async (req, res, next) => {
       console.warn(`⚠️  User model unavailable, using token data for auth`);
       user = {
         id: tokenUserId,
-        email: decoded.email || 'unknown',
-        name: decoded.name || decoded.email?.split('@')[0] || 'User',
-        subscription: decoded.subscription || 'free',
+        email: decoded.email || "unknown",
+        name: decoded.name || decoded.email?.split("@")[0] || "User",
+        subscription: decoded.subscription || "free",
         guidesUsed: decoded.guidesUsed || 0,
         guidesLimit: decoded.guidesLimit || 1,
       };
