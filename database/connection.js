@@ -52,6 +52,10 @@ if (!databaseUrl) {
     console.log('🔧 Database hostname:', url.hostname);
     console.log('🔧 Is Supabase:', isSupabase);
 
+    // Configure Sequelize for Supabase connection pooling (pgbouncer)
+    // Port 6543 = pgbouncer (transaction mode), Port 5432 = direct connection
+    const isPoolingConnection = url.port === '6543' || databaseUrl.includes('pgbouncer=true');
+    
     sequelize = new Sequelize(databaseUrl, {
       dialect: 'postgres',
       protocol: 'postgres',
@@ -62,14 +66,22 @@ if (!databaseUrl) {
         } : {
           require: true,
           rejectUnauthorized: false
-        }
+        },
+        // Connection pooling configuration for pgbouncer
+        ...(isPoolingConnection && {
+          // pgbouncer requires these settings for transaction mode
+          application_name: 'prep101-backend'
+        })
       },
       logging: process.env.NODE_ENV === 'development' ? console.log : false,
       pool: {
-        max: 5,
+        // Reduced pool size for serverless (pgbouncer handles pooling)
+        max: isPoolingConnection ? 1 : 5, // pgbouncer manages the pool, use 1 connection per function
         min: 0,
         acquire: 30000,
-        idle: 10000
+        idle: 10000,
+        // For serverless, close idle connections quickly
+        evict: 1000 // Check for idle connections every 1 second
       },
       // Add retry logic for serverless
       retry: {
