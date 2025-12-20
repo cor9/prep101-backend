@@ -6,8 +6,13 @@ const Guide = require('../models/Guide');
 const PromoCode = require('../models/PromoCode');
 const PromoCodeRedemption = require('../models/PromoCodeRedemption');
 const { sequelize } = require('../database/connection');
+const { isSupabaseAdminConfigured, runAdminQuery, tables: supabaseTables } = require('../lib/supabaseAdmin');
 
 const router = express.Router();
+
+// Check if database models are available
+const hasDatabase = User !== null && Guide !== null;
+const hasSupabaseFallback = isSupabaseAdminConfigured();
 
 // ============================================================================
 // ADMIN MIDDLEWARE
@@ -63,6 +68,23 @@ const requireAdmin = async (req, res, next) => {
  */
 router.get('/dashboard', auth, requireAdmin, async (req, res) => {
   try {
+    // Check if database is available
+    if (!hasDatabase) {
+      if (!hasSupabaseFallback) {
+        return res.status(503).json({
+          success: false,
+          message: 'Database service unavailable. Please configure DATABASE_URL or Supabase credentials.',
+          error: 'No database connection available'
+        });
+      }
+      // TODO: Implement Supabase fallback for dashboard stats
+      return res.status(503).json({
+        success: false,
+        message: 'Database service unavailable. Supabase fallback for dashboard stats not yet implemented.',
+        error: 'Database connection required for admin dashboard'
+      });
+    }
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -226,6 +248,14 @@ router.get('/dashboard', auth, requireAdmin, async (req, res) => {
  */
 router.get('/stats', auth, requireAdmin, async (req, res) => {
   try {
+    if (!hasDatabase) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database service unavailable',
+        error: 'No database connection available'
+      });
+    }
+
     const [totalUsers, totalGuides] = await Promise.all([
       User.count(),
       Guide.count()
@@ -263,6 +293,14 @@ router.get('/stats', auth, requireAdmin, async (req, res) => {
  */
 router.get('/users', auth, requireAdmin, async (req, res) => {
   try {
+    if (!hasDatabase) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database service unavailable',
+        error: 'No database connection available'
+      });
+    }
+
     const page = Math.max(1, parseInt(req.query.page || '1', 10));
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '25', 10)));
     const offset = (page - 1) * limit;
@@ -643,6 +681,14 @@ router.delete('/users/:id', auth, requireAdmin, async (req, res) => {
  */
 router.get('/guides', auth, requireAdmin, async (req, res) => {
   try {
+    if (!hasDatabase) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database service unavailable',
+        error: 'No database connection available'
+      });
+    }
+
     const page = Math.max(1, parseInt(req.query.page || '1', 10));
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '25', 10)));
     const offset = (page - 1) * limit;
@@ -716,6 +762,14 @@ router.get('/guides', auth, requireAdmin, async (req, res) => {
  */
 router.get('/guides/:id', auth, requireAdmin, async (req, res) => {
   try {
+    if (!hasDatabase) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database service unavailable',
+        error: 'No database connection available'
+      });
+    }
+
     const { id } = req.params;
 
     const guide = await Guide.findByPk(id, {
@@ -771,6 +825,14 @@ router.delete('/guides/:id', auth, requireAdmin, async (req, res) => {
  */
 router.get('/guides/analytics', auth, requireAdmin, async (req, res) => {
   try {
+    if (!hasDatabase) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database service unavailable',
+        error: 'No database connection available'
+      });
+    }
+
     // Get production type breakdown
     const byProductionType = await Guide.findAll({
       attributes: ['productionType', [fn('COUNT', col('id')), 'count']],
