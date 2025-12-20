@@ -213,7 +213,13 @@ if (process.env.VERCEL) {
 app.use(securityHeaders);
 
 // Rate limiting
-app.use("/api/auth", authLimiter);
+// Apply rate limiter to auth routes, but allow bypass in development
+if (process.env.NODE_ENV === "development" || process.env.DISABLE_RATE_LIMIT === "true") {
+  console.log("⚠️  Rate limiting disabled for auth routes (development mode)");
+  // No rate limiting in development
+} else {
+  app.use("/api/auth", authLimiter);
+}
 app.use("/api/payments", paymentLimiter);
 app.use("/api", apiLimiter);
 app.use(speedLimiter);
