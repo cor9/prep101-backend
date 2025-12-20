@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "buildCommand": null,
+  "outputDirectory": null,
+  "installCommand": "npm install",
   "builds": [
     {
       "src": "api/simple-backend-rag.js",
