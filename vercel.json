@@ -1,9 +1,11 @@
 {
   "version": 2,
-  "buildCommand": "npm install",
-  "installCommand": "npm install",
-  "outputDirectory": null,
-  "framework": null,
+  "builds": [
+    {
+      "src": "api/simple-backend-rag.js",
+      "use": "@vercel/node"
+    }
+  ],
   "functions": {
     "api/simple-backend-rag.js": {
       "maxDuration": 300,
