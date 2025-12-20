@@ -21,8 +21,8 @@ console.log("🔧 Supabase auth config:", {
     SUPABASE_URL: !!process.env.SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
     SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY
-  }
+    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  },
 });
 
 let supabaseAdmin = null;
@@ -31,49 +31,75 @@ let supabasePublic = null;
 if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
   try {
     // Validate URL format
-    if (!SUPABASE_URL.startsWith('http://') && !SUPABASE_URL.startsWith('https://')) {
-      throw new Error(`Invalid SUPABASE_URL format: must start with http:// or https://, got: ${SUPABASE_URL.substring(0, 50)}`);
+    if (
+      !SUPABASE_URL.startsWith("http://") &&
+      !SUPABASE_URL.startsWith("https://")
+    ) {
+      console.error(
+        `❌ Invalid SUPABASE_URL format: must start with http:// or https://`
+      );
+      console.error(`❌ Got: ${SUPABASE_URL ? SUPABASE_URL.substring(0, 50) : 'undefined'}`);
+      console.error(`❌ Please set SUPABASE_URL in Vercel environment variables to: https://eokqyijxubrmompozguh.supabase.co`);
+    } else {
+      supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
+      console.log("✅ Supabase admin client initialized");
     }
-    supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-    console.log("✅ Supabase admin client initialized");
   } catch (error) {
     console.error("❌ Failed to create Supabase admin client:", error.message);
+    console.error("❌ Check that SUPABASE_URL is set correctly in Vercel environment variables");
   }
 } else {
   const missing = [];
   if (!SUPABASE_URL) missing.push("SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL");
-  if (!SUPABASE_SERVICE_KEY) missing.push("SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY");
+  if (!SUPABASE_SERVICE_KEY)
+    missing.push("SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY");
   console.warn(
-    `⚠️  Supabase admin credentials missing (${missing.join(", ")}) - backend will fall back to legacy JWT auth`
+    `⚠️  Supabase admin credentials missing (${missing.join(
+      ", "
+    )}) - backend will fall back to legacy JWT auth`
   );
+  console.warn(`⚠️  Please set these in Vercel Dashboard → Settings → Environment Variables`);
 }
 
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   try {
     // Validate URL format
-    if (!SUPABASE_URL.startsWith('http://') && !SUPABASE_URL.startsWith('https://')) {
-      throw new Error(`Invalid SUPABASE_URL format: must start with http:// or https://`);
+    if (
+      !SUPABASE_URL.startsWith("http://") &&
+      !SUPABASE_URL.startsWith("https://")
+    ) {
+      console.error(
+        `❌ Invalid SUPABASE_URL format: must start with http:// or https://`
+      );
+      console.error(`❌ Got: ${SUPABASE_URL ? SUPABASE_URL.substring(0, 50) : 'undefined'}`);
+      console.error(`❌ Please set SUPABASE_URL in Vercel to: https://eokqyijxubrmompozguh.supabase.co`);
+    } else {
+      supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
+      console.log("✅ Supabase public client initialized");
     }
-    supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-    console.log("✅ Supabase public client initialized");
   } catch (error) {
     console.error("❌ Failed to create Supabase public client:", error.message);
+    console.error("❌ Check that SUPABASE_URL and SUPABASE_ANON_KEY are set correctly in Vercel");
   }
 } else {
   if (!SUPABASE_URL) {
     console.warn("⚠️  SUPABASE_URL missing - public auth fallback disabled");
+    console.warn("⚠️  Set SUPABASE_URL in Vercel Dashboard → Settings → Environment Variables");
   } else if (!SUPABASE_ANON_KEY) {
-    console.warn("⚠️  SUPABASE_ANON_KEY missing - public auth fallback disabled");
+    console.warn(
+      "⚠️  SUPABASE_ANON_KEY missing - public auth fallback disabled"
+    );
+    console.warn("⚠️  Set SUPABASE_ANON_KEY in Vercel Dashboard → Settings → Environment Variables");
   }
 }
 

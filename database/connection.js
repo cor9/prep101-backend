@@ -30,17 +30,20 @@ if (!databaseUrl) {
   try {
     console.log('🔧 Attempting to create Sequelize connection...');
     
-    // Check if pg package is available
+    // Check if pg package is available BEFORE creating Sequelize instance
+    let pgAvailable = false;
     try {
-      require('pg');
+      require.resolve('pg');
+      pgAvailable = true;
       console.log('✅ pg package is available');
     } catch (pgError) {
-      console.error('❌ pg package not found:', pgError.message);
-      console.error('❌ This is likely a Vercel build issue. Check that:');
-      console.error('   1. package.json includes "pg" in dependencies');
-      console.error('   2. Vercel build logs show pg being installed');
-      console.error('   3. Node.js version matches (pg requires compatible Node version)');
-      throw new Error('pg package not installed. Please ensure pg is in package.json dependencies and Vercel build completes successfully.');
+      console.error('❌ pg package not found in node_modules');
+      console.error('❌ This is likely a Vercel build issue. The pg package may not be installed during build.');
+      console.error('❌ Check Vercel build logs to ensure npm install completes successfully.');
+      console.error('❌ Database connection will be unavailable. Routes will use Supabase fallback if configured.');
+      // Don't throw - just set sequelize to null so the app can continue
+      sequelize = null;
+      return;
     }
     
     // Parse the database URL to extract components
