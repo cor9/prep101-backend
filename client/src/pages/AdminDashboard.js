@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from '../utils/supabase';
 import API_BASE from '../config/api';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -193,10 +192,11 @@ const AdminDashboard = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        const token = data?.session?.access_token;
-        if (!token) throw new Error('No access token');
+        // Get token from localStorage (where the app stores it after login)
+        const token = localStorage.getItem('prep101_token');
+        if (!token) {
+          throw new Error('Please log in to access the admin dashboard');
+        }
 
         setSessionToken(token);
         await fetchDashboard(token);
