@@ -14,9 +14,17 @@ class BetaTesterService {
     };
   }
 
+  // Helper method to check if User model is available
+  _checkUserModel() {
+    if (!User) {
+      throw new Error('Database service unavailable. User model not loaded.');
+    }
+  }
+
   // Invite a new beta tester
   async inviteBetaTester(email, name, accessLevel = 'early', invitedBy = null, features = []) {
     try {
+      this._checkUserModel();
       // Check if user already exists
       let user = await User.findOne({ where: { email } });
       
@@ -87,6 +95,7 @@ class BetaTesterService {
   // Activate beta tester (when they first log in)
   async activateBetaTester(userId) {
     try {
+      this._checkUserModel();
       const user = await User.findByPk(userId);
       if (!user || !user.isBetaTester) {
         throw new Error('User is not a beta tester');
@@ -112,6 +121,7 @@ class BetaTesterService {
   // Get all beta testers
   async getAllBetaTesters(status = null) {
     try {
+      this._checkUserModel();
       const whereClause = { isBetaTester: true };
       if (status) {
         whereClause.betaStatus = status;
@@ -137,6 +147,7 @@ class BetaTesterService {
   // Get beta tester statistics
   async getBetaTesterStats() {
     try {
+      this._checkUserModel();
       const stats = await User.findAll({
         where: { isBetaTester: true },
         attributes: [
@@ -182,6 +193,7 @@ class BetaTesterService {
   // Update beta tester access level
   async updateBetaTesterAccess(userId, newAccessLevel, newFeatures = null) {
     try {
+      this._checkUserModel();
       const user = await User.findByPk(userId);
       if (!user || !user.isBetaTester) {
         throw new Error('User is not a beta tester');
@@ -214,6 +226,7 @@ class BetaTesterService {
   // Collect feedback from beta testers
   async submitFeedback(userId, feedback) {
     try {
+      this._checkUserModel();
       const user = await User.findByPk(userId);
       if (!user || !user.isBetaTester) {
         throw new Error('User is not a beta tester');
@@ -236,6 +249,7 @@ class BetaTesterService {
   // End beta testing for a user
   async endBetaTesting(userId) {
     try {
+      this._checkUserModel();
       const user = await User.findByPk(userId);
       if (!user || !user.isBetaTester) {
         throw new Error('User is not a beta tester');
@@ -273,6 +287,7 @@ class BetaTesterService {
   // Check if user has access to a specific beta feature
   async hasFeatureAccess(userId, featureName) {
     try {
+      this._checkUserModel();
       const user = await User.findByPk(userId);
       if (!user) return false;
       
@@ -286,6 +301,7 @@ class BetaTesterService {
   // Get beta tester dashboard data
   async getBetaTesterDashboard(userId) {
     try {
+      this._checkUserModel();
       const user = await User.findByPk(userId);
       if (!user || !user.isBetaTester) {
         throw new Error('User is not a beta tester');
