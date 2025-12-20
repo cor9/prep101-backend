@@ -3,36 +3,78 @@ const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 const User = require("../models/User");
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL =
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY =
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+
+// Log Supabase configuration for debugging
+console.log("🔧 Supabase auth config:", {
+  hasSupabaseUrl: !!SUPABASE_URL,
+  supabaseUrlLength: SUPABASE_URL?.length,
+  supabaseUrlPreview: SUPABASE_URL?.substring(0, 50),
+  hasServiceKey: !!SUPABASE_SERVICE_KEY,
+  hasAnonKey: !!SUPABASE_ANON_KEY,
+  envVars: {
+    SUPABASE_URL: !!process.env.SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+  }
+});
 
 let supabaseAdmin = null;
 let supabasePublic = null;
 
 if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
-  supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  try {
+    // Validate URL format
+    if (!SUPABASE_URL.startsWith('http://') && !SUPABASE_URL.startsWith('https://')) {
+      throw new Error(`Invalid SUPABASE_URL format: must start with http:// or https://, got: ${SUPABASE_URL.substring(0, 50)}`);
+    }
+    supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+    console.log("✅ Supabase admin client initialized");
+  } catch (error) {
+    console.error("❌ Failed to create Supabase admin client:", error.message);
+  }
 } else {
+  const missing = [];
+  if (!SUPABASE_URL) missing.push("SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL");
+  if (!SUPABASE_SERVICE_KEY) missing.push("SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY");
   console.warn(
-    "⚠️  Supabase admin credentials missing - backend will fall back to legacy JWT auth"
+    `⚠️  Supabase admin credentials missing (${missing.join(", ")}) - backend will fall back to legacy JWT auth`
   );
 }
 
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-  supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  try {
+    // Validate URL format
+    if (!SUPABASE_URL.startsWith('http://') && !SUPABASE_URL.startsWith('https://')) {
+      throw new Error(`Invalid SUPABASE_URL format: must start with http:// or https://`);
+    }
+    supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+    console.log("✅ Supabase public client initialized");
+  } catch (error) {
+    console.error("❌ Failed to create Supabase public client:", error.message);
+  }
 } else {
-  console.warn("⚠️  Supabase anon key missing - public auth fallback disabled");
+  if (!SUPABASE_URL) {
+    console.warn("⚠️  SUPABASE_URL missing - public auth fallback disabled");
+  } else if (!SUPABASE_ANON_KEY) {
+    console.warn("⚠️  SUPABASE_ANON_KEY missing - public auth fallback disabled");
+  }
 }
 
 // Track failed login attempts
