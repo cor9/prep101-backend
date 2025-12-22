@@ -23,12 +23,13 @@ router.post(
     try {
       const { code } = req.body;
       const userId = req.userId;
+      const clientIP = req.clientIP || req.ip || 'unknown';
 
-      console.log(`🎟️  Promo code redemption attempt - Code: ${code}, User: ${userId}`);
+      console.log(`[PROMO_CODE_REDEEM] Attempt - Code: ${code?.toUpperCase()}, User: ${userId}, IP: ${clientIP}`);
 
       // Check if PromoCode model is available
       if (!PromoCode) {
-        console.error('❌ PromoCode model not available - database connection missing');
+        console.error(`[PROMO_CODE_REDEEM] ERROR - Model unavailable - Code: ${code}, User: ${userId}, IP: ${clientIP}`);
         return res.status(503).json({
           success: false,
           message: 'Promo code service unavailable - database connection missing'
@@ -37,7 +38,7 @@ router.post(
 
       // Check if findByCode method exists
       if (typeof PromoCode.findByCode !== 'function') {
-        console.error('❌ PromoCode.findByCode method not available');
+        console.error(`[PROMO_CODE_REDEEM] ERROR - findByCode method missing - Code: ${code}, User: ${userId}, IP: ${clientIP}`);
         return res.status(503).json({
           success: false,
           message: 'Promo code service unavailable - database connection missing'
@@ -47,17 +48,19 @@ router.post(
       // Find the promo code
       const promoCode = await PromoCode.findByCode(code);
       if (!promoCode) {
-        console.log(`❌ Promo code not found: ${code}`);
+        console.log(`[PROMO_CODE_REDEEM] NOT_FOUND - Code: ${code}, User: ${userId}, IP: ${clientIP}`);
         return res.status(404).json({
           success: false,
           message: 'Invalid promo code'
         });
       }
 
+      console.log(`[PROMO_CODE_REDEEM] Found - Code: ${promoCode.code}, Type: ${promoCode.type}, Guides: ${promoCode.guidesGranted}, User: ${userId}`);
+
       // Check if promo code can be redeemed by this user
       const canRedeem = await promoCode.canBeRedeemedBy(userId);
       if (!canRedeem.valid) {
-        console.log(`❌ Cannot redeem promo code: ${canRedeem.reason}`);
+        console.log(`[PROMO_CODE_REDEEM] INVALID - Code: ${promoCode.code}, Reason: ${canRedeem.reason}, User: ${userId}, IP: ${clientIP}`);
         return res.status(400).json({
           success: false,
           message: canRedeem.reason
@@ -66,10 +69,12 @@ router.post(
 
       // Redeem the promo code
       const redemption = await promoCode.redeem(userId);
+      console.log(`[PROMO_CODE_REDEEM] Redemption created - ID: ${redemption.id}, Code: ${promoCode.code}, User: ${userId}`);
 
       // Get the user
       const user = await User.findByPk(userId);
       if (!user) {
+        console.error(`[PROMO_CODE_REDEEM] ERROR - User not found - UserID: ${userId}, Code: ${promoCode.code}`);
         return res.status(404).json({
           success: false,
           message: 'User not found'
@@ -78,14 +83,16 @@ router.post(
 
       // Grant guides to user
       if (promoCode.type === 'free_guides' && promoCode.guidesGranted > 0) {
+        const oldLimit = user.guidesLimit;
         await user.increment('guidesLimit', { by: promoCode.guidesGranted });
-        console.log(`✅ Granted ${promoCode.guidesGranted} guides to user ${userId}`);
+        await user.reload();
+        console.log(`[PROMO_CODE_REDEEM] Guides granted - Code: ${promoCode.code}, User: ${userId}, Old limit: ${oldLimit}, New limit: ${user.guidesLimit}, Granted: ${promoCode.guidesGranted}`);
       }
 
       // Reload user to get updated values
       await user.reload();
 
-      console.log(`🎉 Promo code redeemed successfully - Code: ${code}, User: ${userId}`);
+      console.log(`[PROMO_CODE_REDEEM] SUCCESS - Code: ${promoCode.code}, User: ${userId}, Guides granted: ${promoCode.guidesGranted}, New limit: ${user.guidesLimit}, IP: ${clientIP}`);
 
       res.json({
         success: true,
@@ -103,7 +110,9 @@ router.post(
       });
 
     } catch (error) {
-      console.error('❌ Promo code redemption error:', error);
+      const clientIP = req.clientIP || req.ip || 'unknown';
+      console.error(`[PROMO_CODE_REDEEM] ERROR - Code: ${req.body?.code}, User: ${req.userId}, IP: ${clientIP}, Error: ${error.message}`);
+      console.error(`[PROMO_CODE_REDEEM] Stack trace:`, error.stack);
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to redeem promo code'
@@ -140,7 +149,8 @@ router.get('/my-redemptions', auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching redemptions:', error);
+    console.error(`[PROMO_CODE_MY_REDEMPTIONS] ERROR - User: ${req.userId}, Error: ${error.message}`);
+    console.error(`[PROMO_CODE_MY_REDEMPTIONS] Stack trace:`, error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch redemptions'
@@ -227,7 +237,7 @@ router.post(
         notes
       });
 
-      console.log(`✅ Promo code created - Code: ${promoCode.code}, Type: ${promoCode.type}`);
+      console.log(`[PROMO_CODE_CREATE] SUCCESS - Code: ${promoCode.code}, Type: ${promoCode.type}, Created by: ${userId}`);
 
       res.status(201).json({
         success: true,
@@ -244,13 +254,15 @@ router.post(
       });
 
     } catch (error) {
-      console.error('Error creating promo code:', error);
+      console.error(`[PROMO_CODE_CREATE] ERROR - Code: ${req.body?.code}, User: ${req.userId}, Error: ${error.message}`);
       if (error.name === 'SequelizeUniqueConstraintError') {
+        console.log(`[PROMO_CODE_CREATE] DUPLICATE - Code: ${req.body?.code}, User: ${req.userId}`);
         return res.status(400).json({
           success: false,
           message: 'Promo code already exists'
         });
       }
+      console.error(`[PROMO_CODE_CREATE] Stack trace:`, error.stack);
       res.status(500).json({
         success: false,
         message: 'Failed to create promo code'
@@ -290,7 +302,8 @@ router.get('/admin/all', [auth, requireAdmin], async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching promo codes:', error);
+    console.error(`[PROMO_CODE_LIST] ERROR - User: ${req.userId}, Error: ${error.message}`);
+    console.error(`[PROMO_CODE_LIST] Stack trace:`, error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch promo codes'
@@ -356,7 +369,7 @@ router.put('/admin/:id/deactivate', [auth, requireAdmin], async (req, res) => {
 
     await promoCode.update({ isActive: false });
 
-    console.log(`🚫 Promo code deactivated - Code: ${promoCode.code}`);
+    console.log(`[PROMO_CODE_DEACTIVATE] SUCCESS - Code: ${promoCode.code}, ID: ${id}, Deactivated by: ${req.userId}`);
 
     res.json({
       success: true,
@@ -369,7 +382,8 @@ router.put('/admin/:id/deactivate', [auth, requireAdmin], async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error deactivating promo code:', error);
+    console.error(`[PROMO_CODE_DEACTIVATE] ERROR - ID: ${req.params.id}, User: ${req.userId}, Error: ${error.message}`);
+    console.error(`[PROMO_CODE_DEACTIVATE] Stack trace:`, error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to deactivate promo code'
@@ -411,7 +425,7 @@ router.delete('/admin/:id', [auth, requireAdmin], async (req, res) => {
 
     await promoCode.destroy();
 
-    console.log(`🗑️  Promo code deleted - Code: ${promoCode.code}`);
+    console.log(`[PROMO_CODE_DELETE] SUCCESS - Code: ${promoCode.code}, ID: ${id}, Deleted by: ${req.userId}`);
 
     res.json({
       success: true,
@@ -419,7 +433,8 @@ router.delete('/admin/:id', [auth, requireAdmin], async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error deleting promo code:', error);
+    console.error(`[PROMO_CODE_DELETE] ERROR - ID: ${req.params.id}, User: ${req.userId}, Error: ${error.message}`);
+    console.error(`[PROMO_CODE_DELETE] Stack trace:`, error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to delete promo code'
