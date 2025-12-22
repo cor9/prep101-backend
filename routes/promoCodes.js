@@ -35,6 +35,15 @@ router.post(
         });
       }
 
+      // Check if findByCode method exists
+      if (typeof PromoCode.findByCode !== 'function') {
+        console.error('❌ PromoCode.findByCode method not available');
+        return res.status(503).json({
+          success: false,
+          message: 'Promo code service unavailable - database connection missing'
+        });
+      }
+
       // Find the promo code
       const promoCode = await PromoCode.findByCode(code);
       if (!promoCode) {

@@ -169,6 +169,10 @@ PromoCode.prototype.canBeRedeemedBy = async function(userId) {
 PromoCode.prototype.redeem = async function(userId) {
   const PromoCodeRedemption = require('./PromoCodeRedemption');
 
+  if (!PromoCodeRedemption) {
+    throw new Error('PromoCodeRedemption model not available - database connection missing');
+  }
+
   // Check if can be redeemed
   const canRedeem = await this.canBeRedeemedBy(userId);
   if (!canRedeem.valid) {
@@ -176,12 +180,31 @@ PromoCode.prototype.redeem = async function(userId) {
   }
 
   // Create redemption record
-  const redemption = await PromoCodeRedemption.create({
-    promoCodeId: this.id,
-    userId: userId,
-    guidesGranted: this.guidesGranted,
-    discountPercent: this.discountPercent
-  });
+  // Try with discountPercent first, fallback without it if column doesn't exist
+  let redemption;
+  try {
+    redemption = await PromoCodeRedemption.create({
+      promoCodeId: this.id,
+      userId: userId,
+      guidesGranted: this.guidesGranted,
+      discountPercent: this.discountPercent || 0
+    });
+  } catch (error) {
+    // If discountPercent column doesn't exist, try without it
+    if (error.name === 'SequelizeDatabaseError' && 
+        error.message && 
+        error.message.includes('discountPercent')) {
+      console.warn('⚠️  discountPercent column not found, creating redemption without it');
+      console.warn('⚠️  Run migration script: node scripts/add-discount-percent-column.js');
+      redemption = await PromoCodeRedemption.create({
+        promoCodeId: this.id,
+        userId: userId,
+        guidesGranted: this.guidesGranted
+      });
+    } else {
+      throw error;
+    }
+  }
 
   // Increment redemption count
   await this.increment('currentRedemptions');
