@@ -26,6 +26,15 @@ router.post(
 
       console.log(`🎟️  Promo code redemption attempt - Code: ${code}, User: ${userId}`);
 
+      // Check if PromoCode model is available
+      if (!PromoCode) {
+        console.error('❌ PromoCode model not available - database connection missing');
+        return res.status(503).json({
+          success: false,
+          message: 'Promo code service unavailable - database connection missing'
+        });
+      }
+
       // Find the promo code
       const promoCode = await PromoCode.findByCode(code);
       if (!promoCode) {
@@ -98,6 +107,13 @@ router.post(
 router.get('/my-redemptions', auth, async (req, res) => {
   try {
     const userId = req.userId;
+
+    if (!PromoCodeRedemption || !PromoCode) {
+      return res.status(503).json({
+        success: false,
+        message: 'Promo code service unavailable - database connection missing'
+      });
+    }
 
     const redemptions = await PromoCodeRedemption.findAll({
       where: { userId },
@@ -181,6 +197,13 @@ router.post(
         notes
       } = req.body;
 
+      if (!PromoCode) {
+        return res.status(503).json({
+          success: false,
+          message: 'Promo code service unavailable - database connection missing'
+        });
+      }
+
       // Create promo code
       const promoCode = await PromoCode.create({
         code: code.toUpperCase(),
@@ -230,6 +253,13 @@ router.post(
 // GET /api/promo-codes/admin/all - Get all promo codes (admin only)
 router.get('/admin/all', [auth, requireAdmin], async (req, res) => {
   try {
+    if (!PromoCode) {
+      return res.status(503).json({
+        success: false,
+        message: 'Promo code service unavailable - database connection missing'
+      });
+    }
+
     const { includeInactive = false } = req.query;
 
     const whereClause = includeInactive === 'true' ? {} : { isActive: true };
@@ -262,6 +292,13 @@ router.get('/admin/all', [auth, requireAdmin], async (req, res) => {
 // GET /api/promo-codes/admin/:id/redemptions - Get redemptions for a promo code (admin only)
 router.get('/admin/:id/redemptions', [auth, requireAdmin], async (req, res) => {
   try {
+    if (!PromoCodeRedemption) {
+      return res.status(503).json({
+        success: false,
+        message: 'Promo code service unavailable - database connection missing'
+      });
+    }
+
     const { id } = req.params;
 
     const redemptions = await PromoCodeRedemption.findAll({
@@ -291,6 +328,13 @@ router.get('/admin/:id/redemptions', [auth, requireAdmin], async (req, res) => {
 // PUT /api/promo-codes/admin/:id/deactivate - Deactivate a promo code (admin only)
 router.put('/admin/:id/deactivate', [auth, requireAdmin], async (req, res) => {
   try {
+    if (!PromoCode) {
+      return res.status(503).json({
+        success: false,
+        message: 'Promo code service unavailable - database connection missing'
+      });
+    }
+
     const { id } = req.params;
 
     const promoCode = await PromoCode.findByPk(id);
@@ -327,6 +371,13 @@ router.put('/admin/:id/deactivate', [auth, requireAdmin], async (req, res) => {
 // DELETE /api/promo-codes/admin/:id - Delete a promo code (admin only)
 router.delete('/admin/:id', [auth, requireAdmin], async (req, res) => {
   try {
+    if (!PromoCode || !PromoCodeRedemption) {
+      return res.status(503).json({
+        success: false,
+        message: 'Promo code service unavailable - database connection missing'
+      });
+    }
+
     const { id } = req.params;
 
     const promoCode = await PromoCode.findByPk(id);
