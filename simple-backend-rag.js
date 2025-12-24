@@ -122,6 +122,17 @@ app.get("/", (req, res) => {
   });
 });
 
+// Favicon route - serve favicon if requested
+app.get("/favicon.ico", (req, res) => {
+  const faviconPath = path.join(__dirname, "client", "public", "favicon.ico");
+  if (fs.existsSync(faviconPath)) {
+    res.sendFile(faviconPath);
+  } else {
+    // Fallback: return 204 No Content if favicon doesn't exist
+    res.status(204).end();
+  }
+});
+
 // Trust proxy - Required for Vercel and rate limiting to work correctly
 app.set("trust proxy", true);
 
