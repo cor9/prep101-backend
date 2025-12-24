@@ -103,35 +103,57 @@ const Examples = () => {
                 </h3>
                 <p style={{ 
                   color: 'var(--gray-600)', 
-                  margin: '0 0 1rem 0',
+                  margin: '0 0 1.5rem 0',
                   fontSize: '0.95rem'
                 }}>
                   {t.sub}
                 </p>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: 'var(--gold)',
-                  fontWeight: '600',
-                  fontSize: '0.9rem'
-                }}>
+                <button
+                  className="btn"
+                  style={{
+                    width: '100%',
+                    background: 'var(--gold-grad)',
+                    color: '#2f2500',
+                    border: 'none',
+                    fontWeight: '700',
+                    fontSize: '1rem',
+                    padding: '0.875rem 1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 4px 12px rgba(255, 200, 58, 0.3)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    open(t.href);
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(255, 200, 58, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 200, 58, 0.3)';
+                  }}
+                >
                   <span>View Example</span>
                   <svg 
-                    width="16" 
-                    height="16" 
+                    width="18" 
+                    height="18" 
                     viewBox="0 0 24 24" 
-                    fill="none" 
-                    style={{ marginLeft: '0.5rem' }}
+                    fill="none"
                   >
                     <path 
                       d="M7 17L17 7M17 7H7M17 7V17" 
                       stroke="currentColor" 
-                      strokeWidth="2" 
+                      strokeWidth="2.5" 
                       strokeLinecap="round" 
                       strokeLinejoin="round"
                     />
                   </svg>
-                </div>
+                </button>
               </div>
             ))}
           </div>
