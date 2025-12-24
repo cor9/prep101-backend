@@ -2788,22 +2788,56 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     // Handle both single and multiple upload IDs
     const uploadIdList = uploadIds || [uploadId];
     // Debug request basics for faster triage
+    const uploadIdList = uploadIds
+      ? Array.isArray(uploadIds)
+        ? uploadIds
+        : [uploadIds]
+      : uploadId
+      ? [uploadId]
+      : [];
+    
     console.log("📝 Generate request:", {
-      uploadIdsCount: Array.isArray(uploadIds)
-        ? uploadIds.length
-        : uploadId
-        ? 1
-        : 0,
+      uploadIdsCount: uploadIdList.length,
+      uploadIds: uploadIdList,
       hasAuthHeader: !!req.headers.authorization,
       hasCharacterName: !!characterName,
       hasProductionTitle: !!productionTitle,
       hasProductionType: !!productionType,
+      availableUploads: Object.keys(uploads).length,
+      availableUploadIds: Object.keys(uploads).slice(0, 5), // First 5 for debugging
     });
 
-    if (!uploadIdList.length || uploadIdList.some((id) => !uploads[id])) {
-      return res
-        .status(400)
-        .json({ error: "Invalid upload ID(s) or expired session" });
+    // Check if upload IDs exist and provide detailed error info
+    const missingIds = uploadIdList.filter((id) => !uploads[id]);
+    const availableIds = Object.keys(uploads);
+    
+    if (!uploadIdList.length) {
+      console.error("[GENERATE] No upload IDs provided in request");
+      return res.status(400).json({ 
+        error: "No upload ID(s) provided. Please upload your PDF first.",
+        debug: { received: { uploadId, uploadIds } }
+      });
+    }
+    
+    if (missingIds.length > 0) {
+      console.error("[GENERATE] Missing upload IDs:", {
+        requested: uploadIdList,
+        missing: missingIds,
+        available: availableIds.slice(0, 5), // Show first 5 for debugging
+        totalAvailable: availableIds.length,
+        timestamp: new Date().toISOString()
+      });
+      
+      // In serverless, uploads can expire between requests
+      // Provide helpful error message
+      return res.status(400).json({ 
+        error: "Upload session expired. This can happen in serverless environments. Please re-upload your PDF and try generating immediately.",
+        debug: {
+          missingIds,
+          availableCount: availableIds.length,
+          tip: "Upload your PDF and generate the guide in the same session without delay"
+        }
+      });
     }
 
     if (!characterName || !productionTitle || !productionType) {
