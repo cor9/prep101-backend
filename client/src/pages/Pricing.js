@@ -95,9 +95,9 @@ const Pricing = () => {
         </section>
 
         <div className="container-wide">
-          {/* Pricing Grid */}
-          <div className="grid-2">
-            {plans.map((plan) => (
+          {/* Pricing Grid - Row 1: A la carte and Starter */}
+          <div className="grid-2" style={{ marginBottom: '2rem' }}>
+            {plans.filter(plan => plan.name !== 'Premium').map((plan) => (
               <div
                 key={plan.name}
                 className={`card-white ${plan.popular ? 'popular-plan' : ''}`}
@@ -205,90 +205,205 @@ const Pricing = () => {
             ))}
           </div>
 
-          {/* Add-ons Section */}
-          <div className="card-white mt-4">
-            <h2 style={{
-              fontSize: '1.8rem',
-              fontWeight: '800',
-              color: 'var(--gray-800)',
-              textAlign: 'center',
-              margin: '0 0 2rem 0'
-            }}>
-              Additional Services
-            </h2>
-            <div className="grid-2">
-              <div style={{
-                textAlign: 'center',
-                padding: '1.5rem',
-                border: '1px solid var(--gray-200)',
-                borderRadius: '16px',
-                background: 'var(--gray-50)'
-              }}>
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: 'var(--gray-800)',
-                  margin: '0 0 0.5rem 0'
-                }}>
-                  Self-Tape Feedback
-                </h3>
-                <div style={{
-                  fontSize: '2rem',
-                  fontWeight: '900',
-                  color: 'var(--gray-900)',
-                  marginBottom: '0.5rem'
-                }}>
-                  $22
+          {/* Row 2: Premium and Additional Services side by side */}
+          <div className="grid-2" style={{ marginBottom: '2rem' }}>
+            {/* Premium Plan */}
+            {plans.filter(plan => plan.name === 'Premium').map((plan) => (
+              <div
+                key={plan.name}
+                className={`card-white ${plan.popular ? 'popular-plan' : ''}`}
+                style={{
+                  position: 'relative',
+                  border: plan.popular ? '2px solid var(--gold)' : '1px solid var(--gray-200)',
+                  transform: plan.popular ? 'scale(1.02)' : 'scale(1)',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                }}
+              >
+                {plan.badge && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-12px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'var(--gold-grad)',
+                    color: '#2f2500',
+                    padding: '0.25rem 1rem',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: '800',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>
+                    {plan.badge}
+                  </div>
+                )}
+
+                <div className="text-center mb-3">
+                  <h3 style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '800',
+                    color: 'var(--gray-800)',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    {plan.name}
+                  </h3>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <span style={{
+                      fontSize: '2.5rem',
+                      fontWeight: '900',
+                      color: 'var(--gray-900)'
+                    }}>
+                      {plan.price}
+                    </span>
+                    <span style={{
+                      fontSize: '1rem',
+                      color: 'var(--gray-600)',
+                      fontWeight: '600'
+                    }}>
+                      {plan.period}
+                    </span>
+                  </div>
+                  <p style={{
+                    color: 'var(--gray-600)',
+                    fontSize: '0.95rem',
+                    margin: '0 0 1.5rem 0'
+                  }}>
+                    {plan.tagline}
+                  </p>
                 </div>
-                <p style={{
-                  color: 'var(--gray-600)',
-                  margin: '0 0 1rem 0'
+
+                <ul style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: '0 0 2rem 0'
                 }}>
-                  Professional feedback on your self-tape performance
-                </p>
+                  {plan.features.map((feature, index) => (
+                    <li key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '0.75rem',
+                      fontSize: '0.95rem',
+                      color: 'var(--gray-700)'
+                    }}>
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        style={{ marginRight: '0.75rem', flexShrink: 0 }}
+                      >
+                        <path
+                          d="M20 6L9 17l-5-5"
+                          stroke="var(--gold)"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
                 <button
-                  onClick={() => go(STRIPE.ADDON_FEEDBACK)}
-                  className="btn btnSecondary"
+                  onClick={() => go(plan.href)}
+                  className={`btn ${plan.popular ? 'btnPrimary' : 'btnSecondary'}`}
+                  style={{ width: '100%' }}
                 >
-                  Get Feedback
+                  {plan.cta}
                 </button>
               </div>
+            ))}
 
-              <div style={{
+            {/* Additional Services */}
+            <div className="card-white">
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '800',
+                color: 'var(--gray-800)',
                 textAlign: 'center',
-                padding: '1.5rem',
-                border: '1px solid var(--gray-200)',
-                borderRadius: '16px',
-                background: 'var(--gray-50)'
+                margin: '0 0 1.5rem 0'
               }}>
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: 'var(--gray-800)',
-                  margin: '0 0 0.5rem 0'
-                }}>
-                  30-Min Coaching Session
-                </h3>
+                Additional Services
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{
-                  fontSize: '2rem',
-                  fontWeight: '900',
-                  color: 'var(--gray-900)',
-                  marginBottom: '0.5rem'
+                  textAlign: 'center',
+                  padding: '1.5rem',
+                  border: '1px solid var(--gray-200)',
+                  borderRadius: '16px',
+                  background: 'var(--gray-50)'
                 }}>
-                  $50
+                  <h3 style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    color: 'var(--gray-800)',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    Self-Tape Feedback
+                  </h3>
+                  <div style={{
+                    fontSize: '1.75rem',
+                    fontWeight: '900',
+                    color: 'var(--gray-900)',
+                    marginBottom: '0.5rem'
+                  }}>
+                    $22
+                  </div>
+                  <p style={{
+                    color: 'var(--gray-600)',
+                    margin: '0 0 1rem 0',
+                    fontSize: '0.9rem'
+                  }}>
+                    Professional feedback on your self-tape performance
+                  </p>
+                  <button
+                    onClick={() => go(STRIPE.ADDON_FEEDBACK)}
+                    className="btn btnSecondary"
+                    style={{ width: '100%' }}
+                  >
+                    Get Feedback
+                  </button>
                 </div>
-                <p style={{
-                  color: 'var(--gray-600)',
-                  margin: '0 0 1rem 0'
+
+                <div style={{
+                  textAlign: 'center',
+                  padding: '1.5rem',
+                  border: '1px solid var(--gray-200)',
+                  borderRadius: '16px',
+                  background: 'var(--gray-50)'
                 }}>
-                  One-on-one coaching with Corey Ralston
-                </p>
-                <button
-                  onClick={() => go(STRIPE.ADDON_COACH)}
-                  className="btn btnSecondary"
-                >
-                  Book Session
-                </button>
+                  <h3 style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    color: 'var(--gray-800)',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    30-Min Coaching Session
+                  </h3>
+                  <div style={{
+                    fontSize: '1.75rem',
+                    fontWeight: '900',
+                    color: 'var(--gray-900)',
+                    marginBottom: '0.5rem'
+                  }}>
+                    $50
+                  </div>
+                  <p style={{
+                    color: 'var(--gray-600)',
+                    margin: '0 0 1rem 0',
+                    fontSize: '0.9rem'
+                  }}>
+                    One-on-one coaching with Corey Ralston
+                  </p>
+                  <button
+                    onClick={() => go(STRIPE.ADDON_COACH)}
+                    className="btn btnSecondary"
+                    style={{ width: '100%' }}
+                  >
+                    Book Session
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -394,7 +509,7 @@ const Pricing = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Footer */}
         <Footer />
       </div>
