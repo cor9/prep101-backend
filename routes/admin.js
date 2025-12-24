@@ -957,11 +957,25 @@ router.get('/guides/analytics', auth, requireAdmin, async (req, res) => {
  */
 router.get('/revenue', auth, requireAdmin, async (req, res) => {
   try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-
     if (!process.env.STRIPE_SECRET_KEY) {
-      return res.status(400).json({ message: 'Stripe not configured' });
+      console.warn('[ADMIN_REVENUE] Stripe not configured');
+      return res.json({ 
+        success: true,
+        revenue: {
+          balance: { available: 0, pending: 0, currency: 'USD' },
+          thisMonth: 0,
+          lastMonth: 0,
+          thisYear: 0,
+          mrr: 0,
+          growth: 0,
+          subscriptions: { active: 0, canceled: 0, trialing: 0, total: 0 },
+          recentTransactions: []
+        },
+        message: 'Stripe not configured' 
+      });
     }
+
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
     const now = new Date();
     const thisMonth = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
@@ -1052,8 +1066,13 @@ router.get('/revenue', auth, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Admin revenue fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch revenue data', error: error.message });
+    console.error('[ADMIN_REVENUE] ERROR:', error.message);
+    console.error('[ADMIN_REVENUE] Stack:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch revenue data', 
+      error: error.message 
+    });
   }
 });
 
@@ -1124,7 +1143,16 @@ router.get('/subscriptions', auth, requireAdmin, async (req, res) => {
 router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
   try {
     if (!PromoCode) {
-      return res.json({ success: true, promoCodes: [], message: 'PromoCode model not available' });
+      console.warn('[ADMIN_PROMO_CODES] PromoCode model not available');
+      return res.json({ 
+        success: true, 
+        promoCodes: [], 
+        page: 1,
+        limit: 25,
+        total: 0,
+        totalPages: 0,
+        message: 'PromoCode model not available' 
+      });
     }
 
     const page = Math.max(1, parseInt(req.query.page || '1', 10));
@@ -1174,8 +1202,13 @@ router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Admin promo codes fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch promo codes' });
+    console.error('[ADMIN_PROMO_CODES] ERROR:', error.message);
+    console.error('[ADMIN_PROMO_CODES] Stack:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch promo codes',
+      error: error.message 
+    });
   }
 });
 
@@ -1186,13 +1219,16 @@ router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
 router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
   try {
     if (!PromoCode || !PromoCodeRedemption) {
+      console.warn('[ADMIN_PROMO_ANALYTICS] Models not available');
       return res.json({
         success: true,
         analytics: {
           totalCodes: 0,
           activeCodes: 0,
           totalRedemptions: 0,
-          totalGuidesGranted: 0
+          totalGuidesGranted: 0,
+          topCodes: [],
+          recentRedemptions: []
         }
       });
     }
@@ -1266,8 +1302,13 @@ router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Admin promo analytics error:', error);
-    res.status(500).json({ message: 'Failed to fetch promo analytics' });
+    console.error('[ADMIN_PROMO_ANALYTICS] ERROR:', error.message);
+    console.error('[ADMIN_PROMO_ANALYTICS] Stack:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch promo analytics',
+      error: error.message 
+    });
   }
 });
 

@@ -143,10 +143,19 @@ const AdminDashboard = () => {
     setRevenueLoading(true);
     try {
       const data = await apiFetch('/api/admin/revenue', token);
-      setRevenue(data.revenue);
+      if (data.success === false) {
+        console.error('Revenue fetch failed:', data.message);
+        toast.error(data.message || 'Failed to load revenue data');
+        setRevenue(null);
+      } else {
+        setRevenue(data.revenue || null);
+      }
     } catch (err) {
       console.error('Revenue fetch error:', err);
-      if (!forbidden) toast.error('Failed to load revenue data');
+      if (!forbidden) {
+        toast.error(err.message || 'Failed to load revenue data');
+      }
+      setRevenue(null);
     } finally {
       setRevenueLoading(false);
     }
@@ -160,11 +169,28 @@ const AdminDashboard = () => {
         apiFetch('/api/admin/promo-codes', token),
         apiFetch('/api/admin/promo-codes/analytics', token)
       ]);
-      setPromoCodes(codesData.promoCodes || []);
-      setPromoAnalytics(analyticsData.analytics);
+      
+      if (codesData.success === false) {
+        console.error('Promo codes fetch failed:', codesData.message);
+        toast.error(codesData.message || 'Failed to load promo codes');
+        setPromoCodes([]);
+      } else {
+        setPromoCodes(codesData.promoCodes || []);
+      }
+      
+      if (analyticsData.success === false) {
+        console.error('Promo analytics fetch failed:', analyticsData.message);
+        setPromoAnalytics(null);
+      } else {
+        setPromoAnalytics(analyticsData.analytics || null);
+      }
     } catch (err) {
       console.error('Promo codes fetch error:', err);
-      if (!forbidden) toast.error('Failed to load promo codes');
+      if (!forbidden) {
+        toast.error(err.message || 'Failed to load promo codes');
+      }
+      setPromoCodes([]);
+      setPromoAnalytics(null);
     } finally {
       setPromoLoading(false);
     }
