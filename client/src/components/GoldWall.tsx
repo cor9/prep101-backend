@@ -11,8 +11,8 @@ const Clapper = () => (
 
 const TESTIMONIALS = [
   {
-    author: "Sara Shaddix",
-    quote: "Holy Moly! That audition breakdown was incredible. Really phenomenal. It broke down every little bit and my daughter really took it to heart. I would easily pay $75–$125 for this.",
+    author: "Sara S.",
+    quote: "Holy Moly! Really phenomenal. I would easily pay up to $125 for this.",
     role: "Parent"
   },
   {
@@ -26,18 +26,13 @@ const TESTIMONIALS = [
     role: "Parent"
   },
   {
-    author: "Ty Correira",
-    quote: "Thanks so much for the audition preparation guide, Corey. It gave me so much to work with and I really used it to inform a lot of choices in the audition.",
+    author: "Ty C.",
+    quote: "It gave me so much to work with and I really used it to inform a lot of choices.",
     role: "Actor"
   },
   {
     author: "Olivia Eppe",
-    quote: "This is so great to have!!! Very helpful!",
-    role: "Parent"
-  },
-  {
-    author: "Lynnette L.",
-    quote: "This is AWESOME! Thanks, Corey!! He dove right into it this morning.",
+    quote: "This is so great to have—very helpful!",
     role: "Parent"
   },
   {
