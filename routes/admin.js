@@ -1,12 +1,16 @@
-const express = require('express');
-const { Op, fn, col, literal } = require('sequelize');
-const auth = require('../middleware/auth');
-const User = require('../models/User');
-const Guide = require('../models/Guide');
-const PromoCode = require('../models/PromoCode');
-const PromoCodeRedemption = require('../models/PromoCodeRedemption');
-const { sequelize } = require('../database/connection');
-const { isSupabaseAdminConfigured, runAdminQuery, tables: supabaseTables } = require('../lib/supabaseAdmin');
+const express = require("express");
+const { Op, fn, col, literal } = require("sequelize");
+const auth = require("../middleware/auth");
+const User = require("../models/User");
+const Guide = require("../models/Guide");
+const PromoCode = require("../models/PromoCode");
+const PromoCodeRedemption = require("../models/PromoCodeRedemption");
+const { sequelize } = require("../database/connection");
+const {
+  isSupabaseAdminConfigured,
+  runAdminQuery,
+  tables: supabaseTables,
+} = require("../lib/supabaseAdmin");
 
 const router = express.Router();
 
@@ -15,12 +19,12 @@ const hasDatabase = User !== null && Guide !== null;
 const hasSupabaseFallback = isSupabaseAdminConfigured();
 
 // Log database status on module load
-console.log('🔍 Admin routes - Database status:', {
+console.log("🔍 Admin routes - Database status:", {
   hasDatabase,
   hasSupabaseFallback,
-  UserModel: User ? 'loaded' : 'null',
-  GuideModel: Guide ? 'loaded' : 'null',
-  sequelize: sequelize ? 'available' : 'null'
+  UserModel: User ? "loaded" : "null",
+  GuideModel: Guide ? "loaded" : "null",
+  sequelize: sequelize ? "available" : "null",
 });
 
 // ============================================================================
@@ -37,33 +41,34 @@ const requireAdmin = async (req, res, next) => {
     const user = req.user;
 
     // Debug logging to help diagnose admin access issues
-    console.log('🔍 Admin check:', {
+    console.log("🔍 Admin check:", {
       userId: user?.id,
       email: user?.email,
       isBetaTester: user?.isBetaTester,
       betaAccessLevel: user?.betaAccessLevel,
-      isOwnerEmail: user?.email === 'corey@childactor101.com'
+      isOwnerEmail: user?.email === "corey@childactor101.com",
     });
 
-    const isBetaAdmin = user && user.isBetaTester && user.betaAccessLevel === 'admin';
-    const ownerEmail = process.env.OWNER_EMAIL || 'corey@childactor101.com';
+    const isBetaAdmin =
+      user && user.isBetaTester && user.betaAccessLevel === "admin";
+    const ownerEmail = process.env.OWNER_EMAIL || "corey@childactor101.com";
     const isOwnerEmail = user && user.email === ownerEmail;
 
     if (!isBetaAdmin && !isOwnerEmail) {
-      console.log('❌ Admin access denied:', {
+      console.log("❌ Admin access denied:", {
         email: user?.email,
         isBetaTester: user?.isBetaTester,
         betaAccessLevel: user?.betaAccessLevel,
-        isOwnerEmail
+        isOwnerEmail,
       });
-      return res.status(403).json({ message: 'Admin access required' });
+      return res.status(403).json({ message: "Admin access required" });
     }
 
-    console.log('✅ Admin access granted:', user?.email);
+    console.log("✅ Admin access granted:", user?.email);
     next();
   } catch (error) {
-    console.error('Admin check failed:', error);
-    res.status(500).json({ message: 'Authorization check failed' });
+    console.error("Admin check failed:", error);
+    res.status(500).json({ message: "Authorization check failed" });
   }
 };
 
@@ -75,22 +80,24 @@ const requireAdmin = async (req, res, next) => {
  * GET /api/admin/dashboard
  * Comprehensive dashboard overview with all key metrics
  */
-router.get('/dashboard', auth, requireAdmin, async (req, res) => {
+router.get("/dashboard", auth, requireAdmin, async (req, res) => {
   try {
     // Check if database is available
     if (!hasDatabase) {
       if (!hasSupabaseFallback) {
         return res.status(503).json({
           success: false,
-          message: 'Database service unavailable. Please configure DATABASE_URL or Supabase credentials.',
-          error: 'No database connection available'
+          message:
+            "Database service unavailable. Please configure DATABASE_URL or Supabase credentials.",
+          error: "No database connection available",
         });
       }
       // TODO: Implement Supabase fallback for dashboard stats
       return res.status(503).json({
         success: false,
-        message: 'Database service unavailable. Supabase fallback for dashboard stats not yet implemented.',
-        error: 'Database connection required for admin dashboard'
+        message:
+          "Database service unavailable. Supabase fallback for dashboard stats not yet implemented.",
+        error: "Database connection required for admin dashboard",
       });
     }
 
@@ -116,7 +123,7 @@ router.get('/dashboard', auth, requireAdmin, async (req, res) => {
       promoCodesCount,
       redemptionsCount,
       recentUsers,
-      recentGuides
+      recentGuides,
     ] = await Promise.all([
       // Total counts
       User.count(),
@@ -134,16 +141,16 @@ router.get('/dashboard', auth, requireAdmin, async (req, res) => {
 
       // Subscription breakdown
       User.findAll({
-        attributes: ['subscription', [fn('COUNT', col('id')), 'count']],
-        group: ['subscription']
+        attributes: ["subscription", [fn("COUNT", col("id")), "count"]],
+        group: ["subscription"],
       }),
 
       // Active paid subscriptions
       User.count({
         where: {
-          subscription: { [Op.ne]: 'free' },
-          subscriptionStatus: 'active'
-        }
+          subscription: { [Op.ne]: "free" },
+          subscriptionStatus: "active",
+        },
       }),
 
       // Beta testers count
@@ -155,22 +162,30 @@ router.get('/dashboard', auth, requireAdmin, async (req, res) => {
 
       // Recent users (last 5)
       User.findAll({
-        order: [['createdAt', 'DESC']],
+        order: [["createdAt", "DESC"]],
         limit: 5,
-        attributes: ['id', 'email', 'name', 'subscription', 'createdAt']
+        attributes: ["id", "email", "name", "subscription", "createdAt"],
       }),
 
       // Recent guides (last 5)
       Guide.findAll({
-        order: [['createdAt', 'DESC']],
+        order: [["createdAt", "DESC"]],
         limit: 5,
-        attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'createdAt'],
-        include: [{
-          model: User,
-          as: 'user',
-          attributes: ['email', 'name']
-        }]
-      })
+        attributes: [
+          "id",
+          "guideId",
+          "characterName",
+          "productionTitle",
+          "createdAt",
+        ],
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["email", "name"],
+          },
+        ],
+      }),
     ]);
 
     // Calculate growth rates
@@ -178,22 +193,25 @@ router.get('/dashboard', auth, requireAdmin, async (req, res) => {
       where: {
         createdAt: {
           [Op.gte]: lastMonth,
-          [Op.lt]: thisMonth
-        }
-      }
+          [Op.lt]: thisMonth,
+        },
+      },
     });
 
-    const userGrowthRate = lastMonthUsers > 0
-      ? ((usersThisMonth - lastMonthUsers) / lastMonthUsers * 100).toFixed(1)
-      : 100;
+    const userGrowthRate =
+      lastMonthUsers > 0
+        ? (((usersThisMonth - lastMonthUsers) / lastMonthUsers) * 100).toFixed(
+            1
+          )
+        : 100;
 
     // Guide usage stats
     const guideStats = await User.findAll({
       attributes: [
-        [fn('SUM', col('guidesUsed')), 'totalGuidesUsed'],
-        [fn('SUM', col('guidesLimit')), 'totalGuidesLimit'],
-        [fn('AVG', col('guidesUsed')), 'avgGuidesUsed']
-      ]
+        [fn("SUM", col("guidesUsed")), "totalGuidesUsed"],
+        [fn("SUM", col("guidesLimit")), "totalGuidesLimit"],
+        [fn("AVG", col("guidesUsed")), "avgGuidesUsed"],
+      ],
     });
 
     const usageData = guideStats[0]?.get({ plain: true }) || {};
@@ -207,14 +225,14 @@ router.get('/dashboard', auth, requireAdmin, async (req, res) => {
           activeSubscriptions,
           betaTesters,
           promoCodesCount,
-          redemptionsCount
+          redemptionsCount,
         },
         users: {
           total: totalUsers,
           today: usersToday,
           thisWeek: usersThisWeek,
           thisMonth: usersThisMonth,
-          growthRate: parseFloat(userGrowthRate)
+          growthRate: parseFloat(userGrowthRate),
         },
         guides: {
           total: totalGuides,
@@ -222,32 +240,32 @@ router.get('/dashboard', auth, requireAdmin, async (req, res) => {
           thisWeek: guidesThisWeek,
           thisMonth: guidesThisMonth,
           totalUsed: parseInt(usageData.totalGuidesUsed) || 0,
-          avgPerUser: parseFloat(usageData.avgGuidesUsed || 0).toFixed(2)
+          avgPerUser: parseFloat(usageData.avgGuidesUsed || 0).toFixed(2),
         },
-        subscriptions: subscriptionBreakdown.map(row => ({
+        subscriptions: subscriptionBreakdown.map((row) => ({
           type: row.subscription,
-          count: Number(row.get('count'))
+          count: Number(row.get("count")),
         })),
-        recentUsers: recentUsers.map(u => ({
+        recentUsers: recentUsers.map((u) => ({
           id: u.id,
           email: u.email,
           name: u.name,
           subscription: u.subscription,
-          createdAt: u.createdAt
+          createdAt: u.createdAt,
         })),
-        recentGuides: recentGuides.map(g => ({
+        recentGuides: recentGuides.map((g) => ({
           id: g.id,
           guideId: g.guideId,
           characterName: g.characterName,
           productionTitle: g.productionTitle,
           createdAt: g.createdAt,
-          user: g.user ? { email: g.user.email, name: g.user.name } : null
-        }))
-      }
+          user: g.user ? { email: g.user.email, name: g.user.name } : null,
+        })),
+      },
     });
   } catch (error) {
-    console.error('Admin dashboard fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch dashboard data' });
+    console.error("Admin dashboard fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch dashboard data" });
   }
 });
 
@@ -255,24 +273,24 @@ router.get('/dashboard', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/stats
  * High-level platform stats (legacy endpoint, kept for compatibility)
  */
-router.get('/stats', auth, requireAdmin, async (req, res) => {
+router.get("/stats", auth, requireAdmin, async (req, res) => {
   try {
     if (!hasDatabase) {
       return res.status(503).json({
         success: false,
-        message: 'Database service unavailable',
-        error: 'No database connection available'
+        message: "Database service unavailable",
+        error: "No database connection available",
       });
     }
 
     const [totalUsers, totalGuides] = await Promise.all([
       User.count(),
-      Guide.count()
+      Guide.count(),
     ]);
 
     const subscriptions = await User.findAll({
-      attributes: ['subscription', [fn('COUNT', col('id')), 'count']],
-      group: ['subscription']
+      attributes: ["subscription", [fn("COUNT", col("id")), "count"]],
+      group: ["subscription"],
     });
 
     res.json({
@@ -282,13 +300,13 @@ router.get('/stats', auth, requireAdmin, async (req, res) => {
         totalGuides,
         subscriptions: subscriptions.map((row) => ({
           subscription: row.subscription,
-          count: Number(row.get('count'))
-        }))
-      }
+          count: Number(row.get("count")),
+        })),
+      },
     });
   } catch (error) {
-    console.error('Admin stats fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch admin stats' });
+    console.error("Admin stats fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch admin stats" });
   }
 });
 
@@ -300,24 +318,27 @@ router.get('/stats', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/users
  * List all users with pagination, search, filtering, and sorting
  */
-router.get('/users', auth, requireAdmin, async (req, res) => {
+router.get("/users", auth, requireAdmin, async (req, res) => {
   try {
     if (!hasDatabase) {
       return res.status(503).json({
         success: false,
-        message: 'Database service unavailable',
-        error: 'No database connection available'
+        message: "Database service unavailable",
+        error: "No database connection available",
       });
     }
 
-    const page = Math.max(1, parseInt(req.query.page || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '25', 10)));
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit || "25", 10))
+    );
     const offset = (page - 1) * limit;
-    const search = (req.query.search || '').trim();
+    const search = (req.query.search || "").trim();
     const subscription = req.query.subscription;
-    const betaOnly = req.query.betaOnly === 'true';
-    const sortBy = req.query.sortBy || 'createdAt';
-    const sortOrder = req.query.sortOrder === 'asc' ? 'ASC' : 'DESC';
+    const betaOnly = req.query.betaOnly === "true";
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder === "asc" ? "ASC" : "DESC";
 
     const where = {};
 
@@ -325,12 +346,12 @@ router.get('/users', auth, requireAdmin, async (req, res) => {
     if (search) {
       where[Op.or] = [
         { email: { [Op.iLike]: `%${search}%` } },
-        { name: { [Op.iLike]: `%${search}%` } }
+        { name: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
     // Subscription filter
-    if (subscription && ['free', 'basic', 'premium'].includes(subscription)) {
+    if (subscription && ["free", "basic", "premium"].includes(subscription)) {
       where.subscription = subscription;
     }
 
@@ -340,8 +361,17 @@ router.get('/users', auth, requireAdmin, async (req, res) => {
     }
 
     // Validate sort field
-    const allowedSortFields = ['createdAt', 'email', 'name', 'subscription', 'guidesUsed', 'guidesLimit'];
-    const orderField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    const allowedSortFields = [
+      "createdAt",
+      "email",
+      "name",
+      "subscription",
+      "guidesUsed",
+      "guidesLimit",
+    ];
+    const orderField = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : "createdAt";
 
     const { count, rows } = await User.findAndCountAll({
       where,
@@ -349,41 +379,53 @@ router.get('/users', auth, requireAdmin, async (req, res) => {
       offset,
       limit,
       attributes: [
-        'id', 'email', 'name', 'subscription', 'subscriptionStatus',
-        'stripeCustomerId', 'stripeSubscriptionId',
-        'guidesUsed', 'guidesLimit',
-        'isBetaTester', 'betaAccessLevel', 'betaStatus',
-        'createdAt', 'updatedAt'
-      ]
+        "id",
+        "email",
+        "name",
+        "subscription",
+        "subscriptionStatus",
+        "stripeCustomerId",
+        "stripeSubscriptionId",
+        "guidesUsed",
+        "guidesLimit",
+        "isBetaTester",
+        "betaAccessLevel",
+        "betaStatus",
+        "createdAt",
+        "updatedAt",
+      ],
     });
 
     // Get guide stats for these users
-    const userIds = rows.map(u => u.id);
+    const userIds = rows.map((u) => u.id);
     let guideStatsByUser = {};
 
     if (userIds.length > 0) {
       const guideStats = await Guide.findAll({
         attributes: [
-          'userId',
-          [fn('COUNT', col('id')), 'guidesCount'],
-          [fn('MAX', col('createdAt')), 'lastGuideAt']
+          "userId",
+          [fn("COUNT", col("id")), "guidesCount"],
+          [fn("MAX", col("createdAt")), "lastGuideAt"],
         ],
         where: { userId: { [Op.in]: userIds } },
-        group: ['userId']
+        group: ["userId"],
       });
 
       guideStatsByUser = guideStats.reduce((acc, row) => {
         const plain = row.get({ plain: true });
         acc[plain.userId] = {
           guidesCount: Number(plain.guidesCount || 0),
-          lastGuideAt: plain.lastGuideAt
+          lastGuideAt: plain.lastGuideAt,
         };
         return acc;
       }, {});
     }
 
-    const users = rows.map(u => {
-      const stats = guideStatsByUser[u.id] || { guidesCount: 0, lastGuideAt: null };
+    const users = rows.map((u) => {
+      const stats = guideStatsByUser[u.id] || {
+        guidesCount: 0,
+        lastGuideAt: null,
+      };
       return {
         id: u.id,
         email: u.email,
@@ -400,7 +442,7 @@ router.get('/users', auth, requireAdmin, async (req, res) => {
         betaAccessLevel: u.betaAccessLevel,
         betaStatus: u.betaStatus,
         createdAt: u.createdAt,
-        updatedAt: u.updatedAt
+        updatedAt: u.updatedAt,
       };
     });
 
@@ -410,11 +452,11 @@ router.get('/users', auth, requireAdmin, async (req, res) => {
       limit,
       total: count,
       totalPages: Math.ceil(count / limit),
-      users
+      users,
     });
   } catch (error) {
-    console.error('Admin users fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch users' });
+    console.error("Admin users fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 });
 
@@ -422,24 +464,34 @@ router.get('/users', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/users/:id
  * Get detailed information about a specific user
  */
-router.get('/users/:id', auth, requireAdmin, async (req, res) => {
+router.get("/users/:id", auth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
     const user = await User.findByPk(id, {
-      attributes: { exclude: ['password'] }
+      attributes: { exclude: ["password"] },
     });
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Get user's guides
     const guides = await Guide.findAll({
       where: { userId: id },
-      order: [['createdAt', 'DESC']],
+      order: [["createdAt", "DESC"]],
       limit: 50,
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'productionType', 'genre', 'isPublic', 'viewCount', 'createdAt']
+      attributes: [
+        "id",
+        "guideId",
+        "characterName",
+        "productionTitle",
+        "productionType",
+        "genre",
+        "isPublic",
+        "viewCount",
+        "createdAt",
+      ],
     });
 
     // Get user's promo code redemptions
@@ -447,12 +499,14 @@ router.get('/users/:id', auth, requireAdmin, async (req, res) => {
     if (PromoCodeRedemption) {
       redemptions = await PromoCodeRedemption.findAll({
         where: { userId: id },
-        include: [{
-          model: PromoCode,
-          as: 'promoCode',
-          attributes: ['code', 'type', 'description']
-        }],
-        order: [['redeemedAt', 'DESC']]
+        include: [
+          {
+            model: PromoCode,
+            as: "promoCode",
+            attributes: ["code", "type", "description"],
+          },
+        ],
+        order: [["redeemedAt", "DESC"]],
       });
     }
 
@@ -460,11 +514,14 @@ router.get('/users/:id', auth, requireAdmin, async (req, res) => {
     let billingInfo = null;
     if (user.stripeCustomerId) {
       try {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
         const [customer, invoices, subscriptions] = await Promise.all([
           stripe.customers.retrieve(user.stripeCustomerId),
           stripe.invoices.list({ customer: user.stripeCustomerId, limit: 10 }),
-          stripe.subscriptions.list({ customer: user.stripeCustomerId, limit: 5 })
+          stripe.subscriptions.list({
+            customer: user.stripeCustomerId,
+            limit: 5,
+          }),
         ]);
 
         billingInfo = {
@@ -472,26 +529,26 @@ router.get('/users/:id', auth, requireAdmin, async (req, res) => {
             id: customer.id,
             email: customer.email,
             created: new Date(customer.created * 1000),
-            balance: customer.balance
+            balance: customer.balance,
           },
-          invoices: invoices.data.map(inv => ({
+          invoices: invoices.data.map((inv) => ({
             id: inv.id,
             amount: inv.amount_paid / 100,
             currency: inv.currency.toUpperCase(),
             status: inv.status,
             date: new Date(inv.created * 1000),
-            pdfUrl: inv.invoice_pdf
+            pdfUrl: inv.invoice_pdf,
           })),
-          subscriptions: subscriptions.data.map(sub => ({
+          subscriptions: subscriptions.data.map((sub) => ({
             id: sub.id,
             status: sub.status,
-            plan: sub.items.data[0]?.price?.nickname || 'Unknown',
+            plan: sub.items.data[0]?.price?.nickname || "Unknown",
             currentPeriodEnd: new Date(sub.current_period_end * 1000),
-            cancelAtPeriodEnd: sub.cancel_at_period_end
-          }))
+            cancelAtPeriodEnd: sub.cancel_at_period_end,
+          })),
         };
       } catch (stripeError) {
-        console.error('Error fetching Stripe data:', stripeError.message);
+        console.error("Error fetching Stripe data:", stripeError.message);
       }
     }
 
@@ -499,23 +556,23 @@ router.get('/users/:id', auth, requireAdmin, async (req, res) => {
       success: true,
       user: {
         ...user.get({ plain: true }),
-        password: undefined // Remove password from response
+        password: undefined, // Remove password from response
       },
-      guides: guides.map(g => g.get({ plain: true })),
-      redemptions: redemptions.map(r => ({
+      guides: guides.map((g) => g.get({ plain: true })),
+      redemptions: redemptions.map((r) => ({
         id: r.id,
         code: r.promoCode?.code,
         type: r.promoCode?.type,
         description: r.promoCode?.description,
         guidesGranted: r.guidesGranted,
         discountPercent: r.discountPercent,
-        redeemedAt: r.redeemedAt
+        redeemedAt: r.redeemedAt,
       })),
-      billing: billingInfo
+      billing: billingInfo,
     });
   } catch (error) {
-    console.error('Admin user detail error:', error);
-    res.status(500).json({ message: 'Failed to fetch user details' });
+    console.error("Admin user detail error:", error);
+    res.status(500).json({ message: "Failed to fetch user details" });
   }
 });
 
@@ -523,7 +580,7 @@ router.get('/users/:id', auth, requireAdmin, async (req, res) => {
  * PUT /api/admin/users/:id
  * Update a user's information
  */
-router.put('/users/:id', auth, requireAdmin, async (req, res) => {
+router.put("/users/:id", auth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -534,28 +591,40 @@ router.put('/users/:id', auth, requireAdmin, async (req, res) => {
       guidesUsed,
       isBetaTester,
       betaAccessLevel,
-      betaStatus
+      betaStatus,
     } = req.body;
 
     const user = await User.findByPk(id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const updates = {};
 
     if (name !== undefined) updates.name = name;
-    if (subscription !== undefined && ['free', 'basic', 'premium'].includes(subscription)) {
+    if (
+      subscription !== undefined &&
+      ["free", "basic", "premium"].includes(subscription)
+    ) {
       updates.subscription = subscription;
     }
-    if (subscriptionStatus !== undefined) updates.subscriptionStatus = subscriptionStatus;
-    if (typeof guidesLimit === 'number' && guidesLimit >= 0) updates.guidesLimit = guidesLimit;
-    if (typeof guidesUsed === 'number' && guidesUsed >= 0) updates.guidesUsed = guidesUsed;
-    if (typeof isBetaTester === 'boolean') updates.isBetaTester = isBetaTester;
-    if (betaAccessLevel !== undefined && ['none', 'early', 'premium', 'admin'].includes(betaAccessLevel)) {
+    if (subscriptionStatus !== undefined)
+      updates.subscriptionStatus = subscriptionStatus;
+    if (typeof guidesLimit === "number" && guidesLimit >= 0)
+      updates.guidesLimit = guidesLimit;
+    if (typeof guidesUsed === "number" && guidesUsed >= 0)
+      updates.guidesUsed = guidesUsed;
+    if (typeof isBetaTester === "boolean") updates.isBetaTester = isBetaTester;
+    if (
+      betaAccessLevel !== undefined &&
+      ["none", "early", "premium", "admin"].includes(betaAccessLevel)
+    ) {
       updates.betaAccessLevel = betaAccessLevel;
     }
-    if (betaStatus !== undefined && ['invited', 'active', 'completed', 'expired'].includes(betaStatus)) {
+    if (
+      betaStatus !== undefined &&
+      ["invited", "active", "completed", "expired"].includes(betaStatus)
+    ) {
       updates.betaStatus = betaStatus;
     }
 
@@ -563,7 +632,7 @@ router.put('/users/:id', auth, requireAdmin, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'User updated successfully',
+      message: "User updated successfully",
       user: {
         id: user.id,
         email: user.email,
@@ -574,12 +643,12 @@ router.put('/users/:id', auth, requireAdmin, async (req, res) => {
         guidesLimit: user.guidesLimit,
         isBetaTester: user.isBetaTester,
         betaAccessLevel: user.betaAccessLevel,
-        betaStatus: user.betaStatus
-      }
+        betaStatus: user.betaStatus,
+      },
     });
   } catch (error) {
-    console.error('Admin user update error:', error);
-    res.status(500).json({ message: 'Failed to update user' });
+    console.error("Admin user update error:", error);
+    res.status(500).json({ message: "Failed to update user" });
   }
 });
 
@@ -587,54 +656,69 @@ router.put('/users/:id', auth, requireAdmin, async (req, res) => {
  * PUT /api/admin/users/:id/guides
  * Adjust a user's guide limits/usage (legacy endpoint, kept for compatibility)
  */
-router.put('/users/:id/guides', auth, requireAdmin, async (req, res) => {
+router.put("/users/:id/guides", auth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { guidesLimit, guidesUsed, addGuides } = req.body || {};
 
     if (
-      typeof guidesLimit === 'undefined' &&
-      typeof guidesUsed === 'undefined' &&
-      typeof addGuides === 'undefined'
+      typeof guidesLimit === "undefined" &&
+      typeof guidesUsed === "undefined" &&
+      typeof addGuides === "undefined"
     ) {
-      return res.status(400).json({ message: 'No guide fields provided to update' });
+      return res
+        .status(400)
+        .json({ message: "No guide fields provided to update" });
     }
 
     const user = await User.findByPk(id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const updates = {};
 
-    if (typeof guidesLimit === 'number' && Number.isInteger(guidesLimit) && guidesLimit >= 0) {
+    if (
+      typeof guidesLimit === "number" &&
+      Number.isInteger(guidesLimit) &&
+      guidesLimit >= 0
+    ) {
       updates.guidesLimit = guidesLimit;
     }
 
-    if (typeof guidesUsed === 'number' && Number.isInteger(guidesUsed) && guidesUsed >= 0) {
+    if (
+      typeof guidesUsed === "number" &&
+      Number.isInteger(guidesUsed) &&
+      guidesUsed >= 0
+    ) {
       updates.guidesUsed = guidesUsed;
     }
 
-    if (typeof addGuides === 'number' && Number.isInteger(addGuides) && addGuides !== 0) {
-      updates.guidesLimit = (updates.guidesLimit ?? user.guidesLimit) + addGuides;
+    if (
+      typeof addGuides === "number" &&
+      Number.isInteger(addGuides) &&
+      addGuides !== 0
+    ) {
+      updates.guidesLimit =
+        (updates.guidesLimit ?? user.guidesLimit) + addGuides;
     }
 
     await user.update(updates);
 
     res.json({
       success: true,
-      message: 'Guide limits updated',
+      message: "Guide limits updated",
       user: {
         id: user.id,
         email: user.email,
         subscription: user.subscription,
         guidesUsed: user.guidesUsed,
-        guidesLimit: user.guidesLimit
-      }
+        guidesLimit: user.guidesLimit,
+      },
     });
   } catch (error) {
-    console.error('Admin guides update error:', error);
-    res.status(500).json({ message: 'Failed to update guide limits' });
+    console.error("Admin guides update error:", error);
+    res.status(500).json({ message: "Failed to update guide limits" });
   }
 });
 
@@ -642,23 +726,25 @@ router.put('/users/:id/guides', auth, requireAdmin, async (req, res) => {
  * DELETE /api/admin/users/:id
  * Delete a user and optionally their guides
  */
-router.delete('/users/:id', auth, requireAdmin, async (req, res) => {
+router.delete("/users/:id", auth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { deleteGuides } = req.query;
 
     const user = await User.findByPk(id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Prevent deleting yourself
     if (user.id === req.userId) {
-      return res.status(400).json({ message: 'Cannot delete your own account' });
+      return res
+        .status(400)
+        .json({ message: "Cannot delete your own account" });
     }
 
     // Delete guides if requested
-    if (deleteGuides === 'true') {
+    if (deleteGuides === "true") {
       await Guide.destroy({ where: { userId: id } });
     }
 
@@ -672,11 +758,11 @@ router.delete('/users/:id', auth, requireAdmin, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'User deleted successfully'
+      message: "User deleted successfully",
     });
   } catch (error) {
-    console.error('Admin user delete error:', error);
-    res.status(500).json({ message: 'Failed to delete user' });
+    console.error("Admin user delete error:", error);
+    res.status(500).json({ message: "Failed to delete user" });
   }
 });
 
@@ -688,26 +774,29 @@ router.delete('/users/:id', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/guides
  * List all guides with pagination, search, and filtering
  */
-router.get('/guides', auth, requireAdmin, async (req, res) => {
+router.get("/guides", auth, requireAdmin, async (req, res) => {
   try {
     if (!hasDatabase) {
       return res.status(503).json({
         success: false,
-        message: 'Database service unavailable',
-        error: 'No database connection available'
+        message: "Database service unavailable",
+        error: "No database connection available",
       });
     }
 
-    const page = Math.max(1, parseInt(req.query.page || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '25', 10)));
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit || "25", 10))
+    );
     const offset = (page - 1) * limit;
-    const search = (req.query.search || '').trim();
+    const search = (req.query.search || "").trim();
     const productionType = req.query.productionType;
     const genre = req.query.genre;
     const isPublic = req.query.isPublic;
     const userId = req.query.userId;
-    const sortBy = req.query.sortBy || 'createdAt';
-    const sortOrder = req.query.sortOrder === 'asc' ? 'ASC' : 'DESC';
+    const sortBy = req.query.sortBy || "createdAt";
+    const sortOrder = req.query.sortOrder === "asc" ? "ASC" : "DESC";
 
     const where = {};
 
@@ -716,36 +805,56 @@ router.get('/guides', auth, requireAdmin, async (req, res) => {
       where[Op.or] = [
         { characterName: { [Op.iLike]: `%${search}%` } },
         { productionTitle: { [Op.iLike]: `%${search}%` } },
-        { guideId: { [Op.iLike]: `%${search}%` } }
+        { guideId: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
     // Filters
     if (productionType) where.productionType = productionType;
     if (genre) where.genre = genre;
-    if (isPublic !== undefined) where.isPublic = isPublic === 'true';
+    if (isPublic !== undefined) where.isPublic = isPublic === "true";
     if (userId) where.userId = userId;
 
     // Validate sort field
-    const allowedSortFields = ['createdAt', 'characterName', 'productionTitle', 'viewCount'];
-    const orderField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    const allowedSortFields = [
+      "createdAt",
+      "characterName",
+      "productionTitle",
+      "viewCount",
+    ];
+    const orderField = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : "createdAt";
 
     const { count, rows } = await Guide.findAndCountAll({
       where,
       order: [[orderField, sortOrder]],
       offset,
       limit,
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['id', 'email', 'name']
-      }],
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "email", "name"],
+        },
+      ],
       attributes: [
-        'id', 'guideId', 'characterName', 'productionTitle', 'productionType',
-        'productionTone', 'roleSize', 'genre', 'isPublic', 'viewCount',
-        'isFavorite', 'childGuideRequested', 'childGuideCompleted',
-        'createdAt', 'updatedAt'
-      ]
+        "id",
+        "guideId",
+        "characterName",
+        "productionTitle",
+        "productionType",
+        "productionTone",
+        "roleSize",
+        "genre",
+        "isPublic",
+        "viewCount",
+        "isFavorite",
+        "childGuideRequested",
+        "childGuideCompleted",
+        "createdAt",
+        "updatedAt",
+      ],
     });
 
     res.json({
@@ -754,14 +863,16 @@ router.get('/guides', auth, requireAdmin, async (req, res) => {
       limit,
       total: count,
       totalPages: Math.ceil(count / limit),
-      guides: rows.map(g => ({
+      guides: rows.map((g) => ({
         ...g.get({ plain: true }),
-        user: g.user ? { id: g.user.id, email: g.user.email, name: g.user.name } : null
-      }))
+        user: g.user
+          ? { id: g.user.id, email: g.user.email, name: g.user.name }
+          : null,
+      })),
     });
   } catch (error) {
-    console.error('Admin guides fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch guides' });
+    console.error("Admin guides fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch guides" });
   }
 });
 
@@ -769,37 +880,39 @@ router.get('/guides', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/guides/:id
  * Get full details of a specific guide
  */
-router.get('/guides/:id', auth, requireAdmin, async (req, res) => {
+router.get("/guides/:id", auth, requireAdmin, async (req, res) => {
   try {
     if (!hasDatabase) {
       return res.status(503).json({
         success: false,
-        message: 'Database service unavailable',
-        error: 'No database connection available'
+        message: "Database service unavailable",
+        error: "No database connection available",
       });
     }
 
     const { id } = req.params;
 
     const guide = await Guide.findByPk(id, {
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['id', 'email', 'name', 'subscription']
-      }]
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "email", "name", "subscription"],
+        },
+      ],
     });
 
     if (!guide) {
-      return res.status(404).json({ message: 'Guide not found' });
+      return res.status(404).json({ message: "Guide not found" });
     }
 
     res.json({
       success: true,
-      guide: guide.get({ plain: true })
+      guide: guide.get({ plain: true }),
     });
   } catch (error) {
-    console.error('Admin guide detail error:', error);
-    res.status(500).json({ message: 'Failed to fetch guide details' });
+    console.error("Admin guide detail error:", error);
+    res.status(500).json({ message: "Failed to fetch guide details" });
   }
 });
 
@@ -807,24 +920,24 @@ router.get('/guides/:id', auth, requireAdmin, async (req, res) => {
  * DELETE /api/admin/guides/:id
  * Delete a specific guide
  */
-router.delete('/guides/:id', auth, requireAdmin, async (req, res) => {
+router.delete("/guides/:id", auth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
     const guide = await Guide.findByPk(id);
     if (!guide) {
-      return res.status(404).json({ message: 'Guide not found' });
+      return res.status(404).json({ message: "Guide not found" });
     }
 
     await guide.destroy();
 
     res.json({
       success: true,
-      message: 'Guide deleted successfully'
+      message: "Guide deleted successfully",
     });
   } catch (error) {
-    console.error('Admin guide delete error:', error);
-    res.status(500).json({ message: 'Failed to delete guide' });
+    console.error("Admin guide delete error:", error);
+    res.status(500).json({ message: "Failed to delete guide" });
   }
 });
 
@@ -832,74 +945,94 @@ router.delete('/guides/:id', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/guides/analytics
  * Get guide analytics and statistics
  */
-router.get('/guides/analytics', auth, requireAdmin, async (req, res) => {
+router.get("/guides/analytics", auth, requireAdmin, async (req, res) => {
   try {
     if (!hasDatabase) {
       return res.status(503).json({
         success: false,
-        message: 'Database service unavailable',
-        error: 'No database connection available'
+        message: "Database service unavailable",
+        error: "No database connection available",
       });
     }
 
     // Get production type breakdown
     const byProductionType = await Guide.findAll({
-      attributes: ['productionType', [fn('COUNT', col('id')), 'count']],
-      group: ['productionType'],
-      order: [[literal('count'), 'DESC']]
+      attributes: ["productionType", [fn("COUNT", col("id")), "count"]],
+      group: ["productionType"],
+      order: [[literal("count"), "DESC"]],
     });
 
     // Get genre breakdown
     const byGenre = await Guide.findAll({
-      attributes: ['genre', [fn('COUNT', col('id')), 'count']],
-      group: ['genre'],
-      order: [[literal('count'), 'DESC']]
+      attributes: ["genre", [fn("COUNT", col("id")), "count"]],
+      group: ["genre"],
+      order: [[literal("count"), "DESC"]],
     });
 
     // Get role size breakdown
     const byRoleSize = await Guide.findAll({
-      attributes: ['roleSize', [fn('COUNT', col('id')), 'count']],
-      group: ['roleSize'],
-      order: [[literal('count'), 'DESC']]
+      attributes: ["roleSize", [fn("COUNT", col("id")), "count"]],
+      group: ["roleSize"],
+      order: [[literal("count"), "DESC"]],
     });
 
     // Public vs private guides
     const publicPrivate = await Guide.findAll({
-      attributes: ['isPublic', [fn('COUNT', col('id')), 'count']],
-      group: ['isPublic']
+      attributes: ["isPublic", [fn("COUNT", col("id")), "count"]],
+      group: ["isPublic"],
     });
 
     // Child guides stats
     const childGuideStats = await Guide.findAll({
       attributes: [
-        [fn('SUM', literal('CASE WHEN "childGuideRequested" = true THEN 1 ELSE 0 END')), 'requested'],
-        [fn('SUM', literal('CASE WHEN "childGuideCompleted" = true THEN 1 ELSE 0 END')), 'completed']
-      ]
+        [
+          fn(
+            "SUM",
+            literal('CASE WHEN "childGuideRequested" = true THEN 1 ELSE 0 END')
+          ),
+          "requested",
+        ],
+        [
+          fn(
+            "SUM",
+            literal('CASE WHEN "childGuideCompleted" = true THEN 1 ELSE 0 END')
+          ),
+          "completed",
+        ],
+      ],
     });
 
     // Top viewed guides
     const topViewed = await Guide.findAll({
       where: { viewCount: { [Op.gt]: 0 } },
-      order: [['viewCount', 'DESC']],
+      order: [["viewCount", "DESC"]],
       limit: 10,
-      attributes: ['id', 'guideId', 'characterName', 'productionTitle', 'viewCount'],
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['email', 'name']
-      }]
+      attributes: [
+        "id",
+        "guideId",
+        "characterName",
+        "productionTitle",
+        "viewCount",
+      ],
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["email", "name"],
+        },
+      ],
     });
 
     // Guides created over time (last 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const dailyGuides = await Guide.findAll({
       attributes: [
-        [fn('DATE', col('createdAt')), 'date'],
-        [fn('COUNT', col('id')), 'count']
+        [fn("DATE", col("createdAt")), "date"],
+        [fn("COUNT", col("id")), "count"],
       ],
       where: { createdAt: { [Op.gte]: thirtyDaysAgo } },
-      group: [fn('DATE', col('createdAt'))],
-      order: [[fn('DATE', col('createdAt')), 'ASC']]
+      group: [fn("DATE", col("createdAt"))],
+      order: [[fn("DATE", col("createdAt")), "ASC"]],
     });
 
     const childStats = childGuideStats[0]?.get({ plain: true }) || {};
@@ -907,43 +1040,43 @@ router.get('/guides/analytics', auth, requireAdmin, async (req, res) => {
     res.json({
       success: true,
       analytics: {
-        byProductionType: byProductionType.map(r => ({
+        byProductionType: byProductionType.map((r) => ({
           type: r.productionType,
-          count: Number(r.get('count'))
+          count: Number(r.get("count")),
         })),
-        byGenre: byGenre.map(r => ({
+        byGenre: byGenre.map((r) => ({
           genre: r.genre,
-          count: Number(r.get('count'))
+          count: Number(r.get("count")),
         })),
-        byRoleSize: byRoleSize.map(r => ({
+        byRoleSize: byRoleSize.map((r) => ({
           roleSize: r.roleSize,
-          count: Number(r.get('count'))
+          count: Number(r.get("count")),
         })),
         visibility: {
-          public: publicPrivate.find(r => r.isPublic)?.get('count') || 0,
-          private: publicPrivate.find(r => !r.isPublic)?.get('count') || 0
+          public: publicPrivate.find((r) => r.isPublic)?.get("count") || 0,
+          private: publicPrivate.find((r) => !r.isPublic)?.get("count") || 0,
         },
         childGuides: {
           requested: parseInt(childStats.requested) || 0,
-          completed: parseInt(childStats.completed) || 0
+          completed: parseInt(childStats.completed) || 0,
         },
-        topViewed: topViewed.map(g => ({
+        topViewed: topViewed.map((g) => ({
           id: g.id,
           guideId: g.guideId,
           characterName: g.characterName,
           productionTitle: g.productionTitle,
           viewCount: g.viewCount,
-          user: g.user ? { email: g.user.email, name: g.user.name } : null
+          user: g.user ? { email: g.user.email, name: g.user.name } : null,
         })),
-        dailyCreation: dailyGuides.map(r => ({
-          date: r.get('date'),
-          count: Number(r.get('count'))
-        }))
-      }
+        dailyCreation: dailyGuides.map((r) => ({
+          date: r.get("date"),
+          count: Number(r.get("count")),
+        })),
+      },
     });
   } catch (error) {
-    console.error('Admin guide analytics error:', error);
-    res.status(500).json({ message: 'Failed to fetch guide analytics' });
+    console.error("Admin guide analytics error:", error);
+    res.status(500).json({ message: "Failed to fetch guide analytics" });
   }
 });
 
@@ -955,146 +1088,211 @@ router.get('/guides/analytics', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/revenue
  * Get revenue analytics from Stripe
  */
-router.get('/revenue', auth, requireAdmin, async (req, res) => {
+router.get("/revenue", auth, requireAdmin, async (req, res) => {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
-      console.warn('[ADMIN_REVENUE] Stripe not configured');
+      console.warn("[ADMIN_REVENUE] Stripe not configured");
       return res.json({
         success: true,
         revenue: {
-          balance: { available: 0, pending: 0, currency: 'USD' },
+          balance: { available: 0, pending: 0, currency: "USD" },
           thisMonth: 0,
           lastMonth: 0,
           thisYear: 0,
           mrr: 0,
           growth: 0,
           subscriptions: { active: 0, canceled: 0, trialing: 0, total: 0 },
-          recentTransactions: []
+          recentTransactions: [],
         },
-        message: 'Stripe not configured'
+        message: "Stripe not configured",
       });
     }
 
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
     const now = new Date();
-    const thisMonth = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
-    const lastMonth = Math.floor(new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime() / 1000);
-    const thisYear = Math.floor(new Date(now.getFullYear(), 0, 1).getTime() / 1000);
+    const thisMonth = Math.floor(
+      new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000
+    );
+    const lastMonth = Math.floor(
+      new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime() / 1000
+    );
+    const thisYear = Math.floor(
+      new Date(now.getFullYear(), 0, 1).getTime() / 1000
+    );
 
-    // Get balance
-    const balance = await stripe.balance.retrieve();
+    // Get balance with error handling
+    let balance = { available: [], pending: [] };
+    try {
+      balance = await stripe.balance.retrieve();
+    } catch (balanceError) {
+      console.warn("[ADMIN_REVENUE] Error fetching balance:", balanceError.message);
+      // Continue with empty balance
+    }
 
     // Allowed product IDs for revenue calculation
     const allowedProductIds = [
-      'prod_SwSC2lUrIwBKP6',
-      'prod_SwS55c4KaSZNmM',
-      'prod_SwS0gu1NNU9g2S',
-      'prod_SwRoKtto1AE7SM',
-      'prod_SwRDOUfUg85u7Y',
-      'prod_TUIKgvjCsJN3Wh',
-      'prod_TUIHQcnJlcURJm'
+      "prod_SwSC2lUrIwBKP6",
+      "prod_SwS55c4KaSZNmM",
+      "prod_SwS0gu1NNU9g2S",
+      "prod_SwRoKtto1AE7SM",
+      "prod_SwRDOUfUg85u7Y",
+      "prod_TUIKgvjCsJN3Wh",
+      "prod_TUIHQcnJlcURJm",
     ];
 
     // Get all subscriptions and filter by product
-    const allSubscriptions = await stripe.subscriptions.list({
-      limit: 100,
-      status: 'all',
-      expand: ['data.items.data.price.product']
-    });
+    let allSubscriptions = { data: [] };
+    try {
+      allSubscriptions = await stripe.subscriptions.list({
+        limit: 100,
+        status: "all",
+      });
+    } catch (subError) {
+      console.error("[ADMIN_REVENUE] Error fetching subscriptions:", subError.message);
+      throw new Error(`Failed to fetch subscriptions: ${subError.message}`);
+    }
 
     // Filter subscriptions to only allowed products
-    const filteredSubscriptions = allSubscriptions.data.filter(s => {
-      const item = s.items.data[0];
-      const productId = item?.price?.product;
-      // Handle both string IDs and expanded product objects
-      const productIdStr = typeof productId === 'string' 
-        ? productId 
-        : productId?.id || null;
-      return productIdStr && allowedProductIds.includes(productIdStr);
-    });
+    // We need to check the product ID from the price
+    const filteredSubscriptions = [];
+    for (const sub of allSubscriptions.data) {
+      try {
+        const item = sub.items.data[0];
+        if (!item?.price?.product) continue;
+        
+        // Get product ID - it might be a string or we need to expand it
+        let productId = item.price.product;
+        if (typeof productId === "string") {
+          // If it's a string ID, check if it's in our allowed list
+          if (allowedProductIds.includes(productId)) {
+            filteredSubscriptions.push(sub);
+          }
+        } else {
+          // If it's already expanded, use the id property
+          if (productId?.id && allowedProductIds.includes(productId.id)) {
+            filteredSubscriptions.push(sub);
+          }
+        }
+      } catch (err) {
+        console.warn(`[ADMIN_REVENUE] Error processing subscription ${sub.id}:`, err.message);
+        // Continue to next subscription
+      }
+    }
 
     // Get invoices for filtered subscriptions to calculate revenue
-    const subscriptionIds = filteredSubscriptions.map(s => s.id);
+    const subscriptionIds = filteredSubscriptions.map((s) => s.id);
     const allInvoices = [];
-    
+
+    // Fetch invoices with rate limiting and error handling
     for (const subId of subscriptionIds) {
       try {
         const invoices = await stripe.invoices.list({
           subscription: subId,
-          limit: 100
+          limit: 100,
         });
-        allInvoices.push(...invoices.data);
+        if (invoices && invoices.data) {
+          allInvoices.push(...invoices.data);
+        }
       } catch (err) {
-        console.warn(`[ADMIN_REVENUE] Error fetching invoices for subscription ${subId}:`, err.message);
+        console.warn(
+          `[ADMIN_REVENUE] Error fetching invoices for subscription ${subId}:`,
+          err.message
+        );
+        // Continue with other subscriptions
       }
     }
 
     // Calculate revenue from invoices (only from allowed products)
     const thisMonthRevenue = allInvoices
-      .filter(inv => {
+      .filter((inv) => {
         const invDate = new Date(inv.created * 1000);
         const invTimestamp = Math.floor(invDate.getTime() / 1000);
-        return invTimestamp >= thisMonth && inv.status === 'paid';
+        return invTimestamp >= thisMonth && inv.status === "paid";
       })
       .reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
 
     const lastMonthRevenue = allInvoices
-      .filter(inv => {
+      .filter((inv) => {
         const invDate = new Date(inv.created * 1000);
         const invTimestamp = Math.floor(invDate.getTime() / 1000);
-        return invTimestamp >= lastMonth && invTimestamp < thisMonth && inv.status === 'paid';
+        return (
+          invTimestamp >= lastMonth &&
+          invTimestamp < thisMonth &&
+          inv.status === "paid"
+        );
       })
       .reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
 
     const thisYearRevenue = allInvoices
-      .filter(inv => inv.status === 'paid')
+      .filter((inv) => inv.status === "paid")
       .reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
 
-    const activeSubscriptions = filteredSubscriptions.filter(s => s.status === 'active').length;
-    const canceledSubscriptions = filteredSubscriptions.filter(s => s.status === 'canceled').length;
-    const trialingSubscriptions = filteredSubscriptions.filter(s => s.status === 'trialing').length;
+    const activeSubscriptions = filteredSubscriptions.filter(
+      (s) => s.status === "active"
+    ).length;
+    const canceledSubscriptions = filteredSubscriptions.filter(
+      (s) => s.status === "canceled"
+    ).length;
+    const trialingSubscriptions = filteredSubscriptions.filter(
+      (s) => s.status === "trialing"
+    ).length;
 
     // Calculate MRR (Monthly Recurring Revenue) - only from allowed products
     const mrr = filteredSubscriptions
-      .filter(s => s.status === 'active')
+      .filter((s) => s.status === "active")
       .reduce((sum, s) => {
         const item = s.items.data[0];
-        if (item?.price?.recurring?.interval === 'month') {
+        if (item?.price?.recurring?.interval === "month") {
           return sum + (item.price.unit_amount || 0);
-        } else if (item?.price?.recurring?.interval === 'year') {
-          return sum + ((item.price.unit_amount || 0) / 12);
+        } else if (item?.price?.recurring?.interval === "year") {
+          return sum + (item.price.unit_amount || 0) / 12;
         }
         return sum;
       }, 0);
 
     // Recent transactions from invoices (only from allowed products)
     const recentTransactions = allInvoices
-      .filter(inv => inv.status === 'paid')
+      .filter((inv) => inv.status === "paid")
       .sort((a, b) => b.created - a.created)
       .slice(0, 20)
-      .map(inv => ({
+      .map((inv) => ({
         id: inv.id,
         amount: (inv.amount_paid || 0) / 100,
         currency: inv.currency.toUpperCase(),
-        status: inv.status === 'paid' ? 'succeeded' : inv.status,
+        status: inv.status === "paid" ? "succeeded" : inv.status,
         date: new Date(inv.created * 1000),
-        description: inv.description || `Invoice for ${inv.customer_email || 'customer'}`,
-        customerEmail: inv.customer_email
+        description:
+          inv.description || `Invoice for ${inv.customer_email || "customer"}`,
+        customerEmail: inv.customer_email,
       }));
 
     // Revenue growth
-    const revenueGrowth = lastMonthRevenue > 0
-      ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
-      : (thisMonthRevenue > 0 ? 100 : 0);
+    const revenueGrowth =
+      lastMonthRevenue > 0
+        ? (
+            ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) *
+            100
+          ).toFixed(1)
+        : thisMonthRevenue > 0
+        ? 100
+        : 0;
+
+    // Safely calculate balance totals
+    const availableBalance = Array.isArray(balance.available)
+      ? balance.available.reduce((sum, b) => sum + (b.amount || 0), 0) / 100
+      : 0;
+    const pendingBalance = Array.isArray(balance.pending)
+      ? balance.pending.reduce((sum, b) => sum + (b.amount || 0), 0) / 100
+      : 0;
 
     res.json({
       success: true,
       revenue: {
         balance: {
-          available: balance.available.reduce((sum, b) => sum + b.amount, 0) / 100,
-          pending: balance.pending.reduce((sum, b) => sum + b.amount, 0) / 100,
-          currency: 'USD'
+          available: availableBalance,
+          pending: pendingBalance,
+          currency: "USD",
         },
         thisMonth: thisMonthRevenue / 100,
         lastMonth: lastMonthRevenue / 100,
@@ -1105,18 +1303,18 @@ router.get('/revenue', auth, requireAdmin, async (req, res) => {
           active: activeSubscriptions,
           canceled: canceledSubscriptions,
           trialing: trialingSubscriptions,
-          total: filteredSubscriptions.length
+          total: filteredSubscriptions.length,
         },
-        recentTransactions
-      }
+        recentTransactions,
+      },
     });
   } catch (error) {
-    console.error('[ADMIN_REVENUE] ERROR:', error.message);
-    console.error('[ADMIN_REVENUE] Stack:', error.stack);
+    console.error("[ADMIN_REVENUE] ERROR:", error.message);
+    console.error("[ADMIN_REVENUE] Stack:", error.stack);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch revenue data',
-      error: error.message
+      message: "Failed to fetch revenue data",
+      error: error.message,
     });
   }
 });
@@ -1125,15 +1323,18 @@ router.get('/revenue', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/subscriptions
  * Get all subscriptions with details
  */
-router.get('/subscriptions', auth, requireAdmin, async (req, res) => {
+router.get("/subscriptions", auth, requireAdmin, async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '25', 10)));
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit || "25", 10))
+    );
     const status = req.query.status; // active, canceled, past_due, etc.
 
     // Get users with subscriptions
     const where = {
-      stripeSubscriptionId: { [Op.ne]: null }
+      stripeSubscriptionId: { [Op.ne]: null },
     };
 
     if (status) {
@@ -1142,14 +1343,22 @@ router.get('/subscriptions', auth, requireAdmin, async (req, res) => {
 
     const { count, rows } = await User.findAndCountAll({
       where,
-      order: [['createdAt', 'DESC']],
+      order: [["createdAt", "DESC"]],
       offset: (page - 1) * limit,
       limit,
       attributes: [
-        'id', 'email', 'name', 'subscription', 'subscriptionStatus',
-        'stripeCustomerId', 'stripeSubscriptionId', 'stripePriceId',
-        'currentPeriodStart', 'currentPeriodEnd', 'createdAt'
-      ]
+        "id",
+        "email",
+        "name",
+        "subscription",
+        "subscriptionStatus",
+        "stripeCustomerId",
+        "stripeSubscriptionId",
+        "stripePriceId",
+        "currentPeriodStart",
+        "currentPeriodEnd",
+        "createdAt",
+      ],
     });
 
     res.json({
@@ -1158,7 +1367,7 @@ router.get('/subscriptions', auth, requireAdmin, async (req, res) => {
       limit,
       total: count,
       totalPages: Math.ceil(count / limit),
-      subscriptions: rows.map(u => ({
+      subscriptions: rows.map((u) => ({
         userId: u.id,
         email: u.email,
         name: u.name,
@@ -1168,12 +1377,12 @@ router.get('/subscriptions', auth, requireAdmin, async (req, res) => {
         stripeSubscriptionId: u.stripeSubscriptionId,
         currentPeriodStart: u.currentPeriodStart,
         currentPeriodEnd: u.currentPeriodEnd,
-        createdAt: u.createdAt
-      }))
+        createdAt: u.createdAt,
+      })),
     });
   } catch (error) {
-    console.error('Admin subscriptions fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch subscriptions' });
+    console.error("Admin subscriptions fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch subscriptions" });
   }
 });
 
@@ -1185,10 +1394,10 @@ router.get('/subscriptions', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/promo-codes
  * List all promo codes with analytics
  */
-router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
+router.get("/promo-codes", auth, requireAdmin, async (req, res) => {
   try {
     if (!PromoCode) {
-      console.warn('[ADMIN_PROMO_CODES] PromoCode model not available');
+      console.warn("[ADMIN_PROMO_CODES] PromoCode model not available");
       return res.json({
         success: true,
         promoCodes: [],
@@ -1196,14 +1405,17 @@ router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
         limit: 25,
         total: 0,
         totalPages: 0,
-        message: 'PromoCode model not available'
+        message: "PromoCode model not available",
       });
     }
 
-    const page = Math.max(1, parseInt(req.query.page || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '25', 10)));
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit || "25", 10))
+    );
     const offset = (page - 1) * limit;
-    const activeOnly = req.query.activeOnly === 'true';
+    const activeOnly = req.query.activeOnly === "true";
 
     const where = {};
     if (activeOnly) {
@@ -1212,14 +1424,16 @@ router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
 
     const { count, rows } = await PromoCode.findAndCountAll({
       where,
-      order: [['createdAt', 'DESC']],
+      order: [["createdAt", "DESC"]],
       offset,
       limit,
-      include: [{
-        model: User,
-        as: 'creator',
-        attributes: ['email', 'name']
-      }]
+      include: [
+        {
+          model: User,
+          as: "creator",
+          attributes: ["email", "name"],
+        },
+      ],
     });
 
     res.json({
@@ -1228,7 +1442,7 @@ router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
       limit,
       total: count,
       totalPages: Math.ceil(count / limit),
-      promoCodes: rows.map(pc => ({
+      promoCodes: rows.map((pc) => ({
         id: pc.id,
         code: pc.code,
         description: pc.description,
@@ -1241,18 +1455,20 @@ router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
         isActive: pc.isActive,
         startsAt: pc.startsAt,
         expiresAt: pc.expiresAt,
-        createdBy: pc.creator ? { email: pc.creator.email, name: pc.creator.name } : null,
+        createdBy: pc.creator
+          ? { email: pc.creator.email, name: pc.creator.name }
+          : null,
         notes: pc.notes,
-        createdAt: pc.createdAt
-      }))
+        createdAt: pc.createdAt,
+      })),
     });
   } catch (error) {
-    console.error('[ADMIN_PROMO_CODES] ERROR:', error.message);
-    console.error('[ADMIN_PROMO_CODES] Stack:', error.stack);
+    console.error("[ADMIN_PROMO_CODES] ERROR:", error.message);
+    console.error("[ADMIN_PROMO_CODES] Stack:", error.stack);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch promo codes',
-      error: error.message
+      message: "Failed to fetch promo codes",
+      error: error.message,
     });
   }
 });
@@ -1261,10 +1477,10 @@ router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/promo-codes/analytics
  * Get promo code analytics
  */
-router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
+router.get("/promo-codes/analytics", auth, requireAdmin, async (req, res) => {
   try {
     if (!PromoCode || !PromoCodeRedemption) {
-      console.warn('[ADMIN_PROMO_ANALYTICS] Models not available');
+      console.warn("[ADMIN_PROMO_ANALYTICS] Models not available");
       return res.json({
         success: true,
         analytics: {
@@ -1273,8 +1489,8 @@ router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
           totalRedemptions: 0,
           totalGuidesGranted: 0,
           topCodes: [],
-          recentRedemptions: []
-        }
+          recentRedemptions: [],
+        },
       });
     }
 
@@ -1282,40 +1498,45 @@ router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
     const [totalCodes, activeCodes, totalRedemptions] = await Promise.all([
       PromoCode.count(),
       PromoCode.count({ where: { isActive: true } }),
-      PromoCodeRedemption.count()
+      PromoCodeRedemption.count(),
     ]);
 
     // Get guides granted sum (handle null)
     let guidesGrantedSum = 0;
     try {
-      const sumResult = await PromoCodeRedemption.sum('guidesGranted');
+      const sumResult = await PromoCodeRedemption.sum("guidesGranted");
       guidesGrantedSum = sumResult || 0;
     } catch (sumError) {
-      console.warn('[ADMIN_PROMO_ANALYTICS] Error summing guidesGranted:', sumError.message);
+      console.warn(
+        "[ADMIN_PROMO_ANALYTICS] Error summing guidesGranted:",
+        sumError.message
+      );
     }
 
     // Get redemptions by code (simplified query)
     let redemptionsByCode = [];
     try {
       const allRedemptions = await PromoCodeRedemption.findAll({
-        attributes: ['promoCodeId', 'guidesGranted'],
-        include: [{
-          model: PromoCode,
-          as: 'promoCode',
-          attributes: ['code', 'description'],
-          required: false
-        }]
+        attributes: ["promoCodeId", "guidesGranted"],
+        include: [
+          {
+            model: PromoCode,
+            as: "promoCode",
+            attributes: ["code", "description"],
+            required: false,
+          },
+        ],
       });
 
       // Group manually
       const grouped = {};
-      allRedemptions.forEach(r => {
+      allRedemptions.forEach((r) => {
         const codeId = r.promoCodeId;
         if (!grouped[codeId]) {
           grouped[codeId] = {
-            promoCode: r.promoCode || { code: 'Unknown', description: null },
+            promoCode: r.promoCode || { code: "Unknown", description: null },
             count: 0,
-            totalGuides: 0
+            totalGuides: 0,
           };
         }
         grouped[codeId].count++;
@@ -1326,34 +1547,40 @@ router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
     } catch (groupError) {
-      console.error('[ADMIN_PROMO_ANALYTICS] Error grouping redemptions:', groupError.message);
-      console.error('[ADMIN_PROMO_ANALYTICS] Stack:', groupError.stack);
+      console.error(
+        "[ADMIN_PROMO_ANALYTICS] Error grouping redemptions:",
+        groupError.message
+      );
+      console.error("[ADMIN_PROMO_ANALYTICS] Stack:", groupError.stack);
     }
 
     // Get recent redemptions
     let recentRedemptions = [];
     try {
       recentRedemptions = await PromoCodeRedemption.findAll({
-        order: [['redeemedAt', 'DESC']],
+        order: [["redeemedAt", "DESC"]],
         limit: 20,
         include: [
           {
             model: PromoCode,
-            as: 'promoCode',
-            attributes: ['code', 'type'],
-            required: false
+            as: "promoCode",
+            attributes: ["code", "type"],
+            required: false,
           },
           {
             model: User,
-            as: 'user',
-            attributes: ['email', 'name'],
-            required: false
-          }
-        ]
+            as: "user",
+            attributes: ["email", "name"],
+            required: false,
+          },
+        ],
       });
     } catch (recentError) {
-      console.error('[ADMIN_PROMO_ANALYTICS] Error fetching recent redemptions:', recentError.message);
-      console.error('[ADMIN_PROMO_ANALYTICS] Stack:', recentError.stack);
+      console.error(
+        "[ADMIN_PROMO_ANALYTICS] Error fetching recent redemptions:",
+        recentError.message
+      );
+      console.error("[ADMIN_PROMO_ANALYTICS] Stack:", recentError.stack);
     }
 
     res.json({
@@ -1363,29 +1590,29 @@ router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
         activeCodes,
         totalRedemptions,
         totalGuidesGranted: guidesGrantedSum || 0,
-        topCodes: redemptionsByCode.map(r => ({
+        topCodes: redemptionsByCode.map((r) => ({
           code: r.promoCode?.code,
           description: r.promoCode?.description,
           redemptions: r.count || 0,
-          guidesGranted: r.totalGuides || 0
+          guidesGranted: r.totalGuides || 0,
         })),
-        recentRedemptions: recentRedemptions.map(r => ({
+        recentRedemptions: recentRedemptions.map((r) => ({
           id: r.id,
           code: r.promoCode?.code,
           type: r.promoCode?.type,
           user: r.user ? { email: r.user.email, name: r.user.name } : null,
           guidesGranted: r.guidesGranted,
-          redeemedAt: r.redeemedAt
-        }))
-      }
+          redeemedAt: r.redeemedAt,
+        })),
+      },
     });
   } catch (error) {
-    console.error('[ADMIN_PROMO_ANALYTICS] ERROR:', error.message);
-    console.error('[ADMIN_PROMO_ANALYTICS] Stack:', error.stack);
+    console.error("[ADMIN_PROMO_ANALYTICS] ERROR:", error.message);
+    console.error("[ADMIN_PROMO_ANALYTICS] Stack:", error.stack);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch promo analytics',
-      error: error.message
+      message: "Failed to fetch promo analytics",
+      error: error.message,
     });
   }
 });
@@ -1398,62 +1625,73 @@ router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/activity
  * Get platform activity over time
  */
-router.get('/activity', auth, requireAdmin, async (req, res) => {
+router.get("/activity", auth, requireAdmin, async (req, res) => {
   try {
-    const days = Math.min(90, Math.max(7, parseInt(req.query.days || '30', 10)));
+    const days = Math.min(
+      90,
+      Math.max(7, parseInt(req.query.days || "30", 10))
+    );
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Daily user registrations
     const dailyUsers = await User.findAll({
       attributes: [
-        [fn('DATE', col('createdAt')), 'date'],
-        [fn('COUNT', col('id')), 'count']
+        [fn("DATE", col("createdAt")), "date"],
+        [fn("COUNT", col("id")), "count"],
       ],
       where: { createdAt: { [Op.gte]: startDate } },
-      group: [fn('DATE', col('createdAt'))],
-      order: [[fn('DATE', col('createdAt')), 'ASC']]
+      group: [fn("DATE", col("createdAt"))],
+      order: [[fn("DATE", col("createdAt")), "ASC"]],
     });
 
     // Daily guide creations
     const dailyGuides = await Guide.findAll({
       attributes: [
-        [fn('DATE', col('createdAt')), 'date'],
-        [fn('COUNT', col('id')), 'count']
+        [fn("DATE", col("createdAt")), "date"],
+        [fn("COUNT", col("id")), "count"],
       ],
       where: { createdAt: { [Op.gte]: startDate } },
-      group: [fn('DATE', col('createdAt'))],
-      order: [[fn('DATE', col('createdAt')), 'ASC']]
+      group: [fn("DATE", col("createdAt"))],
+      order: [[fn("DATE", col("createdAt")), "ASC"]],
     });
 
     // Cumulative totals
     const totalsByDate = {};
-    let cumulativeUsers = await User.count({ where: { createdAt: { [Op.lt]: startDate } } });
-    let cumulativeGuides = await Guide.count({ where: { createdAt: { [Op.lt]: startDate } } });
+    let cumulativeUsers = await User.count({
+      where: { createdAt: { [Op.lt]: startDate } },
+    });
+    let cumulativeGuides = await Guide.count({
+      where: { createdAt: { [Op.lt]: startDate } },
+    });
 
     // Build date range
-    for (let d = new Date(startDate); d <= new Date(); d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
+    for (
+      let d = new Date(startDate);
+      d <= new Date();
+      d.setDate(d.getDate() + 1)
+    ) {
+      const dateStr = d.toISOString().split("T")[0];
       totalsByDate[dateStr] = {
         date: dateStr,
         newUsers: 0,
         newGuides: 0,
         totalUsers: cumulativeUsers,
-        totalGuides: cumulativeGuides
+        totalGuides: cumulativeGuides,
       };
     }
 
     // Fill in daily counts
-    dailyUsers.forEach(row => {
-      const date = row.get('date');
-      const count = Number(row.get('count'));
+    dailyUsers.forEach((row) => {
+      const date = row.get("date");
+      const count = Number(row.get("count"));
       if (totalsByDate[date]) {
         totalsByDate[date].newUsers = count;
       }
     });
 
-    dailyGuides.forEach(row => {
-      const date = row.get('date');
-      const count = Number(row.get('count'));
+    dailyGuides.forEach((row) => {
+      const date = row.get("date");
+      const count = Number(row.get("count"));
       if (totalsByDate[date]) {
         totalsByDate[date].newGuides = count;
       }
@@ -1464,8 +1702,10 @@ router.get('/activity', auth, requireAdmin, async (req, res) => {
     sortedDates.forEach((date, i) => {
       if (i > 0) {
         const prev = totalsByDate[sortedDates[i - 1]];
-        totalsByDate[date].totalUsers = prev.totalUsers + totalsByDate[date].newUsers;
-        totalsByDate[date].totalGuides = prev.totalGuides + totalsByDate[date].newGuides;
+        totalsByDate[date].totalUsers =
+          prev.totalUsers + totalsByDate[date].newUsers;
+        totalsByDate[date].totalGuides =
+          prev.totalGuides + totalsByDate[date].newGuides;
       } else {
         totalsByDate[date].totalUsers += totalsByDate[date].newUsers;
         totalsByDate[date].totalGuides += totalsByDate[date].newGuides;
@@ -1477,12 +1717,12 @@ router.get('/activity', auth, requireAdmin, async (req, res) => {
       activity: {
         days,
         startDate,
-        data: sortedDates.map(date => totalsByDate[date])
-      }
+        data: sortedDates.map((date) => totalsByDate[date]),
+      },
     });
   } catch (error) {
-    console.error('Admin activity fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch activity data' });
+    console.error("Admin activity fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch activity data" });
   }
 });
 
@@ -1490,7 +1730,7 @@ router.get('/activity', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/growth
  * Get growth metrics and trends
  */
-router.get('/growth', auth, requireAdmin, async (req, res) => {
+router.get("/growth", auth, requireAdmin, async (req, res) => {
   try {
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1506,41 +1746,69 @@ router.get('/growth', auth, requireAdmin, async (req, res) => {
       guidesLastMonth,
       guidesToMonthsAgo,
       totalUsers,
-      totalGuides
+      totalGuides,
     ] = await Promise.all([
       User.count({ where: { createdAt: { [Op.gte]: thisMonth } } }),
-      User.count({ where: { createdAt: { [Op.gte]: lastMonth, [Op.lt]: thisMonth } } }),
-      User.count({ where: { createdAt: { [Op.gte]: twoMonthsAgo, [Op.lt]: lastMonth } } }),
+      User.count({
+        where: { createdAt: { [Op.gte]: lastMonth, [Op.lt]: thisMonth } },
+      }),
+      User.count({
+        where: { createdAt: { [Op.gte]: twoMonthsAgo, [Op.lt]: lastMonth } },
+      }),
       Guide.count({ where: { createdAt: { [Op.gte]: thisMonth } } }),
-      Guide.count({ where: { createdAt: { [Op.gte]: lastMonth, [Op.lt]: thisMonth } } }),
-      Guide.count({ where: { createdAt: { [Op.gte]: twoMonthsAgo, [Op.lt]: lastMonth } } }),
+      Guide.count({
+        where: { createdAt: { [Op.gte]: lastMonth, [Op.lt]: thisMonth } },
+      }),
+      Guide.count({
+        where: { createdAt: { [Op.gte]: twoMonthsAgo, [Op.lt]: lastMonth } },
+      }),
       User.count(),
-      Guide.count()
+      Guide.count(),
     ]);
 
     // Calculate growth rates
-    const userGrowth = usersLastMonth > 0
-      ? ((usersThisMonth - usersLastMonth) / usersLastMonth * 100).toFixed(1)
-      : (usersThisMonth > 0 ? 100 : 0);
+    const userGrowth =
+      usersLastMonth > 0
+        ? (((usersThisMonth - usersLastMonth) / usersLastMonth) * 100).toFixed(
+            1
+          )
+        : usersThisMonth > 0
+        ? 100
+        : 0;
 
-    const guideGrowth = guidesLastMonth > 0
-      ? ((guidesThisMonth - guidesLastMonth) / guidesLastMonth * 100).toFixed(1)
-      : (guidesThisMonth > 0 ? 100 : 0);
+    const guideGrowth =
+      guidesLastMonth > 0
+        ? (
+            ((guidesThisMonth - guidesLastMonth) / guidesLastMonth) *
+            100
+          ).toFixed(1)
+        : guidesThisMonth > 0
+        ? 100
+        : 0;
 
     // Trend analysis
-    const userTrend = usersThisMonth > usersLastMonth ? 'up' :
-      usersThisMonth < usersLastMonth ? 'down' : 'stable';
-    const guideTrend = guidesThisMonth > guidesLastMonth ? 'up' :
-      guidesThisMonth < guidesLastMonth ? 'down' : 'stable';
+    const userTrend =
+      usersThisMonth > usersLastMonth
+        ? "up"
+        : usersThisMonth < usersLastMonth
+        ? "down"
+        : "stable";
+    const guideTrend =
+      guidesThisMonth > guidesLastMonth
+        ? "up"
+        : guidesThisMonth < guidesLastMonth
+        ? "down"
+        : "stable";
 
     // Average guides per user
-    const avgGuidesPerUser = totalUsers > 0 ? (totalGuides / totalUsers).toFixed(2) : 0;
+    const avgGuidesPerUser =
+      totalUsers > 0 ? (totalGuides / totalUsers).toFixed(2) : 0;
 
     // Active users (users who created guides this month)
     const activeUsers = await Guide.count({
       where: { createdAt: { [Op.gte]: thisMonth } },
       distinct: true,
-      col: 'userId'
+      col: "userId",
     });
 
     res.json({
@@ -1551,7 +1819,7 @@ router.get('/growth', auth, requireAdmin, async (req, res) => {
           thisMonth: usersThisMonth,
           lastMonth: usersLastMonth,
           growth: parseFloat(userGrowth),
-          trend: userTrend
+          trend: userTrend,
         },
         guides: {
           total: totalGuides,
@@ -1559,17 +1827,18 @@ router.get('/growth', auth, requireAdmin, async (req, res) => {
           lastMonth: guidesLastMonth,
           growth: parseFloat(guideGrowth),
           trend: guideTrend,
-          avgPerUser: parseFloat(avgGuidesPerUser)
+          avgPerUser: parseFloat(avgGuidesPerUser),
         },
         engagement: {
           activeUsersThisMonth: activeUsers,
-          activeRate: totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : 0
-        }
-      }
+          activeRate:
+            totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : 0,
+        },
+      },
     });
   } catch (error) {
-    console.error('Admin growth fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch growth data' });
+    console.error("Admin growth fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch growth data" });
   }
 });
 
@@ -1577,20 +1846,38 @@ router.get('/growth', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/export/users
  * Export all users as CSV
  */
-router.get('/export/users', auth, requireAdmin, async (req, res) => {
+router.get("/export/users", auth, requireAdmin, async (req, res) => {
   try {
     const users = await User.findAll({
       attributes: [
-        'id', 'email', 'name', 'subscription', 'subscriptionStatus',
-        'guidesUsed', 'guidesLimit', 'isBetaTester', 'betaAccessLevel',
-        'createdAt'
+        "id",
+        "email",
+        "name",
+        "subscription",
+        "subscriptionStatus",
+        "guidesUsed",
+        "guidesLimit",
+        "isBetaTester",
+        "betaAccessLevel",
+        "createdAt",
       ],
-      order: [['createdAt', 'DESC']]
+      order: [["createdAt", "DESC"]],
     });
 
     // Build CSV
-    const headers = ['ID', 'Email', 'Name', 'Subscription', 'Status', 'Guides Used', 'Guides Limit', 'Beta Tester', 'Beta Level', 'Created At'];
-    const rows = users.map(u => [
+    const headers = [
+      "ID",
+      "Email",
+      "Name",
+      "Subscription",
+      "Status",
+      "Guides Used",
+      "Guides Limit",
+      "Beta Tester",
+      "Beta Level",
+      "Created At",
+    ];
+    const rows = users.map((u) => [
       u.id,
       u.email,
       u.name,
@@ -1600,17 +1887,25 @@ router.get('/export/users', auth, requireAdmin, async (req, res) => {
       u.guidesLimit,
       u.isBetaTester,
       u.betaAccessLevel,
-      u.createdAt?.toISOString()
+      u.createdAt?.toISOString(),
     ]);
 
-    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v || ''}"`).join(','))].join('\n');
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => r.map((v) => `"${v || ""}"`).join(",")),
+    ].join("\n");
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=users-export-${new Date().toISOString().split('T')[0]}.csv`);
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=users-export-${
+        new Date().toISOString().split("T")[0]
+      }.csv`
+    );
     res.send(csv);
   } catch (error) {
-    console.error('Admin export users error:', error);
-    res.status(500).json({ message: 'Failed to export users' });
+    console.error("Admin export users error:", error);
+    res.status(500).json({ message: "Failed to export users" });
   }
 });
 
@@ -1618,24 +1913,46 @@ router.get('/export/users', auth, requireAdmin, async (req, res) => {
  * GET /api/admin/export/guides
  * Export all guides as CSV
  */
-router.get('/export/guides', auth, requireAdmin, async (req, res) => {
+router.get("/export/guides", auth, requireAdmin, async (req, res) => {
   try {
     const guides = await Guide.findAll({
       attributes: [
-        'id', 'guideId', 'characterName', 'productionTitle', 'productionType',
-        'genre', 'roleSize', 'isPublic', 'viewCount', 'createdAt'
+        "id",
+        "guideId",
+        "characterName",
+        "productionTitle",
+        "productionType",
+        "genre",
+        "roleSize",
+        "isPublic",
+        "viewCount",
+        "createdAt",
       ],
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['email']
-      }],
-      order: [['createdAt', 'DESC']]
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["email"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
     });
 
     // Build CSV
-    const headers = ['ID', 'Guide ID', 'Character', 'Production', 'Type', 'Genre', 'Role Size', 'Public', 'Views', 'User Email', 'Created At'];
-    const rows = guides.map(g => [
+    const headers = [
+      "ID",
+      "Guide ID",
+      "Character",
+      "Production",
+      "Type",
+      "Genre",
+      "Role Size",
+      "Public",
+      "Views",
+      "User Email",
+      "Created At",
+    ];
+    const rows = guides.map((g) => [
       g.id,
       g.guideId,
       g.characterName,
@@ -1646,17 +1963,25 @@ router.get('/export/guides', auth, requireAdmin, async (req, res) => {
       g.isPublic,
       g.viewCount,
       g.user?.email,
-      g.createdAt?.toISOString()
+      g.createdAt?.toISOString(),
     ]);
 
-    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v || ''}"`).join(','))].join('\n');
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => r.map((v) => `"${v || ""}"`).join(",")),
+    ].join("\n");
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=guides-export-${new Date().toISOString().split('T')[0]}.csv`);
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=guides-export-${
+        new Date().toISOString().split("T")[0]
+      }.csv`
+    );
     res.send(csv);
   } catch (error) {
-    console.error('Admin export guides error:', error);
-    res.status(500).json({ message: 'Failed to export guides' });
+    console.error("Admin export guides error:", error);
+    res.status(500).json({ message: "Failed to export guides" });
   }
 });
 
