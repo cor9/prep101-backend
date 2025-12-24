@@ -7,10 +7,10 @@ export type Testimonial = {
 
 export const testimonials: Testimonial[] = [
   {
-    name: "Sara Shaddix",
+    name: "Sara S.",
     quote:
-      "Holy Moly! That audition breakdown was incredible. Really phenomenal. It broke down every little bit and my daughter really took it to heart. I would easily pay $75–$125 for this.",
-    short: ""Incredible. Worth $75–$125."",
+      "Holy Moly! Really phenomenal. I would easily pay up to $125 for this.",
+    short: ""Really phenomenal."",
     role: "Parent"
   },
   {
@@ -26,9 +26,9 @@ export const testimonials: Testimonial[] = [
     role: "Parent"
   },
   {
-    name: "Ty Correira",
+    name: "Ty C.",
     quote:
-      "Thanks so much for the audition preparation guide, Corey. It gave me so much to work with and I really used it to inform a lot of choices in the audition.",
+      "It gave me so much to work with and I really used it to inform a lot of choices.",
     short: ""Gave me so much to work with."",
     role: "Actor"
   },
@@ -36,12 +36,6 @@ export const testimonials: Testimonial[] = [
     name: "Olivia Eppe",
     quote: "This is so great to have—very helpful!",
     short: ""Very helpful!"",
-    role: "Parent"
-  },
-  {
-    name: "Lynnette L.",
-    quote: "This is AWESOME! Thanks, Corey!! He dove right into it this morning.",
-    short: ""AWESOME — dove right in."",
     role: "Parent"
   },
   {
