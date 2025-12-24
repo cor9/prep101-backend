@@ -959,7 +959,7 @@ router.get('/revenue', auth, requireAdmin, async (req, res) => {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn('[ADMIN_REVENUE] Stripe not configured');
-      return res.json({ 
+      return res.json({
         success: true,
         revenue: {
           balance: { available: 0, pending: 0, currency: 'USD' },
@@ -971,7 +971,7 @@ router.get('/revenue', auth, requireAdmin, async (req, res) => {
           subscriptions: { active: 0, canceled: 0, trialing: 0, total: 0 },
           recentTransactions: []
         },
-        message: 'Stripe not configured' 
+        message: 'Stripe not configured'
       });
     }
 
@@ -985,37 +985,78 @@ router.get('/revenue', auth, requireAdmin, async (req, res) => {
     // Get balance
     const balance = await stripe.balance.retrieve();
 
-    // Get recent charges
-    const charges = await stripe.charges.list({
+    // Allowed product IDs for revenue calculation
+    const allowedProductIds = [
+      'prod_SwSC2lUrIwBKP6',
+      'prod_SwS55c4KaSZNmM',
+      'prod_SwS0gu1NNU9g2S',
+      'prod_SwRoKtto1AE7SM',
+      'prod_SwRDOUfUg85u7Y',
+      'prod_TUIKgvjCsJN3Wh',
+      'prod_TUIHQcnJlcURJm'
+    ];
+
+    // Get all subscriptions and filter by product
+    const allSubscriptions = await stripe.subscriptions.list({
       limit: 100,
-      created: { gte: thisYear }
+      status: 'all',
+      expand: ['data.items.data.price.product']
     });
 
-    // Calculate revenue by period
-    const thisMonthRevenue = charges.data
-      .filter(c => c.created >= thisMonth && c.status === 'succeeded')
-      .reduce((sum, c) => sum + c.amount, 0);
-
-    const lastMonthRevenue = charges.data
-      .filter(c => c.created >= lastMonth && c.created < thisMonth && c.status === 'succeeded')
-      .reduce((sum, c) => sum + c.amount, 0);
-
-    const thisYearRevenue = charges.data
-      .filter(c => c.status === 'succeeded')
-      .reduce((sum, c) => sum + c.amount, 0);
-
-    // Get subscriptions
-    const subscriptions = await stripe.subscriptions.list({
-      limit: 100,
-      status: 'all'
+    // Filter subscriptions to only allowed products
+    const filteredSubscriptions = allSubscriptions.data.filter(s => {
+      const item = s.items.data[0];
+      const productId = item?.price?.product;
+      // Handle both string IDs and expanded product objects
+      const productIdStr = typeof productId === 'string' 
+        ? productId 
+        : productId?.id || null;
+      return productIdStr && allowedProductIds.includes(productIdStr);
     });
 
-    const activeSubscriptions = subscriptions.data.filter(s => s.status === 'active').length;
-    const canceledSubscriptions = subscriptions.data.filter(s => s.status === 'canceled').length;
-    const trialingSubscriptions = subscriptions.data.filter(s => s.status === 'trialing').length;
+    // Get invoices for filtered subscriptions to calculate revenue
+    const subscriptionIds = filteredSubscriptions.map(s => s.id);
+    const allInvoices = [];
+    
+    for (const subId of subscriptionIds) {
+      try {
+        const invoices = await stripe.invoices.list({
+          subscription: subId,
+          limit: 100
+        });
+        allInvoices.push(...invoices.data);
+      } catch (err) {
+        console.warn(`[ADMIN_REVENUE] Error fetching invoices for subscription ${subId}:`, err.message);
+      }
+    }
 
-    // Calculate MRR (Monthly Recurring Revenue)
-    const mrr = subscriptions.data
+    // Calculate revenue from invoices (only from allowed products)
+    const thisMonthRevenue = allInvoices
+      .filter(inv => {
+        const invDate = new Date(inv.created * 1000);
+        const invTimestamp = Math.floor(invDate.getTime() / 1000);
+        return invTimestamp >= thisMonth && inv.status === 'paid';
+      })
+      .reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
+
+    const lastMonthRevenue = allInvoices
+      .filter(inv => {
+        const invDate = new Date(inv.created * 1000);
+        const invTimestamp = Math.floor(invDate.getTime() / 1000);
+        return invTimestamp >= lastMonth && invTimestamp < thisMonth && inv.status === 'paid';
+      })
+      .reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
+
+    const thisYearRevenue = allInvoices
+      .filter(inv => inv.status === 'paid')
+      .reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
+
+    const activeSubscriptions = filteredSubscriptions.filter(s => s.status === 'active').length;
+    const canceledSubscriptions = filteredSubscriptions.filter(s => s.status === 'canceled').length;
+    const trialingSubscriptions = filteredSubscriptions.filter(s => s.status === 'trialing').length;
+
+    // Calculate MRR (Monthly Recurring Revenue) - only from allowed products
+    const mrr = filteredSubscriptions
       .filter(s => s.status === 'active')
       .reduce((sum, s) => {
         const item = s.items.data[0];
@@ -1027,16 +1068,20 @@ router.get('/revenue', auth, requireAdmin, async (req, res) => {
         return sum;
       }, 0);
 
-    // Recent transactions
-    const recentTransactions = charges.data.slice(0, 20).map(c => ({
-      id: c.id,
-      amount: c.amount / 100,
-      currency: c.currency.toUpperCase(),
-      status: c.status,
-      date: new Date(c.created * 1000),
-      description: c.description,
-      customerEmail: c.billing_details?.email
-    }));
+    // Recent transactions from invoices (only from allowed products)
+    const recentTransactions = allInvoices
+      .filter(inv => inv.status === 'paid')
+      .sort((a, b) => b.created - a.created)
+      .slice(0, 20)
+      .map(inv => ({
+        id: inv.id,
+        amount: (inv.amount_paid || 0) / 100,
+        currency: inv.currency.toUpperCase(),
+        status: inv.status === 'paid' ? 'succeeded' : inv.status,
+        date: new Date(inv.created * 1000),
+        description: inv.description || `Invoice for ${inv.customer_email || 'customer'}`,
+        customerEmail: inv.customer_email
+      }));
 
     // Revenue growth
     const revenueGrowth = lastMonthRevenue > 0
@@ -1060,7 +1105,7 @@ router.get('/revenue', auth, requireAdmin, async (req, res) => {
           active: activeSubscriptions,
           canceled: canceledSubscriptions,
           trialing: trialingSubscriptions,
-          total: subscriptions.data.length
+          total: filteredSubscriptions.length
         },
         recentTransactions
       }
@@ -1068,10 +1113,10 @@ router.get('/revenue', auth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('[ADMIN_REVENUE] ERROR:', error.message);
     console.error('[ADMIN_REVENUE] Stack:', error.stack);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Failed to fetch revenue data', 
-      error: error.message 
+      message: 'Failed to fetch revenue data',
+      error: error.message
     });
   }
 });
@@ -1144,14 +1189,14 @@ router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
   try {
     if (!PromoCode) {
       console.warn('[ADMIN_PROMO_CODES] PromoCode model not available');
-      return res.json({ 
-        success: true, 
-        promoCodes: [], 
+      return res.json({
+        success: true,
+        promoCodes: [],
         page: 1,
         limit: 25,
         total: 0,
         totalPages: 0,
-        message: 'PromoCode model not available' 
+        message: 'PromoCode model not available'
       });
     }
 
@@ -1204,10 +1249,10 @@ router.get('/promo-codes', auth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('[ADMIN_PROMO_CODES] ERROR:', error.message);
     console.error('[ADMIN_PROMO_CODES] Stack:', error.stack);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Failed to fetch promo codes',
-      error: error.message 
+      error: error.message
     });
   }
 });
@@ -1233,50 +1278,83 @@ router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
       });
     }
 
-    const [
-      totalCodes,
-      activeCodes,
-      totalRedemptions,
-      guidesGrantedSum,
-      redemptionsByCode,
-      recentRedemptions
-    ] = await Promise.all([
+    // Get basic counts first
+    const [totalCodes, activeCodes, totalRedemptions] = await Promise.all([
       PromoCode.count(),
       PromoCode.count({ where: { isActive: true } }),
-      PromoCodeRedemption.count(),
-      PromoCodeRedemption.sum('guidesGranted'),
-      PromoCodeRedemption.findAll({
-        attributes: [
-          'promoCodeId',
-          [fn('COUNT', col('id')), 'count'],
-          [fn('SUM', col('guidesGranted')), 'totalGuides']
-        ],
-        group: ['promoCodeId'],
+      PromoCodeRedemption.count()
+    ]);
+
+    // Get guides granted sum (handle null)
+    let guidesGrantedSum = 0;
+    try {
+      const sumResult = await PromoCodeRedemption.sum('guidesGranted');
+      guidesGrantedSum = sumResult || 0;
+    } catch (sumError) {
+      console.warn('[ADMIN_PROMO_ANALYTICS] Error summing guidesGranted:', sumError.message);
+    }
+
+    // Get redemptions by code (simplified query)
+    let redemptionsByCode = [];
+    try {
+      const allRedemptions = await PromoCodeRedemption.findAll({
+        attributes: ['promoCodeId', 'guidesGranted'],
         include: [{
           model: PromoCode,
           as: 'promoCode',
-          attributes: ['code', 'description']
-        }],
-        order: [[literal('count'), 'DESC']],
-        limit: 10
-      }),
-      PromoCodeRedemption.findAll({
+          attributes: ['code', 'description'],
+          required: false
+        }]
+      });
+
+      // Group manually
+      const grouped = {};
+      allRedemptions.forEach(r => {
+        const codeId = r.promoCodeId;
+        if (!grouped[codeId]) {
+          grouped[codeId] = {
+            promoCode: r.promoCode || { code: 'Unknown', description: null },
+            count: 0,
+            totalGuides: 0
+          };
+        }
+        grouped[codeId].count++;
+        grouped[codeId].totalGuides += r.guidesGranted || 0;
+      });
+
+      redemptionsByCode = Object.values(grouped)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    } catch (groupError) {
+      console.error('[ADMIN_PROMO_ANALYTICS] Error grouping redemptions:', groupError.message);
+      console.error('[ADMIN_PROMO_ANALYTICS] Stack:', groupError.stack);
+    }
+
+    // Get recent redemptions
+    let recentRedemptions = [];
+    try {
+      recentRedemptions = await PromoCodeRedemption.findAll({
         order: [['redeemedAt', 'DESC']],
         limit: 20,
         include: [
           {
             model: PromoCode,
             as: 'promoCode',
-            attributes: ['code', 'type']
+            attributes: ['code', 'type'],
+            required: false
           },
           {
             model: User,
             as: 'user',
-            attributes: ['email', 'name']
+            attributes: ['email', 'name'],
+            required: false
           }
         ]
-      })
-    ]);
+      });
+    } catch (recentError) {
+      console.error('[ADMIN_PROMO_ANALYTICS] Error fetching recent redemptions:', recentError.message);
+      console.error('[ADMIN_PROMO_ANALYTICS] Stack:', recentError.stack);
+    }
 
     res.json({
       success: true,
@@ -1288,8 +1366,8 @@ router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
         topCodes: redemptionsByCode.map(r => ({
           code: r.promoCode?.code,
           description: r.promoCode?.description,
-          redemptions: Number(r.get('count')),
-          guidesGranted: Number(r.get('totalGuides')) || 0
+          redemptions: r.count || 0,
+          guidesGranted: r.totalGuides || 0
         })),
         recentRedemptions: recentRedemptions.map(r => ({
           id: r.id,
@@ -1304,10 +1382,10 @@ router.get('/promo-codes/analytics', auth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('[ADMIN_PROMO_ANALYTICS] ERROR:', error.message);
     console.error('[ADMIN_PROMO_ANALYTICS] Stack:', error.stack);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Failed to fetch promo analytics',
-      error: error.message 
+      error: error.message
     });
   }
 });
