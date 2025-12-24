@@ -196,8 +196,15 @@ const Pricing = () => {
 
                 <button
                   onClick={() => go(plan.href)}
-                  className={`btn ${plan.popular ? 'btnPrimary' : 'btnSecondary'}`}
-                  style={{ width: '100%' }}
+                  className={`btn ${plan.popular ? 'btnPrimary' : ''}`}
+                  style={{ 
+                    width: '100%',
+                    ...(plan.popular ? {} : {
+                      background: 'var(--gray-800)',
+                      color: 'var(--white)',
+                      border: 'none'
+                    })
+                  }}
                 >
                   {plan.cta}
                 </button>
@@ -307,8 +314,13 @@ const Pricing = () => {
 
                 <button
                   onClick={() => go(plan.href)}
-                  className={`btn ${plan.popular ? 'btnPrimary' : 'btnSecondary'}`}
-                  style={{ width: '100%' }}
+                  className="btn"
+                  style={{ 
+                    width: '100%',
+                    background: 'var(--gray-800)',
+                    color: 'var(--white)',
+                    border: 'none'
+                  }}
                 >
                   {plan.cta}
                 </button>
@@ -359,8 +371,13 @@ const Pricing = () => {
                   </p>
                   <button
                     onClick={() => go(STRIPE.ADDON_FEEDBACK)}
-                    className="btn btnSecondary"
-                    style={{ width: '100%' }}
+                    className="btn"
+                    style={{ 
+                      width: '100%',
+                      background: 'var(--gray-800)',
+                      color: 'var(--white)',
+                      border: 'none'
+                    }}
                   >
                     Get Feedback
                   </button>
@@ -398,8 +415,13 @@ const Pricing = () => {
                   </p>
                   <button
                     onClick={() => go(STRIPE.ADDON_COACH)}
-                    className="btn btnSecondary"
-                    style={{ width: '100%' }}
+                    className="btn"
+                    style={{ 
+                      width: '100%',
+                      background: 'var(--gray-800)',
+                      color: 'var(--white)',
+                      border: 'none'
+                    }}
                   >
                     Book Session
                   </button>
