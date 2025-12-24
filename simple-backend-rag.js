@@ -2806,8 +2806,6 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     } = req.body;
 
     // Handle both single and multiple upload IDs
-    const uploadIdList = uploadIds || [uploadId];
-    // Debug request basics for faster triage
     const uploadIdList = uploadIds
       ? Array.isArray(uploadIds)
         ? uploadIds
@@ -2815,6 +2813,8 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       : uploadId
       ? [uploadId]
       : [];
+    
+    // Debug request basics for faster triage
 
     console.log("📝 Generate request:", {
       uploadIdsCount: uploadIdList.length,
