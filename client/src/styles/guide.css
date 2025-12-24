@@ -10,31 +10,72 @@
   --guide-shadow: 0 6px 24px rgba(0,0,0,0.35);
 }
 
-/* kill unreadable light-on-light and text shadows the generator adds */
+/* CRITICAL: Kill ALL unreadable light-on-light text and text shadows */
 .guide-html, .guide-html * {
-  color: var(--guide-text) !important;
   text-shadow: none !important;
   filter: none !important;
   mix-blend-mode: normal !important;
   -webkit-text-stroke: unset !important;
 }
 
-/* Force all backgrounds to be readable */
+/* Force ALL backgrounds to be transparent or dark - NO light backgrounds */
 .guide-html [style*="background"],
 .guide-html div,
 .guide-html section,
-.guide-html article {
+.guide-html article,
+.guide-html span,
+.guide-html p,
+.guide-html li,
+.guide-html td,
+.guide-html th {
   background: transparent !important;
 }
 
+/* CRITICAL: Detect ANY light background color and force dark text */
+.guide-html [style*="#fff"],
+.guide-html [style*="#FFF"],
+.guide-html [style*="#ffffff"],
+.guide-html [style*="#FFFFFF"],
+.guide-html [style*="#fdf"],
+.guide-html [style*="#FDF"],
+.guide-html [style*="#eff"],
+.guide-html [style*="#EFF"],
+.guide-html [style*="#f5f"],
+.guide-html [style*="#F5F"],
+.guide-html [style*="#f0f"],
+.guide-html [style*="#F0F"],
+.guide-html [style*="#fef"],
+.guide-html [style*="#FEF"],
+.guide-html [style*="#fffb"],
+.guide-html [style*="#FFFB"],
+.guide-html [style*="#f8fa"],
+.guide-html [style*="#F8FA"],
+.guide-html [style*="rgb(255"],
+.guide-html [style*="RGB(255"],
+.guide-html [style*="rgba(255"],
+.guide-html [style*="RGBA(255"],
+.guide-html [style*="rgba(253"],
+.guide-html [style*="rgba(239"],
+.guide-html [style*="rgba(245"],
+.guide-html [style*="rgba(240"],
+.guide-html [style*="rgba(254"],
+.guide-html [style*="rgba(248"],
+.guide-html [style*="linear-gradient"][style*="#f"],
+.guide-html [style*="linear-gradient"][style*="#F"],
+.guide-html [style*="linear-gradient"][style*="rgb(255"],
+.guide-html [style*="linear-gradient"][style*="rgba(255"] {
+  background: transparent !important;
+  color: var(--guide-strong) !important;
+}
+
 /* headings pop in amber, strong contrast */
-.guide-html h1, .guide-html h2, .guide-html h3 {
+.guide-html h1, .guide-html h2, .guide-html h3, .guide-html h4, .guide-html h5, .guide-html h6 {
   color: var(--guide-accent) !important;
   line-height: 1.2 !important;
 }
 
-/* body copy readability */
-.guide-html p, .guide-html li {
+/* body copy readability - force light text on dark background */
+.guide-html p, .guide-html li, .guide-html span, .guide-html div, .guide-html td, .guide-html th {
   color: var(--guide-strong) !important;
 }
 
@@ -44,30 +85,35 @@
   border: 1px solid var(--guide-border) !important;
   box-shadow: var(--guide-shadow) !important;
   border-radius: 16px !important;
+  color: var(--guide-strong) !important;
 }
 
 /* pastel cards: force dark text for legibility */
 .guide-html .highlight-box,
-.guide-html .tip-box {
-  background: #fffbe6 !important;        /* light warm */
-  color: #1f2937 !important;              /* slate-800 */
-  border: 1px solid #fde68a !important;   /* amber-300 */
-  box-shadow: 0 6px 24px rgba(0,0,0,0.15) !important;
+.guide-html .tip-box,
+.guide-html .info-box,
+.guide-html .note-box,
+.guide-html .callout-box {
+  background: transparent !important;
+  color: var(--guide-strong) !important;
+  border: 1px solid var(--guide-border) !important;
+  box-shadow: var(--guide-shadow) !important;
 }
 
 /* the pink/green info cards the model loves to emit */
 .guide-html [style*="background: linear-gradient"],
 .guide-html [style*="background:linear-gradient"],
 .guide-html .info-card,
-.guide-html .note-card {
-  background: var(--guide-card) !important;
+.guide-html .note-card,
+.guide-html .card {
+  background: transparent !important;
   color: var(--guide-strong) !important;
   border: 1px solid var(--guide-border) !important;
 }
 
 /* bullets & lists */
 .guide-html ul { padding-left: 1.25rem !important; }
-.guide-html li { margin: .4rem 0 !important; }
+.guide-html li { margin: .4rem 0 !important; color: var(--guide-strong) !important; }
 
 /* checklists that were rendering "invisible" */
 .guide-html .number-list li,
@@ -85,17 +131,73 @@
   border-top: 1px solid var(--guide-border) !important;
 }
 
-/* wipe white text on light backgrounds the model inlines */
+/* CRITICAL: wipe ALL light text colors - force dark or light based on context */
 .guide-html [style*="color: white"],
-.guide-html [style*="color:#fff"] {
-  color: #1f2937 !important; /* slate-800 */
+.guide-html [style*="color:#fff"],
+.guide-html [style*="color:#FFF"],
+.guide-html [style*="color:#ffffff"],
+.guide-html [style*="color:#FFFFFF"],
+.guide-html [style*="color:rgb(255"],
+.guide-html [style*="color:rgba(255"],
+.guide-html [style*="color:#f"],
+.guide-html [style*="color:#F"],
+.guide-html [style*="color:#e"],
+.guide-html [style*="color:#E"],
+.guide-html [style*="color:#d"],
+.guide-html [style*="color:#D"],
+.guide-html [style*="color:#c"],
+.guide-html [style*="color:#C"],
+.guide-html [style*="color:#b"],
+.guide-html [style*="color:#B"],
+.guide-html [style*="color:#a"],
+.guide-html [style*="color:#A"],
+.guide-html [style*="color:#9"],
+.guide-html [style*="color:#8"],
+.guide-html [style*="color:#7"],
+.guide-html [style*="color:#6"],
+.guide-html [style*="color:#5"],
+.guide-html [style*="color:#4"],
+.guide-html [style*="color:#3"],
+.guide-html [style*="color:#2"],
+.guide-html [style*="color:#1"] {
+  color: var(--guide-strong) !important; /* Force light text on dark background */
 }
 
-/* over-bright backgrounds: tone them down */
+/* CRITICAL: Any element with light background MUST have dark text */
 .guide-html [style*="background-color:#fff"],
-.guide-html [style*="background:#fff"] {
-  background: #fff !important;
-  color: #1f2937 !important;
+.guide-html [style*="background:#fff"],
+.guide-html [style*="background-color:#f"],
+.guide-html [style*="background:#f"],
+.guide-html [style*="background-color:#e"],
+.guide-html [style*="background:#e"],
+.guide-html [style*="background-color:#d"],
+.guide-html [style*="background:#d"],
+.guide-html [style*="background-color:#c"],
+.guide-html [style*="background:#c"],
+.guide-html [style*="background-color:#b"],
+.guide-html [style*="background:#b"],
+.guide-html [style*="background-color:#a"],
+.guide-html [style*="background:#a"],
+.guide-html [style*="background-color:#9"],
+.guide-html [style*="background:#9"],
+.guide-html [style*="background-color:#8"],
+.guide-html [style*="background:#8"],
+.guide-html [style*="background-color:#7"],
+.guide-html [style*="background:#7"],
+.guide-html [style*="background-color:#6"],
+.guide-html [style*="background:#6"],
+.guide-html [style*="background-color:#5"],
+.guide-html [style*="background:#5"],
+.guide-html [style*="background-color:#4"],
+.guide-html [style*="background:#4"],
+.guide-html [style*="background-color:#3"],
+.guide-html [style*="background:#3"],
+.guide-html [style*="background-color:#2"],
+.guide-html [style*="background:#2"],
+.guide-html [style*="background-color:#1"],
+.guide-html [style*="background:#1"] {
+  background: transparent !important;
+  color: var(--guide-strong) !important;
 }
 
 /* ----- Guide List Component Fixes ----- */

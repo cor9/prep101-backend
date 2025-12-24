@@ -18,16 +18,26 @@ const normalizeGuide = (html) => {
   html = html.replace(/text-shadow\s*:\s*[^;"']+;?/gi, "");
   // downgrade super low opacity text
   html = html.replace(/opacity\s*:\s*0\.[0-3]\d*;?/gi, "opacity:1;");
-  // remove ALL inline color styles - let CSS handle it
+  // CRITICAL: remove ALL inline color styles - let CSS handle it
   html = html.replace(/\bcolor\s*:\s*[^;"']+[;]?/gi, "");
-  // remove ALL inline background colors - let CSS handle it
+  // CRITICAL: remove ALL inline background colors and gradients - let CSS handle it
   html = html.replace(/background(?:-color)?\s*:\s*[^;"']+[;]?/gi, "");
+  html = html.replace(/background-image\s*:\s*[^;"']+[;]?/gi, "");
   // remove filter effects that might dim text
   html = html.replace(/filter\s*:\s*[^;"']+;?/gi, "");
   // remove mix-blend-mode that can cause contrast issues
   html = html.replace(/mix-blend-mode\s*:\s*[^;"']+;?/gi, "");
   // remove any -webkit-text-stroke that makes text hard to read
   html = html.replace(/-webkit-text-stroke\s*:\s*[^;"']+;?/gi, "");
+  
+  // CRITICAL: Remove any style attributes that contain light colors
+  // This regex matches style="..." and removes light color values
+  html = html.replace(/style\s*=\s*["']([^"']*background[^"']*#[fFeEdDcCbBaA987654321][^"']*)["']/gi, (match, content) => {
+    // Remove background-related properties but keep other styles
+    const cleaned = content.replace(/background[^;]*;?/gi, "");
+    return cleaned.trim() ? `style="${cleaned}"` : "";
+  });
+  
   return html;
 };
 

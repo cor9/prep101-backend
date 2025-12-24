@@ -1630,6 +1630,14 @@ ${data.sceneText}${fileTypeContext}
 - Provide actionable coaching, not summaries; every section should end with playable insights.
 - Always conclude with a FINAL PEP TALK in Corey's voice.
 
+**CRITICAL HTML STYLING RULES:**
+- NEVER use light text colors (white, #fff, #ffffff, light gray, etc.) on light backgrounds
+- NEVER use inline styles with light background colors (#fff, #ffffff, #fdf, #eff, #f5f, #f0f, #fef, #fffb, #f8fa, rgba(255, rgba(253, rgba(239, rgba(245, rgba(240, rgba(254, rgba(248, etc.)
+- If you must use background colors, use DARK backgrounds with LIGHT text, or NO background colors at all
+- The guide will be displayed on a dark background (#1f2937), so all text should be light/readable colors
+- DO NOT add inline style attributes with color or background-color properties
+- Let the CSS handle all styling - just use semantic HTML
+
 **OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be pure HTML that can be directly inserted into a web page. Make it worthy of the PREP101 brand and indistinguishable from Corey's personal coaching.`,
               },
             ],
@@ -2353,7 +2361,11 @@ Use this structure and styling approach (replace the placeholder content with yo
 
 ${generateHTMLTemplate(colorTheme, data.characterName, data.productionTitle)}
 
-**IMPORTANT:**
+**CRITICAL COLOR & STYLING RULES:**
+- NEVER use light text colors (white, #fff, light gray, etc.) on light backgrounds
+- NEVER use inline style attributes with light background colors - the CSS will handle all styling
+- If you use the provided color theme, ensure DARK text (#1f2937, #333, etc.) on light backgrounds
+- DO NOT add inline color or background-color styles - let the CSS classes handle styling
 - Use the exact colors provided above
 - Follow the CSS class names from the template (.section, .highlight-box, .tip-box, .number-list)
 - Keep the fun, youthful design with rounded corners, shadows, and gradients
@@ -2813,7 +2825,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       : uploadId
       ? [uploadId]
       : [];
-    
+
     // Debug request basics for faster triage
 
     console.log("📝 Generate request:", {
