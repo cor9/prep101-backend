@@ -2569,6 +2569,16 @@ function queueChildGuideGeneration({ guideId, childData, userId }) {
   });
 }
 
+// Handle OPTIONS preflight for upload endpoint
+app.options("/api/upload", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Max-Age", "86400"); // 24 hours
+  res.status(200).end();
+});
+
 // PDF Upload endpoint
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {
@@ -2721,7 +2731,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       fileType: fileType, // Store the file type
       userId: req.userId || req.user?.id || null, // Store user ID for better tracking
     };
-    
+
     // Log upload storage for debugging
     console.log("[UPLOAD] Stored upload:", {
       uploadId,
