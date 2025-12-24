@@ -2719,7 +2719,17 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       uploadTime: new Date(),
       wordCount: result.wordCount,
       fileType: fileType, // Store the file type
+      userId: req.userId || req.user?.id || null, // Store user ID for better tracking
     };
+    
+    // Log upload storage for debugging
+    console.log("[UPLOAD] Stored upload:", {
+      uploadId,
+      filename: req.file.originalname,
+      userId: uploads[uploadId].userId,
+      totalUploads: Object.keys(uploads).length,
+      timestamp: new Date().toISOString()
+    });
 
     // 5) Log triage with enhanced preview
     const preview = (result.text || "").slice(0, 300).replace(/\n/g, "⏎");
@@ -2795,7 +2805,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       : uploadId
       ? [uploadId]
       : [];
-    
+
     console.log("📝 Generate request:", {
       uploadIdsCount: uploadIdList.length,
       uploadIds: uploadIdList,
@@ -2810,15 +2820,15 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     // Check if upload IDs exist and provide detailed error info
     const missingIds = uploadIdList.filter((id) => !uploads[id]);
     const availableIds = Object.keys(uploads);
-    
+
     if (!uploadIdList.length) {
       console.error("[GENERATE] No upload IDs provided in request");
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "No upload ID(s) provided. Please upload your PDF first.",
         debug: { received: { uploadId, uploadIds } }
       });
     }
-    
+
     if (missingIds.length > 0) {
       console.error("[GENERATE] Missing upload IDs:", {
         requested: uploadIdList,
@@ -2827,10 +2837,10 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         totalAvailable: availableIds.length,
         timestamp: new Date().toISOString()
       });
-      
+
       // In serverless, uploads can expire between requests
       // Provide helpful error message
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "Upload session expired. This can happen in serverless environments. Please re-upload your PDF and try generating immediately.",
         debug: {
           missingIds,
