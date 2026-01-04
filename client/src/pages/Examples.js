@@ -92,17 +92,17 @@ const Examples = () => {
                   e.currentTarget.style.boxShadow = '0 22px 70px rgba(0,0,0,.10)';
                 }}
               >
-                <h3 style={{ 
-                  fontSize: '1.25rem', 
-                  fontWeight: '800', 
-                  color: 'var(--gray-800)', 
+                <h3 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: '800',
+                  color: 'var(--gray-800)',
                   margin: '0 0 0.5rem 0',
                   lineHeight: '1.3'
                 }}>
                   {t.heading}
                 </h3>
-                <p style={{ 
-                  color: 'var(--gray-600)', 
+                <p style={{
+                  color: 'var(--gray-600)',
                   margin: '0 0 1.5rem 0',
                   fontSize: '0.95rem'
                 }}>
@@ -139,17 +139,17 @@ const Examples = () => {
                   }}
                 >
                   <span>View Example</span>
-                  <svg 
-                    width="18" 
-                    height="18" 
-                    viewBox="0 0 24 24" 
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
                     fill="none"
                   >
-                    <path 
-                      d="M7 17L17 7M17 7H7M17 7V17" 
-                      stroke="currentColor" 
-                      strokeWidth="2.5" 
-                      strokeLinecap="round" 
+                    <path
+                      d="M7 17L17 7M17 7H7M17 7V17"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                   </svg>
@@ -161,29 +161,29 @@ const Examples = () => {
           {/* Bottom CTA */}
           <div className="text-center mt-5">
             <div className="card-dark">
-              <h2 style={{ 
-                fontSize: '1.5rem', 
-                fontWeight: '800', 
-                color: 'var(--white)', 
-                margin: '0 0 1rem 0' 
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '800',
+                color: 'var(--white)',
+                margin: '0 0 1rem 0'
               }}>
                 Ready to get your own custom guide?
               </h2>
-              <p style={{ 
-                color: 'var(--ink-dim)', 
+              <p style={{
+                color: 'var(--ink-dim)',
                 margin: '0 0 1.5rem 0',
                 fontSize: '1.1rem'
               }}>
                 Upload your sides and get a personalized coaching guide in minutes.
               </p>
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button 
+                <button
                   className="btn btnPrimary"
                   onClick={() => navigate('/register')}
                 >
                   Get Started
                 </button>
-                <button 
+                <button
                   className="btn btnSecondary"
                   onClick={() => navigate('/pricing')}
                 >
@@ -193,7 +193,7 @@ const Examples = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Footer */}
         <Footer />
       </div>

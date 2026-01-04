@@ -1126,7 +1126,10 @@ router.get("/revenue", auth, requireAdmin, async (req, res) => {
     try {
       balance = await stripe.balance.retrieve();
     } catch (balanceError) {
-      console.warn("[ADMIN_REVENUE] Error fetching balance:", balanceError.message);
+      console.warn(
+        "[ADMIN_REVENUE] Error fetching balance:",
+        balanceError.message
+      );
       // Continue with empty balance
     }
 
@@ -1149,7 +1152,10 @@ router.get("/revenue", auth, requireAdmin, async (req, res) => {
         status: "all",
       });
     } catch (subError) {
-      console.error("[ADMIN_REVENUE] Error fetching subscriptions:", subError.message);
+      console.error(
+        "[ADMIN_REVENUE] Error fetching subscriptions:",
+        subError.message
+      );
       throw new Error(`Failed to fetch subscriptions: ${subError.message}`);
     }
 
@@ -1160,7 +1166,7 @@ router.get("/revenue", auth, requireAdmin, async (req, res) => {
       try {
         const item = sub.items.data[0];
         if (!item?.price?.product) continue;
-        
+
         // Get product ID - it might be a string or we need to expand it
         let productId = item.price.product;
         if (typeof productId === "string") {
@@ -1175,7 +1181,10 @@ router.get("/revenue", auth, requireAdmin, async (req, res) => {
           }
         }
       } catch (err) {
-        console.warn(`[ADMIN_REVENUE] Error processing subscription ${sub.id}:`, err.message);
+        console.warn(
+          `[ADMIN_REVENUE] Error processing subscription ${sub.id}:`,
+          err.message
+        );
         // Continue to next subscription
       }
     }

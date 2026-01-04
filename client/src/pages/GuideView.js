@@ -29,7 +29,7 @@ const normalizeGuide = (html) => {
   html = html.replace(/mix-blend-mode\s*:\s*[^;"']+;?/gi, "");
   // remove any -webkit-text-stroke that makes text hard to read
   html = html.replace(/-webkit-text-stroke\s*:\s*[^;"']+;?/gi, "");
-  
+
   // CRITICAL: Remove any style attributes that contain light colors
   // This regex matches style="..." and removes light color values
   html = html.replace(/style\s*=\s*["']([^"']*background[^"']*#[fFeEdDcCbBaA987654321][^"']*)["']/gi, (match, content) => {
@@ -37,7 +37,7 @@ const normalizeGuide = (html) => {
     const cleaned = content.replace(/background[^;]*;?/gi, "");
     return cleaned.trim() ? `style="${cleaned}"` : "";
   });
-  
+
   return html;
 };
 

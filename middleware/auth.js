@@ -38,8 +38,12 @@ if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
       console.error(
         `❌ Invalid SUPABASE_URL format: must start with http:// or https://`
       );
-      console.error(`❌ Got: ${SUPABASE_URL ? SUPABASE_URL.substring(0, 50) : 'undefined'}`);
-      console.error(`❌ Please set SUPABASE_URL in Vercel environment variables to: https://eokqyijxubrmompozguh.supabase.co`);
+      console.error(
+        `❌ Got: ${SUPABASE_URL ? SUPABASE_URL.substring(0, 50) : "undefined"}`
+      );
+      console.error(
+        `❌ Please set SUPABASE_URL in Vercel environment variables to: https://eokqyijxubrmompozguh.supabase.co`
+      );
     } else {
       supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
         auth: {
@@ -51,7 +55,9 @@ if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
     }
   } catch (error) {
     console.error("❌ Failed to create Supabase admin client:", error.message);
-    console.error("❌ Check that SUPABASE_URL is set correctly in Vercel environment variables");
+    console.error(
+      "❌ Check that SUPABASE_URL is set correctly in Vercel environment variables"
+    );
   }
 } else {
   const missing = [];
@@ -63,7 +69,9 @@ if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
       ", "
     )}) - backend will fall back to legacy JWT auth`
   );
-  console.warn(`⚠️  Please set these in Vercel Dashboard → Settings → Environment Variables`);
+  console.warn(
+    `⚠️  Please set these in Vercel Dashboard → Settings → Environment Variables`
+  );
 }
 
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
@@ -76,8 +84,12 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
       console.error(
         `❌ Invalid SUPABASE_URL format: must start with http:// or https://`
       );
-      console.error(`❌ Got: ${SUPABASE_URL ? SUPABASE_URL.substring(0, 50) : 'undefined'}`);
-      console.error(`❌ Please set SUPABASE_URL in Vercel to: https://eokqyijxubrmompozguh.supabase.co`);
+      console.error(
+        `❌ Got: ${SUPABASE_URL ? SUPABASE_URL.substring(0, 50) : "undefined"}`
+      );
+      console.error(
+        `❌ Please set SUPABASE_URL in Vercel to: https://eokqyijxubrmompozguh.supabase.co`
+      );
     } else {
       supabasePublic = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
@@ -89,17 +101,23 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     }
   } catch (error) {
     console.error("❌ Failed to create Supabase public client:", error.message);
-    console.error("❌ Check that SUPABASE_URL and SUPABASE_ANON_KEY are set correctly in Vercel");
+    console.error(
+      "❌ Check that SUPABASE_URL and SUPABASE_ANON_KEY are set correctly in Vercel"
+    );
   }
 } else {
   if (!SUPABASE_URL) {
     console.warn("⚠️  SUPABASE_URL missing - public auth fallback disabled");
-    console.warn("⚠️  Set SUPABASE_URL in Vercel Dashboard → Settings → Environment Variables");
+    console.warn(
+      "⚠️  Set SUPABASE_URL in Vercel Dashboard → Settings → Environment Variables"
+    );
   } else if (!SUPABASE_ANON_KEY) {
     console.warn(
       "⚠️  SUPABASE_ANON_KEY missing - public auth fallback disabled"
     );
-    console.warn("⚠️  Set SUPABASE_ANON_KEY in Vercel Dashboard → Settings → Environment Variables");
+    console.warn(
+      "⚠️  Set SUPABASE_ANON_KEY in Vercel Dashboard → Settings → Environment Variables"
+    );
   }
 }
 
@@ -157,38 +175,62 @@ async function findOrCreateUserFromSupabase(supabaseUser) {
     };
   }
 
-  let user = await User.findOne({ where: { email } });
+  try {
+    let user = await User.findOne({ where: { email } });
 
-  if (!user) {
-    const randomPassword = crypto.randomBytes(32).toString("hex");
+    if (!user) {
+      const randomPassword = crypto.randomBytes(32).toString("hex");
 
-    user = await User.create({
-      email,
-      password: randomPassword,
-      name: derivedName,
-      subscription: "free",
-      guidesLimit: 1,
-      isBetaTester,
-      betaAccessLevel,
-    });
-  } else {
-    // Sync beta tester fields from Supabase metadata to database
-    // Only update if they differ to avoid unnecessary database writes
-    const needsUpdate =
-      user.isBetaTester !== isBetaTester ||
-      user.betaAccessLevel !== betaAccessLevel;
-
-    if (needsUpdate) {
-      await user.update({
+      user = await User.create({
+        email,
+        password: randomPassword,
+        name: derivedName,
+        subscription: "free",
+        guidesLimit: 1,
         isBetaTester,
         betaAccessLevel,
       });
-      // Reload to get updated values
-      await user.reload();
-    }
-  }
+    } else {
+      // Sync beta tester fields from Supabase metadata to database
+      // Only update if they differ to avoid unnecessary database writes
+      const needsUpdate =
+        user.isBetaTester !== isBetaTester ||
+        user.betaAccessLevel !== betaAccessLevel;
 
-  return user;
+      if (needsUpdate) {
+        await user.update({
+          isBetaTester,
+          betaAccessLevel,
+        });
+        // Reload to get updated values
+        await user.reload();
+      }
+    }
+
+    return user;
+  } catch (dbError) {
+    // Database connection failed - fall back to Supabase-only user stub
+    console.warn("⚠️  Database query failed; using Supabase-only user stub:", dbError.message);
+    return {
+      id: supabaseUser.id,
+      email,
+      name: derivedName,
+      subscription:
+        supabaseUser.user_metadata?.subscription ||
+        supabaseUser.app_metadata?.subscription ||
+        "free",
+      guidesLimit:
+        supabaseUser.user_metadata?.guidesLimit ??
+        supabaseUser.app_metadata?.guidesLimit ??
+        null,
+      guidesUsed:
+        supabaseUser.user_metadata?.guidesUsed ??
+        supabaseUser.app_metadata?.guidesUsed ??
+        0,
+      isBetaTester,
+      betaAccessLevel,
+    };
+  }
 }
 
 async function getSupabaseUserFromToken(token) {

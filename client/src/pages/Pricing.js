@@ -197,7 +197,7 @@ const Pricing = () => {
                 <button
                   onClick={() => go(plan.href)}
                   className={`btn ${plan.popular ? 'btnPrimary' : ''}`}
-                  style={{ 
+                  style={{
                     width: '100%',
                     ...(plan.popular ? {} : {
                       background: 'var(--gray-800)',
@@ -315,7 +315,7 @@ const Pricing = () => {
                 <button
                   onClick={() => go(plan.href)}
                   className="btn"
-                  style={{ 
+                  style={{
                     width: '100%',
                     background: 'var(--gray-800)',
                     color: 'var(--white)',
@@ -372,7 +372,7 @@ const Pricing = () => {
                   <button
                     onClick={() => go(STRIPE.ADDON_FEEDBACK)}
                     className="btn"
-                    style={{ 
+                    style={{
                       width: '100%',
                       background: 'var(--gray-800)',
                       color: 'var(--white)',
@@ -416,7 +416,7 @@ const Pricing = () => {
                   <button
                     onClick={() => go(STRIPE.ADDON_COACH)}
                     className="btn"
-                    style={{ 
+                    style={{
                       width: '100%',
                       background: 'var(--gray-800)',
                       color: 'var(--white)',

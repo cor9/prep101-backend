@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PREP101 Model Tester</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="text"], select, input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 30px;
+            border-top: 2px solid #eee;
+            padding-top: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .status.loading {
+            background-color: #e8f4f8;
+            color: #2980b9;
+            display: block;
+        }
+        .status.error {
+            background-color: #fde8e8;
+            color: #c0392b;
+            display: block;
+        }
+        .status.success {
+            background-color: #eafaf1;
+            color: #27ae60;
+            display: block;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 PREP101 Model Tester</h1>
+
+        <div class="form-group">
+            <label for="pdfFile">1. Upload Script (PDF)</label>
+            <input type="file" id="pdfFile" accept=".pdf">
+        </div>
+
+        <div class="form-group">
+            <label for="characterName">2. Character Name</label>
+            <input type="text" id="characterName" placeholder="e.g. John Doe">
+        </div>
+
+        <div class="form-group">
+            <label for="productionTitle">3. Production Title</label>
+            <input type="text" id="productionTitle" placeholder="e.g. The Matrix">
+        </div>
+
+        <div class="form-group">
+            <label for="productionType">4. Production Type</label>
+            <input type="text" id="productionType" placeholder="e.g. Feature Film, TV Series">
+        </div>
+
+        <div class="form-group">
+            <label for="genre">5. Genre</label>
+            <input type="text" id="genre" placeholder="e.g. Sci-Fi, Comedy, Thriller">
+        </div>
+
+        <div class="form-group">
+            <label for="characterBreakdown">6. Character Description</label>
+            <textarea id="characterBreakdown" rows="3" placeholder="Paste the character breakdown/description here..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: inherit;"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="model">7. Select AI Model</label>
+            <select id="model">
+                <option value="Claude 3.5 Sonnet">Claude 3.5 Sonnet (Anthropic)</option>
+                <option value="GPT-4o">GPT-4o (OpenAI)</option>
+                <option value="Gemini 1.5 Flash">Gemini 1.5 Flash (Google)</option>
+            </select>
+        </div>
+
+        <button id="generateBtn" onclick="generateGuide()">Generate Guide</button>
+
+        <div id="status" class="status"></div>
+
+        <div id="result" style="display: none;">
+            <h3>Generated Guide Preview:</h3>
+            <iframe id="guideFrame"></iframe>
+        </div>
+    </div>
+
+    <script>
+        let currentUploadId = null;
+        const API_BASE = window.location.origin + '/api';
+
+        async function generateGuide() {
+            const btn = document.getElementById('generateBtn');
+            const status = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            const frame = document.getElementById('guideFrame');
+
+            const fileInput = document.getElementById('pdfFile');
+            const characterName = document.getElementById('characterName').value;
+            const productionTitle = document.getElementById('productionTitle').value;
+            const productionType = document.getElementById('productionType').value;
+            const genre = document.getElementById('genre').value;
+            const characterBreakdown = document.getElementById('characterBreakdown').value;
+            const model = document.getElementById('model').value;
+
+            if (!fileInput.files[0]) {
+                showStatus('Please select a PDF file first.', 'error');
+                return;
+            }
+            if (!characterName || !productionTitle || !productionType) {
+                showStatus('Please fill in the required fields (1-4).', 'error');
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                showStatus('Uploading PDF...', 'loading');
+
+                // 1. Upload
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                const uploadRes = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadRes.ok) throw new Error('Upload failed');
+                const uploadData = await uploadRes.json();
+                currentUploadId = uploadData.uploadId;
+
+                // 2. Generate
+                showStatus(`Generating guide with ${model}... (This may take 30-60s)`, 'loading');
+
+                const generateRes = await fetch(`${API_BASE}/guides/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        uploadId: currentUploadId,
+                        characterName,
+                        productionTitle,
+                        productionType,
+                        genre,
+                        characterBreakdown,
+                        model
+                    })
+                });
+
+                if (!generateRes.ok) {
+                    const err = await generateRes.json();
+                    throw new Error(err.error || 'Generation failed');
+                }
+
+                const guideData = await generateRes.json();
+
+                showStatus('Guide generated successfully!', 'success');
+                resultDiv.style.display = 'block';
+
+                // Display HTML in iframe
+                frame.srcdoc = guideData.guideContent;
+
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function showStatus(msg, type) {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = `status ${type}`;
+            el.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

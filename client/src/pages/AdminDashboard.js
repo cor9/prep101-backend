@@ -169,7 +169,7 @@ const AdminDashboard = () => {
         apiFetch('/api/admin/promo-codes', token),
         apiFetch('/api/admin/promo-codes/analytics', token)
       ]);
-      
+
       if (codesData.success === false) {
         console.error('Promo codes fetch failed:', codesData.message);
         toast.error(codesData.message || 'Failed to load promo codes');
@@ -177,7 +177,7 @@ const AdminDashboard = () => {
       } else {
         setPromoCodes(codesData.promoCodes || []);
       }
-      
+
       if (analyticsData.success === false) {
         console.error('Promo analytics fetch failed:', analyticsData.message);
         setPromoAnalytics(null);

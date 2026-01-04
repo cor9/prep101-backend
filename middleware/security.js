@@ -5,15 +5,13 @@ const helmet = require('helmet');
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 requests per windowMs (increased from 5 for testing)
+  max: 5, // limit each IP to 5 requests per windowMs
   message: 'Too many authentication attempts, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Successful logins don't count toward limit
+  skipSuccessfulRequests: true,
   // Vercel/proxy configuration
-  validate: { trustProxy: false }, // Disable validation for serverless environments
-  // Store rate limit info in memory (works for serverless with proper cleanup)
-  store: undefined // Use default in-memory store
+  validate: { trustProxy: false } // Disable validation for serverless environments
 });
 
 // Rate limiting for general API endpoints
