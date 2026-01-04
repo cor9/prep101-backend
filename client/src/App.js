@@ -12,7 +12,6 @@ import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Pricing from './pages/Pricing';
 import Examples from './pages/Examples';
-import Account from './pages/Account';
 import GuideView from './pages/GuideView';
 import StripeSuccess from './pages/StripeSuccess';
 import PaymentSuccess from './pages/PaymentSuccess';
@@ -71,11 +70,7 @@ function App() {
                 <Route path="/examples" element={<Examples />} />
                 <Route
                   path="/account"
-                  element={
-                    <ProtectedRoute>
-                      <Account />
-                    </ProtectedRoute>
-                  }
+                  element={<Navigate to="/dashboard" replace />}
                 />
                 <Route
                   path="/dashboard"
