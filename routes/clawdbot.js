@@ -7,9 +7,22 @@ const validateApiKey = (req, res, next) => {
   const apiKey = req.header('X-API-Key');
   const validApiKey = process.env.CLAWDBOT_API_KEY;
 
+  console.log('🔐 Clawdbot Auth Check:');
+  console.log(`   - Received Key: ${apiKey ? 'Yes (len=' + apiKey.length + ')' : 'No'}`);
+  console.log(`   - Configured Key: ${validApiKey ? 'Yes (len=' + validApiKey.length + ')' : 'Missng in Env'}`);
+
   if (!apiKey || apiKey !== validApiKey) {
-    return res.status(401).json({ success: false, message: 'Invalid or missing API Key' });
+    console.log('❌ Auth Failed: Key mismatch or missing');
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid or missing API Key',
+      debug: {
+        received: !!apiKey,
+        configured: !!validApiKey
+      }
+    });
   }
+  console.log('✅ Auth Successful');
   next();
 };
 
