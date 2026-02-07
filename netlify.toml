@@ -8,6 +8,13 @@
   NPM_VERSION = "9"
   CI = "false"
 
+# Proxy API requests to backend
+[[redirects]]
+  from = "/api/*"
+  to = "https://prep101-api.vercel.app/api/:splat"
+  status = 200
+  force = true
+
 # Redirect rules for SPA routing
 [[redirects]]
   from = "/"
