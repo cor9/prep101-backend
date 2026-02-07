@@ -101,8 +101,12 @@ router.post('/generate', validateApiKey, async (req, res) => {
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error('Anthropic API Error:', errorText);
-        throw new Error(`Anthropic API failed: ${response.statusText}`);
+        console.error('❌ Anthropic API Error Details:');
+        console.error(`   - Status: ${response.status} ${response.statusText}`);
+        console.error(`   - Model Used: claude-3-5-sonnet-20241022`);
+        console.error(`   - Error Body: ${errorText}`);
+
+        throw new Error(`Anthropic API failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
