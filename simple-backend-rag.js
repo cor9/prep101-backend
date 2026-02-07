@@ -695,6 +695,14 @@ try {
   console.log("⚠️  Stripe webhook routes not available:", error.message);
 }
 
+try {
+  const clawdbotRoutes = require("./routes/clawdbot");
+  app.use("/api/clawdbot", clawdbotRoutes);
+  console.log("✅ Clawdbot routes loaded");
+} catch (error) {
+  console.log("⚠️  Clawdbot routes not available:", error.message);
+}
+
 // Secure API key handling (trim to avoid invisible whitespace issues)
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
 if (!ANTHROPIC_API_KEY) {
