@@ -7,8 +7,9 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import Footer from "../components/Footer";
 
 import API_BASE from "../config/api";
-import "../styles/shared.css";
 import Navbar from "../components/Navbar";
+import PromoCodeInput from "../components/PromoCodeInput";
+import "../styles/shared.css";
 
 // Simple progress bar
 const ProgressBar = ({ value, max }) => {
@@ -52,8 +53,6 @@ const nicePlan = (p) => {
       return "—";
   }
 };
-
-import PromoCodeInput from "../components/PromoCodeInput";
 
 const Dashboard = () => {
   const [uploadData, setUploadData] = useState(null);
