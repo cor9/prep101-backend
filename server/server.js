@@ -1,8 +1,21 @@
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const Tesseract = require('tesseract.js');
+const path = require('path');
 
+// Load env vars
 dotenv.config();
+
+// Import shared database connection and models
+// Note: We are in server/ directory, so we go up one level
+const { sequelize } = require('../database/connection');
+const User = require('../models/User');
+const Guide = require('../models/Guide');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -17,87 +30,77 @@ app.use(cors({
       'http://localhost:3002',
       'http://127.0.0.1:3000',
       'http://127.0.0.1:3001',
-      'http://127.0.0.1:3002'
+      'http://127.0.0.1:3002',
+      process.env.BASE_URL,
+      'https://prep101-frontend.vercel.app'
     ];
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow Vercel previews
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+
     console.log('CORS blocked origin:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS','PATCH'],
-  allowedHeaders: ['Origin','X-Requested-With','Content-Type','Accept','Authorization','Cache-Control','Pragma']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'Cache-Control', 'Pragma']
 }));
 
 // ----------------- Middleware -----------------
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ----------------- DB -----------------
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: 'postgres',
-  dialectOptions: { ssl: { require: true, rejectUnauthorized: false } },
-  logging: false,
-});
-
-// Models
-const User = sequelize.define('User', {
-  id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  name: { type: DataTypes.STRING, allowNull: false },
-  email: { type: DataTypes.STRING, allowNull: false, unique: true, validate: { isEmail: true }},
-  password: { type: DataTypes.STRING, allowNull: false },
-  subscription: { type: DataTypes.STRING, defaultValue: 'free' },
-  guidesUsed: { type: DataTypes.INTEGER, defaultValue: 0 },
-  guidesLimit: { type: DataTypes.INTEGER, defaultValue: 3 }
-});
-
-const Guide = sequelize.define('Guide', {
-  id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  guideId: { type: DataTypes.STRING, allowNull: false, unique: true },
-  characterName: { type: DataTypes.STRING, allowNull: false },
-  productionTitle: { type: DataTypes.STRING, allowNull: false },
-  productionType: { type: DataTypes.STRING, allowNull: false },
-  content: { type: DataTypes.TEXT, allowNull: false }
-});
-
-User.hasMany(Guide, { foreignKey: 'userId' });
-Guide.belongsTo(User, { foreignKey: 'userId' });
-
 // ----------------- Health -----------------
-app.get('/api/health', (req,res) => {
-  res.json({ message:'Backend running', timestamp:new Date(), database:'Postgres', status:'healthy' });
+app.get('/api/health', (req, res) => {
+  res.json({ message: 'Backend running', timestamp: new Date(), database: 'Postgres', status: 'healthy' });
 });
 
 // ----------------- Auth -----------------
-app.post('/api/auth/register', async (req,res) => {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ message:'All fields required' });
-    if (password.length < 6) return res.status(400).json({ message:'Password too short' });
+    if (!name || !email || !password) return res.status(400).json({ message: 'All fields required' });
+    if (password.length < 6) return res.status(400).json({ message: 'Password too short' });
 
-    const existing = await User.findOne({ where:{ email } });
-    if (existing) return res.status(400).json({ message:'User already exists' });
+    // Check if models are loaded
+    if (!User) {
+      return res.status(500).json({ message: 'Database connection failed' });
+    }
 
-    const hashed = await bcrypt.hash(password, 12);
-    const newUser = await User.create({ name,email,password:hashed });
+    const existing = await User.findOne({ where: { email } });
+    if (existing) return res.status(400).json({ message: 'User already exists' });
 
-    const token = jwt.sign({ userId:newUser.id }, process.env.JWT_SECRET, { expiresIn:'24h' });
-    res.status(201).json({ message:'User registered', token, user:{ id:newUser.id, name, email } });
-  } catch(e) {
-    console.error(e); res.status(500).json({ message:'Registration error', error:e.message });
+    // Note: Password hashing is handled by User model hooks (beforeCreate)
+    // We pass the plain password here.
+    const newUser = await User.create({ name, email, password });
+
+    const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.status(201).json({ message: 'User registered', token, user: { id: newUser.id, name, email } });
+  } catch (e) {
+    console.error(e); res.status(500).json({ message: 'Registration error', error: e.message });
   }
 });
 
-app.post('/api/auth/login', async (req,res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ message:'Email & password required' });
-    const user = await User.findOne({ where:{ email } });
-    if (!user) return res.status(400).json({ message:'Invalid credentials' });
+    if (!email || !password) return res.status(400).json({ message: 'Email & password required' });
+
+    // Check if models are loaded
+    if (!User) {
+      return res.status(500).json({ message: 'Database connection failed' });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+    // Use model method or bcrypt directly
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message:'Invalid credentials' });
-    const token = jwt.sign({ userId:user.id }, process.env.JWT_SECRET, { expiresIn:'24h' });
-    res.json({ message:'Login successful', token, user:{ id:user.id, name:user.name, email:user.email } });
-  } catch(e) { console.error(e); res.status(500).json({ message:'Login error', error:e.message }); }
+
+    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ message: 'Login successful', token, user: { id: user.id, name: user.name, email: user.email } });
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Login error', error: e.message }); }
 });
 
 // ----------------- Upload + Generate -----------------
@@ -172,8 +175,22 @@ app.post('/api/guides/generate', async (req, res) => {
     <h1>${characterName}'s Audition Guide</h1>
     <p><b>Project:</b> ${productionTitle} — ${productionType}</p>
     <h2>Extracted Scene Text (first 400 chars):</h2>
-    <pre>${text.slice(0, 400).replace(/[<>&]/g, s => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[s]))}${text.length > 400 ? '…' : ''}</pre>
+    <pre>${text.slice(0, 400).replace(/[<>&]/g, s => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[s]))}${text.length > 400 ? '…' : ''}</pre>
     <p>✅ Upload + Generate path is working.</p>
   `;
   return res.json({ ok: true, guideHtml });
 });
+
+// ----------------- Startup -----------------
+if (sequelize) {
+  sequelize.sync().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Backend running on port ${PORT}`);
+    });
+  }).catch(e => console.error('DB Sync Error:', e));
+} else {
+  console.error('❌ Failed to connect to database. Server starting without DB...');
+  app.listen(PORT, () => {
+    console.log(`Backend running on port ${PORT} (No DB)`);
+  });
+}
