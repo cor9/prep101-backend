@@ -140,23 +140,37 @@ app.set("trust proxy", true);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// CORS - Allow specific origins including prep101.site
-const corsConfig = {
-  origin: [
+// Manual CORS middleware for maximum compatibility
+app.use((req, res, next) => {
+  const allowedOrigins = [
     "https://prep101.site",
     "https://www.prep101.site",
     "https://prep101-api.vercel.app",
     "http://localhost:3000",
-    "http://localhost:3001",
-  ],
-  credentials: true,
-  optionsSuccessStatus: 200,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-};
+    "http://localhost:3001"
+  ];
+  const origin = req.headers.origin;
 
-app.use(cors(corsConfig));
-app.options("*", cors(corsConfig));
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  // Allow credentials for cookies/auth
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  // Allow all common methods
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+
+  // Allow common headers
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+
+  // Handle preflight immediately
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  next();
+});
 
 // Continue with other imports
 const pdfParse = require("pdf-parse");
@@ -1585,7 +1599,7 @@ ${data.sceneText}${fileTypeContext}
    - **The Empathy Stretch** — What's DIFFERENT about this character's life from yours? How do you imaginatively access that?
    - **Character Shortcut** — A vivid metaphor (e.g., "She's a golden retriever puppy in human form")
    - **The Type (And How to Transcend It)** — Name the stereotype, then show how to make it three-dimensional
-   - **Character Archetypes to Study** — List 3-5 SPECIFIC characters from TV/Film that match this vibe (e.g., "Ruth Langmore in Ozark for the toughness," "Ginny Miller for the mother-daughter tension"). Use the uploaded `character_archetype_comparables.md` for inspiration but providing SPECIFIC examples is mandatory.
+   - **Character Archetypes to Study** — List 3-5 SPECIFIC characters from TV/Film that match this vibe (e.g., "Ruth Langmore in Ozark for the toughness," "Ginny Miller for the mother-daughter tension"). Use the uploaded \`character_archetype_comparables.md\` for inspiration but providing SPECIFIC examples is mandatory.
 
 3. **UTA HAGEN'S 9 QUESTIONS** - Answer ALL NINE in first-person character voice. Be specific, grounded, imaginative. NO citations needed—just inhabit the character fully.
 
@@ -1630,7 +1644,7 @@ ${data.sceneText}${fileTypeContext}
 - AVOID REPETITION: Each section should add NEW insights, not repeat what was said earlier. If you've covered a point, move on.
 - Make EVERY line of subtext analysis SPECIFIC to the actual dialogue—don't generalize.
 - Bridge to Character prompts should feel deeply personal and imaginative, not generic.
-- Pull archetype comparisons from `character_archetype_comparables.md` when they illuminate the role.
+- Pull archetype comparisons from \`character_archetype_comparables.md\` when they illuminate the role.
 - Highlight "Bold Choice", "Gold Acting Moment", "Pitfall to Avoid" ONLY where they add genuine value—not as filler.
 - Write to INSPIRE and STRATEGIZE, not just inform. This is coaching, not a book report.
 - ${data.hasFullScript
