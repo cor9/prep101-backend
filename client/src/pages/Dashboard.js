@@ -53,9 +53,12 @@ const nicePlan = (p) => {
   }
 };
 
+import PromoCodeInput from "../components/PromoCodeInput";
+
 const Dashboard = () => {
   const [uploadData, setUploadData] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // usage state
   const [usage, setUsage] = useState(null);
@@ -120,7 +123,7 @@ const Dashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, refreshKey]);
 
   const remaining = useMemo(() => {
     if (!usage) return 0;
@@ -274,9 +277,9 @@ const Dashboard = () => {
   // ====== RENDER ======
   const renewText = usage?.renewsAt
     ? new Date(usage.renewsAt).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      })
+      month: "short",
+      day: "numeric",
+    })
     : null;
 
   return (
@@ -415,6 +418,11 @@ const Dashboard = () => {
                 )}
               </>
             )}
+          </div>
+
+          {/* Promo Code Input */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <PromoCodeInput onRedeemSuccess={() => setRefreshKey((k) => k + 1)} />
           </div>
 
           {/* Body */}
