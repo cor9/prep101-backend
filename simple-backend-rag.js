@@ -90,8 +90,8 @@ app.get("/api/diagnostics", async (req, res) => {
         dbStatus === "connected"
           ? "sequelize"
           : supabaseConfigured
-          ? "supabase"
-          : "none",
+            ? "supabase"
+            : "none",
       warning: !canSaveGuides
         ? "Guide saving will FAIL! Configure DATABASE_URL or SUPABASE_SERVICE_KEY"
         : null,
@@ -725,7 +725,7 @@ try {
     ? `len=${ANTHROPIC_API_KEY.length}`
     : "missing";
   console.log("  - ANTHROPIC_API_KEY:", masked);
-} catch (_) {}
+} catch (_) { }
 
 console.log("  - FRONTEND_URL:", process.env.FRONTEND_URL);
 console.log("  - API_BASE:", process.env.API_BASE);
@@ -1145,8 +1145,7 @@ function loadMethodologyFiles() {
     });
 
     console.log(
-      `🧠 RAG Database Ready: ${
-        Object.keys(methodologyDatabase).length
+      `🧠 RAG Database Ready: ${Object.keys(methodologyDatabase).length
       } methodology files loaded`
     );
   } catch (error) {
@@ -1584,6 +1583,7 @@ ${data.sceneText}${fileTypeContext}
    - **The Empathy Stretch** — What's DIFFERENT about this character's life from yours? How do you imaginatively access that?
    - **Character Shortcut** — A vivid metaphor (e.g., "She's a golden retriever puppy in human form")
    - **The Type (And How to Transcend It)** — Name the stereotype, then show how to make it three-dimensional
+   - **Character Archetypes to Study** — List 3-5 SPECIFIC characters from TV/Film that match this vibe (e.g., "Ruth Langmore in Ozark for the toughness," "Ginny Miller for the mother-daughter tension"). Use the uploaded `character_archetype_comparables.md` for inspiration but providing SPECIFIC examples is mandatory.
 
 3. **UTA HAGEN'S 9 QUESTIONS** - Answer ALL NINE in first-person character voice. Be specific, grounded, imaginative. NO citations needed—just inhabit the character fully.
 
@@ -1604,7 +1604,11 @@ ${data.sceneText}${fileTypeContext}
 
 8. **MOMENT BEFORE & BUTTON** - Specific prep beats (60s/30s/10s/1s before) and multiple "button" options to end scenes with impact. Include physical punctuation ideas.
 
-9. **REHEARSAL STRATEGY** - "Your 10+ Takes" approach (Natural/Bold/Vulnerable/Comedic/Smaller/Bigger etc.). One "Alternative Callback Take" ready to go. Memorization tips. Working-with-reader advice.
+9. **REHEARSAL STRATEGY** - **CRITICAL SECTION:**
+   - **Your 10+ Takes Strategy:** Explicitly list 10 unique ways to run the scene (e.g., 1-2: Get words in body, 3-4: Full Anger, 5-6: Vulnerable/Barely holding back tears, 7-8: Strategic/Chess Player, 9-10: Mix and Match).
+   - **Alternative Callback Take:** Suggest one radically different approach to have in your back pocket.
+   - **Memorization Strategy:** How to learn the *argument*, not just lines.
+   - **Working with Reader:** Specific tips on how to react to the reader's tone.
 
 10. **ACTION PLAN** - Quick checklist: [ ] Week Before / [ ] Day Before / [ ] Day Of / [ ] After. Include emotional safety/decompression notes if material is heavy.
 
@@ -1624,14 +1628,13 @@ ${data.sceneText}${fileTypeContext}
 - AVOID REPETITION: Each section should add NEW insights, not repeat what was said earlier. If you've covered a point, move on.
 - Make EVERY line of subtext analysis SPECIFIC to the actual dialogue—don't generalize.
 - Bridge to Character prompts should feel deeply personal and imaginative, not generic.
-- Pull archetype comparisons from character_archetype_comparables.md when they illuminate the role.
+- Pull archetype comparisons from `character_archetype_comparables.md` when they illuminate the role.
 - Highlight "Bold Choice", "Gold Acting Moment", "Pitfall to Avoid" ONLY where they add genuine value—not as filler.
 - Write to INSPIRE and STRATEGIZE, not just inform. This is coaching, not a book report.
-- ${
-                  data.hasFullScript
+- ${data.hasFullScript
                     ? "Use full-script knowledge only to enrich side-specific analysis (avoid spoilers)."
                     : "Focus analysis strictly on the provided audition sides."
-                }
+                  }
 
 **DELIVERABLE REMINDERS**
 - Use HTML-friendly headings, paragraphs, and lists; keep the required order.
@@ -1704,8 +1707,7 @@ ${data.sceneText}${fileTypeContext}
 
         if (attempt < maxRetries) {
           console.log(
-            `🔄 Attempt ${attempt} failed, retrying in ${
-              attempt * 2
+            `🔄 Attempt ${attempt} failed, retrying in ${attempt * 2
             } seconds...`
           );
           await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
@@ -2499,8 +2501,7 @@ async function generateChildGuideAsync({ guideId, childData, userId }) {
     }
 
     console.log(
-      `🌟 Child guide generation started for guide ${
-        guideRecord.guideId || guideId
+      `🌟 Child guide generation started for guide ${guideRecord.guideId || guideId
       }`
     );
     const childHtml = await generateChildGuide(childData);
@@ -2529,8 +2530,7 @@ async function generateChildGuideAsync({ guideId, childData, userId }) {
     }
 
     console.log(
-      `✅ Child guide stored for ${guideRecord.characterName} (${
-        guideRecord.guideId || guideId
+      `✅ Child guide stored for ${guideRecord.characterName} (${guideRecord.guideId || guideId
       })`
     );
     return { success: true, childHtml };
@@ -2784,7 +2784,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         filename: req.file.originalname,
         at: new Date().toISOString(),
       };
-    } catch (_) {}
+    } catch (_) { }
 
     // 6) Respond
     return res.json({
@@ -2831,8 +2831,8 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         ? uploadIds
         : [uploadIds]
       : uploadId
-      ? [uploadId]
-      : [];
+        ? [uploadId]
+        : [];
 
     // Debug request basics for faster triage
 
@@ -3192,10 +3192,10 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         childGuideMessage: childGuideCompleted
           ? "Child guide generated successfully!"
           : childGuideQueued
-          ? "Child guide is being generated in the background."
-          : childGuideRequested
-          ? "Child guide requested but queue unavailable."
-          : null,
+            ? "Child guide is being generated in the background."
+            : childGuideRequested
+              ? "Child guide requested but queue unavailable."
+              : null,
         generatedAt: new Date(),
         savedToDatabase: true,
         metadata: {
@@ -3207,10 +3207,10 @@ app.post("/api/guides/generate", auth, async (req, res) => {
           childGuideStatus: childGuideCompleted
             ? "completed"
             : childGuideQueued
-            ? "queued"
-            : childGuideRequested
-            ? "pending"
-            : "not_requested",
+              ? "queued"
+              : childGuideRequested
+                ? "pending"
+                : "not_requested",
           model: "claude-sonnet-4-20250514",
           ragEnabled: true,
           methodologyFiles: Object.keys(methodologyDatabase).length,
@@ -3493,16 +3493,14 @@ app.post("/api/promo-codes/redeem", auth, async (req, res) => {
     );
 
     console.log(
-      `🎉 Promo code redeemed - Code: ${code}, User: ${userId}, Guides granted: ${
-        promoCode.guidesGranted || 1
+      `🎉 Promo code redeemed - Code: ${code}, User: ${userId}, Guides granted: ${promoCode.guidesGranted || 1
       }`
     );
 
     res.json({
       success: true,
-      message: `Promo code redeemed! You received ${
-        promoCode.guidesGranted || 1
-      } free guide${(promoCode.guidesGranted || 1) > 1 ? "s" : ""}!`,
+      message: `Promo code redeemed! You received ${promoCode.guidesGranted || 1
+        } free guide${(promoCode.guidesGranted || 1) > 1 ? "s" : ""}!`,
       redemption: {
         guidesGranted: promoCode.guidesGranted || 1,
         redeemedAt: new Date().toISOString(),
@@ -3629,27 +3627,24 @@ app.get("/api/guides/:id/pdf", auth, async (req, res) => {
           <p><strong>Role Size:</strong> ${guide.roleSize}</p>
           <p><strong>Genre:</strong> ${guide.genre}</p>
           <p><strong>Created:</strong> ${new Date(
-            guide.createdAt
-          ).toLocaleDateString()}</p>
+      guide.createdAt
+    ).toLocaleDateString()}</p>
         </div>
 
         <div class="guide-section">
           <h2>Character Analysis</h2>
-          ${
-            guide.storyline
-              ? `<p><strong>Storyline:</strong> ${guide.storyline}</p>`
-              : ""
-          }
-          ${
-            guide.characterBreakdown
-              ? `<p><strong>Character Breakdown:</strong> ${guide.characterBreakdown}</p>`
-              : ""
-          }
-          ${
-            guide.focusArea
-              ? `<p><strong>Focus Area:</strong> ${guide.focusArea}</p>`
-              : ""
-          }
+          ${guide.storyline
+        ? `<p><strong>Storyline:</strong> ${guide.storyline}</p>`
+        : ""
+      }
+          ${guide.characterBreakdown
+        ? `<p><strong>Character Breakdown:</strong> ${guide.characterBreakdown}</p>`
+        : ""
+      }
+          ${guide.focusArea
+        ? `<p><strong>Focus Area:</strong> ${guide.focusArea}</p>`
+        : ""
+      }
         </div>
 
         <div class="guide-section">

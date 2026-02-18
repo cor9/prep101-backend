@@ -20,7 +20,7 @@ const PromoCode = sequelize.define('PromoCode', {
     unique: true,
     validate: {
       len: [3, 50],
-      isUppercase: function(value) {
+      isUppercase: function (value) {
         if (value !== value.toUpperCase()) {
           throw new Error('Promo code must be uppercase');
         }
@@ -42,7 +42,7 @@ const PromoCode = sequelize.define('PromoCode', {
     defaultValue: 1,
     validate: {
       min: 0,
-      max: 100
+      max: 10000
     }
   },
   // For discount type
@@ -114,7 +114,7 @@ const PromoCode = sequelize.define('PromoCode', {
 });
 
 // Instance methods
-PromoCode.prototype.isValid = function() {
+PromoCode.prototype.isValid = function () {
   const now = new Date();
 
   // Check if active
@@ -140,7 +140,7 @@ PromoCode.prototype.isValid = function() {
   return { valid: true };
 };
 
-PromoCode.prototype.canBeRedeemedBy = async function(userId) {
+PromoCode.prototype.canBeRedeemedBy = async function (userId) {
   // Check if code is valid
   const validation = this.isValid();
   if (!validation.valid) {
@@ -166,7 +166,7 @@ PromoCode.prototype.canBeRedeemedBy = async function(userId) {
   return { valid: true };
 };
 
-PromoCode.prototype.redeem = async function(userId) {
+PromoCode.prototype.redeem = async function (userId) {
   const PromoCodeRedemption = require('./PromoCodeRedemption');
 
   if (!PromoCodeRedemption) {
@@ -191,9 +191,9 @@ PromoCode.prototype.redeem = async function(userId) {
     });
   } catch (error) {
     // If discountPercent column doesn't exist, try without it
-    if (error.name === 'SequelizeDatabaseError' && 
-        error.message && 
-        error.message.includes('discountPercent')) {
+    if (error.name === 'SequelizeDatabaseError' &&
+      error.message &&
+      error.message.includes('discountPercent')) {
       console.warn('⚠️  discountPercent column not found, creating redemption without it');
       console.warn('⚠️  Run migration script: node scripts/add-discount-percent-column.js');
       redemption = await PromoCodeRedemption.create({
@@ -213,7 +213,7 @@ PromoCode.prototype.redeem = async function(userId) {
 };
 
 // Class methods
-PromoCode.findByCode = async function(code) {
+PromoCode.findByCode = async function (code) {
   return await PromoCode.findOne({
     where: {
       code: code.toUpperCase()
