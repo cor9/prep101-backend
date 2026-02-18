@@ -193,6 +193,11 @@ const Dashboard = () => {
         uploadId: uploadData.uploadId || uploadData.uploadIds?.[0],
         uploadIds: uploadData.uploadIds || [uploadData.uploadId],
         scenePayloads: uploadData.scenePayloads || {},
+        // Fallback data for stateless serverless environments
+        sceneText: uploadData.sceneText,
+        filename: uploadData.filename,
+        wordCount: uploadData.wordCount,
+        characterNames: uploadData.characterNames,
         ...formData,
       };
 

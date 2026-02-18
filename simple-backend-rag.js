@@ -2850,6 +2850,23 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         ? [uploadId]
         : [];
 
+    // Fallback: Restore upload from request body if available (handles Vercel statelessness)
+    if (req.body.sceneText && uploadIdList.length > 0) {
+      const primaryId = uploadIdList[0];
+      if (!uploads[primaryId]) {
+        console.log(`[GENERATE] 🔄 Restoring upload ${primaryId} from client payload`);
+        uploads[primaryId] = {
+          filename: req.body.filename || "restored-upload.pdf",
+          sceneText: req.body.sceneText,
+          characterNames: req.body.characterNames || [],
+          wordCount: req.body.wordCount || 0,
+          uploadTime: new Date(),
+          fileType: "sides", // Default
+          userId: req.userId
+        };
+      }
+    }
+
     // Debug request basics for faster triage
 
     console.log("📝 Generate request:", {
@@ -2859,6 +2876,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       hasCharacterName: !!characterName,
       hasProductionTitle: !!productionTitle,
       hasProductionType: !!productionType,
+      hasClientPayload: !!req.body.sceneText,
       availableUploads: Object.keys(uploads).length,
       availableUploadIds: Object.keys(uploads).slice(0, 5), // First 5 for debugging
     });
