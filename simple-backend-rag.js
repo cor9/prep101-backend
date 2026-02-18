@@ -141,20 +141,22 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // CORS - Allow specific origins including prep101.site
-app.use(
-  cors({
-    origin: [
-      "https://prep101.site",
-      "https://prep101-api.vercel.app",
-      "http://localhost:3000",
-      "http://localhost:3001",
-    ],
-    credentials: true,
-    optionsSuccessStatus: 200,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  })
-);
+const corsConfig = {
+  origin: [
+    "https://prep101.site",
+    "https://www.prep101.site",
+    "https://prep101-api.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+};
+
+app.use(cors(corsConfig));
+app.options("*", cors(corsConfig));
 
 // Continue with other imports
 const pdfParse = require("pdf-parse");

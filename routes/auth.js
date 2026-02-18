@@ -5,6 +5,108 @@ const User = require("../models/User");
 
 const router = express.Router();
 
+// POST /api/auth/register - User registration
+router.post("/register", async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ message: "Name, email & password required" });
+    }
+
+    // Get Supabase credentials
+    const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+    console.log("🔍 Register attempt:", { email });
+
+    // 1. Try Supabase Registration first
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+      try {
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const { data, error } = await supabaseClient.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name }
+          }
+        });
+
+        if (error) {
+          console.error("❌ Supabase signUp error:", error.message);
+          return res.status(400).json({ message: error.message });
+        }
+
+        if (data?.user) {
+          console.log("✅ Supabase registration successful:", data.user.id);
+
+          // Sync with local DB if available
+          if (User) {
+            try {
+              const userEmail = data.user.email.toLowerCase();
+              let user = await User.findOne({ where: { email: userEmail } });
+
+              if (!user) {
+                // Determine beta status
+                const isBetaTester = false; // Default to false for public signups
+
+                user = await User.create({
+                  id: data.user.id, // Try to sync UUIDs if possible
+                  email: userEmail,
+                  password: password, // Will be hashed by hook
+                  name: name,
+                  subscription: "free",
+                  guidesLimit: 1,
+                  isBetaTester
+                });
+                console.log("✅ Synced new user to local DB:", user.id);
+              }
+            } catch (dbError) {
+              console.error("⚠️ Local DB sync failed (non-fatal):", dbError.message);
+              // Continue - valid Supabase user created
+            }
+          }
+
+          return res.status(201).json({
+            message: "User registered successfully",
+            token: data.session?.access_token,
+            user: {
+              id: data.user.id,
+              email: data.user.email,
+              name: name
+            }
+          });
+        }
+      } catch (sbError) {
+        console.error("Supabase registration exception:", sbError);
+        // Fall through to local DB
+      }
+    }
+
+    // 2. Local DB Fallback (if Supabase failed or not configured)
+    if (User) {
+      const existing = await User.findOne({ where: { email } });
+      if (existing) return res.status(400).json({ message: 'User already exists' });
+
+      const newUser = await User.create({ name, email, password }); // Password hashed by model hook
+      const jwt = require('jsonwebtoken');
+      const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' });
+
+      return res.status(201).json({
+        message: 'User registered',
+        token,
+        user: { id: newUser.id, name, email }
+      });
+    }
+
+    return res.status(500).json({ message: "Registration failed - no auth provider available" });
+
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ message: "Registration error", error: error.message });
+  }
+});
+
 // POST /api/auth/login - User login
 router.post("/login", async (req, res) => {
   try {
@@ -17,9 +119,9 @@ router.post("/login", async (req, res) => {
     const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-    console.log("🔍 Login attempt:", { 
-      email, 
-      hasSupabaseUrl: !!SUPABASE_URL, 
+    console.log("🔍 Login attempt:", {
+      email,
+      hasSupabaseUrl: !!SUPABASE_URL,
       hasAnonKey: !!SUPABASE_ANON_KEY,
       supabaseUrl: SUPABASE_URL?.substring(0, 50)
     });
@@ -53,7 +155,7 @@ router.post("/login", async (req, res) => {
 
         if (data?.user && data?.session) {
           console.log("✅ Supabase login successful, user ID:", data.user.id);
-          
+
           // Try to find or create user in database if User model is available
           let user = null;
           if (User) {
