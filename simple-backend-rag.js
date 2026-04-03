@@ -142,12 +142,16 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Manual CORS middleware for maximum compatibility
 app.use((req, res, next) => {
+  const envOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
   const allowedOrigins = [
     "https://prep101.site",
     "https://www.prep101.site",
     "https://prep101-api.vercel.app",
     "http://localhost:3000",
-    "http://localhost:3001"
+    "http://localhost:3001",
+    "https://boldchoices.site",
+    "https://www.boldchoices.site",
+    ...envOrigins
   ];
   const origin = req.headers.origin;
 
