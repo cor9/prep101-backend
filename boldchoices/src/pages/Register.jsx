@@ -38,7 +38,7 @@ const S = {
 };
 
 const FREE_PERKS = [
-  '1 free guide per day',
+  '1 free guide per month',
   'Character POV Snapshot',
   '2 bold acting choices',
   '1 moment play breakdown',
