@@ -483,7 +483,7 @@ export default function Landing() {
             <div style={S.pricingPer}>forever</div>
             <ul style={S.pricingFeatureList}>
               {[
-                ['1 generation per day', true, '#00D4C8'],
+                ['1 generation per month', true, '#00D4C8'],
                 ['Character POV + 2 bold choices', true, '#00D4C8'],
                 ['1 moment play breakdown', true, '#00D4C8'],
                 ['Spin Again', false, 'rgba(240,238,245,0.25)'],
