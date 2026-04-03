@@ -1385,11 +1385,15 @@ async function extractTextWithAdobe(pdfBuffer) {
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
-    // Remove only known watermarks/footers
+    // Remove known watermarks/footers
     cleanText = cleanText
       .replace(/Sides by Breakdown Services - Actors Access/gi, "")
       .replace(/Page \d+\s+of\s+\d+/gi, "")
-      .replace(/B568CR-|74222 - .*? -/g, "")
+      .replace(/\-\s*[a-zA-Z]{3,4}\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*[AP]M\s*\-/gi, "\n")
+      .replace(/\bB\d{3,}[A-Z0-9]*\b/gi, "") // matches B540LT, B568CR, etc
+      .replace(/B540LT|B568CR|74222/gi, "")
+      .replace(/\-{2,}/g, " ") // clean up leftover hyphens from B540LT-B540LT
+      .replace(/74222 - .*? -/g, "")
       .trim();
 
     // Character tags: keep multiline, after we preserved \n
@@ -1439,11 +1443,15 @@ async function extractTextBasic(pdfBuffer) {
     .replace(/\n{3,}/g, "\n\n") // collapse >2 blank lines to 1 blank line
     .trim();
 
-  // Remove only known watermarks/footers; DO NOT blanket-replace digits or spaces
+  // Remove known watermarks/footers; DO NOT blanket-replace digits or spaces
   text = text
     .replace(/Sides by Breakdown Services - Actors Access/gi, "")
     .replace(/Page \d+\s+of\s+\d+/gi, "")
-    .replace(/B568CR-|74222 - .*? -/g, "")
+    .replace(/\-\s*[a-zA-Z]{3,4}\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*[AP]M\s*\-/gi, "\n")
+    .replace(/\bB\d{3,}[A-Z0-9]*\b/gi, "") // matches B540LT, B568CR, etc
+    .replace(/B540LT|B568CR|74222/gi, "")
+    .replace(/\-{2,}/g, " ") // clean up leftover hyphens from B540LT-B540LT
+    .replace(/74222 - .*? -/g, "")
     .trim();
 
   // Character tags: keep multiline, after we preserved \n

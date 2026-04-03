@@ -235,8 +235,22 @@ function buildUserPrompt(data) {
   if (data.storyline) lines.push(`Storyline: ${data.storyline}`);
 
   if (data.sceneText) {
-    lines.push("\nSIDES / SCENE TEXT:");
-    lines.push(data.sceneText);
+    // Clean known watermarks to prevent Claude hallucinating metadata as character choices
+    const cleanText = data.sceneText
+      // Remove specific date/time watermarks "- Feb 17, 2026 9:41 AM -"
+      .replace(/\-\s*[a-zA-Z]{3,4}\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*[AP]M\s*\-/gi, " ")
+      // Remove specific alphanumeric project codes (like B540LT) repeated endlessly
+      .replace(/\bB540LT\b/gi, " ")
+      // Remove any hyphenated serial text blocks "-B540LT-"
+      .replace(/\-+[A-Z0-9]{5,}\-+/gi, " ")
+      // General large numeric watermarks
+      .replace(/\b\d{5,}\b/g, " ")
+      // Collapse multiple spaces
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
+    lines.push("\nSIDES / SCENE TEXT (CRITICAL: Ignore any remaining timestamps, dates, watermarks, agency names, or page numbers):");
+    lines.push(cleanText);
   }
 
   // ── Modifier suffix ────────────────────────────────────────────────────────
