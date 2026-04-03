@@ -392,10 +392,21 @@ export default function Landing() {
           For actors who are done blending in
         </div>
 
-        <h1 style={S.h1}>
+        <img 
+          src="/bold-choices-logo.png" 
+          alt="Bold Choices" 
+          style={{ 
+            width: '100%', 
+            maxWidth: 500, 
+            height: 'auto', 
+            objectFit: 'contain',
+            marginBottom: 16 
+          }} 
+        />
+
+        <h1 style={{ ...S.h1, fontSize: 'clamp(2rem, 5vw, 3.5rem)', marginTop: 24, marginBottom: 16 }}>
           <span style={S.h1White}>Stop&nbsp;</span>
           <span style={S.h1Coral}>playing&nbsp;</span>
-          <br />
           <span style={S.h1White}>it&nbsp;</span>
           <span style={S.h1Gold}>safe.</span>
         </h1>
