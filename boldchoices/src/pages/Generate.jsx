@@ -226,8 +226,7 @@ export default function Generate() {
     sceneText: '',
   });
 
-  // Mode: 'preview' | 'full'
-  const [mode, setMode] = useState('preview');
+
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [sloganIdx, setSloganIdx] = useState(0);
@@ -379,7 +378,7 @@ export default function Generate() {
         body: JSON.stringify({
           ...form,
           sceneText: form.sceneText.trim(),
-          preview: mode === 'preview',
+          preview: false,
           format: 'html',
           ...(modifier ? { modifier } : {}),
           ...(isRetry ? { spinAgain: true } : {}),
@@ -403,15 +402,14 @@ export default function Generate() {
         modifier === 'wilder' ? 'Wilder choices ready — go take the risk.'
           : modifier === 'take2' ? 'Alternate Take 2 strategies ready.'
           : isRetry ? 'Fresh choices generated!'
-          : mode === 'preview' ? 'Preview ready — 2 choices unlocked.'
-          : 'Full guide ready. Time to book.'
+          : 'Guide ready. Time to book.'
       );
     } catch (err) {
       toast.error(err.message);
     } finally {
       setIsGenerating(false);
     }
-  }, [form, mode, blobUrl, user]);
+  }, [form, blobUrl, user]);
 
   const handleGenerate = () => doGenerate();
   const handleSpinAgain = () => doGenerate({ isRetry: true });
@@ -439,22 +437,6 @@ export default function Generate() {
       <div className="gen-layout" style={S.layout}>
         {/* ── SIDEBAR ── */}
         <div className="gen-sidebar" style={S.sidebar}>
-
-          {/* Mode toggle */}
-          <div style={S.modeToggle}>
-            <button
-              style={S.modeBtn(mode === 'preview', 'rgba(245,166,35,0.8)')}
-              onClick={() => setMode('preview')}
-            >
-              Preview
-            </button>
-            <button
-              style={S.modeBtn(mode === 'full', 'rgba(255,77,77,0.8)')}
-              onClick={() => setMode('full')}
-            >
-              Full Guide
-            </button>
-          </div>
 
           {/* Character */}
           <div style={S.sideSection}>
@@ -630,7 +612,7 @@ export default function Generate() {
             onClick={handleGenerate}
             disabled={isGenerating}
           >
-            {isGenerating ? 'Generating...' : mode === 'preview' ? 'Generate Free Preview' : 'Generate Full Guide'}
+            {isGenerating ? 'Generating...' : 'Generate Bold Choices'}
           </button>
         </div>
 
@@ -647,11 +629,10 @@ export default function Generate() {
               html={resultHtml}
               blobUrl={blobUrl}
               meta={resultMeta}
-              isPreview={mode === 'preview'}
+              isPreview={false}
               onSpinAgain={handleSpinAgain}
               onMakeWilder={handleWilder}
               onTake2={handleTake2}
-              onUnlock={() => { setMode('full'); setResultHtml(null); window.scrollTo(0, 0); }}
               isGenerating={isGenerating}
               user={user}
               generationId={generationId}

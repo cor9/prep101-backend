@@ -26,9 +26,9 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
   } = meta;
 
   // Limit choices in preview mode
-  const displayChoices = isPreview ? choices.slice(0, 2) : choices;
-  const displayMoments = isPreview ? moments.slice(0, 1) : moments;
-  const displayTake2 = isPreview ? take2.slice(0, 1) : take2;
+  const displayChoices = choices;
+  const displayMoments = moments;
+  const displayTake2 = take2;
 
   // ── HELPERS ────────────────────────────────────────────────────────────────
   const esc = (str) =>
@@ -43,7 +43,7 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
       .map(
         (c, i) => `
     <div class="choice-card" style="position:relative;">
-      <button class="save-choice-btn" onclick="window.parent.postMessage({ type: 'BOLD_CHOICES_SAVE', choice: '${esc(c.title).replace(/'/g, "\\'")}\n${esc(c.body).replace(/'/g, "\\'")}' }, '*')" style="position:absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.8); border: 1px solid #F5D87A; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight:600; color: #1A1A1A; display:flex; align-items:center; gap:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-transform:none; letter-spacing:0;">⭐ Save</button>
+      <button class="save-choice-btn" onclick="window.parent.postMessage({ type: 'BOLD_CHOICES_SAVE', choice: '${esc(c.title).replace(/'/g, "\\'")}\n${esc(c.body).replace(/'/g, "\\'")}' }, '*')" style="position:absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.8); border: 1px solid #F5D87A; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight:600; color: #1A1A1A; display:flex; align-items:center; gap:4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-transform:none; letter-spacing:0;">⭐ Add to Playbook</button>
       <div class="choice-number">Choice ${String(i + 1).padStart(2, "0")}</div>
       <div class="choice-title">${esc(c.title)}</div>
       <div class="choice-body">${esc(c.body)}</div>
@@ -113,83 +113,22 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
     .filter(Boolean)
     .join(" &nbsp;·&nbsp; ");
 
-  // ── PREVIEW GATE BANNER ────────────────────────────────────────────────────
-  const previewBanner = isPreview
-    ? `
-  <div class="preview-gate">
-    <div class="preview-gate-inner">
-      <div class="preview-icon">&#128274;</div>
-      <h2>This is where actors start to stand out.</h2>
-      <p>
-        Most submissions stop at one take.<br>
-        <strong>The second version is what gets remembered.</strong>
-      </p>
-      <p style="font-size:14px;opacity:0.7;margin-top:-6px;">
-        The full guide includes all <strong>${choices.length} acting choices</strong>,
-        <strong>${moments.length} moment play breakdowns</strong>,
-        <strong>${references.length} character references</strong>,
-        and your complete <strong>Take 2 Strategy</strong>.
-      </p>
-      <a href="/pricing" class="unlock-btn">👉 Unlock Unlimited Variations</a>
-    </div>
-  </div>`
-    : "";
-
-  // ── LOCKED CONTENT STUBS (preview mode) ───────────────────────────────────
-  const lockedChoices = isPreview
-    ? `
-  <div class="locked-section">
-    ${Array(3)
-      .fill(null)
-      .map(
-        (_, i) => `
-    <div class="choice-card locked-card">
-      <div class="choice-number">Choice ${String(i + 3).padStart(2, "0")}</div>
-      <div class="choice-title locked-bar"></div>
-      <div class="locked-lines">
-        <div class="locked-line"></div>
-        <div class="locked-line" style="width:80%"></div>
-        <div class="locked-line" style="width:90%"></div>
-      </div>
-    </div>`
-      )
-      .join("")}
-  </div>`
-    : "";
-
-  const lockedMoments = isPreview
-    ? `<div class="locked-section moments-section">
-    ${Array(moments.length - 1)
-      .fill(null)
-      .map(
-        () => `
-    <div class="moment-wrapper locked-card">
-      <div class="moment-line locked-bar-white"></div>
-      <div class="moment-variations">
-        <div class="variation"><div class="locked-line"></div><div class="locked-line" style="width:75%"></div></div>
-        <div class="variation"><div class="locked-line"></div><div class="locked-line" style="width:85%"></div></div>
-        <div class="variation"><div class="locked-line"></div><div class="locked-line" style="width:70%"></div></div>
-      </div>
-    </div>`
-      )
-      .join("")}
-  </div>`
-    : "";
-
-  const lockedTake2 = isPreview
-    ? `<div class="locked-section">
-    ${Array(Math.max(take2.length - 1, 1))
-      .fill(null)
-      .map(
-        () => `
-    <div class="take2-card locked-card">
-      <div class="locked-line" style="width:40%;height:20px;margin-bottom:10px"></div>
-      <div class="locked-line"></div><div class="locked-line" style="width:85%"></div>
-    </div>`
-      )
-      .join("")}
-  </div>`
-    : "";
+  // ── PREP101 FULL UPGRADE BANNER ───────────────────────────────────────────
+  const prep101Banner = `
+  <div class="prep101-upsell" style="background: var(--ink); border-radius: var(--border-radius); padding: 48px 36px; margin: 48px 0; text-align: center; border: 2px solid var(--gold);">
+    <h2 style="font-family: 'Fraunces', serif; font-size: 1.8rem; color: #fff; margin-bottom: 24px;">Want the full breakdown?</h2>
+    <p style="color: rgba(255,255,255,0.85); font-size: 16px; line-height: 1.7; max-width: 500px; margin: 0 auto 24px;">
+      Bold Choices gives you strong options.<br/>
+      <strong>Prep101 shows you how to build the entire performance.</strong>
+    </p>
+    <p style="color: rgba(255,255,255,0.65); font-size: 15px; line-height: 1.7; max-width: 400px; margin: 0 auto 32px;">
+      Uta Hagen's 9 Questions.<br/>
+      Full scene breakdown.<br/>
+      Subtext.<br/>
+      Rehearsal strategy.
+    </p>
+    <a href="https://prep101.site" target="_blank" style="display: inline-block; background: var(--coral); color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 15px; padding: 14px 36px; border-radius: 8px; text-decoration: none; letter-spacing: 0.03em; transition: opacity 0.2s;">👉 Build the full performance →</a>
+  </div>`;
 
   // ─── HTML OUTPUT ────────────────────────────────────────────────────────────
   return `<!DOCTYPE html>
@@ -436,7 +375,7 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-tag">Bold Choices Guide${isPreview ? " — Partial Preview" : ""}</div>
+  <div class="header-tag">Bold Choices Guide</div>
   <h1>${esc(characterName).toUpperCase()}</h1>
   ${hookLine ? `<div class="header-hook">${esc(hookLine)}</div>` : ""}
   <div class="header-sub">
@@ -467,10 +406,10 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
 <div class="section choices-section">
   <div class="section-label"><span class="dot"></span>2 — Bold Acting Choices</div>
   ${renderChoices(displayChoices)}
-  ${lockedChoices}
+  
 </div>
 
-${previewBanner}
+
 
 <div class="divider"></div>
 
@@ -478,7 +417,7 @@ ${previewBanner}
 <div class="section moments-section">
   <div class="section-label"><span class="dot"></span>3 — Moment Plays</div>
   ${renderMoments(displayMoments)}
-  ${lockedMoments}
+  
 </div>
 
 <div class="divider"></div>
@@ -487,8 +426,8 @@ ${previewBanner}
 <div class="section refs-section">
   <div class="section-label"><span class="dot"></span>4 — Character References</div>
   <div class="ref-grid">
-    ${isPreview ? renderRefs(references.slice(0, 2)) : renderRefs(references)}
-    ${isPreview && references.length > 2 ? `<div class="ref-card locked-card"><div class="locked-line" style="width:50%;height:20px;margin-bottom:8px"></div><div class="locked-line"></div><div class="locked-line" style="width:80%"></div></div>` : ""}
+    ${renderRefs(references)}
+    
   </div>
 </div>
 
@@ -498,12 +437,12 @@ ${previewBanner}
 <div class="section take2-section">
   <div class="section-label"><span class="dot"></span>5 — Take 2 Strategy</div>
   ${renderTake2(displayTake2)}
-  ${lockedTake2}
+  
 </div>
 
 <!-- PEP TALK (only in full guide) -->
 ${
-  !isPreview && coachNote
+  coachNote
     ? `<div class="pep-talk">
   <div class="section-label"><span class="dot"></span>Final Word from Coach</div>
   <p>${esc(coachNote)}</p>
@@ -511,15 +450,7 @@ ${
     : ""
 }
 
-<!-- PARTIAL NOTICE -->
-${
-  isPreview
-    ? `<div class="partial-notice">
-  <strong>This is just the bold choices section.</strong>
-  <p>The full guide includes all 5 acting choices, complete moment play breakdowns, all character references, your full Take 2 strategy, and a personalized coach pep talk. Ask about the complete guide.</p>
-</div>`
-    : ""
-}
+${prep101Banner}
 
 <!-- PREP101 BADGE -->
 <div class="prep101-badge">

@@ -96,7 +96,7 @@ export default function GuideResult({
         const data = await res.json();
         if (data.success) {
           setSavedChoices(prev => new Set([...prev, choiceKey]));
-          toast.success('⭐ Saved to your playbook', { id: toastId });
+          toast.success('⭐ Added to your playbook', { id: toastId });
         } else {
           toast.error('Failed to save: ' + (data.error || 'Unknown error'), { id: toastId });
         }
@@ -216,41 +216,24 @@ export default function GuideResult({
           🎬 Take 2
         </button>
 
-        {/* Open in Tab */}
-        {blobUrl && (
-          <a
-            href={blobUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              ...actionBtnStyle('rgba(155,109,255,0.8)', 'rgba(155,109,255,0.07)'),
-              textDecoration: 'none',
-            }}
-          >
-            ↗ Open Full Page
-          </a>
-        )}
-
         {/* Divider */}
         <div style={{ flex: 1 }} />
 
-        {/* Unlock / Preview indicator */}
-        {isPreview && (
-          <button
-            className="action-btn"
-            style={{
-              ...actionBtnStyle('#F0EEF5', 'rgba(255,255,255,0.06)'),
-              border: '1.5px solid rgba(255,255,255,0.15)',
-            }}
-            onClick={() => {
-              trackEvent('unlock_clicked');
-              onUnlock();
-            }}
-            disabled={disabled}
-          >
-            🔓 Unlock Full Guide
-          </button>
-        )}
+        {/* Build Full Performance */}
+        <button
+          className="action-btn"
+          style={{
+            ...actionBtnStyle('#F0EEF5', 'rgba(255,255,255,0.06)', isGenerating),
+            border: '1.5px solid rgba(255,255,255,0.15)',
+          }}
+          onClick={() => {
+            trackEvent('build_performance_clicked');
+            window.open(buildPrep101Url('/dashboard'), '_blank');
+          }}
+          disabled={isGenerating}
+        >
+          ✨ Build Full Performance (Prep101)
+        </button>
       </div>
 
       {/* ── IFRAME PREVIEW ── */}
@@ -271,65 +254,6 @@ export default function GuideResult({
           }}
           sandbox="allow-same-origin allow-popups"
         />
-      </div>
-
-      {/* ── PREP101 UPGRADE BRIDGE ── */}
-      <div
-        className="prep101-bridge"
-        style={{
-          marginTop: 28,
-          background: 'linear-gradient(135deg, rgba(155,109,255,0.1) 0%, rgba(59,158,232,0.08) 100%)',
-          border: '1px solid rgba(155,109,255,0.2)',
-          borderRadius: 16,
-          padding: '28px 32px',
-          display: 'flex',
-          gap: 24,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <div style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-            color: '#9B6DFF', marginBottom: 8,
-          }}>
-            Want to go deeper?
-          </div>
-          <div style={{
-            fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 700,
-            color: '#F0EEF5', marginBottom: 6, lineHeight: 1.2,
-          }}>
-            Generate the full Prep101 guide.
-          </div>
-          <div style={{ fontSize: 13.5, color: 'rgba(240,238,245,0.5)', lineHeight: 1.6 }}>
-            Uta Hagen's Nine Questions · Subtext analysis · Scene breakdown · Rehearsal strategy.
-            The complete preparation — for when bold choices aren't enough.
-          </div>
-        </div>
-        <div>
-          <button
-            style={{
-              background: 'rgba(155,109,255,0.15)',
-              border: '1.5px solid rgba(155,109,255,0.4)',
-              color: '#9B6DFF',
-              borderRadius: 12,
-              padding: '12px 28px',
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              fontFamily: 'DM Sans, sans-serif',
-              letterSpacing: '0.02em',
-              transition: 'all 0.2s',
-            }}
-            onClick={() => {
-              trackEvent('prep101_bridge_clicked');
-              window.open(buildPrep101Url('/dashboard'), '_blank');
-            }}
-          >
-            Open in Prep101 →
-          </button>
-        </div>
       </div>
 
       {/* ── UPGRADE MODAL ── */}
