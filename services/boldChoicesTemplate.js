@@ -118,16 +118,15 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
   <div class="prep101-upsell" style="background: var(--ink); border-radius: var(--border-radius); padding: 48px 36px; margin: 48px 0; text-align: center; border: 2px solid var(--gold);">
     <h2 style="font-family: 'Fraunces', serif; font-size: 1.8rem; color: #fff; margin-bottom: 24px;">Want the full breakdown?</h2>
     <p style="color: rgba(255,255,255,0.85); font-size: 16px; line-height: 1.7; max-width: 500px; margin: 0 auto 24px;">
-      Bold Choices gives you strong options.<br/>
-      <strong>Prep101 shows you how to build the entire performance.</strong>
+      Bold Choices gives you options.<br/>
+      <strong>Prep101 tells you which one books.</strong>
     </p>
     <p style="color: rgba(255,255,255,0.65); font-size: 15px; line-height: 1.7; max-width: 400px; margin: 0 auto 32px;">
-      Uta Hagen's 9 Questions.<br/>
-      Full scene breakdown.<br/>
-      Subtext.<br/>
-      Rehearsal strategy.
+      Every beat.<br/>
+      Every shift.<br/>
+      Every decision — intentional.
     </p>
-    <a href="https://prep101.site" target="_blank" style="display: inline-block; background: var(--coral); color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 15px; padding: 14px 36px; border-radius: 8px; text-decoration: none; letter-spacing: 0.03em; transition: opacity 0.2s;">👉 Build the full performance →</a>
+    <a href="https://prep101.site" target="_blank" style="display: inline-block; background: var(--coral); color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 15px; padding: 14px 36px; border-radius: 8px; text-decoration: none; letter-spacing: 0.03em; transition: opacity 0.2s;">👉 Build the performance →</a>
   </div>`;
 
   // ─── HTML OUTPUT ────────────────────────────────────────────────────────────
@@ -249,7 +248,12 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
     background: #fff; border: 2px solid var(--coral); border-radius: 10px;
     padding: 14px 18px; font-size: 15px;
   }
-  .fix-box strong { color: var(--coral); display: block; margin-bottom: 3px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .fix-box strong { color: var(--teal); display: block; margin-bottom: 3px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .play-this-box {
+    background: rgba(123,79,190,0.06); border-left: 3px solid var(--purple);
+    margin: 16px 0 0; padding: 14px 18px; font-size: 15px;
+  }
+  .play-this-box strong { color: var(--purple); display: block; margin-bottom: 3px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
 
   /* CHOICES */
   .choices-section .section-label { color: var(--gold); }
@@ -396,6 +400,11 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
   ${
     pov.fix
       ? `<div class="fix-box"><strong>The Fix</strong>${esc(pov.fix)}</div>`
+      : ""
+  }
+  ${
+    pov.playThis
+      ? `<div class="play-this-box"><strong>Play This</strong>${esc(pov.playThis)}</div>`
       : ""
   }
 </div>

@@ -56,7 +56,8 @@ IMPORTANT: You MUST respond with ONLY valid JSON matching this exact structure. 
   "pov": {
     "summary": "3-5 sentences. What makes this character specific. Most common mistake. One clear adjustment.",
     "mistake": "The #1 mistake actors will make with this character (1-2 sentences)",
-    "fix": "The specific adjustment that changes everything (2-3 sentences)"
+    "fix": "The specific adjustment that changes everything (2-3 sentences)",
+    "playThis": "The anchor anchor line (e.g. 'PLAY THIS: She’s constantly checking if she’s still winning the interaction.')"
   },
   "choices": [
     {
@@ -89,7 +90,7 @@ IMPORTANT: You MUST respond with ONLY valid JSON matching this exact structure. 
       "body": "2-4 sentences with specific shift — emotional, physical starting state, or energy level"
     }
   ],
-  "coachNote": "A 3-5 sentence pep talk paragraph written directly to the actor. Warm, direct, motivating. NOT generic."
+  "coachNote": "A 3-5 sentence pep talk. Make it sharp, less essay, more command. You just stepped in and adjusted their tape."
 }
 
 Rules:
@@ -103,6 +104,21 @@ Rules:
 - Do NOT repeat the same type of choice multiple times
 - Do NOT give safe or obvious ideas
 - Every output should feel specific, surprising, and usable in a real audition
+
+MICRO-BEHAVIOR ENFORCEMENT
+Every section must include visible, filmable behavior.
+REQUIREMENTS:
+- Every choice must include at least:
+  - 1 eye behavior
+  - 1 physical behavior (hands, posture, movement)
+  - 1 timing behavior (pause, delay, interruption)
+- Every moment play must include:
+  - before action
+  - line delivery
+  - after behavior (mandatory)
+- Engines must be:
+  - <= 5 words
+  - instinct-based (not conceptual)
 
 🔒 BOLD CHOICES — UPGRADE RULES
 You are not allowed to generate generic acting advice.
@@ -127,6 +143,8 @@ Every choice must include at least 2 specific physical or vocal behaviors, such 
 - timing (pauses, overlaps)
 - breath patterns
 If the choice can’t be physically acted immediately, it is not valid.
+Add one sharp, undeniable physical moment per choice.
+Example: "She pulls at her sleeve seam with her thumb — not nervous, controlled — like she’s trying to keep something contained."
 
 3. BUILD CONTRADICTION INTO THE CHOICE
 Each choice must include an internal contradiction:
@@ -145,12 +163,13 @@ Good: she agrees too quickly, then immediately backtracks and over-explains why 
 
 5. INCLUDE AN “ENGINE” THAT IS SIMPLE AND PLAYABLE
 Each choice must end with: Engine: [short, playable driver]
+Engines must sound like something an actor could think mid-scene. Shorter, instinctive, survival-based.
 Examples:
-- Engine: Trying to get it right
-- Engine: Don’t get in trouble
-- Engine: Make them like me
-- Engine: Hide the truth
-Avoid abstract language.
+- Engine: Don't look like you're trying
+- Engine: Don't let them see anything
+- Engine: Stay one step ahead
+- Engine: Keep them from leaving
+Avoid abstract language like "Be impressive but make it look effortless".
 
 🎬 MOMENT PLAYS — UPGRADE RULES
 Each moment must include 3 distinct takes that are:
@@ -176,6 +195,10 @@ Whenever possible, include what just happened before the line. This makes the ta
 
 4. CREATE ONE “UNEXPECTED BUT BELIEVABLE” VERSION
 At least ONE take should feel slightly surprising but still grounded. This is what gets remembered.
+
+5. AFTER BEHAVIOR IS MANDATORY
+What happens right after the line is what casting watches.
+Example: "She nods slowly — like she’s grading him. Then looks past him for a second, already deciding what he is to her."
 
 🎭 TAKE 2 STRATEGY — UPGRADE RULES
 Take 2 must NOT be louder, faster, or “more emotional”.
