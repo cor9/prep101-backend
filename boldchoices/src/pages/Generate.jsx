@@ -315,7 +315,7 @@ export default function Generate() {
       const payload = {
         ...form,
         sceneText,
-        preview: mode === 'preview',
+        preview: false,
         format: 'json',
         ...(modifier ? { modifier } : {}),
         ...(isRetry ? { spinAgain: true, previousGenerationId: generationId } : {}),
@@ -336,7 +336,7 @@ export default function Generate() {
       // Store raw data and generation ID
       setGuideData(data.data);
       if (data.generationId) setGenerationId(data.generationId);
-      setResultMeta({ ...form, isPreview: mode === 'preview' });
+      setResultMeta({ ...form, isPreview: false });
 
       // Re-request as HTML for display
       const htmlPayload = { ...payload, format: 'html' };
