@@ -221,43 +221,48 @@ Examples:
 The goal is: casting sees two completely different actors using the same lines`;
 
 // ─── BUILD USER PROMPT ────────────────────────────────────────────────────────
+function scrubWatermarks(text) {
+  if (!text) return text;
+  return text
+    // Destroy specific date/time watermarks "- Feb 17, 2026 9:41 AM -"
+    .replace(/\-\s*[a-zA-Z]{3,4}\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*[AP]M\s*\-/gi, " ")
+    // Aggressively destroy repetitive uppercase project tags like B540LT-B540LT
+    .replace(/\b[A-Z0-9]{6,12}\b(?:-\b[A-Z0-9]{6,12}\b)*/gi, (match) => {
+      // If it's a fully uppercase code block like B540LT or B540LT-B540LT, destroy it
+      if (match === match.toUpperCase() && match.length > 5) return " ";
+      return match;
+    })
+    .replace(/\bB\d{3,}[A-Z0-9]*\b/gi, " ")
+    .replace(/(?:B540LT|B568CR|74222)/gi, " ")
+    .replace(/\b\d{5,}\b/g, " ")
+    .replace(/\-{2,}/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function buildUserPrompt(data) {
   const lines = [];
 
   lines.push("CHARACTER INFORMATION:");
-  if (data.characterName) lines.push(`Character Name: ${data.characterName}`);
+  if (data.characterName) lines.push(`Character Name: ${scrubWatermarks(data.characterName)}`);
   if (data.actorAge) lines.push(`Actor's Age: ${data.actorAge}`);
-  if (data.productionTitle) lines.push(`Production Title: ${data.productionTitle}`);
+  if (data.productionTitle) lines.push(`Production Title: ${scrubWatermarks(data.productionTitle)}`);
   if (data.productionType) lines.push(`Production Type: ${data.productionType}`);
   if (data.roleSize) lines.push(`Role Size: ${data.roleSize}`);
   if (data.genre) lines.push(`Genre: ${data.genre}`);
-  if (data.characterDescription) lines.push(`Character Description: ${data.characterDescription}`);
-  if (data.storyline) lines.push(`Storyline: ${data.storyline}`);
+  if (data.characterDescription) lines.push(`Character Description: ${scrubWatermarks(data.characterDescription)}`);
+  if (data.storyline) lines.push(`Storyline: ${scrubWatermarks(data.storyline)}`);
 
   if (data.sceneText) {
-    // Clean known watermarks to prevent Claude hallucinating metadata as character choices
-    const cleanText = data.sceneText
-      // Remove specific date/time watermarks "- Feb 17, 2026 9:41 AM -"
-      .replace(/\-\s*[a-zA-Z]{3,4}\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*[AP]M\s*\-/gi, " ")
-      // Remove specific alphanumeric project codes (like B540LT) repeated endlessly
-      .replace(/\bB540LT\b/gi, " ")
-      // Remove any hyphenated serial text blocks "-B540LT-"
-      .replace(/\-+[A-Z0-9]{5,}\-+/gi, " ")
-      // General large numeric watermarks
-      .replace(/\b\d{5,}\b/g, " ")
-      // Collapse multiple spaces
-      .replace(/\s{2,}/g, " ")
-      .trim();
-
     lines.push("\nSIDES / SCENE TEXT (CRITICAL: Ignore any remaining timestamps, dates, watermarks, agency names, or page numbers):");
-    lines.push(cleanText);
+    lines.push(scrubWatermarks(data.sceneText));
   }
 
   // ── Modifier suffix ────────────────────────────────────────────────────────
   if (data.spinAgain) {
     let spinInstruction = "\nIMPORTANT INSTRUCTION: Generate a COMPLETELY NEW set of bold acting choices. Every choice must be different from what you might have suggested before. Avoid any idea that feels expected or obvious. Surprise the actor.";
     if (data.previousOutputSummary) {
-      spinInstruction += `\n\nAVOID repeating ideas, phrasing, or behavioral patterns from the previous version: ${data.previousOutputSummary}`;
+      spinInstruction += `\n\nAVOID repeating ideas, phrasing, or behavioral patterns from the previous version: ${scrubWatermarks(data.previousOutputSummary)}`;
     }
     lines.push(spinInstruction);
   }
