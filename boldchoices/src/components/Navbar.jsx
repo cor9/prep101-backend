@@ -40,20 +40,12 @@ export default function Navbar() {
       `}</style>
 
       {/* Logo */}
-      <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: 'linear-gradient(135deg, #FF4D4D 0%, #F5A623 100%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 16, fontWeight: 900, color: '#fff', flexShrink: 0,
-          fontFamily: 'Fraunces, serif',
-        }}>B</div>
-        <span style={{
-          fontFamily: 'Fraunces, serif', fontSize: '1.05rem',
-          fontWeight: 700, color: '#F0EEF5', letterSpacing: '-0.01em',
-        }}>
-          Bold Choices
-        </span>
+      <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+        <img 
+          src="/bold-choices-logo.png" 
+          alt="Bold Choices Logo" 
+          style={{ height: 44, width: 'auto', objectFit: 'contain' }}
+        />
       </Link>
 
       {/* Right */}
