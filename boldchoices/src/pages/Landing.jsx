@@ -164,6 +164,9 @@ const S = {
     border: '1px solid rgba(255,255,255,0.08)',
     borderRadius: 16,
     padding: '28px 24px',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
   },
   stepNum: {
     width: 36,
@@ -199,6 +202,9 @@ const S = {
     borderRadius: 14,
     padding: '24px 22px',
     transition: 'border-color 0.2s, background 0.2s',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
   },
   featureIcon: {
     fontSize: 24,
@@ -437,7 +443,7 @@ export default function Landing() {
         <div style={S.statsRow}>
           {[
             { num: '95%', label: 'of actors play it safe' },
-            { num: '<60s', label: 'to generate' },
+            { num: '<90s', label: 'to generate' },
             { num: '5', label: 'bold choices per guide' },
             { num: '3', label: 'takes per key moment' },
           ].map(s => (
@@ -550,9 +556,10 @@ export default function Landing() {
             Want the full coaching breakdown?
           </h3>
           <p style={S.upgradeDesc}>
-            Bold Choices gets you in the room. Prep101 gets you the role.
-            Uta Hagen's Nine Questions, subtext analysis, rehearsal strategy —
-            the complete deep-dive preparation guide.
+            Bold Choices gives you the spark.<br />
+            Prep101 builds the performance.<br /><br />
+            This is where it stops being a guess.<br />
+            Every beat. Every shift. Every choice — mapped, motivated, and ready to play.
           </p>
           <button
             className="btn-upgrade"

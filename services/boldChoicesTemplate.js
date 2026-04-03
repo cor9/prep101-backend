@@ -18,11 +18,11 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
 
   const {
     characterName = "CHARACTER",
-    show = "",
-    network = "",
-    castingDirectors = "",
+    actorAge = "",
+    productionTitle = "",
+    productionType = "",
     roleSize = "",
-    castingOppositeOf = "",
+    genre = "",
   } = meta;
 
   // Limit choices in preview mode
@@ -102,13 +102,13 @@ function renderBoldChoicesTemplate(data, meta = {}, isPreview = false) {
       )
       .join("");
 
-  const subHeaderParts = [show, network, castingDirectors ? `Casting: ${castingDirectors}` : null]
+  const subHeaderParts = [productionTitle, productionType, genre]
     .filter(Boolean)
     .join(" &nbsp;·&nbsp; ");
 
   const subHeaderLine2 = [
-    roleSize ? `${roleSize}` : null,
-    castingOppositeOf ? `Opposite: ${castingOppositeOf}` : null,
+    roleSize ? `Role: ${roleSize}` : null,
+    actorAge ? `Age: ${actorAge}` : null,
   ]
     .filter(Boolean)
     .join(" &nbsp;·&nbsp; ");

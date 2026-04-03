@@ -76,12 +76,11 @@ router.post("/generate", auth, async (req, res) => {
     const {
       characterName,
       sceneText,
-      role,
-      show,
-      network,
-      castingDirectors,
-      castingOppositeOf,
+      actorAge,
+      productionTitle,
+      productionType,
       roleSize,
+      genre,
       characterDescription,
       storyline,
       format = "html",
@@ -114,7 +113,7 @@ router.post("/generate", auth, async (req, res) => {
 
     // ── Modifier paywall ────────────────────────────────────────────────────
     if (!isPro && modifier && modifier !== null) {
-      logEvent("upgrade_clicked", userId, { modifier, characterName, show });
+      logEvent("upgrade_clicked", userId, { modifier, characterName, productionTitle });
       return res.status(403).json({ error: "Upgrade required for this feature" });
     }
 
@@ -162,18 +161,17 @@ router.post("/generate", auth, async (req, res) => {
       : actualSpinAgain
       ? "spin_clicked"
       : "generated";
-    logEvent(analyticsEvent, userId, { characterName, show, preview });
+    logEvent(analyticsEvent, userId, { characterName, show: productionTitle, preview });
 
     // ── Call Claude ──────────────────────────────────────────────────────────
     const inputData = {
       characterName: characterName.trim(),
       sceneText: sceneText.trim(),
-      role,
-      show,
-      network,
-      castingDirectors,
-      castingOppositeOf,
+      actorAge,
+      productionTitle,
+      productionType,
       roleSize,
+      genre,
       characterDescription,
       storyline,
       modifier: actualModifier,
@@ -224,12 +222,12 @@ router.post("/generate", auth, async (req, res) => {
           id: generationId,
           user_id: String(userId),
           character_name: characterName.trim(),
-          show: show || null,
+          show: productionTitle || null,
           modifier: modifier || null,
           is_preview: !!preview,
           output_json: JSON.stringify(guideData),
           prompt_summary: JSON.stringify({
-            role, show, network, castingDirectors, roleSize, modifier,
+            actorAge, productionTitle, productionType, genre, roleSize, modifier,
           }),
           created_at: new Date().toISOString(),
         }),
@@ -252,11 +250,11 @@ router.post("/generate", auth, async (req, res) => {
     // Default: return rendered HTML
     const meta = {
       characterName: characterName.trim(),
-      show: show || "",
-      network: network || "",
-      castingDirectors: castingDirectors || "",
-      castingOppositeOf: castingOppositeOf || "",
+      actorAge: actorAge || "",
+      productionTitle: productionTitle || "",
+      productionType: productionType || "",
       roleSize: roleSize || "",
+      genre: genre || "",
     };
 
     const html = renderBoldChoicesTemplate(guideData, meta, !!preview);

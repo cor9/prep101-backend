@@ -216,14 +216,13 @@ export default function Generate() {
   // Form
   const [form, setForm] = useState({
     characterName: '',
-    role: '',
-    show: '',
-    network: '',
-    castingDirectors: '',
-    castingOppositeOf: '',
+    actorAge: '',
+    productionTitle: '',
+    productionType: '',
     roleSize: '',
-    characterDescription: '',
+    genre: '',
     storyline: '',
+    characterDescription: '',
     sceneText: '',
   });
 
@@ -462,38 +461,26 @@ export default function Generate() {
             <div style={S.sideLabel}>Character</div>
 
             <div style={S.field}>
-              <label style={S.label}>Name <span style={{ color: '#FF4D4D' }}>*</span></label>
+              <label style={S.label}>Character Name <span style={{ color: '#FF4D4D' }}>*</span></label>
               <input
                 className="gen-input"
                 style={S.input}
                 name="characterName"
                 value={form.characterName}
                 onChange={handleField}
-                placeholder="e.g. RILEY"
+                placeholder="e.g., CeCe Rodriguez"
               />
             </div>
 
             <div style={S.field}>
-              <label style={S.label}>Role / breakdown label</label>
+              <label style={S.label}>Actor's Age <span style={{ color: '#FF4D4D' }}>*</span></label>
               <input
                 className="gen-input"
                 style={S.input}
-                name="role"
-                value={form.role}
+                name="actorAge"
+                value={form.actorAge}
                 onChange={handleField}
-                placeholder="e.g. Heidi's daughter, 16, female"
-              />
-            </div>
-
-            <div style={S.field}>
-              <label style={S.label}>Character description</label>
-              <textarea
-                className="gen-input"
-                style={{ ...S.textarea, minHeight: 80 }}
-                name="characterDescription"
-                value={form.characterDescription}
-                onChange={handleField}
-                placeholder="Smart, earnest, resilient..."
+                placeholder="e.g., 8, 12, 15"
               />
             </div>
           </div>
@@ -503,74 +490,91 @@ export default function Generate() {
             <div style={S.sideLabel}>Production</div>
 
             <div style={S.field}>
-              <label style={S.label}>Show / Production</label>
+              <label style={S.label}>Production Title <span style={{ color: '#FF4D4D' }}>*</span></label>
               <input
                 className="gen-input"
                 style={S.input}
-                name="show"
-                value={form.show}
+                name="productionTitle"
+                value={form.productionTitle}
                 onChange={handleField}
-                placeholder="e.g. MAVIS (aka She's Fine)"
+                placeholder="e.g., How to Be a Drama Queen"
               />
             </div>
 
             <div style={S.field}>
-              <label style={S.label}>Network / Studio</label>
-              <input
+              <label style={S.label}>Production Type <span style={{ color: '#FF4D4D' }}>*</span></label>
+              <select
                 className="gen-input"
-                style={S.input}
-                name="network"
-                value={form.network}
+                style={{ ...S.input, appearance: 'menulist' }}
+                name="productionType"
+                value={form.productionType}
                 onChange={handleField}
-                placeholder="e.g. 20th Television / Hulu"
-              />
+              >
+                <option value="" disabled>Select type...</option>
+                <option value="Film">Film</option>
+                <option value="Television">Television</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Theatre">Theatre</option>
+                <option value="New Media / Web">New Media / Web</option>
+              </select>
             </div>
 
             <div style={S.field}>
-              <label style={S.label}>Casting directors</label>
-              <input
+              <label style={S.label}>Role Size <span style={{ color: '#FF4D4D' }}>*</span></label>
+              <select
                 className="gen-input"
-                style={S.input}
-                name="castingDirectors"
-                value={form.castingDirectors}
-                onChange={handleField}
-                placeholder="e.g. Mary Vernieu, Bret Howe"
-              />
-            </div>
-
-            <div style={S.field}>
-              <label style={S.label}>Cast opposite</label>
-              <input
-                className="gen-input"
-                style={S.input}
-                name="castingOppositeOf"
-                value={form.castingOppositeOf}
-                onChange={handleField}
-                placeholder="e.g. Elizabeth Banks as Mom"
-              />
-            </div>
-
-            <div style={S.field}>
-              <label style={S.label}>Role size</label>
-              <input
-                className="gen-input"
-                style={S.input}
+                style={{ ...S.input, appearance: 'menulist' }}
                 name="roleSize"
                 value={form.roleSize}
                 onChange={handleField}
-                placeholder="Series Regular, Recurring, Guest Star..."
+              >
+                <option value="" disabled>Select role size...</option>
+                <option value="Lead">Lead</option>
+                <option value="Supporting / Guest Star">Supporting / Guest Star</option>
+                <option value="Co-Star / Day Player">Co-Star / Day Player</option>
+                <option value="Series Regular">Series Regular</option>
+                <option value="Recurring">Recurring</option>
+              </select>
+            </div>
+
+            <div style={S.field}>
+              <label style={S.label}>Genre <span style={{ color: '#FF4D4D' }}>*</span></label>
+              <input
+                className="gen-input"
+                style={S.input}
+                name="genre"
+                value={form.genre}
+                onChange={handleField}
+                placeholder="e.g., Single-cam comedy, Medical drama, Teen romance"
               />
             </div>
 
             <div style={S.field}>
-              <label style={S.label}>Storyline</label>
+              <label style={S.label}>Storyline/Project Description (if available)</label>
               <textarea
                 className="gen-input"
                 style={{ ...S.textarea, minHeight: 70 }}
                 name="storyline"
                 value={form.storyline}
                 onChange={handleField}
-                placeholder="Brief plot context..."
+                placeholder="Brief description of the show/film's storyline or premise..."
+              />
+            </div>
+          </div>
+
+          {/* Breakdown */}
+          <div style={S.sideSection}>
+            <div style={S.sideLabel}>Breakdown</div>
+
+            <div style={S.field}>
+              <label style={S.label}>Character Breakdown (if available)</label>
+              <textarea
+                className="gen-input"
+                style={{ ...S.textarea, minHeight: 80 }}
+                name="characterDescription"
+                value={form.characterDescription}
+                onChange={handleField}
+                placeholder="Paste any character description provided by casting..."
               />
             </div>
           </div>

@@ -96,13 +96,12 @@ function buildUserPrompt(data) {
   const lines = [];
 
   lines.push("CHARACTER INFORMATION:");
-  if (data.role) lines.push(`Role: ${data.role}`);
   if (data.characterName) lines.push(`Character Name: ${data.characterName}`);
-  if (data.show) lines.push(`Show/Production: ${data.show}`);
-  if (data.network) lines.push(`Network/Studio: ${data.network}`);
-  if (data.castingDirectors) lines.push(`Casting: ${data.castingDirectors}`);
-  if (data.castingOppositeOf) lines.push(`Cast Opposite: ${data.castingOppositeOf}`);
+  if (data.actorAge) lines.push(`Actor's Age: ${data.actorAge}`);
+  if (data.productionTitle) lines.push(`Production Title: ${data.productionTitle}`);
+  if (data.productionType) lines.push(`Production Type: ${data.productionType}`);
   if (data.roleSize) lines.push(`Role Size: ${data.roleSize}`);
+  if (data.genre) lines.push(`Genre: ${data.genre}`);
   if (data.characterDescription) lines.push(`Character Description: ${data.characterDescription}`);
   if (data.storyline) lines.push(`Storyline: ${data.storyline}`);
 
