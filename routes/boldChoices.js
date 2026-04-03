@@ -1,0 +1,354 @@
+const express = require("express");
+const router = express.Router();
+const { v4: uuidv4 } = require("uuid");
+const { generateBoldChoices } = require("../services/boldChoicesService");
+const { renderBoldChoicesTemplate } = require("../services/boldChoicesTemplate");
+const { checkAndIncrement } = require("../services/boldChoicesUsage");
+const auth = require("../middleware/auth");
+
+// ── In-memory generation store (ephemeral cache; persisted copy in DB below) ──
+const generationsCache = new Map();
+
+// ── Analytics event logger ────────────────────────────────────────────────────
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+async function logEvent(event, userId, meta = {}) {
+  console.log(`[Analytics] event=${event} user=${userId}`, meta);
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/boldchoices_events`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        event,
+        user_id: String(userId),
+        meta: JSON.stringify(meta),
+        created_at: new Date().toISOString(),
+      }),
+    });
+  } catch (err) {
+    // Non-fatal — never block request flow for analytics
+    console.warn("[Analytics] Failed to log event:", err.message);
+  }
+}
+
+// ── Schema guard ──────────────────────────────────────────────────────────────
+function isValidGuideData(data) {
+  return (
+    data &&
+    data.pov &&
+    typeof data.pov.summary === "string" &&
+    Array.isArray(data.choices) &&
+    data.choices.length >= 3 &&
+    Array.isArray(data.moments) &&
+    data.moments.length >= 1
+  );
+}
+
+/**
+ * POST /api/bold-choices/generate
+ *
+ * Body:
+ *   characterName       string  required
+ *   sceneText           string  required
+ *   role                string  optional
+ *   show                string  optional
+ *   network             string  optional
+ *   castingDirectors    string  optional
+ *   castingOppositeOf   string  optional
+ *   roleSize            string  optional
+ *   characterDescription string optional
+ *   storyline           string  optional
+ *   format              string  "html" | "json"  (default "html")
+ *   preview             boolean  if true, returns partial HTML with upsell gate
+ *   previousGenerationId string  optional — pass to enable spin-aware context
+ *
+ * Auth: required (JWT bearer)
+ */
+router.post("/generate", auth, async (req, res) => {
+  try {
+    const {
+      characterName,
+      sceneText,
+      role,
+      show,
+      network,
+      castingDirectors,
+      castingOppositeOf,
+      roleSize,
+      characterDescription,
+      storyline,
+      format = "html",
+      preview = false,
+      modifier = null,   // null | 'wilder' | 'take2' | 'spin'
+      spinAgain = false,
+      previousGenerationId = null, // enables spin-aware generation
+    } = req.body;
+
+    // ── Validation ──────────────────────────────────────────────────────────
+    if (!characterName || typeof characterName !== "string" || !characterName.trim()) {
+      return res.status(400).json({ error: "characterName is required" });
+    }
+    if (!sceneText || typeof sceneText !== "string" || sceneText.trim().length < 20) {
+      return res.status(400).json({
+        error: "sceneText is required (minimum 20 characters)",
+      });
+    }
+
+    const validModifiers = [null, "wilder", "take2", "spin"];
+    if (!validModifiers.includes(modifier)) {
+      return res.status(400).json({ error: "Invalid modifier. Use: wilder | take2 | spin | null" });
+    }
+
+    const isPro = req.user && (req.user.subscription === "pro" || req.user.isPro);
+    const userId = req.userId || (req.user && req.user.id);
+
+    // ── Modifier paywall ────────────────────────────────────────────────────
+    if (!isPro && modifier && modifier !== null) {
+      logEvent("upgrade_clicked", userId, { modifier, characterName, show });
+      return res.status(403).json({ error: "Upgrade required for this feature" });
+    }
+
+    // ── Durable daily limit (free users) ────────────────────────────────────
+    if (!isPro) {
+      const { allowed, count } = await checkAndIncrement(userId, 1);
+      if (!allowed) {
+        logEvent('limit_reached', userId, { count, characterName });
+        return res.status(403).json({
+          error: 'Monthly limit reached. Upgrade to generate unlimited bold choices.',
+          usageCount: count,
+        });
+      }
+    }
+
+    let actualSpinAgain = spinAgain;
+    let actualModifier = modifier;
+    if (modifier === "spin") {
+      actualSpinAgain = true;
+      actualModifier = null;
+    }
+
+    // ── Retrieve previous output for spin-aware context ─────────────────────
+    let previousOutputSummary = null;
+    if (actualSpinAgain && previousGenerationId) {
+      const prev = generationsCache.get(previousGenerationId);
+      if (prev && prev.data) {
+        // Build a concise summary so Claude avoids repeating
+        const d = prev.data;
+        const choiceTitles = (d.choices || []).map((c) => c.title).join(", ");
+        const coachNote = d.coachNote ? d.coachNote.substring(0, 200) : "";
+        previousOutputSummary = `Previous choices: ${choiceTitles}. Coach note excerpt: ${coachNote}`;
+      }
+    }
+
+    console.log(
+      `[BoldChoices] Generating for: ${characterName} | modifier: ${actualModifier || "standard"} | spinAgain: ${actualSpinAgain} | preview: ${preview} | previousId: ${previousGenerationId || "none"}`,
+    );
+
+    // Log analytics event
+    const analyticsEvent = modifier === "wilder"
+      ? "wilder_clicked"
+      : modifier === "take2"
+      ? "take2_clicked"
+      : actualSpinAgain
+      ? "spin_clicked"
+      : "generated";
+    logEvent(analyticsEvent, userId, { characterName, show, preview });
+
+    // ── Call Claude ──────────────────────────────────────────────────────────
+    const inputData = {
+      characterName: characterName.trim(),
+      sceneText: sceneText.trim(),
+      role,
+      show,
+      network,
+      castingDirectors,
+      castingOppositeOf,
+      roleSize,
+      characterDescription,
+      storyline,
+      modifier: actualModifier,
+      spinAgain: actualSpinAgain,
+      previousOutputSummary, // injected into prompt for spin-aware variation
+    };
+
+    const guideData = await generateBoldChoices(inputData);
+
+    // ── Schema guard: retry once with stricter instruction if invalid ─────────
+    if (!isValidGuideData(guideData)) {
+      console.warn("[BoldChoices] Schema guard failed — retrying with stricter instruction");
+      inputData._schemaRetry = true;
+      const retryData = await generateBoldChoices(inputData);
+      if (!isValidGuideData(retryData)) {
+        console.error("[BoldChoices] Schema guard failed on retry too.");
+        return res.status(500).json({ error: "Generated guide was malformed. Please try again." });
+      }
+      Object.assign(guideData, retryData);
+    }
+
+    // ── Store generation with ID ──────────────────────────────────────────────
+    const generationId = uuidv4();
+    generationsCache.set(generationId, {
+      id: generationId,
+      data: guideData,
+      prompt: inputData,
+      userId,
+      createdAt: new Date().toISOString(),
+    });
+    // Evict stale entries (keep last 200)
+    if (generationsCache.size > 200) {
+      const firstKey = generationsCache.keys().next().value;
+      generationsCache.delete(firstKey);
+    }
+
+    // ── Persist generation to Supabase (non-blocking) ─────────────────────────
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      fetch(`${SUPABASE_URL}/rest/v1/boldchoices_generations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          id: generationId,
+          user_id: String(userId),
+          character_name: characterName.trim(),
+          show: show || null,
+          modifier: modifier || null,
+          is_preview: !!preview,
+          output_json: JSON.stringify(guideData),
+          prompt_summary: JSON.stringify({
+            role, show, network, castingDirectors, roleSize, modifier,
+          }),
+          created_at: new Date().toISOString(),
+        }),
+      }).catch((err) => console.warn("[BoldChoices] Failed to persist generation:", err.message));
+    }
+
+    // ── Format and return ─────────────────────────────────────────────────────
+    if (format === "json") {
+      return res.json({
+        success: true,
+        data: guideData,
+        meta: inputData,
+        isPreview: preview,
+        modifier,
+        spinAgain,
+        generationId,
+      });
+    }
+
+    // Default: return rendered HTML
+    const meta = {
+      characterName: characterName.trim(),
+      show: show || "",
+      network: network || "",
+      castingDirectors: castingDirectors || "",
+      castingOppositeOf: castingOppositeOf || "",
+      roleSize: roleSize || "",
+    };
+
+    const html = renderBoldChoicesTemplate(guideData, meta, !!preview);
+
+    console.log(`[BoldChoices] Done (${html.length} chars). modifier: ${modifier || "none"}`);
+
+    return res.json({
+      success: true,
+      html,
+      isPreview: preview,
+      meta,
+      modifier,
+      generationId,
+    });
+  } catch (err) {
+    console.error("[BoldChoices] Generation error:", err.message);
+    return res.status(500).json({
+      error: "Failed to generate Bold Choices guide",
+      detail: process.env.NODE_ENV === "development" ? err.message : undefined,
+    });
+  }
+});
+
+/**
+ * GET /api/bold-choices/health
+ */
+router.get("/health", (req, res) => {
+  res.json({
+    service: "bold-choices",
+    status: "ok",
+    model: process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514",
+  });
+});
+
+/**
+ * POST /api/bold-choices/save
+ * Persists a saved choice to Supabase.
+ */
+router.post("/save", auth, async (req, res) => {
+  try {
+    const { choice, character, show, generationId } = req.body;
+    const userId = req.userId || (req.user && req.user.id);
+
+    if (!choice) {
+      return res.status(400).json({ error: "choice is required" });
+    }
+
+    const recordId = uuidv4();
+    const record = {
+      id: recordId,
+      userId,
+      choice,
+      metadata: { character, show, generationId },
+      createdAt: new Date().toISOString(),
+    };
+
+    // Persist to Supabase (non-blocking)
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      await fetch(`${SUPABASE_URL}/rest/v1/boldchoices_saved`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          id: recordId,
+          user_id: String(userId),
+          choice_text: choice,
+          character_name: character || null,
+          show: show || null,
+          generation_id: generationId || null,
+          created_at: record.createdAt,
+        }),
+      }).catch((err) => console.warn("[BoldChoices] Save to Supabase failed:", err.message));
+    }
+
+    logEvent("choice_saved", userId, { character, show, generationId });
+    return res.json({ success: true, data: record });
+  } catch (err) {
+    console.error("[BoldChoices] Save error:", err.message);
+    return res.status(500).json({ error: "Failed to save choice" });
+  }
+});
+
+/**
+ * POST /api/bold-choices/analytics
+ * Client-side event tracking (upgrade_clicked, etc.)
+ */
+router.post("/analytics", auth, (req, res) => {
+  const { event, meta = {} } = req.body;
+  const userId = req.userId || (req.user && req.user.id);
+  if (event) logEvent(event, userId, meta);
+  res.json({ success: true });
+});
+
+module.exports = router;

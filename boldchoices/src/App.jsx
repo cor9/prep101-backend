@@ -1,0 +1,63 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import Landing from './pages/Landing.jsx';
+import Generate from './pages/Generate.jsx';
+import Login from './pages/Login.jsx';
+import Register from './pages/Register.jsx';
+
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        height: '100vh', background: '#0a0a0f', color: 'rgba(255,255,255,0.5)',
+        fontSize: 14, letterSpacing: '0.05em'
+      }}>
+        Loading...
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#1a1a24',
+              color: '#F0EEF5',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 10,
+              fontSize: 14,
+              fontFamily: 'DM Sans, sans-serif',
+            },
+            success: { iconTheme: { primary: '#00D4C8', secondary: '#0a0a0f' } },
+            error: { iconTheme: { primary: '#FF4D4D', secondary: '#0a0a0f' } },
+          }}
+        />
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/generate"
+            element={
+              <ProtectedRoute>
+                <Generate />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}

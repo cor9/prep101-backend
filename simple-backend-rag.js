@@ -719,6 +719,14 @@ try {
   console.log("⚠️  Clawdbot routes not available:", error.message);
 }
 
+try {
+  const boldChoicesRoutes = require("./routes/boldChoices");
+  app.use("/api/bold-choices", boldChoicesRoutes);
+  console.log("✅ Bold Choices routes loaded");
+} catch (error) {
+  console.log("⚠️  Bold Choices routes not available:", error.message);
+}
+
 // Secure API key handling (trim to avoid invisible whitespace issues)
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
 if (!ANTHROPIC_API_KEY) {

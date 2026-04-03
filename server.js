@@ -22,6 +22,7 @@ const paymentRoutes = require('./routes/payments');
 const guidesRoutes = require('./routes/guides');
 const uploadRoutes = require('./routes/upload');
 const stripeWebhookRoute = require('./routes/stripeWebhook');
+const boldChoicesRoutes = require('./routes/boldChoices');
 
 // Import models
 const User = require('./models/User');
@@ -180,6 +181,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/guides', guidesRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/bold-choices', boldChoicesRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

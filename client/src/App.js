@@ -18,6 +18,7 @@ import PaymentSuccess from './pages/PaymentSuccess';
 import SubscriptionManager from './components/SubscriptionManager';
 import Terms from './pages/Terms';
 import AdminDashboard from './pages/AdminDashboard';
+import BoldChoices from './pages/BoldChoices';
 import './App.css';
 
 // Initialize Stripe
@@ -115,6 +116,14 @@ function App() {
                 <Route path="/app/stripe/success" element={<StripeSuccess />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/terms" element={<Terms />} />
+                <Route
+                  path="/bold-choices"
+                  element={
+                    <ProtectedRoute>
+                      <BoldChoices />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/" element={<Home />} />
               </Routes>
             </div>
