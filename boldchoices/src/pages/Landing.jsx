@@ -387,6 +387,9 @@ export default function Landing() {
         .btn-secondary:hover { border-color: rgba(240,238,245,0.35); color: #F0EEF5; }
         .feature-card:hover { border-color: rgba(255,255,255,0.14); background: rgba(255,255,255,0.05); }
         .btn-upgrade:hover { background: rgba(155,109,255,0.25); }
+        .steps-grid { grid-template-columns: 1fr !important; }
+        @media (min-width: 600px) { .steps-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (min-width: 900px) { .steps-grid { grid-template-columns: repeat(4, 1fr) !important; } }
       `}</style>
 
       <Navbar />
@@ -462,7 +465,7 @@ export default function Landing() {
           Four steps.<br />One unforgettable audition.
         </h2>
 
-        <div style={S.stepsGrid}>
+        <div className="steps-grid" style={S.stepsGrid}>
           {steps.map(s => (
             <div key={s.num} style={S.stepCard}>
               <div style={{ ...S.stepNum, background: s.bg, color: s.color }}>{s.num}</div>
