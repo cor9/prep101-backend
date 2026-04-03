@@ -235,6 +235,7 @@ export default function Generate() {
   const [guideData, setGuideData] = useState(null);
   const [blobUrl, setBlobUrl] = useState(null);
   const [uploadedFileName, setUploadedFileName] = useState(null);
+  const [uploadData, setUploadData] = useState(null);
   const [generationId, setGenerationId] = useState(null); // tracks current generation
   const resultRef = useRef(null);
 
@@ -267,8 +268,9 @@ export default function Generate() {
       if (!res.ok) throw new Error(data.error || 'Upload failed');
 
       if (data.sceneText || data.preview) {
-        setForm(f => ({ ...f, sceneText: data.sceneText || data.preview || '' }));
+        setUploadData(data);
         setUploadedFileName(file.name);
+        setForm(f => ({ ...f, sceneText: '' })); // clear out any pasted text to avoid confusion
         toast.success(`Extracted ${data.wordCount || '?'} words`, { id: toastId });
       } else {
         toast.error('Could not extract text — try pasting directly', { id: toastId });
@@ -289,9 +291,9 @@ export default function Generate() {
       toast.error('Character name is required');
       return;
     }
-    const sceneText = form.sceneText.trim();
+    const sceneText = uploadData?.sceneText ? uploadData.sceneText.trim() : form.sceneText.trim();
     if (!sceneText || sceneText.length < 20) {
-      toast.error('Please enter scene text or paste your sides');
+      toast.error('Please enter scene text or upload your sides');
       return;
     }
 
@@ -587,23 +589,32 @@ export default function Generate() {
               onChange={handleFileChange}
             />
 
-            <div style={S.orDivider}>
-              <div style={S.orLine} />
-              <span>or</span>
-              <div style={S.orLine} />
-            </div>
+            {uploadedFileName ? (
+              <div style={{ marginTop: 14, padding: 14, background: 'rgba(0, 212, 200, 0.1)', borderRadius: 8, border: '1px solid rgba(0, 212, 200, 0.3)', color: '#00D4C8', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>✅ Extracted <strong>{uploadData?.wordCount || '?'}</strong> words</div>
+                <button type="button" onClick={() => { setUploadedFileName(null); setUploadData(null); }} style={{ background: 'transparent', border: 'none', color: '#00D4C8', textDecoration: 'underline', cursor: 'pointer', fontSize: 12, padding: 0 }}>Remove</button>
+              </div>
+            ) : (
+              <>
+                <div style={S.orDivider}>
+                  <div style={S.orLine} />
+                  <span>or</span>
+                  <div style={S.orLine} />
+                </div>
 
-            <textarea
-              className="gen-input"
-              style={S.textarea}
-              name="sceneText"
-              value={form.sceneText}
-              onChange={handleField}
-              placeholder="Paste your sides here..."
-            />
-            <div style={{ fontSize: 11, color: 'rgba(240,238,245,0.25)', marginTop: 4 }}>
-              {form.sceneText.trim().split(/\s+/).filter(Boolean).length} words
-            </div>
+                <textarea
+                  className="gen-input"
+                  style={S.textarea}
+                  name="sceneText"
+                  value={form.sceneText}
+                  onChange={handleField}
+                  placeholder="Paste your sides here..."
+                />
+                <div style={{ fontSize: 11, color: 'rgba(240,238,245,0.25)', marginTop: 4 }}>
+                  {form.sceneText.trim().split(/\s+/).filter(Boolean).length} words
+                </div>
+              </>
+            )}
           </div>
 
           <button
