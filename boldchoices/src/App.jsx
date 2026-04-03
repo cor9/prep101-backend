@@ -6,6 +6,7 @@ import Landing from './pages/Landing.jsx';
 import Generate from './pages/Generate.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
+import Admin from './pages/Admin.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -52,6 +53,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Generate />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <Admin />
               </ProtectedRoute>
             }
           />

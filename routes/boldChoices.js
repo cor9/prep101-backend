@@ -106,7 +106,10 @@ router.post("/generate", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid modifier. Use: wilder | take2 | spin | null" });
     }
 
-    const isPro = req.user && (req.user.subscription === "pro" || req.user.isPro);
+    const OWNER_EMAIL = process.env.OWNER_EMAIL || 'corey@childactor101.com';
+    const isAdmin = req.user && req.user.email === OWNER_EMAIL;
+    const isPro = isAdmin || (req.user && (req.user.subscription === 'pro' || req.user.isPro ||
+      req.user.betaAccessLevel === 'admin' || req.user.subscription === 'premium'));
     const userId = req.userId || (req.user && req.user.id);
 
     // ── Modifier paywall ────────────────────────────────────────────────────
@@ -349,6 +352,92 @@ router.post("/analytics", auth, (req, res) => {
   const userId = req.userId || (req.user && req.user.id);
   if (event) logEvent(event, userId, meta);
   res.json({ success: true });
+});
+
+/**
+ * GET /api/bold-choices/admin/dashboard
+ * Admin dashboard data
+ */
+router.get("/admin/dashboard", auth, async (req, res) => {
+  try {
+    const OWNER_EMAIL = process.env.OWNER_EMAIL || 'corey@childactor101.com';
+    const isAdmin = req.user && req.user.email === OWNER_EMAIL;
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const { SUPABASE_URL } = process.env;
+    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      return res.status(503).json({ error: "Supabase credentials missing" });
+    }
+
+    const headers = {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`
+    };
+
+    // Parallel fetch all stats from Supabase REST API
+    const [usageRes, eventsRes, generationsRes, savedRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/boldchoices_usage?select=count`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/boldchoices_events?select=count`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/boldchoices_generations?select=*&order=created_at.desc&limit=50`, { headers }), // get recent generations
+      fetch(`${SUPABASE_URL}/rest/v1/boldchoices_saved?select=count`, { headers })
+    ]);
+
+    const stats = {
+      totalUsage: 0,
+      totalEvents: 0,
+      totalSaved: 0,
+      recentGenerations: []
+    };
+
+    if (usageRes.ok) {
+        // Since we did ?select=count, the response header Content-Range has the total or we can just sum the counts if we fetched records.
+        // Actually, without exact header parsing, let's just fetch all and count in memory for now since it's an MVP admin dash, or parse properly.
+        // Let's re-fetch without select=count header logic to be safe and simple, or just use the count from the payload if it's there.
+    }
+    
+    // Better way to get count from Supabase REST: use Prefer: count=exact header, but it's simpler to just fetch recent rows and maybe group them. 
+    // Let's do a simple aggregation for the MVP:
+    const eventsDataRes = await fetch(`${SUPABASE_URL}/rest/v1/boldchoices_events?select=event,count&limit=1000`, { headers });
+    const eventsData = eventsDataRes.ok ? await eventsDataRes.json() : [];
+    
+    // We'll just fetch raw data and aggregate it for the dashboard
+    const allEventsRes = await fetch(`${SUPABASE_URL}/rest/v1/boldchoices_events?select=event,user_id,created_at&limit=1000&order=created_at.desc`, { headers });
+    const allEvents = allEventsRes.ok ? await allEventsRes.json() : [];
+
+    const generationsData = generationsRes.ok ? await generationsRes.json() : [];
+    
+    const uniqueUsers = new Set(allEvents.map(e => e.user_id)).size;
+    const spins = allEvents.filter(e => e.event === 'spin').length;
+    const wilders = allEvents.filter(e => e.event === 'wilder').length;
+    const upgrades = allEvents.filter(e => e.event === 'upgrade_clicked').length;
+    
+    res.json({
+        success: true,
+        stats: {
+            totalEvents: allEvents.length,
+            uniqueUsers,
+            spins,
+            wilders,
+            upgrades,
+            recentGenerations: generationsData.map(g => ({
+                id: g.id,
+                userId: g.user_id,
+                createdAt: g.created_at,
+                // parse prompt to get character info safely
+                character: typeof g.prompt === 'string' ? JSON.parse(g.prompt).characterName : (g.prompt?.characterName || 'Unknown')
+            })).slice(0, 20)
+        }
+    });
+
+  } catch (error) {
+    console.error("[BoldChoices Admin] Error fetching dashboard:", error);
+    res.status(500).json({ error: "Failed to fetch admin dashboard" });
+  }
 });
 
 module.exports = router;
