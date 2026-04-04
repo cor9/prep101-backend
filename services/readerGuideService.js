@@ -4,7 +4,7 @@
  * Generates a READER SUPPORT GUIDE — practical, scene-specific coaching for the
  * parent or non-actor reader who is holding lines during a self-tape session.
  *
- * This is NOT actor coaching.  The output is entirely framed for the reader.
+ * This is NOT actor coaching. The output is entirely framed for the reader.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -19,34 +19,35 @@ Your job is to generate a READER SUPPORT GUIDE for the parent or reader holding 
 
 This is NOT actor coaching. This is reader-impact coaching.
 
-Every instruction you write must answer one question:
-"How does this reader behavior directly affect the actor's performance?"
+CORE QUESTION — every instruction must answer:
+"What should the reader DO differently, and how does it affect the actor?"
 
 TONE RULES:
-- Direct, blunt, behavioral
-- Cause-and-effect phrasing: "If you rush this, the emotional turn is lost." "If you go flat here, the actor has nothing to respond to."
-- No soft language, no generic advice, no acting theory
-- Written for a parent who has 2 minutes to absorb this before pressing record
+- Direct. Concise. Slightly firm. Zero fluff.
+- Cause-and-effect: "If you rush this, the actor loses the turn."
+- No abstract acting language. No soft filler.
+- Written for a parent reading this 2 minutes before pressing record.
 
 CORE PRINCIPLES:
-- The reader is never the performance — they are the condition the actor performs in
-- Reader energy, timing, and tone directly shape what ends up on camera
-- Lack of connection is visible on camera — it makes the actor look like they're performing alone
-- Every instruction must have a concrete, immediate action attached to it
+- The reader is never the performance — they are the condition the actor performs in.
+- Reader energy, timing, and presence directly shape what lands on camera.
+- Lack of connection is visible on camera — it makes the actor look like they're performing alone.
+- Every instruction must have a concrete, immediate action.
+
+FORMATTING RULES (NON-NEGOTIABLE):
+- Use bullet points for ALL guidance. No paragraph blocks.
+- Every bullet: 1–2 sentences max.
+- Each section must be readable in under 5 seconds.
+- No dense explanations. No abstract concepts.
+- If it can't be acted on immediately, cut it.
+- Use <ul><li> tags for all lists.
+- Use <strong> only to flag the most critical word or phrase in a bullet.
+- Use <h2> for section headers, <p> only for the Why This Matters block at the top.
 
 SCRIPT INTEGRITY:
-- Use ONLY what is in the sides. If something is not stated, do not invent it.
-- Tie every piece of guidance to a specific moment, line, or beat from the scene.
-- No generic acting advice — if it could apply to any scene, cut it.
-
-READER DIFFICULTY SCORE:
-- Easy: single character, flat pacing, minimal emotional shifts
-- Moderate: some emotional turns, timing sensitivity, 1–2 characters
-- Challenging: escalating stakes, tight timing windows, multiple characters, emotional pivots
-
-FORMAT: Output pure HTML only. No markdown, no code fences, no \`\`\`html wrappers.
-Use semantic HTML. No inline color or background-color styles.
-Be concise — every section should be scannable in under 30 seconds.`;
+- Reference specific lines, beats, or moments from the sides — not the scene in general.
+- Never invent details not in the script.
+- If it could apply to any scene, it's not specific enough — rewrite it.`;
 
 // ─── User Prompt Builder ─────────────────────────────────────────────────────
 
@@ -70,67 +71,74 @@ ${storyline ? `CONTEXT: ${storyline}` : ""}
 SIDES:
 ${sceneText}
 
-Generate the complete guide using EXACTLY the sections below, in this order. Every section must contain at least one concrete, immediate action the reader can take. No section may contain generic advice that could apply to any scene.
+---
 
-<p><strong>⚠️ Why This Matters</strong><br>The way you read this scene directly affects how believable the performance feels. What you do — and don't do — shows up on camera.</p>
+Generate the guide in EXACTLY this section order. Rules for every section:
+- Bullet points only (ul/li) — no paragraph blocks except the Why This Matters intro
+- Readable in under 5 seconds
+- Must answer: "What should the reader DO differently?"
+- Must reference specific lines or beats from the sides above — no generic advice
 
-<h2>🎭 Scene Snapshot</h2>
-What is this scene? Describe the tone, stakes, and emotional world in 2–3 sentences. Then state exactly what the actor needs to do their best work here. Be specific to THIS script.
+---
 
-<h2>🎯 Your Role in This Scene</h2>
-Do NOT describe how to "play" the other character. Instead: explain what energy, pressure, or presence the reader needs to bring so the actor has something real to respond to. Frame it as: "Your job is to create the condition where the actor can ___."
+<p><strong>⚠️ Why This Matters</strong><br>
+The way you read this scene directly affects how believable the performance feels.<br>
+What you do — and don't do — shows up on camera.</p>
 
-<h2>📊 Reader Difficulty Score</h2>
-State Easy / Moderate / Challenging. Follow with 2–3 sentences explaining WHY — based on specific demands in this scene (timing windows, emotional pivots, character count). Name the hardest moment in the scene for the reader.
+<h2>🎬 Scene Snapshot</h2>
+4 bullets max. Each bullet = 1 line.
+- Genre and tone (name it plainly)
+- What's at stake in this scene
+- Emotional temperature: where it starts vs. where it ends
+- What the actor needs most from you to land their performance
 
-<h2>⏱️ Pacing & Beats to Protect</h2>
-Identify 3–5 specific moments in this scene where timing directly impacts the actor's performance. Use cause-and-effect language: "If you rush [beat], the actor loses the chance to ___."
-Do not generalize. Reference actual lines or transitions from the sides.
+<h2>🎯 Your Job</h2>
+3–4 bullets. Each starts with "Your job is to ___."
+Do NOT say "play the character." Instead: what specific energy, pressure, or presence do you bring so the actor has something real to respond to?
 
-<h2>🎤 How to Read Your Lines</h2>
-Give delivery guidance that explains HOW it affects the actor — not just what to do.
-For any line that needs special handling, call it out directly: name the line or paraphrase it, then say what to do and why it matters.
-Replace phrases like "be natural" with specific behavior: volume level, pace, emotional temperature.
+<h2>🔑 Key Beats</h2>
+This is the most critical section. 4–6 bullets.
+Each bullet MUST follow this format:
+"[Quote or close paraphrase of line] → [Exact instruction: pause, slow down, hold silence, lower volume, etc.] — [consequence for the actor if you don't]"
+Reference actual lines from the sides. Be exact.
 
-<h2>🔊 Volume & Energy Guide</h2>
-Scale the reader's energy relative to the actor — not the scene in general.
-Give explicit guidance: "Stay one level below the actor's energy." "Pull back after [beat] to give them room to escalate."
-Call out any moments where going too big would overpower the actor, or going too flat would deflate them.
+<h2>🎤 How to Read</h2>
+4–5 bullets. Each one: specific delivery behavior + how it affects the actor.
+No "be natural." No "just react."
+Name the volume level, pace, or emotional temperature. If a specific line needs different treatment, name it.
 
-<h2>🎯 Do This / Avoid This</h2>
+<h2>🔊 Volume & Energy</h2>
+3–4 bullets. Scale relative to the actor — not the scene in abstract.
+- Where to stay under them (and why)
+- Where to match or push (and when)
+- One moment where going too big pulls focus off the actor
+- One moment where going flat kills the scene
+
+<h2>✅ Do This / ❌ Avoid This</h2>
 <strong>Do This:</strong>
 <ul>
-  <li>3–5 specific, actionable reader behaviors tied to moments in this scene</li>
-  <li>Each item must reference a real beat, line, or transition from the sides</li>
-  <li>Format: "[Specific action] — this gives the actor [specific result]"</li>
+<li>3–5 bullets. Each tied to a specific moment. Format: "[Action] — this gives the actor [result]."</li>
 </ul>
 <strong>Avoid This:</strong>
 <ul>
-  <li>3–5 common reader mistakes that would hurt this specific performance</li>
-  <li>Use consequence language: "If you ___, the actor loses ___"</li>
-  <li>No generic warnings — each must be grounded in this scene</li>
+<li>3–5 bullets. Consequence required. Format: "If you [mistake], the actor loses [specific thing]."</li>
 </ul>
 
-<h2>🎭 Reader Awareness</h2>
-If the reader plays multiple characters: how to differentiate them without overacting — name the tonal or energy difference between them, and how fast the switch needs to happen.
-If the reader plays one character: explain how consistency in your delivery protects the actor's performance arc. Identify one moment where inconsistency would be most damaging.
+<h2>👀 Connection (CRITICAL)</h2>
+3–4 bullets. Short. Blunt.
+- Eye-line: what it must be and when
+- What active listening looks like on camera (vs. waiting for your line)
+- The cost of disconnecting — plainly stated
+- The one moment in this scene where connection is non-negotiable
 
-<h2>⚠️ Common Mistakes to Avoid</h2>
-3–5 scene-specific mistakes. Each one must name a real moment from the sides and the consequence. Be blunt.
-Example format: "Don't rush [moment] — the actor needs that pause to land the turn."
+<h2>🧠 Quick Reset</h2>
+4–5 bullets. Parent reads this right before pressing record.
+One sentence each. No explanation.
+They should feel sharp, focused, and clear on their job.
 
-<h2>🎧 Performance Feel Reference</h2>
-1–2 sentences capturing the overall vibe — a TV/film comparison the parent can immediately understand and feel. Then add one sentence on what the reader's energy should feel like, not what it should sound like.
+---
 
-<h2>👀 Connection Note (CRITICAL)</h2>
-Direct instruction: maintain eye-line, presence, and active listening throughout.
-State clearly that dead eyes, looking at the page, or zoning out is visible on camera and undermines the actor's performance.
-Keep this short — 3–4 sentences. Make it land.
-
-<h2>🧠 Quick Mindset Reset</h2>
-4–5 short, punchy reminders the parent reads right before pressing record. No fluff. Each one should do something — shift their mindset, sharpen their focus, or remind them of their job.
-
-Output ONLY the HTML content. No \`\`\`html block. No commentary before or after.`;
+Output ONLY the HTML. No \`\`\`html block. No text before or after.`;
 }
 
 // ─── HTML Wrapper ────────────────────────────────────────────────────────────
@@ -138,7 +146,6 @@ Output ONLY the HTML content. No \`\`\`html block. No commentary before or after
 function wrapReaderGuideHtml(rawContent, meta = {}) {
   if (!rawContent) return "";
 
-  // If Claude accidentally returned a full HTML document, return as-is
   if (rawContent.includes("<html") && rawContent.includes("</html>")) {
     return rawContent;
   }
@@ -173,9 +180,8 @@ function wrapReaderGuideHtml(rawContent, meta = {}) {
       background: var(--ink);
       color: var(--mist);
       font-family: "Inter", system-ui, sans-serif;
-      line-height: 1.7;
+      line-height: 1.65;
     }
-    /* ── Hero ─────────────────────────────────────────────── */
     .rg-hero {
       background: linear-gradient(135deg, var(--teal-dk) 0%, #0f4f57 100%);
       padding: 3rem 1.5rem 4.5rem;
@@ -214,7 +220,6 @@ function wrapReaderGuideHtml(rawContent, meta = {}) {
       color: #fff;
       letter-spacing: 0.08em;
     }
-    /* ── Shell ────────────────────────────────────────────── */
     .rg-shell {
       max-width: 820px;
       margin: -2.5rem auto 5rem;
@@ -227,47 +232,71 @@ function wrapReaderGuideHtml(rawContent, meta = {}) {
       box-shadow: 0 30px 80px rgba(0,0,0,0.5);
       border: 1px solid rgba(148,163,184,0.12);
     }
-    /* ── Section headings ─────────────────────────────────── */
+    /* Why This Matters block */
+    .rg-card > p:first-child {
+      background: rgba(244,63,94,0.1);
+      border-left: 3px solid var(--rose);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 1.75rem;
+      font-size: 0.92rem;
+      color: #fda4af;
+      line-height: 1.55;
+    }
     h2 {
-      font-size: 1rem;
+      font-size: 0.85rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.18em;
       color: var(--teal);
-      margin-top: 2.5rem;
-      margin-bottom: 1rem;
-      padding-bottom: 0.45rem;
-      border-bottom: 1px solid rgba(20,184,166,0.25);
+      margin-top: 2.25rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(20,184,166,0.2);
     }
-    h2:first-child { margin-top: 0; }
+    h2:first-of-type { margin-top: 0; }
     h3 {
-      font-size: 0.95rem;
+      font-size: 0.88rem;
       font-weight: 600;
       color: var(--amber);
-      margin-top: 1.25rem;
-      margin-bottom: 0.5rem;
+      margin-top: 1rem;
+      margin-bottom: 0.4rem;
     }
-    /* ── Body text ────────────────────────────────────────── */
-    p { color: #cbd5e1; margin-bottom: 0.85rem; font-size: 0.97rem; }
-    ul, ol { color: #cbd5e1; padding-left: 1.35rem; margin-bottom: 1rem; }
-    li { margin-bottom: 0.4rem; font-size: 0.97rem; }
+    p { color: #cbd5e1; margin-bottom: 0.75rem; font-size: 0.93rem; }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 0.75rem 0;
+    }
+    li {
+      color: #cbd5e1;
+      font-size: 0.93rem;
+      padding: 0.4rem 0 0.4rem 1.1rem;
+      position: relative;
+      line-height: 1.55;
+      border-bottom: 1px solid rgba(148,163,184,0.06);
+    }
+    li:last-child { border-bottom: none; }
+    li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: var(--teal);
+      font-size: 0.8rem;
+      top: 0.45rem;
+    }
     strong { color: var(--amber); font-weight: 600; }
     em { color: var(--teal); font-style: normal; font-weight: 500; }
-    /* ── Difficulty badge ─────────────────────────────────── */
-    .difficulty-easy     { color: #4ade80; font-weight: 700; }
-    .difficulty-moderate { color: var(--amber); font-weight: 700; }
-    .difficulty-challenging { color: var(--rose); font-weight: 700; }
-    /* ── Footer ───────────────────────────────────────────── */
     .rg-footer {
       text-align: center;
       padding: 2rem 1rem 3rem;
       font-size: 0.8rem;
-      color: rgba(148,163,184,0.5);
+      color: rgba(148,163,184,0.4);
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
     @media (max-width: 600px) {
-      .rg-card { padding: 1.75rem 1.25rem; }
+      .rg-card { padding: 1.5rem 1rem; }
     }
   </style>
 </head>
@@ -294,18 +323,6 @@ function wrapReaderGuideHtml(rawContent, meta = {}) {
 
 // ─── Main Generator ──────────────────────────────────────────────────────────
 
-/**
- * generateReaderGuide(data)
- *
- * @param {object} data
- *   - sceneText        {string}  Extracted PDF text
- *   - characterName    {string}
- *   - productionTitle  {string}
- *   - productionType   {string}
- *   - genre            {string|undefined}
- *   - storyline        {string|undefined}
- * @returns {Promise<string>}  Full HTML string ready to serve
- */
 async function generateReaderGuide(data) {
   const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
   if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
@@ -324,7 +341,6 @@ async function generateReaderGuide(data) {
       console.log(`🔄 [ReaderGuide] Attempt ${attempt}/${maxRetries}...`);
 
       const controller = new AbortController();
-      // Reader guides are shorter — 3-minute timeout is plenty
       const timeoutId = setTimeout(() => controller.abort(), 180000);
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -337,7 +353,7 @@ async function generateReaderGuide(data) {
         },
         body: JSON.stringify({
           model: DEFAULT_CLAUDE_MODEL,
-          max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 4000), // Reader guides don't need 8k tokens
+          max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 4000),
           system: READER_SYSTEM_PROMPT,
           messages: [{ role: "user", content: userPrompt }],
         }),
@@ -350,13 +366,11 @@ async function generateReaderGuide(data) {
         console.error(
           `❌ [ReaderGuide] API Error (attempt ${attempt}): ${response.status} — ${errorText}`
         );
-
         if (response.status === 504 && attempt < maxRetries) {
           await new Promise((r) => setTimeout(r, attempt * 2000));
           lastError = new Error(`Gateway timeout (attempt ${attempt})`);
           continue;
         }
-
         throw new Error(`Anthropic ${response.status}: ${errorText}`);
       }
 
@@ -364,11 +378,7 @@ async function generateReaderGuide(data) {
 
       if (result.content && result.content[0] && result.content[0].text) {
         const rawHtml = result.content[0].text;
-        console.log(
-          `✅ [ReaderGuide] Generated ${rawHtml.length} chars of content`
-        );
-
-        // Wrap with branded HTML shell
+        console.log(`✅ [ReaderGuide] Generated ${rawHtml.length} chars`);
         return wrapReaderGuideHtml(rawHtml, {
           characterName: data.characterName,
           productionTitle: data.productionTitle,
@@ -379,7 +389,6 @@ async function generateReaderGuide(data) {
       }
     } catch (err) {
       lastError = err;
-
       if (err.name === "AbortError") {
         console.error(`⏰ [ReaderGuide] Timeout on attempt ${attempt}`);
         if (attempt < maxRetries) {
@@ -387,13 +396,11 @@ async function generateReaderGuide(data) {
           continue;
         }
       }
-
       if (attempt < maxRetries) {
-        console.log(`🔄 [ReaderGuide] Retrying after error: ${err.message}`);
+        console.log(`🔄 [ReaderGuide] Retrying: ${err.message}`);
         await new Promise((r) => setTimeout(r, attempt * 2000));
         continue;
       }
-
       console.error(`❌ [ReaderGuide] All ${maxRetries} attempts failed`);
       throw err;
     }
