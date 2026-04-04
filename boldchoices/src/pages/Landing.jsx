@@ -608,13 +608,30 @@ export default function Landing() {
         <div style={{ marginBottom: 8, fontFamily: 'Fraunces, serif', fontSize: 16, fontWeight: 700, color: 'rgba(240,238,245,0.5)' }}>
           Bold Choices
         </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          {[
+            { label: 'ChildActor101', href: 'https://childactor101.com' },
+            { label: 'Prep101', href: 'https://prep101.site' },
+            { label: 'Reader101', href: 'https://reader101.site' },
+            { label: 'Coaching by Corey', href: 'https://coaching.childactor101.com' },
+          ].map(({ label, href }) => (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: 12, fontWeight: 600, color: 'rgba(240,238,245,0.35)',
+                textDecoration: 'none', padding: '3px 10px', borderRadius: 999,
+                border: '1px solid rgba(240,238,245,0.1)',
+              }}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
         <div>
-          A product of{' '}
-          <a href="https://prep101.site" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(240,238,245,0.45)', textDecoration: 'underline' }}>
-            Prep101
-          </a>
-          {' '}·{' '}
-          &copy; {new Date().getFullYear()} Corey Ralston
+          © {new Date().getFullYear()} Corey Ralston
         </div>
       </footer>
     </div>
