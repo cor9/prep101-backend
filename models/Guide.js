@@ -44,7 +44,13 @@ const Guide = sequelize.define('Guide', {
   shareUrl: DataTypes.STRING,
   isPublic: { type: DataTypes.BOOLEAN, defaultValue: false },
   viewCount: { type: DataTypes.INTEGER, defaultValue: 0 },
-  isFavorite: { type: DataTypes.BOOLEAN, defaultValue: false }
+  isFavorite: { type: DataTypes.BOOLEAN, defaultValue: false },
+  guideType: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'prep101',
+    validate: { isIn: [['prep101', 'reader101', 'bold_choices']] }
+  }
 }, {
   timestamps: true,
   indexes: [

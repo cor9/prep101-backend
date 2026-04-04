@@ -19,7 +19,9 @@ import SubscriptionManager from './components/SubscriptionManager';
 import Terms from './pages/Terms';
 import AdminDashboard from './pages/AdminDashboard';
 import BoldChoices from './pages/BoldChoices';
+import AuthBridge from './pages/AuthBridge';
 import './App.css';
+
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
@@ -124,6 +126,7 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route path="/auth-bridge" element={<AuthBridge />} />
                 <Route path="/" element={<Home />} />
               </Routes>
             </div>

@@ -61,8 +61,15 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('bc_user');
   };
 
+  // Called by AuthCallback when receiving a token from prep101.site bridge
+  const loginWithToken = (token) => {
+    const u = { accessToken: token, token };
+    setUser(u);
+    localStorage.setItem('bc_user', JSON.stringify(u));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, loginWithToken }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3231,6 +3231,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         generatedHtml: guideContent,
         childGuideRequested: childGuideRequested || false,
         childGuideCompleted: false,
+        guideType: isReaderMode ? 'reader101' : 'prep101',
       };
 
       let persistedGuide = null;

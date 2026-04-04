@@ -67,6 +67,11 @@ const Dashboard = () => {
 
   const { user } = useAuth();
 
+  // ====== GUIDES LIBRARY ======
+  const [guides, setGuides] = useState([]);
+  const [guidesLoading, setGuidesLoading] = useState(false);
+  const [guideFilter, setGuideFilter] = useState('all');
+
   // ====== USAGE FETCH ======
   useEffect(() => {
     let cancelled = false;
@@ -119,9 +124,21 @@ const Dashboard = () => {
     };
 
     fetchUsage();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
+  }, [user, refreshKey]);
+
+  // Fetch guide library
+  useEffect(() => {
+    if (!user) return;
+    setGuidesLoading(true);
+    const token = user?.accessToken || user?.token;
+    fetch(`${API_BASE}/api/guides`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(r => r.ok ? r.json() : { guides: [] })
+      .then(data => setGuides(data.guides || []))
+      .catch(() => {})
+      .finally(() => setGuidesLoading(false));
   }, [user, refreshKey]);
 
   const remaining = useMemo(() => {
@@ -512,6 +529,86 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* ── GUIDE LIBRARY ─────────────────────────────────────── */}
+        <div className="card-white" style={{ marginTop: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>📂 Your Guides</h3>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {['all', 'prep101', 'reader101', 'bold_choices'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setGuideFilter(f)}
+                  style={{
+                    padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                    border: '1.5px solid',
+                    cursor: 'pointer',
+                    background: guideFilter === f ? '#0f172a' : 'transparent',
+                    color: guideFilter === f ? '#fff' : '#64748b',
+                    borderColor: guideFilter === f ? '#0f172a' : '#e2e8f0',
+                  }}
+                >
+                  {f === 'all' ? 'All' : f === 'prep101' ? 'Prep101' : f === 'reader101' ? 'Reader101' : 'Bold Choices'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {guidesLoading ? (
+            <p style={{ color: '#94a3b8', fontSize: 13 }}>Loading…</p>
+          ) : guides.filter(g => guideFilter === 'all' || g.guideType === guideFilter).length === 0 ? (
+            <p style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: '2rem 0' }}>
+              No guides yet. Generate one above!
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {guides
+                .filter(g => guideFilter === 'all' || g.guideType === guideFilter)
+                .map(g => {
+                  const typeColors = { prep101: '#f59e0b', reader101: '#14b8a6', bold_choices: '#FF4D4D' };
+                  const typeLabels = { prep101: 'Prep101', reader101: 'Reader101', bold_choices: 'Bold Choices' };
+                  const color = typeColors[g.guideType] || '#94a3b8';
+                  const token = user?.accessToken || user?.token;
+                  return (
+                    <div key={g.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 14px', borderRadius: 10,
+                      border: '1px solid #e2e8f0', background: '#f8fafc',
+                      gap: 12, flexWrap: 'wrap',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {g.characterName} — {g.productionTitle}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                          {new Date(g.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 999,
+                        background: color + '18', color, border: `1px solid ${color}44`,
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {typeLabels[g.guideType] || g.guideType}
+                      </span>
+                      <a
+                        href={`${API_BASE}${g.pdfUrl}${token ? `?token=${encodeURIComponent(token)}` : ''}`}
+                        download
+                        style={{
+                          fontSize: 12, fontWeight: 700, color: '#0f172a',
+                          background: 'var(--gold, #f59e0b)', borderRadius: 8,
+                          padding: '5px 12px', textDecoration: 'none', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ⬇ Download
+                      </a>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+        {/* ── END GUIDE LIBRARY ─────────────────────────────────── */}
 
         {/* Footer */}
         <Footer />

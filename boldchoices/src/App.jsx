@@ -7,6 +7,8 @@ import Generate from './pages/Generate.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Admin from './pages/Admin.jsx';
+import AuthCallback from './pages/AuthCallback.jsx';
+
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -64,6 +66,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/auth-callback" element={<AuthCallback />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
