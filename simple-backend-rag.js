@@ -1392,6 +1392,10 @@ async function extractTextWithAdobe(pdfBuffer) {
       .replace(/\-\s*[a-zA-Z]{3,4}\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*[AP]M\s*\-/gi, "\n")
       .replace(/\bB\d{3,}[A-Z0-9]*\b/gi, "") // matches B540LT, B568CR, etc
       .replace(/B540LT|B568CR|74222/gi, "")
+      .replace(/\b\d{1,2}:\d{2}:\d{2}\s*[AP]M\b/gi, "")
+      .replace(/\b\d{1,2}:\d{2}:\d{2}\b/g, "")
+      .replace(/\b[A-Z]\d{3,}[A-Z]{2}\b/gi, "")
+      .replace(/\b\d{5,}\b/g, "")
       .replace(/\-{2,}/g, " ") // clean up leftover hyphens from B540LT-B540LT
       .replace(/74222 - .*? -/g, "")
       .trim();
@@ -1450,6 +1454,10 @@ async function extractTextBasic(pdfBuffer) {
     .replace(/\-\s*[a-zA-Z]{3,4}\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*[AP]M\s*\-/gi, "\n")
     .replace(/\bB\d{3,}[A-Z0-9]*\b/gi, "") // matches B540LT, B568CR, etc
     .replace(/B540LT|B568CR|74222/gi, "")
+      .replace(/\b\d{1,2}:\d{2}:\d{2}\s*[AP]M\b/gi, "")
+      .replace(/\b\d{1,2}:\d{2}:\d{2}\b/g, "")
+      .replace(/\b[A-Z]\d{3,}[A-Z]{2}\b/gi, "")
+      .replace(/\b\d{5,}\b/g, "")
     .replace(/\-{2,}/g, " ") // clean up leftover hyphens from B540LT-B540LT
     .replace(/74222 - .*? -/g, "")
     .trim();

@@ -53,6 +53,9 @@ function cleanExtractedText(text) {
     .replace(/\r/g, '')
     .replace(/Sides by Breakdown Services - Actors Access/gi, '')
     .replace(/Page \d+ of \d+/gi, '')
+    .replace(/\b\d{1,2}:\d{2}:\d{2}\s*[AP]M\b/gi, '')
+    .replace(/\b\d{1,2}:\d{2}:\d{2}\b/g, '')
+    .replace(/\b[A-Z]\d{3,}[A-Z]{2}\b/gi, '')
     // Enhanced cleaning patterns
     .replace(/\b\d{5,}\b/g, '') // Remove numeric watermarks
     .replace(/^\d{1,2}:\d{2}:\d{2}\s*$/gm, '') // Remove timestamp lines
