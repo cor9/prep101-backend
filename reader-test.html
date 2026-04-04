@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reader101 — Test</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2.5rem 1rem;
+    }
+    .shell { max-width: 680px; margin: 0 auto; }
+
+    h1 { font-size: 1.5rem; font-weight: 700; color: #14b8a6; }
+    .sub { color: #475569; font-size: 0.85rem; margin-top: 0.25rem; margin-bottom: 1.75rem; }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 0.5rem;
+    }
+
+    textarea {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid rgba(148,163,184,0.15);
+      border-radius: 12px;
+      padding: 1rem;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 220px;
+      outline: none;
+    }
+    textarea:focus { border-color: #14b8a6; }
+
+    button {
+      margin-top: 1rem;
+      width: 100%;
+      padding: 0.9rem;
+      background: #14b8a6;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 1rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover  { background: #0d9488; }
+    button:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+
+    .status {
+      margin-top: 0.85rem;
+      padding: 0.7rem 1rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      display: none;
+    }
+    .status.info  { background: #1e3a5f; color: #93c5fd; display: block; }
+    .status.error { background: #450a0a; color: #fca5a5; display: block; }
+    .status.ok    { background: #064e3b; color: #6ee7b7; display: block; }
+
+    #result-frame {
+      width: 100%;
+      height: 88vh;
+      border: none;
+      border-radius: 16px;
+      display: none;
+      margin-top: 1.5rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <h1>📖 Reader101 — Test</h1>
+    <p class="sub">Paste sides below and generate a Reader Support Guide instantly.</p>
+
+    <label>Sides / Scene Text</label>
+    <textarea id="sceneText" placeholder="Paste the script sides here...">MOM: Where were you last night?
+KID: I was at Jake's.
+MOM: Jake moved to Florida two years ago.
+KID: (long pause) ...I know.
+MOM: So I'll ask you again. Where. Were. You.
+KID: (quietly) I can't tell you.
+MOM: That's not an answer.
+KID: I know. I'm sorry.</textarea>
+
+    <button id="btn" onclick="run()">Generate Reader Guide</button>
+    <div id="status" class="status"></div>
+
+    <iframe id="result-frame" title="Reader Guide"></iframe>
+  </div>
+
+  <script>
+    async function run() {
+      const btn    = document.getElementById("btn");
+      const status = document.getElementById("status");
+      const frame  = document.getElementById("result-frame");
+      const sceneText = document.getElementById("sceneText").value.trim();
+
+      if (!sceneText) {
+        showStatus("Paste some sides first.", "error");
+        return;
+      }
+
+      btn.disabled = true;
+      frame.style.display = "none";
+      showStatus("⏳ Generating... this takes 20–40 seconds", "info");
+
+      try {
+        const res = await fetch("https://prep101-api.vercel.app/api/reader-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sceneText }),
+        });
+
+        const data = await res.json();
+
+        if (!data.success || !data.guideContent) {
+          throw new Error(data.error || "Generation failed");
+        }
+
+        showStatus("✅ Done!", "ok");
+        frame.style.display = "block";
+        const doc = frame.contentDocument || frame.contentWindow.document;
+        doc.open();
+        doc.write(data.guideContent);
+        doc.close();
+
+      } catch (err) {
+        showStatus("❌ " + err.message, "error");
+      }
+
+      btn.disabled = false;
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById("status");
+      el.textContent = msg;
+      el.className = "status " + type;
+    }
+  </script>
+</body>
+</html>

@@ -3931,6 +3931,28 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// ── Reader101 no-auth test endpoint ───────────────────────────────────────────
+app.post("/api/reader-test", async (req, res) => {
+  const { sceneText, characterName, productionTitle, productionType, genre } = req.body;
+  if (!sceneText) {
+    return res.status(400).json({ error: "sceneText is required" });
+  }
+  try {
+    const { generateReaderGuide } = require("./services/readerGuideService");
+    const html = await generateReaderGuide({
+      sceneText,
+      characterName: characterName || "Actor",
+      productionTitle: productionTitle || "",
+      productionType: productionType || "",
+      genre: genre || "",
+    });
+    res.json({ success: true, guideContent: html });
+  } catch (err) {
+    console.error("[reader-test]", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Even faster health check for Railway deployment
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
