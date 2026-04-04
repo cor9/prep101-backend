@@ -48,7 +48,11 @@ FORMATTING RULES (NON-NEGOTIABLE):
 SCRIPT INTEGRITY:
 - Reference specific lines, beats, or moments from the sides — not the scene in general.
 - Never invent details not in the script.
-- If it could apply to any scene, it's not specific enough — rewrite it.`;
+- If it could apply to any scene, it's not specific enough — rewrite it.
+
+ABORT CONDITION:
+If the sides text appears corrupted (e.g. mostly repeating timestamps, watermarks, unreadable data without dialogue, or no script lines at all), DO NOT attempt to generate the guide. Immediately output EXACTLY the phrase "[ERROR: SIDES_CORRUPTED]" and nothing else. No formatting, no apologies.`;
+
 
 // ─── Reader Fundamentals Block (always included) ────────────────────────────
 
@@ -355,6 +359,11 @@ async function generateReaderGuide(data) {
 
       if (result.content && result.content[0] && result.content[0].text) {
         const rawHtml = result.content[0].text;
+        
+        if (rawHtml.includes("[ERROR: SIDES_CORRUPTED]")) {
+          throw new Error("SIDES_CORRUPTED: The uploaded script appears to be corrupted, mostly timestamps, or lacks readable dialogue. Please upload a clean PDF.");
+        }
+
         console.log(`✅ [ReaderGuide] Generated ${rawHtml.length} chars`);
         return wrapReaderGuideHtml(rawHtml, {
           characterName: data.characterName,

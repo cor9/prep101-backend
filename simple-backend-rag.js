@@ -1567,6 +1567,12 @@ You are working with audition sides only. Focus your analysis on what's provided
         );
 
         const POLICY = `
+ABORT CONDITION:
+If the sides/script appears corrupted OR predominantly consists of repetitive technical data (e.g., repeating timestamps like "00:00:00", watermarks, project codes like "B540LT", or metadata strings) rather than actual dialogue and scene descriptions, DO NOT attempt to generate a guide. 
+
+Instead, immediately output EXACTLY the phrase "[ERROR: SIDES_CORRUPTED]" and nothing else. No formatting, no apologies, no helpful suggestions. Just that bracketed text.
+
+
 SCRIPT INTEGRITY:
 - Use ONLY facts present in SCRIPT below. If key facts (title, studio, location, time period) are not in the script, write "Not stated in sides" rather than inventing.
 - Do NOT hallucinate project names, franchises, or studio info not explicitly in the script.
@@ -1725,7 +1731,11 @@ ${data.sceneText}${fileTypeContext}
           console.log(
             `🎯 Methodology files used: ${relevantMethodology.length}`
           );
-          return result.content[0].text;
+          const rawText = result.content[0].text;
+          if (rawText.includes("[ERROR: SIDES_CORRUPTED]")) {
+            throw new Error("SIDES_CORRUPTED: The uploaded script appears to be corrupted, mostly timestamps, or lacks readable dialogue. Please upload a clean PDF.");
+          }
+          return rawText;
         } else {
           throw new Error("Invalid response format from API");
         }
@@ -2483,7 +2493,11 @@ ${childMethodologyContext}
         console.log(
           `📊 Child guide length: ${result.content[0].text.length} characters`
         );
-        return result.content[0].text;
+        const rawText = result.content[0].text;
+        if (rawText.includes("[ERROR: SIDES_CORRUPTED]")) {
+          throw new Error("SIDES_CORRUPTED: The uploaded script appears to be corrupted, mostly timestamps, or lacks readable dialogue. Please upload a clean PDF.");
+        }
+        return rawText;
       } else {
         throw new Error("Invalid response format from API");
       }
