@@ -1,2 +1,3 @@
 [build]
-  publish = "reader101"
+  publish = "."
+  command = ""
