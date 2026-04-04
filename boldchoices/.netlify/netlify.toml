@@ -1,22 +1,20 @@
+headersOrigin = "config"
 redirectsOrigin = "config"
 plugins = []
-headers = []
 
 [functions]
 
 [functions."*"]
 
 [build]
-publish = "/Users/coreyralston/prep101-backend/client/build"
+publish = "/Users/coreyralston/prep101-backend/dist"
 publishOrigin = "config"
 commandOrigin = "config"
-command = "cd client && npm install && npm run build"
 base = "/Users/coreyralston/prep101-backend"
+command = "echo skipping build"
 
 [build.environment]
-NODE_VERSION = "18"
-NPM_VERSION = "9"
-CI = "false"
+NODE_VERSION = "20"
 
 [build.processing]
 
@@ -30,113 +28,19 @@ CI = "false"
 
 [build.services]
 
-[[redirects]]
-from = "/api/*"
-to = "https://prep101-api.vercel.app/api/:splat"
-status = 200.0
-force = true
+[[headers]]
+for = "/*"
 
-[redirects.query]
+[headers.values]
+X-Frame-Options = "SAMEORIGIN"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
 
-[redirects.conditions]
+[[headers]]
+for = "/assets/*"
 
-[redirects.headers]
-
-[[redirects]]
-from = "/"
-to = "/index.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
-
-[[redirects]]
-from = "/dashboard"
-to = "/index.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
-
-[[redirects]]
-from = "/login"
-to = "/index.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
-
-[[redirects]]
-from = "/register"
-to = "/index.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
-
-[[redirects]]
-from = "/forgot-password"
-to = "/index.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
-
-[[redirects]]
-from = "/pricing"
-to = "/index.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
-
-[[redirects]]
-from = "/examples"
-to = "/index.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
-
-[[redirects]]
-from = "/create-guide"
-to = "/index.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
 
 [[redirects]]
 from = "/*"

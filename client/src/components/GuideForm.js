@@ -11,7 +11,9 @@ const GuideForm = ({ onSubmit, hasFile }) => {
     storyline: '',
     characterBreakdown: '',
     callbackNotes: '',
-    childGuideRequested: false
+    callbackNotes: '',
+    childGuideRequested: false,
+    mode: 'standard'
   });
 
   const genreSuggestions = [
@@ -102,6 +104,23 @@ const GuideForm = ({ onSubmit, hasFile }) => {
         }}>
           🎭 Character Information
         </h3>
+
+        {/* ADMIN/TESTING: GUIDE MODE SELECTOR */}
+        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+            Guide Mode (Test Access)
+          </label>
+          <div style={{ display: 'flex', gap: '1.5rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input type="radio" name="mode" value="standard" checked={formData.mode === 'standard'} onChange={handleChange} />
+              <span style={{ fontWeight: 500, color: '#0f172a' }}>Prep101 (Actor Guide)</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input type="radio" name="mode" value="reader_support" checked={formData.mode === 'reader_support'} onChange={handleChange} />
+              <span style={{ fontWeight: 500, color: '#0f172a' }}>Reader101 (Reader Guide)</span>
+            </label>
+          </div>
+        </div>
         <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
           Tell us about the role you're auditioning for. The more details you provide, 
           the more personalized your guide will be.
