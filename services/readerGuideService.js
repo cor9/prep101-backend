@@ -19,12 +19,16 @@ CORE RULE: This is an operating manual, not a coaching essay. Every bullet must 
 
 GLOBAL FORMATTING RULES:
 - Bullet points ONLY. NO paragraphs.
-- One directive per bullet. Max 1 line.
-- Never use multi-clause dash sentences (e.g. "- PUSH vs PULL: This is a PUSH scene — you are...").
-- Replace all inline dash chains with structured, single-intent bullets.
-- Direct, sharp, confident. No fluff ("Try to...", "Perhaps...").
-- No psychological explanations. Only actions.
-- No repeated ideas across sections.
+- One directive per bullet. Max 1 line. No multi-clause dash sentences.
+- Use physical, playable direction only. No interpretation or psychological phrases.
+- No repeated ideas across sections. Scannable in under 10 seconds.
+- Never include conflicting instructions.
+
+REACTION LOGIC:
+Always specify exact reaction level: [none | subtle | visible].
+- Keep reaction minimal but visible.
+- Do not overreact.
+- Let the line land, then slight shift.
 
 STRUCTURE (DO NOT DEVIATE):
 
@@ -34,9 +38,10 @@ Example: "If you soften too early → the scene collapses. If you stay steady �
 
 <h2>🎭 Performance Engine</h2>
 - Dynamic: [PUSH or PULL]
-- Role: [e.g. Protective authority, not a peer]
-- Instruction: [e.g. Do not soften early]
-- Result: "If you rise with them → you flatten the scene."
+- Role: [Who you are in scene - e.g. Grounded partner]
+- Do: [Core behavior - e.g. Stay steady, don't engage in chaos]
+- Don't: [Core mistake - e.g. Get comedic or reactive]
+- Result: If correct → [Outcome]; If wrong → [Outcome]
 
 <h2>🎬 Scene Snapshot</h2>
 - Genre: [Name it]
@@ -48,12 +53,11 @@ Example: "If you soften too early → the scene collapses. If you stay steady �
 - "Your job is to [Action]." e.g. "Your job is to be the immovable object."
 
 <h2>👥 Playing Multiple Characters (MANDATORY)</h2>
-Always include, even for minor secondary lines.
 - [Character name] → [energy + intention]
-- Shift intention, not voice.
-- No accents. No acting.
+- Shift intention, not voice. No accents. No acting.
 
 <h2>🎯 Reader Fundamentals</h2>
+No variation allowed. Exact text:
 <ul>
 <li><strong>50% Rule:</strong> Your volume stays below the actor at all times.</li>
 <li>Avoid the <strong>Mouse</strong> (too quiet) and the <strong>Giant</strong> (too loud).</li>
@@ -68,43 +72,41 @@ Always include, even for minor secondary lines.
 </ul>
 
 <h2>🔑 Key Beats</h2>
-- No psychological explanations. Only actions.
-- Format: "[Line prefix] → [Action: Pause / Lower volume / Turn away / Higher pace / Heavy silence]."
-- Reference actual lines from the script.
+No interpretation phrases allowed (e.g. "let indignation carry"). Actions only.
+- Format: "[Line prefix] → [Action: Pause / Lower volume / Turn away / Heavy silence]."
 
 <h2>🎤 How to Read</h2>
-- Specific delivery behavior only.
-- "Keep volume conversational or lower."
-- "Maintain steady pace."
-- "No emotional spikes."
-- "Let pauses carry tension."
+Minimal rules. If already in Volume or Beats, do not repeat here.
+- Keep volume conversational or lower.
+- Maintain steady pacing.
+- No emotional spikes.
+- Let silence carry moments.
 
 <h2>🔊 Volume & Energy</h2>
 - "Stay below actor volume at all times."
 - "Never match emotional peaks."
-- "Lower energy increases pressure."
-- "If you rise with them → you flatten the scene."
+- "If you rise with the actor → you flatten the scene."
+- "If you stay grounded → their performance pops."
 
 <h2>✅ Do This</h2>
-- 3 bullets max. Action only.
+- 3 bullets max. Actions only.
 - "Hold eye contact."
 - "Stay physically still."
-- "Pause after key lines."
 
 <h2>❌ Avoid This</h2>
 - 3 bullets max. Mistake only.
 - "Leaning in emotionally."
 - "Filling silence."
-- "Reacting strongly."
 
 <h2>👀 Connection (CRITICAL)</h2>
+No abstract language (e.g. "gives power"). Physical instructions only.
 - Eye-line: [Specific target]
 - Presence: "Don't look at the script while the actor is talking."
-- Timing: "Clip the ends of your lines to keep the pace up."
+- Reaction: "Hold eye contact → Slight pause before responding."
 
 <h2>🎧 Tone & Reference Anchor</h2>
 - 1-2 specific TV/Film references.
-- 1 Pacing note (e.g. "Rapid fire" or "Heavy pauses").
+- 1 Pacing note (e.g. "Rapid fire").
 
 <h2>🧠 Quick Reset</h2>
 - 3-4 blunt bullets for the moment right before "Action."
@@ -112,9 +114,9 @@ Always include, even for minor secondary lines.
 ---
 
 CORRUPTION FALLBACK:
-If the script text is unreadable or mostly timestamps:
-1. Provide high-level guidance for Performance Engine, Reader Fundamentals, and General Tone based on the Project Title/Genre.
-2. Note at the top: "Upload clearer sides for line-specific guidance."`;
+If the script is unreadable:
+1. Provide guidance for Performance Engine, Fundamentals, and Tone based on Title/Genre.
+2. Note at top: "Upload clearer sides for line-specific guidance."`;
 
 
 // ─── Reader Fundamentals Block (always included) ────────────────────────────
