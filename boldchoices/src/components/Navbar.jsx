@@ -32,24 +32,49 @@ export default function Navbar() {
       <style>{`
         .nav-link { font-size: 14px; font-weight: 500; color: rgba(240,238,245,0.5); text-decoration: none; transition: color 0.2s; }
         .nav-link:hover { color: #F0EEF5; }
+        .nav-link-ext { font-size: 13px; font-weight: 600; color: rgba(240,238,245,0.4); text-decoration: none; transition: color 0.2s; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); }
+        .nav-link-prep:hover { color: #f59e0b; border-color: rgba(245,158,11,0.3); }
+        .nav-link-reader:hover { color: #14b8a6; border-color: rgba(20,184,166,0.3); }
         .nav-btn { font-family: 'DM Sans', sans-serif; padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .nav-btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(240,238,245,0.6); }
         .nav-btn-ghost:hover { border-color: rgba(255,255,255,0.25); color: #F0EEF5; }
         .nav-btn-primary { background: linear-gradient(135deg, #FF4D4D, #F5A623); border: none; color: #fff; box-shadow: 0 2px 12px rgba(255,77,77,0.25); }
         .nav-btn-primary:hover { opacity: 0.88; }
+        @media (max-width: 600px) { .nav-ext-links { display: none !important; } }
       `}</style>
 
       {/* Logo */}
       <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-        <img 
-          src="/bold-choices-logo.png" 
-          alt="Bold Choices Logo" 
+        <img
+          src="/bold-choices-logo.png"
+          alt="Bold Choices Logo"
           style={{ height: 44, width: 'auto', objectFit: 'contain' }}
         />
       </Link>
 
       {/* Right */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+
+        {/* Ecosystem links — always visible on landing */}
+        <div className="nav-ext-links" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <a
+            href="https://prep101.site"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-link-ext nav-link-prep"
+          >
+            Prep101
+          </a>
+          <a
+            href="https://reader101.site"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-link-ext nav-link-reader"
+          >
+            Reader101
+          </a>
+        </div>
+
         {isLanding && (
           <a
             href="#how"
