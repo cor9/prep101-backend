@@ -358,12 +358,12 @@ const steps = [
 ];
 
 const features = [
-  { icon: '🎯', title: 'Spin It Again', desc: 'Same sides, completely new set of choices. Lock in the one that fits.', color: '#FF4D4D' },
-  { icon: '🔥', title: 'Make It Wilder', desc: 'Escalate the risk. More unexpected. More "casting will notice this."', color: '#F5A623' },
-  { icon: '🎬', title: 'Take 2 Generator', desc: 'Generate alternate second-take strategies so you\'re never caught flat.', color: '#00D4C8' },
-  { icon: '📌', title: 'Save to Playbook', desc: 'Save your best choices. Build your personal performance library.', color: '#9B6DFF' },
-  { icon: '⚡', title: 'Today\'s Bold Move', desc: 'Daily acting challenge — no sides needed. Build the muscle every day.', color: '#3B9EE8' },
-  { icon: '🚀', title: 'Prep101 Bridge', desc: 'Liked the bold choices? Get the full breakdown — subtext, Hagen questions, rehearsal plan.', color: '#FF4D4D' },
+  { icon: '🎯', title: 'Multiple bold ways to play the scene', desc: 'Get several specific, playable choices — not just one direction. See the scene from angles you wouldn\'t have found on your own.', color: '#FF4D4D' },
+  { icon: '🔄', title: 'Regenerate instantly for fresh takes', desc: 'Not feeling it? Get a completely new set of choices in seconds. No logging in again, no starting over.', color: '#F5A623' },
+  { icon: '🔥', title: 'Push beyond safe, predictable reads', desc: 'Every choice is designed to be castable and risky — not generic. Stop playing it safe before you even walk in.', color: '#00D4C8' },
+  { icon: '🎬', title: 'Always have a strong second take', desc: 'Know exactly what you\'re doing differently before they ask for another one. Never get caught flat on take two.', color: '#9B6DFF' },
+  { icon: '⚡', title: 'Build instincts with every audition', desc: 'The more you use it, the sharper your choices get. Treat every sides drop as a training rep, not a one-off.', color: '#3B9EE8' },
+  { icon: '🚀', title: 'Expand into full Prep101 breakdowns', desc: 'Liked the bold choices? Get the full coaching guide — beats, subtext, character motivation, and a full rehearsal plan.', color: '#FF4D4D' },
 ];
 
 export default function Landing() {
