@@ -9,530 +9,325 @@ const Pricing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Stripe checkout URLs
   const STRIPE = {
-    FREE:  '#',                 // e.g., /register or a $0 checkout if you want
-    STARTER: 'https://buy.stripe.com/00wfZh5pZ8HJ2odgsO2wU40',               // Stripe price link for 3/mo @ $19.99
-    ALA_CARTE: 'https://buy.stripe.com/6oU3cv8Cb2jlbYN0tQ2wU3Z',             // Stripe link for single guide @ $11.99
-    PREMIUM: 'https://buy.stripe.com/4gM28rg4D6zBaUJ1xU2wU3Y',               // Stripe price link for 10/mo + 2 feedbacks @ $79.99
-    ADDON_COACH: 'https://buy.stripe.com/fZu00j8Cb9LN8MB4K62wU3H',           // $50 30-min coaching
-    ADDON_FEEDBACK: 'https://buy.stripe.com/6oU3cv9Gf1fhgf31xU2wU3G',        // $22 self-tape feedback
-    EXAMPLES: '/examples'
+    // Prep101
+    STARTER:          'https://buy.stripe.com/00wfZh5pZ8HJ2odgsO2wU40',
+    ALA_CARTE:        'https://buy.stripe.com/6oU3cv8Cb2jlbYN0tQ2wU3Z',
+    PREMIUM:          'https://buy.stripe.com/4gM28rg4D6zBaUJ1xU2wU3Y',
+    ADDON_COACH:      'https://buy.stripe.com/fZu00j8Cb9LN8MB4K62wU3H',
+    ADDON_FEEDBACK:   'https://buy.stripe.com/6oU3cv9Gf1fhgf31xU2wU3G',
+    // Reader101
+    READER_ADDON:     'https://buy.stripe.com/28E5kD9Gf9LNd2RdgC2wV09',
+    READER_ONE:       'https://buy.stripe.com/28E4gz19J5vx7Ixb8u2wV0a',
+    READER_MONTHLY:   'https://buy.stripe.com/00w7sL3hR7DFd2R4K62wV0b',
+    // Bold Choices
+    BC_ONE:           'https://buy.stripe.com/6oUfZhcSre23d2R6Se2wV07',
+    BC_MONTHLY:       'https://buy.stripe.com/aFa6oH05F6zBbYN6Se2wV08',
+    // Bundle
+    BUNDLE:           'https://buy.stripe.com/7sY4gz3hRe23faZ4K62wV0c',
   };
 
   const go = (href) => {
-    if (!href || href === '#') {
-      // If not logged in, send to register; else to dashboard so they can buy inside
-      return user ? navigate('/dashboard') : navigate('/register');
-    }
+    if (!href || href === '#') return user ? navigate('/dashboard') : navigate('/register');
     window.location.href = href;
   };
 
-  const plans = [
-    {
-      name: 'A la carte',
-      price: '$11.99',
-      period: '/guide',
-      tagline: 'Buy a single guide whenever you need it.',
-      features: [
-        '1 guide (one-time purchase)',
-        'Same depth as Starter guides',
-        'Parent + kid versions',
-        'PDF delivery'
-      ],
-      cta: 'Buy Single Guide',
-      href: STRIPE.ALA_CARTE,
-      popular: false,
-      badge: 'Pay as you go'
-    },
-    {
-      name: 'Starter',
-      price: '$19.99',
-      period: '/month',
-      tagline: 'Smart monthly rhythm for most actors.',
-      features: [
-        '3 guides per month',
-        'Detailed beats, subtext & buttons',
-        'Genre-aware notes (multi/single-cam, drama, film)',
-        'Parent deep-dive + kid-ready guide',
-        'Priority email support',
-        'Printable PDF delivery'
-      ],
-      cta: 'Subscribe – Starter',
-      href: STRIPE.STARTER,
-      popular: true,
-      badge: 'Most Popular'
-    },
-    {
-      name: 'Premium',
-      price: '$79.99',
-      period: '/month',
-      tagline: 'Serious prep, serious value.',
-      features: [
-        'Unlimited guides per month',
-        'Advanced scene & character analysis',
-        '2 Self-Tape Feedbacks included (save $44)',
-        'Parent deep-dive + kid-ready guide',
-        'Rush-friendly priority support',
-        'PDF delivery + rehearsal variations'
-      ],
-      cta: 'Subscribe – Premium',
-      href: STRIPE.PREMIUM,
-      popular: false,
-      badge: 'Best value'
-    }
-  ];
+  const Check = ({ color = 'var(--gold)' }) => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ marginRight: '0.6rem', flexShrink: 0 }}>
+      <path d="M20 6L9 17l-5-5" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
+  const PlanCard = ({ name, price, period, tagline, features, cta, href, popular, badge, color = 'var(--gold)' }) => (
+    <div
+      className="card-white"
+      style={{
+        position: 'relative',
+        border: popular ? '2px solid var(--gold)' : '1px solid var(--gray-200)',
+        transform: popular ? 'scale(1.02)' : 'scale(1)',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+      }}
+    >
+      {badge && (
+        <div style={{
+          position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--gold-grad)', color: '#2f2500',
+          padding: '0.25rem 1rem', borderRadius: '999px',
+          fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+          whiteSpace: 'nowrap',
+        }}>{badge}</div>
+      )}
+      <div className="text-center mb-3">
+        <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--gray-800)', margin: '0 0 0.4rem 0' }}>{name}</h3>
+        <div style={{ marginBottom: '0.4rem' }}>
+          <span style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--gray-900)' }}>{price}</span>
+          <span style={{ fontSize: '0.95rem', color: 'var(--gray-600)', fontWeight: 600 }}>{period}</span>
+        </div>
+        <p style={{ color: 'var(--gray-600)', fontSize: '0.9rem', margin: '0 0 1.25rem 0' }}>{tagline}</p>
+      </div>
+      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.75rem 0' }}>
+        {features.map((f, i) => (
+          <li key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.9rem', color: 'var(--gray-700)' }}>
+            <Check color={color} />{f}
+          </li>
+        ))}
+      </ul>
+      <button
+        onClick={() => go(href)}
+        className={`btn ${popular ? 'btnPrimary' : ''}`}
+        style={{ width: '100%', ...(popular ? {} : { background: 'var(--gray-800)', color: 'var(--white)', border: 'none' }) }}
+      >{cta}</button>
+    </div>
+  );
 
   return (
     <>
       <Navbar />
       <div className="page-dark">
-        {/* Hero Section */}
+
+        {/* Hero */}
         <section className="page-hero">
           <img src="/preplogo.png" alt="Prep101 logo" className="logo-hero" loading="lazy" />
           <h1 className="h1-hero">Simple, Transparent Pricing</h1>
-          <p className="h2-hero">Choose the plan that fits your audition preparation needs</p>
+          <p className="h2-hero">Every tool your actor needs — from prep to performance.</p>
         </section>
 
         <div className="container-wide">
-          {/* Pricing Grid - Row 1: A la carte and Starter */}
-          <div className="grid-2" style={{ marginBottom: '2rem' }}>
-            {plans.filter(plan => plan.name !== 'Premium').map((plan) => (
-              <div
-                key={plan.name}
-                className={`card-white ${plan.popular ? 'popular-plan' : ''}`}
-                style={{
-                  position: 'relative',
-                  border: plan.popular ? '2px solid var(--gold)' : '1px solid var(--gray-200)',
-                  transform: plan.popular ? 'scale(1.02)' : 'scale(1)',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                }}
-              >
-                {plan.popular && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-12px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'var(--gold-grad)',
-                    color: '#2f2500',
-                    padding: '0.25rem 1rem',
-                    borderRadius: '999px',
-                    fontSize: '0.8rem',
-                    fontWeight: '800',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
-                  }}>
-                    {plan.badge}
-                  </div>
-                )}
 
-                <div className="text-center mb-3">
-                  <h3 style={{
-                    fontSize: '1.5rem',
-                    fontWeight: '800',
-                    color: 'var(--gray-800)',
-                    margin: '0 0 0.5rem 0'
-                  }}>
-                    {plan.name}
-                  </h3>
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <span style={{
-                      fontSize: '2.5rem',
-                      fontWeight: '900',
-                      color: 'var(--gray-900)'
-                    }}>
-                      {plan.price}
-                    </span>
-                    <span style={{
-                      fontSize: '1rem',
-                      color: 'var(--gray-600)',
-                      fontWeight: '600'
-                    }}>
-                      {plan.period}
-                    </span>
-                  </div>
-                  <p style={{
-                    color: 'var(--gray-600)',
-                    fontSize: '0.95rem',
-                    margin: '0 0 1.5rem 0'
-                  }}>
-                    {plan.tagline}
-                  </p>
-                </div>
-
-                <ul style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: '0 0 2rem 0'
-                }}>
-                  {plan.features.map((feature, index) => (
-                    <li key={index} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      marginBottom: '0.75rem',
-                      fontSize: '0.95rem',
-                      color: 'var(--gray-700)'
-                    }}>
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        style={{ marginRight: '0.75rem', flexShrink: 0 }}
-                      >
-                        <path
-                          d="M20 6L9 17l-5-5"
-                          stroke="var(--gold)"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                <button
-                  onClick={() => go(plan.href)}
-                  className={`btn ${plan.popular ? 'btnPrimary' : ''}`}
-                  style={{
-                    width: '100%',
-                    ...(plan.popular ? {} : {
-                      background: 'var(--gray-800)',
-                      color: 'var(--white)',
-                      border: 'none'
-                    })
-                  }}
-                >
-                  {plan.cta}
-                </button>
-              </div>
-            ))}
+          {/* ── PREP101 ── */}
+          <div style={{ marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 1.25rem 0' }}>
+              📋 Prep101 — Acting Guides
+            </h2>
+          </div>
+          <div className="grid-2" style={{ marginBottom: '3rem' }}>
+            <PlanCard
+              name="A la Carte"
+              price="$11.99"
+              period="/guide"
+              tagline="Buy a single guide whenever you need it."
+              features={['1 guide (one-time)', 'Full beats, subtext & buttons', 'Parent + kid versions', 'PDF delivery']}
+              cta="Buy Single Guide"
+              href={STRIPE.ALA_CARTE}
+              badge="Pay as you go"
+            />
+            <PlanCard
+              name="Starter"
+              price="$19.99"
+              period="/month"
+              tagline="5 guides per month — smart rhythm for active actors."
+              features={['5 guides per month', 'Detailed beats, subtext & buttons', 'Genre-aware notes (multi/single-cam, drama, film)', 'Parent deep-dive + kid-ready guide', 'Priority email support', 'Printable PDF delivery']}
+              cta="Subscribe – Starter"
+              href={STRIPE.STARTER}
+              popular
+              badge="Most Popular"
+            />
           </div>
 
-          {/* Row 2: Premium and Additional Services side by side */}
-          <div className="grid-2" style={{ marginBottom: '2rem' }}>
-            {/* Premium Plan */}
-            {plans.filter(plan => plan.name === 'Premium').map((plan) => (
-              <div
-                key={plan.name}
-                className={`card-white ${plan.popular ? 'popular-plan' : ''}`}
+          {/* ── BOLD CHOICES ── */}
+          <div style={{ marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 1.25rem 0' }}>
+              🎭 Bold Choices — Acting Choices Generator
+            </h2>
+          </div>
+          <div className="grid-2" style={{ marginBottom: '3rem' }}>
+            <PlanCard
+              name="One Guide"
+              price="$3.99"
+              period="/guide"
+              tagline="One bold choices breakdown, anytime you need it."
+              features={['1 bold choices guide', '5 specific acting choices', 'Take 2 strategy', 'Playable, castable directions']}
+              cta="Buy One Guide"
+              href={STRIPE.BC_ONE}
+              badge="One-time"
+              color="#FF4D4D"
+            />
+            <PlanCard
+              name="Bold Choices Monthly"
+              price="$9.99"
+              period="/month"
+              tagline="Daily rehearsal and audition prep, every month."
+              features={['Unlimited bold choices guides', 'Spin Again — fresh choices instantly', 'Make It Wilder — escalate the risk', 'Take 2 Generator', "Today's Bold Move (daily challenge)", 'Save to Playbook']}
+              cta="Subscribe – Bold Choices"
+              href={STRIPE.BC_MONTHLY}
+              popular
+              badge="Best Value"
+              color="#FF4D4D"
+            />
+          </div>
+
+          {/* ── READER101 ── */}
+          <div style={{ marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 1.25rem 0' }}>
+              📖 Reader101 — Reader Support Guides
+            </h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+            <PlanCard
+              name="Reader101 Add-On"
+              price="$6.99"
+              period="/guide"
+              tagline="Add a Reader Guide to any Prep101 guide."
+              features={['Reader Support Guide for parent/reader', 'Scene-specific coaching', 'Key beats + line-by-line direction', 'Connection & pacing notes']}
+              cta="Add Reader Guide"
+              href={STRIPE.READER_ADDON}
+              badge="Add-On"
+              color="#14b8a6"
+            />
+            <PlanCard
+              name="Reader101 Single"
+              price="$11.99"
+              period="/guide"
+              tagline="Standalone Reader Guide — no Prep101 required."
+              features={['Full Reader Support Guide', 'PDF upload + scene analysis', 'Key beats, volume, connection coaching', '10 standard Reader Fundamentals included']}
+              cta="Buy Reader Guide"
+              href={STRIPE.READER_ONE}
+              color="#14b8a6"
+            />
+            <PlanCard
+              name="Reader101 Monthly"
+              price="$19.99"
+              period="/month"
+              tagline="Unlimited reader guides every month."
+              features={['Unlimited Reader Support Guides', 'Every audition, every week', 'Full fundamentals + scene-specific coaching', 'Volume, energy, connection, key beats']}
+              cta="Subscribe – Reader101"
+              href={STRIPE.READER_MONTHLY}
+              popular
+              badge="Most Popular"
+              color="#14b8a6"
+            />
+          </div>
+
+          {/* ── BUNDLE ── */}
+          <div
+            className="card-dark"
+            style={{
+              background: 'linear-gradient(135deg, #0d1f3c 0%, #0f172a 60%, #0d2b2b 100%)',
+              border: '2px solid rgba(20,184,166,0.4)',
+              borderRadius: '20px',
+              padding: '2.5rem',
+              marginBottom: '3rem',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{
+              position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
+              background: 'linear-gradient(135deg, #14b8a6, #6366f1)',
+              color: '#fff', padding: '0.3rem 1.25rem', borderRadius: '999px',
+              fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+            }}>⭐ Save $20/month</div>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <img src="/preplogo.png" alt="Prep101" style={{ height: 32, objectFit: 'contain' }} />
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '1.5rem', lineHeight: '32px' }}>+</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#14b8a6', lineHeight: '32px' }}>Reader101</span>
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '1.5rem', lineHeight: '32px' }}>+</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FF4D4D', lineHeight: '32px' }}>Bold Choices</span>
+              </div>
+              <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 900, color: '#fff', margin: '0 0 0.5rem 0' }}>
+                Complete Self-Tape System
+              </h2>
+              <div style={{ marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '3rem', fontWeight: 900, color: '#14b8a6' }}>$29.99</span>
+                <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>/month</span>
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.95rem', maxWidth: '620px', margin: '0 auto', lineHeight: 1.7 }}>
+                The complete self-tape system. Get 5 Prep101 guides per month plus unlimited Reader101 and Bold Choices guides to support every audition from start to finish. Build stronger performances, make bolder choices, and ensure your reader supports — not hurts — the scene. Everything your actor needs to stand out, in one place.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+              {[
+                { icon: '📋', title: 'Prep101 Starter', desc: '5 guides/month — beats, subtext, buttons', color: '#f59e0b' },
+                { icon: '📖', title: 'Reader101', desc: 'Unlimited reader guides — every audition', color: '#14b8a6' },
+                { icon: '🎭', title: 'Bold Choices', desc: 'Unlimited daily acting choices', color: '#FF4D4D' },
+              ].map(item => (
+                <div key={item.title} style={{
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '12px', padding: '1.25rem', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{item.icon}</div>
+                  <div style={{ fontWeight: 700, color: item.color, marginBottom: '0.25rem', fontSize: '0.95rem' }}>{item.title}</div>
+                  <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>{item.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <button
+                onClick={() => go(STRIPE.BUNDLE)}
                 style={{
-                  position: 'relative',
-                  border: plan.popular ? '2px solid var(--gold)' : '1px solid var(--gray-200)',
-                  transform: plan.popular ? 'scale(1.02)' : 'scale(1)',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                  background: 'linear-gradient(135deg, #14b8a6, #6366f1)',
+                  color: '#fff', border: 'none', borderRadius: '12px',
+                  padding: '1rem 2.5rem', fontSize: '1.05rem', fontWeight: 800,
+                  cursor: 'pointer', letterSpacing: '0.02em',
                 }}
               >
-                {plan.badge && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-12px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'var(--gold-grad)',
-                    color: '#2f2500',
-                    padding: '0.25rem 1rem',
-                    borderRadius: '999px',
-                    fontSize: '0.8rem',
-                    fontWeight: '800',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
-                  }}>
-                    {plan.badge}
-                  </div>
-                )}
-
-                <div className="text-center mb-3">
-                  <h3 style={{
-                    fontSize: '1.5rem',
-                    fontWeight: '800',
-                    color: 'var(--gray-800)',
-                    margin: '0 0 0.5rem 0'
-                  }}>
-                    {plan.name}
-                  </h3>
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <span style={{
-                      fontSize: '2.5rem',
-                      fontWeight: '900',
-                      color: 'var(--gray-900)'
-                    }}>
-                      {plan.price}
-                    </span>
-                    <span style={{
-                      fontSize: '1rem',
-                      color: 'var(--gray-600)',
-                      fontWeight: '600'
-                    }}>
-                      {plan.period}
-                    </span>
-                  </div>
-                  <p style={{
-                    color: 'var(--gray-600)',
-                    fontSize: '0.95rem',
-                    margin: '0 0 1.5rem 0'
-                  }}>
-                    {plan.tagline}
-                  </p>
-                </div>
-
-                <ul style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: '0 0 2rem 0'
-                }}>
-                  {plan.features.map((feature, index) => (
-                    <li key={index} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      marginBottom: '0.75rem',
-                      fontSize: '0.95rem',
-                      color: 'var(--gray-700)'
-                    }}>
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        style={{ marginRight: '0.75rem', flexShrink: 0 }}
-                      >
-                        <path
-                          d="M20 6L9 17l-5-5"
-                          stroke="var(--gold)"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                <button
-                  onClick={() => go(plan.href)}
-                  className="btn"
-                  style={{
-                    width: '100%',
-                    background: 'var(--gray-800)',
-                    color: 'var(--white)',
-                    border: 'none'
-                  }}
-                >
-                  {plan.cta}
-                </button>
-              </div>
-            ))}
-
-            {/* Additional Services */}
-            <div className="card-white">
-              <h2 style={{
-                fontSize: '1.5rem',
-                fontWeight: '800',
-                color: 'var(--gray-800)',
-                textAlign: 'center',
-                margin: '0 0 1.5rem 0'
-              }}>
-                Additional Services
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{
-                  textAlign: 'center',
-                  padding: '1.5rem',
-                  border: '1px solid var(--gray-200)',
-                  borderRadius: '16px',
-                  background: 'var(--gray-50)'
-                }}>
-                  <h3 style={{
-                    fontSize: '1.1rem',
-                    fontWeight: '700',
-                    color: 'var(--gray-800)',
-                    margin: '0 0 0.5rem 0'
-                  }}>
-                    Self-Tape Feedback
-                  </h3>
-                  <div style={{
-                    fontSize: '1.75rem',
-                    fontWeight: '900',
-                    color: 'var(--gray-900)',
-                    marginBottom: '0.5rem'
-                  }}>
-                    $22
-                  </div>
-                  <p style={{
-                    color: 'var(--gray-600)',
-                    margin: '0 0 1rem 0',
-                    fontSize: '0.9rem'
-                  }}>
-                    Professional feedback on your self-tape performance
-                  </p>
-                  <button
-                    onClick={() => go(STRIPE.ADDON_FEEDBACK)}
-                    className="btn"
-                    style={{
-                      width: '100%',
-                      background: 'var(--gray-800)',
-                      color: 'var(--white)',
-                      border: 'none'
-                    }}
-                  >
-                    Get Feedback
-                  </button>
-                </div>
-
-                <div style={{
-                  textAlign: 'center',
-                  padding: '1.5rem',
-                  border: '1px solid var(--gray-200)',
-                  borderRadius: '16px',
-                  background: 'var(--gray-50)'
-                }}>
-                  <h3 style={{
-                    fontSize: '1.1rem',
-                    fontWeight: '700',
-                    color: 'var(--gray-800)',
-                    margin: '0 0 0.5rem 0'
-                  }}>
-                    30-Min Coaching Session
-                  </h3>
-                  <div style={{
-                    fontSize: '1.75rem',
-                    fontWeight: '900',
-                    color: 'var(--gray-900)',
-                    marginBottom: '0.5rem'
-                  }}>
-                    $50
-                  </div>
-                  <p style={{
-                    color: 'var(--gray-600)',
-                    margin: '0 0 1rem 0',
-                    fontSize: '0.9rem'
-                  }}>
-                    One-on-one coaching with Corey Ralston
-                  </p>
-                  <button
-                    onClick={() => go(STRIPE.ADDON_COACH)}
-                    className="btn"
-                    style={{
-                      width: '100%',
-                      background: 'var(--gray-800)',
-                      color: 'var(--white)',
-                      border: 'none'
-                    }}
-                  >
-                    Book Session
-                  </button>
-                </div>
-              </div>
+                Get the Bundle — $29.99/month
+              </button>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', marginTop: '0.75rem' }}>
+                Includes Prep101 Starter + Reader101 Monthly + Bold Choices Monthly. Cancel anytime.
+              </p>
             </div>
           </div>
 
-          {/* FAQ Section */}
-          <div className="card-white mt-4">
-            <h2 style={{
-              fontSize: '1.8rem',
-              fontWeight: '800',
-              color: 'var(--gray-800)',
-              textAlign: 'center',
-              margin: '0 0 2rem 0'
-            }}>
-              Frequently Asked Questions
-            </h2>
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{
-                  fontSize: '1.1rem',
-                  fontWeight: '700',
-                  color: 'var(--gray-800)',
-                  margin: '0 0 0.5rem 0'
-                }}>
-                  Can I cancel my subscription anytime?
-                </h3>
-                <p style={{
-                  color: 'var(--gray-600)',
-                  margin: 0,
-                  lineHeight: '1.6'
-                }}>
-                  Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your current billing period.
-                </p>
+          {/* ── ADDITIONAL SERVICES ── */}
+          <div className="grid-2" style={{ marginBottom: '2rem' }}>
+            <div className="card-white">
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--gray-800)', textAlign: 'center', margin: '0 0 1.5rem 0' }}>
+                Additional Services
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {[
+                  { title: 'Self-Tape Feedback', price: '$22', desc: 'Professional feedback on your self-tape performance', href: STRIPE.ADDON_FEEDBACK, cta: 'Get Feedback' },
+                  { title: '30-Min Coaching Session', price: '$50', desc: 'One-on-one coaching with Corey Ralston', href: STRIPE.ADDON_COACH, cta: 'Book Session' },
+                ].map(s => (
+                  <div key={s.title} style={{ textAlign: 'center', padding: '1.5rem', border: '1px solid var(--gray-200)', borderRadius: '16px', background: 'var(--gray-50)' }}>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--gray-800)', margin: '0 0 0.4rem 0' }}>{s.title}</h3>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--gray-900)', marginBottom: '0.4rem' }}>{s.price}</div>
+                    <p style={{ color: 'var(--gray-600)', margin: '0 0 1rem 0', fontSize: '0.88rem' }}>{s.desc}</p>
+                    <button onClick={() => go(s.href)} className="btn" style={{ width: '100%', background: 'var(--gray-800)', color: 'var(--white)', border: 'none' }}>{s.cta}</button>
+                  </div>
+                ))}
               </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{
-                  fontSize: '1.1rem',
-                  fontWeight: '700',
-                  color: 'var(--gray-800)',
-                  margin: '0 0 0.5rem 0'
-                }}>
-                  What if I need more guides than my plan allows?
-                </h3>
-                <p style={{
-                  color: 'var(--gray-600)',
-                  margin: 0,
-                  lineHeight: '1.6'
-                }}>
-                  You can purchase additional guides individually at $11.99 each, or upgrade to a higher tier plan.
-                </p>
-              </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{
-                  fontSize: '1.1rem',
-                  fontWeight: '700',
-                  color: 'var(--gray-800)',
-                  margin: '0 0 0.5rem 0'
-                }}>
-                  Do you offer refunds?
-                </h3>
-                <p style={{
-                  color: 'var(--gray-600)',
-                  margin: 0,
-                  lineHeight: '1.6'
-                }}>
-                  We offer a 30-day money-back guarantee on all paid plans. If you're not satisfied, contact us for a full refund.
-                </p>
-              </div>
+            </div>
+
+            {/* FAQ */}
+            <div className="card-white">
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--gray-800)', textAlign: 'center', margin: '0 0 1.5rem 0' }}>
+                Questions
+              </h2>
+              {[
+                { q: 'Can I cancel anytime?', a: "Yes. Cancel anytime — you'll keep access through the end of your billing period." },
+                { q: 'What if I need more guides?', a: 'Purchase additional guides individually at $11.99 (Prep101) or $11.99 (Reader101), or upgrade your plan.' },
+                { q: 'Do you offer refunds?', a: '30-day money-back guarantee on all paid plans. Not happy? Contact us.' },
+                { q: 'What is Reader101?', a: 'A guide for the parent or reader holding lines during a self-tape — specific coaching on pacing, energy, connection, and how not to hurt the performance.' },
+              ].map(faq => (
+                <div key={faq.q} style={{ marginBottom: '1.25rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--gray-800)', margin: '0 0 0.3rem 0' }}>{faq.q}</h3>
+                  <p style={{ color: 'var(--gray-600)', margin: 0, lineHeight: '1.6', fontSize: '0.9rem' }}>{faq.a}</p>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Bottom CTA */}
           <div className="text-center mt-5">
             <div className="card-dark">
-              <h2 style={{
-                fontSize: '1.8rem',
-                fontWeight: '800',
-                color: 'var(--white)',
-                margin: '0 0 1rem 0'
-              }}>
-                Ready to get started?
-              </h2>
-              <p style={{
-                color: 'var(--ink-dim)',
-                margin: '0 0 1.5rem 0',
-                fontSize: '1.1rem'
-              }}>
-                Create your account and choose the plan that works for you. Have a promo code? Redeem it for free guides!
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--white)', margin: '0 0 1rem 0' }}>Ready to get started?</h2>
+              <p style={{ color: 'var(--ink-dim)', margin: '0 0 1.5rem 0', fontSize: '1.1rem' }}>
+                Create your account and choose the plan that fits. Have a promo code? Redeem it for free guides!
               </p>
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button
-                  className="btn btnPrimary"
-                  onClick={() => navigate('/register')}
-                >
-                  Get Started
-                </button>
-                <button
-                  className="btn btnSecondary"
-                  onClick={() => navigate('/examples')}
-                >
-                  View Examples
-                </button>
+                <button className="btn btnPrimary" onClick={() => navigate('/register')}>Get Started</button>
+                <button className="btn btnSecondary" onClick={() => navigate('/examples')}>View Examples</button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <Footer />
       </div>
     </>

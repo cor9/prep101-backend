@@ -496,16 +496,16 @@ export default function Landing() {
         <h2 style={S.sectionTitle}>Simple. Fair. Worth it.</h2>
 
         <div style={S.pricingGrid}>
-          {/* Free */}
+          {/* One Guide */}
           <div style={S.pricingCard(false)}>
-            <div style={S.pricingTier}>Free</div>
-            <div style={S.pricingPrice}>$0</div>
-            <div style={S.pricingPer}>forever</div>
+            <div style={S.pricingTier}>One-Time</div>
+            <div style={S.pricingPrice}>$3.99</div>
+            <div style={S.pricingPer}>per guide</div>
             <ul style={S.pricingFeatureList}>
               {[
-                ['1 generation per month', true, '#00D4C8'],
-                ['Character POV + 2 bold choices', true, '#00D4C8'],
-                ['1 moment play breakdown', true, '#00D4C8'],
+                ['5 bold acting choices', true, '#00D4C8'],
+                ['Take 2 alternate strategy', true, '#00D4C8'],
+                ['Moment-by-moment breakdown', true, '#00D4C8'],
                 ['Spin Again', false, 'rgba(240,238,245,0.25)'],
                 ['Make It Wilder', false, 'rgba(240,238,245,0.25)'],
                 ['Save to Playbook', false, 'rgba(240,238,245,0.25)'],
@@ -518,22 +518,21 @@ export default function Landing() {
             </ul>
             <button
               style={{ ...S.btnSecondary, width: '100%', borderRadius: 10, padding: '12px' }}
-              onClick={handleCTA}
+              onClick={() => window.location.href = 'https://buy.stripe.com/6oUfZhcSre23d2R6Se2wV07'}
             >
-              Start Free
+              Buy One Guide
             </button>
           </div>
 
-          {/* Paid */}
+          {/* Monthly */}
           <div style={S.pricingCard(true)}>
             <div style={S.pricingBadge}>Most Popular</div>
-            <div style={S.pricingTier}>Bold Choices+</div>
-            <div style={S.pricingPrice}>$7.99</div>
+            <div style={S.pricingTier}>Monthly</div>
+            <div style={S.pricingPrice}>$9.99</div>
             <div style={S.pricingPer}>per month</div>
             <ul style={S.pricingFeatureList}>
               {[
-                ['Unlimited generations', true, '#FF4D4D'],
-                ['All 5 bold choices + full moments', true, '#FF4D4D'],
+                ['Unlimited bold choices guides', true, '#FF4D4D'],
                 ['Spin Again — fresh choices instantly', true, '#FF4D4D'],
                 ['Make It Wilder — escalate the risk', true, '#FF4D4D'],
                 ['Take 2 Generator', true, '#FF4D4D'],
@@ -546,8 +545,12 @@ export default function Landing() {
                 </li>
               ))}
             </ul>
-            <button style={S.btnPrimary} className="btn-primary" onClick={handleCTA}>
-              Get Bold Choices+
+            <button
+              style={S.btnPrimary}
+              className="btn-primary"
+              onClick={() => window.location.href = 'https://buy.stripe.com/aFa6oH05F6zBbYN6Se2wV08'}
+            >
+              Subscribe — $9.99/mo
             </button>
           </div>
         </div>
@@ -555,21 +558,47 @@ export default function Landing() {
         {/* ── PREP101 UPGRADE BANNER ── */}
         <div style={S.upgradeBanner}>
           <div style={S.upgradePill}>Powered by Prep101</div>
-          <h3 style={S.upgradeTitle}>
-            Want the full coaching breakdown?
-          </h3>
+          <h3 style={S.upgradeTitle}>Want the full coaching breakdown?</h3>
           <p style={S.upgradeDesc}>
             Bold Choices gives you the spark.<br />
             Prep101 builds the performance.<br /><br />
-            This is where it stops being a guess.<br />
             Every beat. Every shift. Every choice — mapped, motivated, and ready to play.
+          </p>
+          <button className="btn-upgrade" style={S.btnUpgrade} onClick={() => window.open('https://prep101.site', '_blank')}>
+            Explore Prep101 →
+          </button>
+        </div>
+
+        {/* ── BUNDLE BANNER ── */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(20,184,166,0.1) 0%, rgba(99,102,241,0.1) 100%)',
+          border: '1.5px solid rgba(20,184,166,0.3)',
+          borderRadius: 18,
+          padding: '40px 36px',
+          textAlign: 'center',
+          marginBottom: 80,
+        }}>
+          <div style={{
+            display: 'inline-block',
+            background: 'rgba(20,184,166,0.15)',
+            border: '1px solid rgba(20,184,166,0.3)',
+            color: '#14b8a6',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+            textTransform: 'uppercase', padding: '5px 14px',
+            borderRadius: 999, marginBottom: 16,
+          }}>⭐ Save $20/month</div>
+          <h3 style={{ ...S.upgradeTitle, color: '#F0EEF5' }}>Complete Self-Tape System Bundle</h3>
+          <p style={{ ...S.upgradeDesc }}>
+            Get Prep101 + Reader101 + Bold Choices — everything your actor needs, in one plan.<br /><br />
+            5 Prep101 guides · Unlimited Reader Guides · Unlimited Bold Choices<br />
+            <span style={{ color: '#14b8a6', fontWeight: 700 }}>$29.99/month</span>
           </p>
           <button
             className="btn-upgrade"
-            style={S.btnUpgrade}
-            onClick={() => window.open('https://prep101.site', '_blank')}
+            style={{ ...S.btnUpgrade, background: 'rgba(20,184,166,0.15)', borderColor: 'rgba(20,184,166,0.4)', color: '#14b8a6' }}
+            onClick={() => window.location.href = 'https://buy.stripe.com/7sY4gz3hRe23faZ4K62wV0c'}
           >
-            Explore Prep101 →
+            Get the Bundle →
           </button>
         </div>
       </div>
