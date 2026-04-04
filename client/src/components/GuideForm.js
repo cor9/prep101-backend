@@ -11,7 +11,6 @@ const GuideForm = ({ onSubmit, hasFile }) => {
     storyline: '',
     characterBreakdown: '',
     callbackNotes: '',
-    callbackNotes: '',
     childGuideRequested: false,
     mode: 'standard'
   });
