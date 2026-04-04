@@ -2859,7 +2859,11 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       callbackNotes,
       focusArea,
       childGuideRequested,
+      // Reader101 mode flag — "reader_support" activates the Reader Guide path
+      mode,
     } = req.body;
+
+    const isReaderMode = mode === "reader_support";
 
     // Handle both single and multiple upload IDs
     const uploadIdList = uploadIds
@@ -3091,6 +3095,100 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         reason: contentQuality.reason,
       });
     }
+
+    // ─── Reader101: Reader Support Guide mode ────────────────────────────────
+    if (isReaderMode) {
+      console.log("📖 [Reader101] Reader Support mode activated — generating reader guide");
+      const { generateReaderGuide } = require("./services/readerGuideService");
+
+      const readerGuideHtml = await generateReaderGuide({
+        sceneText: combinedSceneText,
+        characterName: characterName.trim(),
+        productionTitle: productionTitle.trim(),
+        productionType: productionType.trim(),
+        genre: genre || "",
+        storyline: storyline || "",
+      });
+
+      console.log("✅ [Reader101] Reader guide complete!");
+
+      // Save reader guide to database (same table, tagged with mode)
+      try {
+        const GuideModel = Guide || require("./models/Guide");
+        const readerGuideId = `reader_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        const readerPayload = {
+          guideId: readerGuideId,
+          userId: currentUser.id,
+          characterName: characterName.trim(),
+          productionTitle: productionTitle.trim(),
+          productionType: productionType.trim(),
+          roleSize: roleSize || "Supporting",
+          genre: genre || "",
+          storyline: storyline || "",
+          characterBreakdown: "",
+          callbackNotes: "",
+          focusArea: "reader_support",
+          sceneText: combinedSceneText,
+          generatedHtml: readerGuideHtml,
+          childGuideRequested: false,
+          childGuideCompleted: false,
+        };
+
+        let savedReaderGuide = null;
+        if (GuideModel) {
+          savedReaderGuide = await GuideModel.create(readerPayload);
+        } else {
+          const { randomUUID } = require("crypto");
+          readerPayload.id = randomUUID();
+          await ensureSupabaseUser(currentUser);
+          savedReaderGuide = await supabaseInsertGuide(readerPayload, { user: currentUser });
+        }
+
+        // Reader guides count against the same usage limit as actor guides
+        if (
+          !hasUnlimitedPlan &&
+          userGuideLimit !== null &&
+          userGuideLimit > 0 &&
+          typeof currentUser.increment === "function"
+        ) {
+          await currentUser.increment("guidesUsed").catch((err) => {
+            console.error("Failed to increment guide usage:", err?.message || err);
+          });
+        }
+
+        return res.json({
+          success: true,
+          guideId: savedReaderGuide?.guideId || readerGuideId,
+          guideContent: readerGuideHtml,
+          mode: "reader_support",
+          childGuideRequested: false,
+          childGuideQueued: false,
+          childGuideCompleted: false,
+          metadata: {
+            characterName: characterName.trim(),
+            productionTitle: productionTitle.trim(),
+            productionType: productionType.trim(),
+            guideLength: readerGuideHtml.length,
+            generationTime: Date.now() - requestStartTime,
+          },
+        });
+      } catch (saveErr) {
+        console.error("[Reader101] Failed to save reader guide:", saveErr);
+        // Still return the guide even if save fails
+        return res.json({
+          success: true,
+          guideId: `reader_${Date.now()}`,
+          guideContent: readerGuideHtml,
+          mode: "reader_support",
+          childGuideRequested: false,
+          childGuideQueued: false,
+          childGuideCompleted: false,
+          saveError: "Guide generated but could not be saved",
+        });
+      }
+    }
+    // ── End Reader101 mode ────────────────────────────────────────────────────
 
     const guideContentRaw = await generateActingGuideWithRAG({
       sceneText: combinedSceneText,
