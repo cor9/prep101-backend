@@ -1,79 +1,106 @@
 /**
- * textCleaner.js
- * 
- * Centralized utility for scrubbing watermarks, timestamps, and metadata 
- * from extracted PDF text to prevent LLM hallucinations and corruption.
+ * Centralized Text Cleaning & Quality Assessment Service
+ * Optimized for script/sides extraction across Prep101, BoldChoices, and Reader101.
  */
 
-function scrubWatermarks(text) {
-  if (!text) return "";
+/**
+ * Aggressive cleaning for script extractions.
+ * Targets project codes (B540LT), timestamps, and repetitive watermarks.
+ */
+function cleanExtractedText(text) {
+  if (!text) return '';
 
   return text
-    // 1) Destroy specific date/time watermarks "- Feb 17, 2026 9:41 AM -"
-    .replace(/\-\s*[a-zA-Z]{3,12}\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*[AP]M\s*\-/gi, " ")
+    // 1) Kill timestamps: Feb 12, 2025 10:30 AM or similar
+    .replace(/[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}.*?(AM|PM)/gi, '')
     
-    // 2) Aggressively destroy repetitive uppercase project tags like B540LT-B540LT or B568CR
-    .replace(/\b[A-Z0-9]{5,15}\b(?:-\b[A-Z0-9]{5,15}\b)*/gi, (match) => {
-      // If it's a fully uppercase/numeric code block like B540LT, destroy it
-      // We check if it has at least one digit to avoid destroying actual character names (though those are usually followed by colon)
-      const hasNumbers = /\d/.test(match);
-      if (match === match.toUpperCase() && match.length > 5 && hasNumbers) return " ";
-      return match;
-    })
-
-    // 3) Targeted project codes and common agency watermarks
-    .replace(/\bB\d{3,}[A-Z0-9]*\b/gi, " ")
-    .replace(/\b[A-Z]\d{3,}[A-Z]{2}\b/gi, " ") // B123BC, C456DE etc
-    .replace(/(?:B540LT|B568CR|74222|B540|B568)/gi, " ")
-    .replace(/Sides by Breakdown Services - Actors Access/gi, " ")
-    .replace(/Page \d+ of \d+/gi, " ")
-    .replace(/This document.*confidential/gi, " ")
-    .replace(/CONFIDENTIAL/g, " ")
+    // 2) Kill watermark codes like B540LT-B540LT or B568CR
+    .replace(/(B\d{3,}[A-Z]*)[-\s]*/gi, '')
     
-    // 4) Timestamps and date strings
-    .replace(/\b\d{1,2}:\d{2}:\d{2}\s*[AP]M\b/gi, " ")
-    .replace(/\b\d{1,2}:\d{2}:\d{2}\b/g, " ")
-    .replace(/\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/gi, " ")
-    .replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/gm, " ")
-    .replace(/^\d{1,2}:\d{2}:\d{2}\s*$/gm, " ")
-    .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, " ") // Date like 04/07/26
+    // 3) Kill common Breakdown Services / Actors Access footers
+    .replace(/Sides by Breakdown Services - Actors Access|Page \d+\s+of\s+\d+/gi, '')
     
-    // 5) Repetitive numeric sequences (often watermarks)
-    .replace(/\b\d{5,}\b/g, " ")
+    // 4) Remove repeated garbage chunks (e.g., "XXXXXXXXX")
+    .replace(/(.{3,10})\1{3,}/g, '')
     
-    // 6) Clean up formatting artifacts
-    .replace(/^[0-9\s\-_:]+$/gm, " ") // Lines with only numbers/symbols
-    .replace(/\-{2,}/g, " ") // Long dashes
-    .replace(/\n{3,}/g, "\n\n") // Excessive newlines
-    .replace(/[ \t]{2,}/g, " ") // Multiple spaces
+    // 5) Normalize spacing: collapse tabs and multiple spaces
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
 /**
- * Assesses the quality of the text based on common corruption markers.
+ * The Secret Weapon: Repetition Filter.
+ * Removes lines that appear 3+ times (usually watermarks, headers, or footers).
  */
-function assessQuality(text, wordCount) {
-  if (!text || wordCount < 3) return { quality: "poor", reason: "empty_or_too_short" };
+function removeRepeatedLines(text) {
+  if (!text) return '';
+  const lines = text.split('\n');
 
-  const repetitivePatterns = [
-    /\b\d{5,}\b/g,
-    /\b[A-Z0-9]{6,12}-[A-Z0-9]{6,12}\b/g,
-    /\d{1,2}:\d{2}:\d{2}/g,
-  ];
+  const counts = {};
+  lines.forEach(line => {
+    const t = line.trim();
+    if (!t || t.length < 3) return; // Don't count short dialogue like "No" or "I"
+    counts[t] = (counts[t] || 0) + 1;
+  });
 
-  const repetitiveMatches = repetitivePatterns.reduce((count, pattern) => {
-    return count + (text.match(pattern) || []).length;
-  }, 0);
+  return lines
+    .filter(line => {
+      const t = line.trim();
+      // Keep it if it's short dialogue OR if it appears less than 3 times
+      return t && (t.length < 5 || counts[t] < 3);
+    })
+    .join('\n');
+}
 
-  const repetitiveRatio = repetitiveMatches / Math.max(wordCount, 1);
+/**
+ * Assesses the quality of the text based on common corruption markers.
+ * Implements the "Pivot to Fallback" logic if content is sparse.
+ */
+function assessQuality(text) {
+  if (!text) return { quality: 'empty', usable: false, reason: 'No text extracted' };
 
-  if (repetitiveRatio > 0.5) return { quality: "poor", reason: "heavy_watermarks", ratio: repetitiveRatio };
-  if (wordCount < 50) return { quality: "low", reason: "minimal_content" };
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  const wordCount = words.length;
+  const unique = new Set(words);
 
-  return { quality: "good", reason: "sufficient_content" };
+  const ratio = wordCount > 0 ? unique.size / wordCount : 0;
+
+  // 1) Too short for deep coaching
+  if (wordCount < 100) {
+    return { 
+      quality: 'too_short', 
+      usable: false, 
+      reason: 'Insufficient dialogue for line-specific guidance',
+      wordCount 
+    };
+  }
+
+  // 2) Too repetitive (likely scrambled PDF or OCR failure)
+  if (ratio < 0.25) {
+    return { 
+      quality: 'repetitive', 
+      usable: false, 
+      reason: 'Extracted text appears corrupted or overly repetitive',
+      ratio 
+    };
+  }
+
+  return { quality: 'good', usable: true, wordCount, ratio };
+}
+
+/**
+ * Primary processing pipeline for PDF text.
+ */
+function scrubWatermarks(text) {
+  let cleaned = cleanExtractedText(text);
+  cleaned = removeRepeatedLines(cleaned);
+  return cleaned;
 }
 
 module.exports = {
   scrubWatermarks,
+  cleanExtractedText,
+  removeRepeatedLines,
   assessQuality
 };

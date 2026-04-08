@@ -237,9 +237,18 @@ function buildUserPrompt(data) {
   if (data.characterDescription) lines.push(`Character Description: ${scrubWatermarks(data.characterDescription)}`);
   if (data.storyline) lines.push(`Storyline: ${scrubWatermarks(data.storyline)}`);
 
-  if (data.sceneText) {
+  if (data.sceneText && !data.fallbackMode) {
     lines.push("\nSIDES / SCENE TEXT (CRITICAL: Ignore any remaining timestamps, dates, watermarks, agency names, or page numbers):");
     lines.push(scrubWatermarks(data.sceneText));
+  } else if (data.fallbackMode) {
+    lines.push("\n⚠️ FALLBACK NOTIFICATION: The uploaded audition sides were unreadable or corrupted.");
+    lines.push("You must STILL generate a full Bold Choices Guide using only the provided metadata (character name, project type, genre, tone).");
+    lines.push("\nINSTRUCTIONS FOR FALLBACK MODE:");
+    lines.push("- Build choices from behavioral patterns and character archetypes.");
+    lines.push("- Create playable, specific acting adjustments.");
+    lines.push("- Focus on physical behavior, tone shifts, and emotional contradictions.");
+    lines.push("- Do NOT reference specific lines or scenes since we couldn't read them.");
+    lines.push("- Every section (pov, choices, moments, etc.) must still be complete and feel surgical.");
   }
 
   // ── Modifier suffix ────────────────────────────────────────────────────────

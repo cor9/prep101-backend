@@ -156,7 +156,14 @@ const Dashboard = () => {
   // ====== FILE UPLOAD ======
   const handleFileUpload = (data) => {
     setUploadData(data);
-    toast.success("PDF processed — ready to generate!");
+    if (data.fallbackMode) {
+      toast("We couldn't fully read your sides — but we'll build your guide using character and tone!", { 
+        icon: "🧠",
+        duration: 6000
+      });
+    } else {
+      toast.success("PDF processed — ready to generate!");
+    }
   };
 
   // Open HTML in a new tab (Blob URL). Optionally reuse a pre-opened window.

@@ -218,7 +218,15 @@ const BoldChoices = () => {
     if (data?.sceneText) {
       setForm((f) => ({ ...f, sceneText: data.sceneText }));
     }
-    toast.success("Sides uploaded — scene text ready!");
+
+    if (data.fallbackMode) {
+      toast("We couldn't fully read your sides — but we'll build your guide using character and tone!", { 
+        icon: "🧠",
+        duration: 6000
+      });
+    } else {
+      toast.success("Sides uploaded — scene text ready!");
+    }
   };
 
   const openGuideInTab = (html) => {

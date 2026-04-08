@@ -148,6 +148,16 @@ function buildReaderPrompt(data) {
     storyline,
   } = data;
 
+  let sidesContent = "";
+  if (data.fallbackMode) {
+    sidesContent = `⚠️ FALLBACK MODE ACTIVATED: The audition sides were not readable. 
+Generate a Reader Support Guide using character roles, genre, and tone. 
+Focus on reader dynamics for this type of project (e.g. ${genre || 'drama'}).
+Do NOT reference specific lines. Focus on pacing, interruptions, and silence behaviors.`;
+  } else {
+    sidesContent = `SIDES:\n${scrubWatermarks(sceneText)}`;
+  }
+
   return `Generate a Reader Support Guide for this self-tape session.
 
 ${productionTitle ? `PRODUCTION: ${productionTitle}` : ""}
@@ -155,8 +165,7 @@ ${productionType ? `TYPE: ${productionType}` : ""}
 ${genre ? `GENRE: ${genre}` : ""}
 ${storyline ? `CONTEXT: ${storyline}` : ""}
 
-SIDES:
-${scrubWatermarks(sceneText)}
+${sidesContent}
 
 ---
 
@@ -164,7 +173,7 @@ Generate the complete guide in EXACTLY this section order. Rules for every secti
 - Bullet points only (ul/li) — except the Why This Matters intro
 - Readable in under 5 seconds
 - Must answer: "What should the reader DO?"
-- Must reference specific lines or beats from the sides — no generic advice
+${data.fallbackMode ? '- Note at the top: "⚠️ We built this guide using character and tone metadata because the sides were unreadable."' : '- Must reference specific lines or beats from the sides — no generic advice'}
 
 ---
 

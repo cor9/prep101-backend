@@ -1563,8 +1563,17 @@ ${methodologyContext}
 CHARACTER: ${data.characterName}
 PRODUCTION: ${data.productionTitle} (${data.productionType})
 
+${data.fallbackMode ? `
+⚠️ FALLBACK MODE ACTIVATED: The uploaded audition sides were unreadable or corrupted. 
+You must STILL generate a full Prep101 Coaching Guide using character archetypes, production genre, and tone. 
+Instead of line-by-line analysis, focus on:
+- Archetypal character behavior for this project type.
+- The "vibe" and rhythm of ${data.productionTitle}.
+- Universal beats and choices for this genre.
+Do NOT reference specific script text or use [ERROR: SIDES_CORRUPTED]. Build the guide from your deep acting knowledge and the provided methodology.` : `
 SCRIPT:
 ${data.sceneText}${fileTypeContext}
+`}
 
 **VOICE & PERSONALITY**
 - Talk directly to the actor ("You're about to...", "Your job is...").
@@ -2607,146 +2616,43 @@ app.options("/api/upload", (req, res) => {
 });
 
 // PDF Upload endpoint
+// PDF Upload endpoint
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file || req.file.mimetype !== "application/pdf") {
       return res.status(400).json({ error: "Please upload a PDF file" });
     }
 
-    console.log(`📄 Processing: ${req.file.originalname}`);
+    // 1) Primary Extraction: pdf-parse is our rock-solid primary base
+    console.log(`[UPLOAD] Extracting text from ${req.file.originalname}`);
+    let result = await extractWithBasic(req.file.buffer);
 
-    const MIN_WC = parseInt(process.env.MIN_EXTRACT_WORDS || "200", 10);
-    // 1) Adobe first (only if available)
-    let result;
-    if (extractWithAdobe) {
-      result = await extractWithAdobe(req.file.buffer).catch((e) => ({
-        success: false,
-        method: "adobe",
-        reason: e?.message || "adobe-extract-error",
-      }));
-    } else {
-      console.log(
-        "[UPLOAD] Adobe extractor not available, using basic extraction"
-      );
-      result = {
-        success: false,
-        method: "adobe",
-        reason: adobeImportError ? `import-failed: ${adobeImportError}` : "adobe-not-available",
-      };
-    }
-
-    if (!result?.success || !result.text) {
-      const adobeReason = result?.reason || "no-text";
-      console.warn("[UPLOAD] Adobe failed or empty, falling back to basic:", adobeReason);
-      result = await extractWithBasic(req.file.buffer);
-      result.adobeReason = adobeReason;
-    }
-
-    // OCR Fallback: If basic extraction fails or produces poor quality content, try OCR
-    if (!result?.text || result.text.length < 100) {
-      console.log("[UPLOAD] Basic extraction failed, trying OCR fallback...");
-      try {
-        result = await extractWithOCR(req.file.buffer);
-        console.log("[UPLOAD] OCR extraction completed:", {
-          method: result.method,
-          wordCount: result.wordCount,
-          confidence: result.confidence,
-        });
-      } catch (ocrError) {
-        console.error("[UPLOAD] OCR fallback failed:", ocrError.message);
-      }
-    }
-
-    // Additional OCR fallback: If content quality is poor, try OCR
-    const initialContentQuality = assessContentQuality(
-      result.text,
-      result.wordCount || 0,
-      true
-    );
-    if (initialContentQuality.quality === "poor" && result.method === "basic") {
-      console.log(
-        "[UPLOAD] Basic extraction produced poor quality content, trying OCR fallback..."
-      );
-      try {
-        const ocrResult = await extractWithOCR(req.file.buffer);
-        const ocrContentQuality = assessContentQuality(
-          ocrResult.text,
-          ocrResult.wordCount || 0,
-          true
-        );
-
-        // Use OCR result if it's better quality
-        if (ocrContentQuality.quality !== "poor") {
-          console.log(
-            "[UPLOAD] OCR produced better quality content, using OCR result"
-          );
-          result = ocrResult;
-        } else {
-          console.log(
-            "[UPLOAD] OCR also produced poor quality content, keeping basic result"
-          );
+    // 2) Optional Adobe: Only if explicitly enabled via env override or if basic failed
+    const ADOBE_FORCE = process.env.ADOBE_FORCE_ENABLE === "true";
+    if (ADOBE_FORCE && extractWithAdobe && (!result?.text || result.text.length < 300)) {
+        console.log("[UPLOAD] Basic extraction sparse, trying Adobe...");
+        const adobeResult = await extractWithAdobe(req.file.buffer).catch(() => null);
+        if (adobeResult?.success && adobeResult.text) {
+            result = adobeResult;
         }
-      } catch (ocrError) {
-        console.error("[UPLOAD] OCR fallback failed:", ocrError.message);
-      }
     }
 
-    // 2) Assess content quality and handle low-quality content (lenient check on upload)
-    const contentQuality = assessContentQuality(
-      result.text,
-      result.wordCount || 0,
-      true
-    );
+    // 3) Aggressive Cleaning Pipeline
+    const cleanedText = scrubWatermarks(result.text || "");
+    const quality = assessQuality(cleanedText);
+    const wordCount = quality.wordCount || 0;
 
-    if (contentQuality.quality === "poor") {
-      console.warn(
-        `[UPLOAD] Poor content quality detected: ${contentQuality.reason}`,
-        {
-          filename: req.file.originalname,
-          wordCount: result.wordCount,
-          watermarkRatio: contentQuality.watermarkRatio,
-        }
-      );
+    console.log(`[UPLOAD] Extraction Complete: ${quality.quality} (${wordCount} words)`);
 
-      return res.status(422).json({
-        success: false,
-        error:
-          contentQuality.reason === "watermark_heavy"
-            ? "Limited content: please upload clean sides without watermarks or timestamps"
-            : "Limited content: the extracted text is too short. Please try a different PDF or upload a clean version of the script.",
-        debug: {
-          extractedSnippet: result.text ? result.text.substring(0, 100) + "..." : "EMPTY",
-          wordCount: result.wordCount,
-          method: result.method,
-          adobeReason: result.method === 'basic' ? (result.adobeReason || 'unknown') : null
-        },
-        contentQuality: contentQuality.reason,
-        extractionMethod: result.method,
-        extractionConfidence: result.confidence || "low",
-        wordCount: result.wordCount,
-        watermarkRatio: contentQuality.watermarkRatio,
-      });
-    }
-
-    if (contentQuality.quality === "low") {
-      console.log(
-        `[UPLOAD] Low content quality - allowing fallback generation`,
-        {
-          filename: req.file.originalname,
-          wordCount: result.wordCount,
-          reason: contentQuality.reason,
-        }
-      );
-    }
-
+    // 4) Metadata & Storage
     const uploadId = Date.now().toString();
-    const fileType = req.body.fileType || "sides"; // Default to sides if not specified
-
-    // 3) Character names (if Adobe didn't supply them)
+    const fileType = req.body.fileType || "sides";
+    
+    // Extract character names from the CLEANED text
     const characterPattern = /^[A-Z][A-Z\s]+:/gm;
     const characterNames = result.characterNames || [
       ...new Set(
-        (result.text.match(characterPattern) || []).map((n) =>
+        (cleanedText.match(characterPattern) || []).map((n) =>
           n.replace(":", "").trim()
         )
       ),
@@ -2754,66 +2660,43 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     uploads[uploadId] = {
       filename: req.file.originalname,
-      sceneText: result.text.trim(),
+      sceneText: cleanedText,
       characterNames,
       extractionMethod: result.method,
-      extractionConfidence: result.confidence,
+      extractionConfidence: result.confidence || (quality.usable ? 'high' : 'low'),
       uploadTime: new Date(),
-      wordCount: result.wordCount,
-      fileType: fileType, // Store the file type
-      userId: req.userId || req.user?.id || null, // Store user ID for better tracking
+      wordCount: wordCount,
+      fileType: fileType,
+      userId: req.userId || req.user?.id || null,
+      fallbackMode: !quality.usable
     };
 
-    // Log upload storage for debugging
-    console.log("[UPLOAD] Stored upload:", {
-      uploadId,
-      filename: req.file.originalname,
-      userId: uploads[uploadId].userId,
-      totalUploads: Object.keys(uploads).length,
-      timestamp: new Date().toISOString()
-    });
-
-    // 5) Log triage with enhanced preview
-    const preview = (result.text || "").slice(0, 300).replace(/\n/g, "⏎");
-    console.log("[UPLOAD]", {
-      file: req.file.originalname,
-      method: result.method,
-      confidence: result.confidence,
-      words: result.wordCount,
-      contentQuality: contentQuality.quality,
-      preview: `"${preview}..."`,
-    });
-
-    // Update extraction diagnostics for /api/health
-    try {
-      const m = result.method || "unknown";
-      if (extractionStats.totals[m] !== undefined)
-        extractionStats.totals[m] += 1;
-      extractionStats.last = {
-        method: result.method,
-        confidence: result.confidence,
-        wordCount: result.wordCount,
-        filename: req.file.originalname,
-        at: new Date().toISOString(),
-      };
-    } catch (_) { }
-
-    // 6) Respond
-    return res.json({
+    // 5) SMART RESPONSE: Success flag even on low quality, with fallback flag
+    return res.status(200).json({
       success: true,
+      originalName: req.file.originalname,
       uploadId,
-      filename: req.file.originalname,
-      textLength: result.text.length,
-      wordCount: result.wordCount,
+      text: cleanedText,
       characterNames,
+      wordCount: wordCount,
       extractionMethod: result.method,
-      extractionConfidence: result.confidence,
-      preview: (result.text || "").slice(0, 400) + "...",
-      sceneText: result.text,
+      quality: quality.quality,
+      fallbackMode: !quality.usable,
+      debug: {
+        method: result.method,
+        usable: quality.usable,
+        reason: quality.reason,
+        ratio: quality.ratio
+      }
     });
+
   } catch (error) {
-    console.error("❌ Upload error:", error);
-    res.status(500).json({ error: "Failed to process PDF: " + error.message });
+    console.error("❌ Upload Route Fatal Error:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Extraction process failed: " + error.message,
+      debug: error.message 
+    });
   }
 });
 
@@ -2988,6 +2871,9 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         .status(400)
         .json({ error: "Upload data not found or expired. Please re-upload." });
     }
+    // Check if any upload is in fallback mode
+    const isFallbackGeneration = allUploadData.some(d => d.fallbackMode === true);
+
     const combinedSceneText = allUploadData
       .map((data) => data.sceneText)
       .join("\n\n--- NEW SCENE ---\n\n");
@@ -2996,14 +2882,11 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       0
     );
 
-    console.log(`🎭 COREY RALSTON RAG Guide Generation...`);
-    console.log(`🎬 ${characterName} | ${productionTitle} (${productionType})`);
-    console.log(
-      `🧠 Using ${Object.keys(methodologyDatabase).length} methodology files`
-    );
+    console.log(`🎭 COREY RALSTON RAG Generation... [Fallback: ${isFallbackGeneration}]`);
+    console.log(`🎬 ${characterName} | ${productionTitle} (Words: ${combinedWordCount})`);
 
-    // Check if we have full script context
-    const hasFullScript = allUploadData.some(
+    // Check if we have full script context (not if we're in fallback mode)
+    const hasFullScript = !isFallbackGeneration && allUploadData.some(
       (data) => data.fileType === "full_script"
     );
     const hasSides = allUploadData.some((data) => data.fileType === "sides");
@@ -3084,6 +2967,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         productionType: productionType.trim(),
         genre: genre || "",
         storyline: storyline || "",
+        fallbackMode: isFallbackGeneration,
       });
 
       console.log("✅ [Reader101] Reader guide complete!");
@@ -3173,6 +3057,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       productionType: productionType.trim(),
       extractionMethod: allUploadData[0].extractionMethod,
       hasFullScript: hasFullScript,
+      fallbackMode: isFallbackGeneration,
       uploadData: allUploadData,
     });
 
