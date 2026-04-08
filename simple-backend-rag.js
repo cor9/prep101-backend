@@ -185,7 +185,7 @@ try {
   extractWithAdobe =
     require("./services/extractors/adobeExtract").extractWithAdobe;
 } catch (error) {
-  console.log("⚠️  Adobe extractor not available, using basic extraction only");
+  console.error("❌ Adobe extractor import FAILED:", error.message);
   extractWithAdobe = null;
 }
 const {
@@ -2632,11 +2632,10 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     }
 
     if (!result?.success || !result.text) {
-      console.warn(
-        "[UPLOAD] Adobe failed or empty:",
-        result?.reason || "no-text"
-      );
+      const adobeReason = result?.reason || "no-text";
+      console.warn("[UPLOAD] Adobe failed or empty, falling back to basic:", adobeReason);
       result = await extractWithBasic(req.file.buffer);
+      result.adobeReason = adobeReason;
     }
 
     // OCR Fallback: If basic extraction fails or produces poor quality content, try OCR
@@ -2714,7 +2713,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         debug: {
           extractedSnippet: result.text ? result.text.substring(0, 100) + "..." : "EMPTY",
           wordCount: result.wordCount,
-          method: result.method
+          method: result.method,
+          adobeReason: result.method === 'basic' ? (result.adobeReason || 'unknown') : null
         },
         contentQuality: contentQuality.reason,
         extractionMethod: result.method,
