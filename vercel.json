@@ -2,24 +2,16 @@
   "version": 2,
   "outputDirectory": ".",
   "functions": {
-    "simple-backend-rag.js": {
+    "api/simple-backend-rag.js": {
       "maxDuration": 300,
       "memory": 1024,
-      "includeFiles": [
-        "services/**",
-        "config/**",
-        "models/**",
-        "middleware/**",
-        "routes/**",
-        "methodology/**",
-        "package.json"
-      ]
+      "includeFiles": "{services,config,models,middleware,routes,methodology,pdfservices-api-credentials.json}/**"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/simple-backend-rag.js"
+      "destination": "/api/simple-backend-rag.js"
     }
   ]
 }
