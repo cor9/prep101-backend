@@ -3,6 +3,16 @@ import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 import API_BASE from '../config/api';
 
+const isLegacyFallbackMessage = (value = '') =>
+  /limited script text detected|upload clearer sides for line-specific detail/i.test(
+    String(value || '')
+  );
+
+const sanitizeWarnings = (warnings = []) =>
+  (Array.isArray(warnings) ? warnings : []).filter(
+    (warning) => !isLegacyFallbackMessage(warning)
+  );
+
 const FileUpload = ({ onUpload }) => {
   const [uploading, setUploading] = useState(false);
 
@@ -58,22 +68,28 @@ const FileUpload = ({ onUpload }) => {
                   wordCount: data.wordCount || 0,
                   fileType: data.fileType || 'sides',
                   fallbackMode: Boolean(data.fallbackMode),
-                  warnings: data.warnings || [],
+                  warnings: sanitizeWarnings(data.warnings),
                   source: data.source || data.extractionMethod || 'text',
                 },
               }
             : {});
 
+        const sanitizedUploadMessage = isLegacyFallbackMessage(data.uploadMessage)
+          ? null
+          : data.uploadMessage;
+
         onUpload({
           ...data,
+          uploadMessage: sanitizedUploadMessage,
+          warnings: sanitizeWarnings(data.warnings),
           filename: data.filename || data.originalName || file.name,
           sceneText,
           uploadIds,
           scenePayloads,
         });
 
-        if (data.uploadMessage) {
-          toast(data.uploadMessage, { icon: '🧠', duration: 5000 });
+        if (sanitizedUploadMessage) {
+          toast(sanitizedUploadMessage, { icon: '🧠', duration: 5000 });
         }
       } else {
         throw new Error(data.error || data.message || 'Upload failed');
