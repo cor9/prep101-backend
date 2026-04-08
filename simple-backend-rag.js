@@ -279,7 +279,7 @@ function assessContentQuality(text, wordCount, isUpload = false) {
   
   // UPLOAD CHECK: Only reject completely empty or severely corrupted files
   if (isUpload) {
-    if (assessment.quality === "poor" && assessment.reason === "empty_or_too_short") {
+    if (assessment.quality === "empty") {
       return { quality: "poor", reason: "insufficient_content" };
     }
     // Accept everything else during upload and let the cleaning process handle it
@@ -290,8 +290,17 @@ function assessContentQuality(text, wordCount, isUpload = false) {
   return {
     quality: assessment.quality,
     reason: assessment.reason,
-    repetitiveRatio: assessment.ratio || 0
+    repetitiveRatio: assessment.ratio || 0,
+    usable: assessment.usable,
   };
+}
+
+function getMeaningfulWordCount(text = "") {
+  return (text.match(/\b[\w']+\b/g) || []).length;
+}
+
+function isSparseForUpgrade(text = "", wordCount = 0) {
+  return !text || text.trim().length < 300 || wordCount < 50;
 }
 
 // Basic extraction helper used as fallback
@@ -2623,24 +2632,79 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "Please upload a PDF file" });
     }
 
+    const extractionAttempts = [];
+    const adobeEnabled = process.env.ADOBE_PDF_EXTRACT_ENABLED === "true";
+    const adobeForce = process.env.ADOBE_FORCE_ENABLE === "true";
+
     // 1) Primary Extraction: pdf-parse is our rock-solid primary base
     console.log(`[UPLOAD] Extracting text from ${req.file.originalname}`);
     let result = await extractWithBasic(req.file.buffer);
+    extractionAttempts.push({ method: "basic", chars: (result?.text || "").length });
 
-    // 2) Optional Adobe: Only if explicitly enabled via env override or if basic failed
-    const ADOBE_FORCE = process.env.ADOBE_FORCE_ENABLE === "true";
-    if (ADOBE_FORCE && extractWithAdobe && (!result?.text || result.text.length < 300)) {
-        console.log("[UPLOAD] Basic extraction sparse, trying Adobe...");
-        const adobeResult = await extractWithAdobe(req.file.buffer).catch(() => null);
-        if (adobeResult?.success && adobeResult.text) {
-            result = adobeResult;
+    let cleanedText = scrubWatermarks(result.text || "");
+    let quality = assessQuality(cleanedText);
+    let wordCount = quality.wordCount || getMeaningfulWordCount(cleanedText);
+
+    // 2) Adobe upgrade path: use when enabled and basic extraction is sparse
+    if ((adobeEnabled || adobeForce) && extractWithAdobe && isSparseForUpgrade(cleanedText, wordCount)) {
+      console.log("[UPLOAD] Basic extraction sparse, trying Adobe...");
+      const adobeResult = await extractWithAdobe(req.file.buffer).catch((error) => {
+        console.error("[UPLOAD] Adobe extraction failed:", error?.message || error);
+        return null;
+      });
+      extractionAttempts.push({ method: "adobe", chars: (adobeResult?.text || "").length });
+
+      if (adobeResult?.text) {
+        const adobeCleanedText = scrubWatermarks(adobeResult.text || "");
+        const adobeQuality = assessQuality(adobeCleanedText);
+        const adobeWordCount =
+          adobeQuality.wordCount || getMeaningfulWordCount(adobeCleanedText);
+
+        if (adobeWordCount > wordCount) {
+          result = adobeResult;
+          cleanedText = adobeCleanedText;
+          quality = adobeQuality;
+          wordCount = adobeWordCount;
         }
+      }
     }
 
-    // 3) Aggressive Cleaning Pipeline
-    const cleanedText = scrubWatermarks(result.text || "");
-    const quality = assessQuality(cleanedText);
-    const wordCount = quality.wordCount || 0;
+    // 3) OCR rescue path for image-heavy or still-sparse PDFs
+    if (isSparseForUpgrade(cleanedText, wordCount) || quality.quality === "repetitive" || quality.quality === "empty") {
+      console.log("[UPLOAD] Extraction still sparse or corrupted, trying OCR...");
+      const ocrResult = await extractWithOCR(req.file.buffer).catch((error) => {
+        console.error("[UPLOAD] OCR extraction failed:", error?.message || error);
+        return null;
+      });
+      extractionAttempts.push({ method: "ocr", chars: (ocrResult?.text || "").length });
+
+      if (ocrResult?.text) {
+        const ocrCleanedText = scrubWatermarks(ocrResult.text || "");
+        const ocrQuality = assessQuality(ocrCleanedText);
+        const ocrWordCount = ocrQuality.wordCount || getMeaningfulWordCount(ocrCleanedText);
+
+        if (ocrWordCount > wordCount) {
+          result = ocrResult;
+          cleanedText = ocrCleanedText;
+          quality = ocrQuality;
+          wordCount = ocrWordCount;
+        }
+      }
+    }
+
+    const fallbackMode = !quality.usable || quality.fallbackRecommended;
+    extractionStats.totals[result.method] = (extractionStats.totals[result.method] || 0) + 1;
+    extractionStats.last = {
+      filename: req.file.originalname,
+      method: result.method,
+      wordCount,
+      quality: quality.quality,
+      fallbackMode,
+      attempts: extractionAttempts,
+      adobeEnabled,
+      adobeImportError,
+      timestamp: new Date().toISOString(),
+    };
 
     console.log(`[UPLOAD] Extraction Complete: ${quality.quality} (${wordCount} words)`);
 
@@ -2668,7 +2732,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       wordCount: wordCount,
       fileType: fileType,
       userId: req.userId || req.user?.id || null,
-      fallbackMode: !quality.usable
+      fallbackMode,
+      quality,
     };
 
     // 5) SMART RESPONSE: Success flag even on low quality, with fallback flag
@@ -2681,12 +2746,14 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       wordCount: wordCount,
       extractionMethod: result.method,
       quality: quality.quality,
-      fallbackMode: !quality.usable,
+      fallbackMode,
       debug: {
         method: result.method,
         usable: quality.usable,
         reason: quality.reason,
-        ratio: quality.ratio
+        ratio: quality.ratio,
+        shortButReadable: Boolean(quality.shortButReadable),
+        attempts: extractionAttempts,
       }
     });
 
@@ -2881,6 +2948,8 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       (total, data) => total + (data.wordCount || 0),
       0
     );
+    const cleanedMeaningfulText = scrubWatermarks(combinedSceneText || "");
+    const meaningfulWordCount = getMeaningfulWordCount(cleanedMeaningfulText);
 
     console.log(`🎭 COREY RALSTON RAG Generation... [Fallback: ${isFallbackGeneration}]`);
     console.log(`🎬 ${characterName} | ${productionTitle} (Words: ${combinedWordCount})`);
@@ -2905,8 +2974,30 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       false
     );
 
+    const readerFallbackTriggeredByCorruption =
+      meaningfulWordCount < 50 ||
+      contentQuality.quality === "poor" ||
+      contentQuality.quality === "too_short" ||
+      contentQuality.quality === "repetitive" ||
+      (contentQuality.repetitiveRatio &&
+        contentQuality.repetitiveRatio > 0.8) ||
+      (contentQuality.repetitionRatio &&
+        contentQuality.repetitionRatio > 0.8);
+
+    const shouldForceReaderFallback =
+      isReaderMode && (isFallbackGeneration || readerFallbackTriggeredByCorruption);
+
+    const hasReaderMetadata = Boolean(
+      characterName?.trim() ||
+      productionTitle?.trim() ||
+      productionType?.trim() ||
+      genre?.trim() ||
+      storyline?.trim()
+    );
+
     // Only reject if TRULY terrible (< 10 words or > 80% corrupted)
     if (
+      !isReaderMode &&
       contentQuality.quality === "poor" &&
       (combinedWordCount < 10 ||
         (contentQuality.repetitiveRatio &&
@@ -2947,6 +3038,23 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       });
     }
 
+    if (isReaderMode && shouldForceReaderFallback) {
+      console.log("[Reader101] Corruption fallback engaged:", {
+        meaningfulWordCount,
+        quality: contentQuality.quality,
+        reason: contentQuality.reason,
+        repetitiveRatio: contentQuality.repetitiveRatio,
+        uploadFallback: isFallbackGeneration,
+      });
+    }
+
+    if (isReaderMode && shouldForceReaderFallback && !hasReaderMetadata && meaningfulWordCount === 0) {
+      return res.status(422).json({
+        success: false,
+        error: "Unable to generate Reader101 guide: zero usable script text and no role/title/genre metadata available.",
+      });
+    }
+
     // If we made it here, content is acceptable - log for monitoring
     if (contentQuality.quality === "low") {
       console.log("[GENERATION] Low quality content but proceeding:", {
@@ -2967,7 +3075,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         productionType: productionType.trim(),
         genre: genre || "",
         storyline: storyline || "",
-        fallbackMode: isFallbackGeneration,
+        fallbackMode: shouldForceReaderFallback,
       });
 
       console.log("✅ [Reader101] Reader guide complete!");
@@ -3758,10 +3866,13 @@ app.get("/api/health", (req, res) => {
     uploadsCount: Object.keys(uploads).length,
     adobeExtract:
       process.env.ADOBE_PDF_EXTRACT_ENABLED === "true" ? "enabled" : "disabled",
-    minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || "200", 10),
+    adobeImportError,
+    minExtractWords: 50,
     extraction: {
       adobeEnabled: process.env.ADOBE_PDF_EXTRACT_ENABLED === "true",
-      minExtractWords: parseInt(process.env.MIN_EXTRACT_WORDS || "200", 10),
+      adobeForceEnabled: process.env.ADOBE_FORCE_ENABLE === "true",
+      minExtractWords: 50,
+      lineSpecificWordThreshold: 100,
     },
     extractionTotals: extractionStats.totals,
     extractionLast: extractionStats.last,

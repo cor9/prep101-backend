@@ -58,7 +58,17 @@ function removeRepeatedLines(text) {
  * Implements the "Pivot to Fallback" logic if content is sparse.
  */
 function assessQuality(text) {
-  if (!text) return { quality: 'empty', usable: false, reason: 'No text extracted' };
+  if (!text) {
+    return {
+      quality: 'empty',
+      usable: false,
+      reason: 'No text extracted',
+      wordCount: 0,
+      ratio: 0,
+      shortButReadable: false,
+      fallbackRecommended: true,
+    };
+  }
 
   const words = text.split(/\s+/).filter(w => w.length > 0);
   const wordCount = words.length;
@@ -70,9 +80,12 @@ function assessQuality(text) {
   if (wordCount < 100) {
     return { 
       quality: 'too_short', 
-      usable: false, 
-      reason: 'Insufficient dialogue for line-specific guidance',
-      wordCount 
+      usable: true,
+      reason: 'Readable text is short, so deep line-specific coaching may be limited',
+      wordCount,
+      ratio,
+      shortButReadable: true,
+      fallbackRecommended: false,
     };
   }
 
@@ -82,11 +95,21 @@ function assessQuality(text) {
       quality: 'repetitive', 
       usable: false, 
       reason: 'Extracted text appears corrupted or overly repetitive',
-      ratio 
+      wordCount,
+      ratio,
+      shortButReadable: false,
+      fallbackRecommended: true,
     };
   }
 
-  return { quality: 'good', usable: true, wordCount, ratio };
+  return {
+    quality: 'good',
+    usable: true,
+    wordCount,
+    ratio,
+    shortButReadable: false,
+    fallbackRecommended: false,
+  };
 }
 
 /**

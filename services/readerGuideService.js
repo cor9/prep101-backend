@@ -8,137 +8,99 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+const fs = require("fs");
+const path = require("path");
 const fetch = require("node-fetch");
 const { DEFAULT_CLAUDE_MODEL, DEFAULT_CLAUDE_MAX_TOKENS } = require("../config/models");
 const { scrubWatermarks } = require("./textCleaner");
 
-// ─── System Prompt ──────────────────────────────────────────────────────────
+const READER_GUIDE_EXAMPLE_PATH = path.join(
+  __dirname,
+  "..",
+  "methodology",
+  "reader101_june_example.html"
+);
 
-const READER_SYSTEM_PROMPT = `You are Corey Ralston. Generate a READER SUPPORT GUIDE.
+const REQUIRED_SECTION_TITLES = [
+  "What Will Go Wrong",
+  "Why This Matters",
+  "Performance Engine",
+  "Scene Snapshot",
+  "Your Job",
+  "Playing Multiple Characters",
+  "Reader Fundamentals",
+  "Key Beats",
+  "Rhythm, Pace & Energy",
+  "Do This / Avoid This",
+  "Connection",
+  "Tone & Reference Anchor",
+  "Quick Reset",
+];
 
-CORE RULE: This is an operating manual, not a coaching essay. Every bullet must be a physical directive. 
+const READER_SYSTEM_PROMPT = `You are generating a Reader Support Guide using a STRICT production system.
 
-GLOBAL STYLE RULES:
-- All output must be scannable in under 10 seconds.
-- Bullet points ONLY. NO paragraphs.
-- One directive per bullet. Max 1 line. No multi-clause dash sentences.
-- Use physical, playable direction ONLY. No emotional or psychological explanation allowed in beats.
-- Never repeat guidance across sections.
-- Never include conflicting instructions.
+You MUST follow:
+- Exact section order
+- Exact tone rules
+- Exact formatting rules
+- HTML output only
 
-STRUCTURE (DO NOT DEVIATE):
+If any rule is violated, regenerate internally before responding.
 
-<p><strong>⚠️ Why This Matters</strong><br>
-State the one most critical outcome-based reason why the reader's energy determines the actor's success.
-Example: "If you soften too early → the scene collapses. If you stay steady → her vulnerability lands."</p>
+This is not optional.
 
-<h2>🎭 Performance Engine</h2>
-- Dynamic: [e.g. PULL or PUSH]
-- Role: [e.g. Safe, steady presence]
-- Do: [e.g. Stay open and calm]
-- Don't: [e.g. React emotionally or defend]
-- Result:
-  - [Action] → [Positive outcome for actor]
-  - [Mistake] → [Negative outcome for actor]
+QUALITY CHECK BEFORE OUTPUT:
 
-<h2>🎬 Scene Snapshot</h2>
-- Genre: [Name it]
-- Stakes: [What is at risk?]
-- Transition: [Start energy] vs [End energy]
+Ensure:
+- "What Will Go Wrong" includes exactly 3 bullets
+- Each bullet contains a failure + consequence
+- "Your Job" calls out WRONG instinct before RIGHT instruction
+- At least 2 lines include explicit consequence language ("If you...", "This kills...", "It falls apart...", etc.)
+- No repeated guidance across sections
+- Every bullet is a physical directive (playable)
 
-<h2>🎯 Your Job</h2>
-- 2-3 bullets max.
-- "Your job is to [Action]." e.g. "Your job is to be the immovable object."
+If not, rewrite before output.
 
-<h2>👥 Playing Multiple Characters (MANDATORY)</h2>
-- [Character name] → [energy + intention]
-- Shift intention, not voice. No accents. No acting.
+CORRUPTION DETECTION:
 
-<h2>🎯 Reader Fundamentals</h2>
-MANDATORY BLOCK. NO PARAPHRASING. COPIED EXACTLY:
-<ul>
-<li><strong>50% Rule:</strong> Your volume stays below the actor at all times.</li>
-<li>Avoid the <strong>Mouse</strong> (too quiet) and the <strong>Giant</strong> (too loud).</li>
-<li>Stay just <strong>off lens</strong> (left or right of camera).</li>
-<li><strong>3-foot rule:</strong> Maintain connection distance.</li>
-<li><strong>Anti-flat read:</strong> Give energy, don't perform.</li>
-<li><strong>Step away at take 5:</strong> Reset the room if needed.</li>
-<li>Let the <strong>actor teach the scene</strong> — follow their shifts.</li>
-<li>Separate <strong>parent from director</strong> — no notes between takes.</li>
-<li><strong>Set tech first</strong> — actor enters a ready space.</li>
-<li><strong>Performance Meditation:</strong> Enter the space together before "Action."</li>
-</ul>
+If extracted text is:
+- repetitive
+- timestamp-heavy
+- watermark-heavy
+- under 50 meaningful words
 
-<h2>🔑 Key Beats</h2>
-No emotional explanation allowed (e.g. "gives space to struggle"). Actions only.
-- Format: "Line prefix → [Action: Pause / Lower volume / Turn away / Heavy silence]."
+THEN:
+- IGNORE extracted text
+- Use Title, Genre, Role only
+- Generate a high-level Reader Guide
 
-<h2>🎤 How to Read</h2>
-- Keep volume warm and conversational.
-- Slow down during emotional moments.
-- Let silence do the work.
-- Do not react to emotional spikes.
+DO NOT return error unless ZERO context exists.
 
-<h2>🔊 Volume & Energy</h2>
-- "Stay below actor volume at all times."
-- "Never match emotional peaks."
-- "If you rise with the actor → the scene becomes noise."
-- "If you stay grounded → her emotion becomes real."
+Never output Markdown fences, JSON, commentary, or explanatory text before or after the HTML artifact.`;
 
-<h2>✅ Do This</h2>
-- 3 bullets max. Actions only.
-- "Hold eye contact."
-- "Stay physically still."
-- "Slight softening in eyes."
+function safeReadExampleHtml() {
+  try {
+    return fs.readFileSync(READER_GUIDE_EXAMPLE_PATH, "utf8");
+  } catch (error) {
+    console.warn("[ReaderGuide] Example HTML unavailable:", error.message);
+    return "";
+  }
+}
 
-<h2>❌ Avoid This</h2>
-- 3 bullets max. Mistake only.
-- "Leaning in emotionally."
-- "Filling silence."
-- "Speaking immediately after their beat."
+const READER_GUIDE_EXAMPLE_HTML = safeReadExampleHtml();
 
-<h2>👀 Connection (CRITICAL)</h2>
-No interpretation phrases. Physical instructions only.
-- Eye-line: [Specific target]
-- Presence: "Don't look at the script while the actor is talking."
-- Reaction: "Hold eye contact → Slight pause before responding."
+function stripCodeFences(text = "") {
+  return text
+    .replace(/^```(?:html)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+}
 
-<h2>🎧 Tone & Reference Anchor</h2>
-- 1-2 specific TV/Film references.
-- 1 Pacing note.
+function countMeaningfulWords(text = "") {
+  return (text.match(/\b[\w']+\b/g) || []).length;
+}
 
-<h2>🧠 Quick Reset</h2>
-- 3-4 blunt bullets for the moment right before "Action."
-
----
-
-CORRUPTION FALLBACK:
-If the script is unreadable:
-1. Provide guidance for Performance Engine, Fundamentals, and Tone based on Title/Genre.
-2. Note at top: "⚠️ Upload clearer sides for line-specific guidance."
-3. DO NOT use this fallback unless the script is truly illegible. If there are any readable lines, use them!
-4. Ignore any header/footer remnants like timestamps, page numbers, or project codes.`;
-
-
-// ─── Reader Fundamentals Block (always included) ────────────────────────────
-
-const READER_FUNDAMENTALS_HTML = `<h2>🎯 Reader Fundamentals</h2>
-<ul>
-<li><strong>50% Rule:</strong> Your volume should be roughly half the actor's — present enough to feel real, never loud enough to compete.</li>
-<li><strong>Avoid the Mouse:</strong> Too quiet = the actor has nothing to respond to. Stay present and engaged.</li>
-<li><strong>Avoid the Giant:</strong> Too loud or too emotive = you pull focus. The camera is on them, not you.</li>
-<li><strong>Stay next to the lens:</strong> Position yourself as close to the camera as possible so eye-line looks natural on screen.</li>
-<li><strong>3-Foot Rule:</strong> Stay within 3 feet of the actor — connection distance. Any farther and the scene feels disconnected on camera.</li>
-<li><strong>Anti-flat read:</strong> Give real energy — don't perform, but don't sleepwalk through it either.</li>
-<li><strong>Step away at Take 5:</strong> After 5–6 takes, step back and let the actor reset before you go again.</li>
-<li><strong>Let the actor teach the scene:</strong> If they try something different, follow them — don't anchor them to the first take.</li>
-<li><strong>Separate parent from director:</strong> No notes, no direction between takes. Your job ends when you say your line.</li>
-<li><strong>Performance Meditation:</strong> Before each take, both of you take 10 seconds of silence to enter the world of the scene.</li>
-</ul>`;
-
-// ─── User Prompt Builder ─────────────────────────────────────────────────────
-
-function buildReaderPrompt(data) {
+function buildReaderPrompt(data, validationFeedback = "") {
   const {
     sceneText,
     characterName,
@@ -146,126 +108,191 @@ function buildReaderPrompt(data) {
     productionType,
     genre,
     storyline,
+    fallbackMode,
   } = data;
 
-  let sidesContent = "";
-  if (data.fallbackMode) {
-    sidesContent = `⚠️ FALLBACK MODE ACTIVATED: The audition sides were not readable. 
-Generate a Reader Support Guide using character roles, genre, and tone. 
-Focus on reader dynamics for this type of project (e.g. ${genre || 'drama'}).
-Do NOT reference specific lines. Focus on pacing, interruptions, and silence behaviors.`;
-  } else {
-    sidesContent = `SIDES:\n${scrubWatermarks(sceneText)}`;
-  }
+  const cleanedSceneText = scrubWatermarks(sceneText || "").trim();
+  const meaningfulWordCount = countMeaningfulWords(cleanedSceneText);
 
-  return `Generate a Reader Support Guide for this self-tape session.
+  const metadataLines = [
+    characterName ? `ROLE: ${characterName}` : "",
+    productionTitle ? `TITLE: ${productionTitle}` : "",
+    productionType ? `FORMAT: ${productionType}` : "",
+    genre ? `GENRE: ${genre}` : "",
+    storyline ? `STORY / CONTEXT: ${storyline}` : "",
+  ].filter(Boolean);
 
-${productionTitle ? `PRODUCTION: ${productionTitle}` : ""}
-${productionType ? `TYPE: ${productionType}` : ""}
-${genre ? `GENRE: ${genre}` : ""}
-${storyline ? `CONTEXT: ${storyline}` : ""}
+  const readableSidesBlock = fallbackMode
+    ? `CORRUPTION FALLBACK IS ACTIVE.
+- Ignore extracted script text.
+- Build the guide from Title, Genre, Role, and any clean story metadata only.
+- Add this note near the top of the guide body: "⚠️ Upload clearer sides for line-specific guidance."
+- Do NOT quote lines or invent scene-specific dialogue.`
+    : `READABLE SIDES:
+${cleanedSceneText || "[No readable sides provided]"}`;
 
-${sidesContent}
+  return `READER SUPPORT GUIDE SYSTEM — CORE RULES
 
----
+OUTPUT FORMAT:
+- Always generate as a self-contained HTML artifact
+- Dark headers, white text, high contrast
+- Header colors: #633806, #085041, #4A1B0C, #2C2C2A, #791F1F
+- Header text always: #F1EFE8
+- Body text always: var(--color-text-primary)
+- Consequence lines in italic, muted, cause -> effect format throughout
+- Output ONLY HTML. No markdown fences.
 
-Generate the complete guide in EXACTLY this section order. Rules for every section:
-- Bullet points only (ul/li) — except the Why This Matters intro
-- Readable in under 5 seconds
-- Must answer: "What should the reader DO?"
-${data.fallbackMode ? '- Note at the top: "⚠️ We built this guide using character and tone metadata because the sides were unreadable."' : '- Must reference specific lines or beats from the sides — no generic advice'}
+MANDATORY SECTION ORDER:
+- ⚠️ What Will Go Wrong
+- 01 Why This Matters
+- 02 Performance Engine
+- 03 Scene Snapshot
+- 04 Your Job
+- 05 Playing Multiple Characters
+- 06 Reader Fundamentals
+- 07 Key Beats
+- 08 Rhythm, Pace & Energy
+- 09 Do This / Avoid This
+- 10 Connection
+- 11 Tone & Reference Anchor
+- 12 Quick Reset
 
----
+VOICE RULES:
+- Every bullet is a physical directive
+- Call out the WRONG instinct before giving the right one
+- Add consequences to critical beats
+- Friction over instruction
+- One directive per bullet
+- Max 1 line per bullet
+- Never repeat guidance across sections
+- Never include conflicting instructions
+- Every section must contain at least one high-stakes consequence frame
 
-<p><strong>⚠️ Why This Matters</strong><br>
-The way you read this scene directly affects how believable the performance feels.<br>
-What you do — and don't do — shows up on camera. Actors perform off of you.</p>
+SECTION-SPECIFIC REQUIREMENTS:
+- "What Will Go Wrong" leads the guide and contains exactly 3 bullets on a black background with red markers
+- "Your Job" must call out the wrong instinct before the right direction
+- "Playing Multiple Characters" is mandatory and must include the contrast line "If X and Y feel the same, the audition dies instantly"
+- "Reader Fundamentals" must be framed as where readers quietly ruin auditions
+- "Rhythm, Pace & Energy" is one merged section, never split into two
+- "Connection" must open with "NAME can only go as deep as you let them" or the closest natural name/pronoun adaptation
+- "Tone & Reference Anchor" must lead with consequence framing like "If you play it like X, it falls apart immediately"
 
-<h2>🎭 Performance Engine</h2>
-What is the push/pull dynamic in this scene?
-- Is the reader pushing (pressure, resistance, indifference) or pulling (warmth, curiosity, openness)?
-- Name the dynamic explicitly — e.g. "This is a PUSH scene. You are resistant and closed."
-- State when and if the dynamic shifts during the scene.
-- Tell the reader what happens to the actor's performance if they get this wrong.
+INPUT CONTEXT:
+${metadataLines.join("\n")}
+MEANINGFUL WORDS IN SIDES: ${meaningfulWordCount}
 
-<h2>🎬 Scene Snapshot</h2>
-4 bullets max. Each bullet = 1 short line.
-- Genre and tone (name it plainly)
-- What's at stake in this scene
-- Emotional temperature: where it starts vs. where it ends
-- What the actor needs most from you to land this
+${readableSidesBlock}
 
-<h2>🎯 Your Job</h2>
-3–4 bullets. Each starts with "Your job is to ___."
-Do NOT say "play the character." Describe the specific energy, pressure, or presence the reader brings so the actor has something real to respond to.
+${validationFeedback ? `REVISION REQUIRED:\n${validationFeedback}\n` : ""}
+STYLE + EXAMPLE:
+Use the visual system, class rhythm, and severity of this full June example as your taste reference.
+Do not copy its story specifics, line quotes, or character names unless they truly match the current sides.
 
-[INSERT_READER_FUNDAMENTALS]
+${READER_GUIDE_EXAMPLE_HTML || "[Example HTML unavailable in this environment.]"}
 
-<h2>🔑 Key Beats</h2>
-4–6 bullets. CRITICAL SECTION.
-Each bullet follows this format:
-"[Quote or close paraphrase of line] → [Exact instruction: pause, slow down, hold silence, lower volume] — [consequence for actor if you don't]"
-Reference actual lines from the sides. Be exact — no generalizations.
-
-<h2>🎤 How to Read</h2>
-4–5 bullets. Specific delivery behavior + how it affects the actor.
-No "be natural." No "just react." Name volume level, pace, emotional temperature.
-If a specific line needs different treatment, name it.
-
-<h2>🔊 Volume & Energy</h2>
-3–4 bullets. Scale relative to the actor — not the scene in abstract.
-- Where to stay under them (and why)
-- Where to match or push (and when)
-- One moment where going too big pulls focus off the actor
-- One moment where going flat kills the scene
-
-<h2>✅ Do This / ❌ Avoid This</h2>
-<strong>Do This:</strong>
-<ul>
-<li>3–5 bullets. Each tied to a specific moment. Format: "[Action] — this gives the actor [result]."</li>
-</ul>
-<strong>Avoid This:</strong>
-<ul>
-<li>3–5 bullets. Consequence required. Format: "If you [mistake], the actor loses [specific thing]."</li>
-</ul>
-
-<h2>👀 Connection (CRITICAL)</h2>
-3–4 bullets. Short. Blunt.
-- Eye-line: what it must be and when
-- What active listening looks like on camera vs. waiting for your cue
-- The cost of disconnecting — stated plainly
-- The one moment in this scene where connection is non-negotiable
-
-<h2>🎧 Tone & Reference Anchor</h2>
-2–3 bullets.
-- One TV/film reference the parent can immediately picture and feel: "Think [Show] — specifically [type of scene]."
-- One sentence on what the reader's energy should FEEL like (not sound like)
-- If the scene has strong genre cues (multi-cam comedy timing, dramatic pause culture, etc.), call it out specifically
-
-<h2>🧠 Quick Reset</h2>
-4–5 bullets. Parent reads this right before pressing record.
-One sentence each. No explanation needed. Make them feel sharp, focused, and clear on their job.
-
----
-
-Output ONLY the HTML. No \`\`\`html block. No text before or after.`;
+FINAL INSTRUCTIONS:
+- Build a fresh guide for THIS role and THIS material.
+- Reuse the same class naming and overall HTML approach as the example whenever possible.
+- If readable lines exist, anchor Key Beats and consequences to the actual text.
+- If fallback mode is active, stay high-level and do not fake line-specific analysis.
+- Return a complete HTML document with inline CSS and no extra commentary.`;
 }
 
-// ─── HTML Wrapper ────────────────────────────────────────────────────────────
+function extractSectionSlice(html, title, nextTitle) {
+  const start = html.indexOf(title);
+  if (start === -1) return "";
 
-function wrapReaderGuideHtml(rawContent, meta = {}) {
-  if (!rawContent) return "";
-
-  if (rawContent.includes("<html") && rawContent.includes("</html>")) {
-    return rawContent;
+  if (!nextTitle) {
+    return html.slice(start);
   }
 
-  const content = rawContent;
+  const end = html.indexOf(nextTitle, start + title.length);
+  return end === -1 ? html.slice(start) : html.slice(start, end);
+}
+
+function validateReaderGuideOutput(html) {
+  const cleaned = stripCodeFences(html);
+  const errors = [];
+
+  if (!/<html[\s>]/i.test(cleaned) || !/<\/html>/i.test(cleaned)) {
+    errors.push("Return a complete self-contained HTML document.");
+  }
+
+  if (!cleaned.includes("#F1EFE8")) {
+    errors.push("Header text color #F1EFE8 is missing.");
+  }
+
+  if (!cleaned.includes("var(--color-text-primary)")) {
+    errors.push("Body text must use var(--color-text-primary).");
+  }
+
+  const sectionPositions = REQUIRED_SECTION_TITLES.map((title) => ({
+    title,
+    index: cleaned.indexOf(title),
+  }));
+
+  if (sectionPositions.some((section) => section.index === -1)) {
+    const missing = sectionPositions
+      .filter((section) => section.index === -1)
+      .map((section) => section.title);
+    errors.push(`Missing required sections: ${missing.join(", ")}.`);
+  } else {
+    for (let i = 1; i < sectionPositions.length; i += 1) {
+      if (sectionPositions[i].index < sectionPositions[i - 1].index) {
+        errors.push("Sections are out of order.");
+        break;
+      }
+    }
+  }
+
+  const whatWillGoWrong = extractSectionSlice(
+    cleaned,
+    "What Will Go Wrong",
+    "Why This Matters"
+  );
+  const whatWillGoWrongBullets = (whatWillGoWrong.match(/<li\b/gi) || []).length;
+  if (whatWillGoWrongBullets !== 3) {
+    errors.push('"What Will Go Wrong" must include exactly 3 bullets.');
+  }
+
+  const consequenceMatches =
+    cleaned.match(/If you|This kills|kills the audition|falls apart immediately|you lose the scene|kill the emotional turn/gi) || [];
+  if (consequenceMatches.length < 2) {
+    errors.push("Add more explicit consequence language.");
+  }
+
+  const yourJobSection = extractSectionSlice(
+    cleaned,
+    "Your Job",
+    "Playing Multiple Characters"
+  );
+  if (!/wrong instinct|most readers|don't|do not|stop/gi.test(yourJobSection)) {
+    errors.push('"Your Job" must call out the wrong instinct first.');
+  }
+
+  if (!/the audition dies instantly/i.test(cleaned)) {
+    errors.push('Include the mandatory "the audition dies instantly" contrast line.');
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+  };
+}
+
+function wrapReaderGuideHtml(rawContent, meta = {}) {
+  const content = stripCodeFences(rawContent);
+  if (!content) return "";
+
+  if (content.includes("<html") && content.includes("</html>")) {
+    return content;
+  }
 
   const {
-    characterName = "Actor",
+    characterName = "Reader Guide",
     productionTitle = "",
     productionType = "",
+    fallbackMode = false,
   } = meta;
 
   return `<!DOCTYPE html>
@@ -273,132 +300,155 @@ function wrapReaderGuideHtml(rawContent, meta = {}) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reader Guide • ${characterName} — ${productionTitle}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <title>Reader Support Guide — ${characterName}${productionTitle ? ` | ${productionTitle}` : ""}</title>
   <style>
     :root {
-      --teal:    #14b8a6;
-      --teal-dk: #0d9488;
-      --ink:     #0f172a;
-      --slate:   #1e293b;
-      --mist:    #e2e8f0;
-      --amber:   #f59e0b;
-      --rose:    #f43f5e;
-      --violet:  #6366f1;
+      --color-bg: #121211;
+      --color-surface: #1A1A18;
+      --color-surface-soft: #23231F;
+      --color-border: rgba(241, 239, 232, 0.12);
+      --color-text-primary: #F1EFE8;
+      --color-text-muted: #B6AEA1;
+      --color-danger: #791F1F;
+      --color-amber: #633806;
+      --color-teal: #085041;
+      --color-coral: #4A1B0C;
+      --color-dark: #2C2C2A;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: var(--ink);
-      color: var(--mist);
-      font-family: "Inter", system-ui, sans-serif;
+      background: radial-gradient(circle at top, #232017 0%, var(--color-bg) 45%);
+      color: var(--color-text-primary);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.65;
+      padding: 24px 16px 48px;
     }
-    .rg-hero {
-      background: linear-gradient(135deg, var(--teal-dk) 0%, #0f4f57 100%);
-      padding: 3rem 1.5rem 4.5rem;
-      text-align: center;
+    .guide {
+      max-width: 880px;
+      margin: 0 auto;
+      background: rgba(18, 18, 17, 0.92);
+      border: 1px solid var(--color-border);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
     }
-    .rg-hero .eyebrow {
-      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.22em;
-      text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 0.75rem;
+    .guide-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--color-border);
+      background: linear-gradient(135deg, #1B1916 0%, #111 100%);
     }
-    .rg-hero h1 {
-      font-family: "Playfair Display", serif;
-      font-size: clamp(2rem, 4vw, 2.75rem); color: #fff; line-height: 1.2;
+    .guide-title {
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 600;
+      color: var(--color-text-primary);
     }
-    .rg-hero .sub {
-      margin-top: 0.5rem; font-size: 0.95rem; color: rgba(255,255,255,0.55);
-      letter-spacing: 0.08em; text-transform: uppercase;
+    .guide-sub {
+      margin-top: 6px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted);
     }
-    .rg-hero .badge {
-      display: inline-block; margin-top: 1.25rem;
-      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-      border-radius: 999px; padding: 0.35rem 1rem;
-      font-size: 0.78rem; font-weight: 600; color: #fff; letter-spacing: 0.08em;
+    .fallback-note {
+      margin: 20px 24px 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(249, 115, 22, 0.25);
+      background: rgba(121, 31, 31, 0.24);
+      color: var(--color-text-primary);
     }
-    .rg-shell { max-width: 820px; margin: -2.5rem auto 5rem; padding: 0 1.25rem; }
-    .rg-card {
-      background: var(--slate); border-radius: 20px;
-      padding: 2.75rem 2.5rem;
-      box-shadow: 0 30px 80px rgba(0,0,0,0.5);
-      border: 1px solid rgba(148,163,184,0.12);
+    .content {
+      padding: 24px;
     }
-    /* Why This Matters */
-    .rg-card > p:first-child {
-      background: rgba(244,63,94,0.1); border-left: 3px solid var(--rose);
-      border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 1.75rem;
-      font-size: 0.92rem; color: #fda4af; line-height: 1.6;
+    h2, h3 {
+      color: #F1EFE8;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      font-size: 16px;
+      letter-spacing: 0.02em;
     }
-    h2 {
-      font-size: 0.82rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.18em; color: var(--teal);
-      margin-top: 2.25rem; margin-bottom: 0.75rem;
-      padding-bottom: 0.4rem; border-bottom: 1px solid rgba(20,184,166,0.18);
+    p, li {
+      color: var(--color-text-primary);
+      font-size: 14px;
     }
-    h2:first-of-type { margin-top: 0; }
-    p { color: #cbd5e1; margin-bottom: 0.75rem; font-size: 0.93rem; }
-    ul { list-style: none; padding: 0; margin: 0 0 0.5rem 0; }
+    p {
+      margin-bottom: 12px;
+    }
+    ul {
+      list-style: none;
+      margin-bottom: 12px;
+    }
     li {
-      color: #cbd5e1; font-size: 0.92rem; padding: 0.38rem 0 0.38rem 1.1rem;
-      position: relative; line-height: 1.55;
-      border-bottom: 1px solid rgba(148,163,184,0.05);
+      padding-left: 16px;
+      position: relative;
+      margin-bottom: 8px;
     }
-    li:last-child { border-bottom: none; }
-    li::before { content: "→"; position: absolute; left: 0; color: var(--teal); font-size: 0.78rem; top: 0.44rem; }
-    strong { color: var(--amber); font-weight: 600; }
-    em { color: var(--teal); font-style: normal; font-weight: 500; }
-    .rg-footer {
-      text-align: center; padding: 2rem 1rem 3rem;
-      font-size: 0.78rem; color: rgba(148,163,184,0.35);
-      letter-spacing: 0.06em; text-transform: uppercase;
+    li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: var(--color-text-muted);
     }
-    @media (max-width: 600px) { .rg-card { padding: 1.5rem 1rem; } }
+    strong {
+      color: var(--color-text-primary);
+    }
+    .consequence,
+    em {
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+    .section {
+      margin-bottom: 18px;
+      padding: 18px;
+      border: 1px solid var(--color-border);
+      border-radius: 14px;
+      background: var(--color-surface);
+    }
+    .warn-box {
+      background: #090909;
+      border-left: 4px solid var(--color-danger);
+    }
+    .warn-box li::before {
+      content: "✕";
+      color: #E24B4A;
+    }
   </style>
 </head>
 <body>
-  <header class="rg-hero">
-    <p class="eyebrow">Reader Support Guide • PREP101</p>
-    <h1>${characterName}</h1>
-    <p class="sub">${productionTitle}${productionType ? ` · ${productionType}` : ""}</p>
-    <span class="badge">For the Parent / Reader</span>
-  </header>
-
-  <main class="rg-shell">
-    <article class="rg-card">
+  <div class="guide">
+    <div class="guide-header">
+      <div class="guide-title">Reader Support Guide — ${characterName}</div>
+      <div class="guide-sub">${productionTitle}${productionType ? ` · ${productionType}` : ""}</div>
+    </div>
+    ${fallbackMode ? '<div class="fallback-note">⚠️ Upload clearer sides for line-specific guidance.</div>' : ""}
+    <div class="content">
       ${content}
-    </article>
-  </main>
-
-  <footer class="rg-footer">
-    Generated by PREP101 · Reader Support Mode
-  </footer>
+    </div>
+  </div>
 </body>
 </html>`;
 }
-
-// ─── Main Generator ──────────────────────────────────────────────────────────
 
 async function generateReaderGuide(data) {
   const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
   if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
 
-  const userPrompt = buildReaderPrompt(data);
-
   console.log("📖 [ReaderGuide] Generating reader support guide...");
   console.log(`   Character: ${data.characterName}`);
   console.log(`   Production: ${data.productionTitle} (${data.productionType})`);
+  console.log(`   Fallback: ${Boolean(data.fallbackMode)}`);
 
   const maxRetries = 2;
   let lastError = null;
+  let validationFeedback = "";
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
       console.log(`🔄 [ReaderGuide] Attempt ${attempt}/${maxRetries}...`);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 180000);
+      const userPrompt = buildReaderPrompt(data, validationFeedback);
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         signal: controller.signal,
@@ -410,7 +460,7 @@ async function generateReaderGuide(data) {
         },
         body: JSON.stringify({
           model: DEFAULT_CLAUDE_MODEL,
-          max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 4000),
+          max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 7000),
           system: READER_SYSTEM_PROMPT,
           messages: [{ role: "user", content: userPrompt }],
         }),
@@ -420,9 +470,11 @@ async function generateReaderGuide(data) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`❌ [ReaderGuide] API Error (attempt ${attempt}): ${response.status} — ${errorText}`);
+        console.error(
+          `❌ [ReaderGuide] API Error (attempt ${attempt}): ${response.status} — ${errorText}`
+        );
         if (response.status === 504 && attempt < maxRetries) {
-          await new Promise((r) => setTimeout(r, attempt * 2000));
+          await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
           lastError = new Error(`Gateway timeout (attempt ${attempt})`);
           continue;
         }
@@ -430,32 +482,50 @@ async function generateReaderGuide(data) {
       }
 
       const result = await response.json();
+      const rawHtml = result?.content?.[0]?.text;
 
-      if (result.content && result.content[0] && result.content[0].text) {
-        const rawHtml = result.content[0].text;
-        
-        console.log(`✅ [ReaderGuide] Generated ${rawHtml.length} chars`);
-        return wrapReaderGuideHtml(rawHtml, {
-          characterName: data.characterName,
-          productionTitle: data.productionTitle,
-          productionType: data.productionType,
-        });
-      } else {
+      if (!rawHtml) {
         throw new Error("Invalid response format from Anthropic API");
       }
-    } catch (err) {
-      lastError = err;
-      if (err.name === "AbortError") {
-        console.error(`⏰ [ReaderGuide] Timeout on attempt ${attempt}`);
-        if (attempt < maxRetries) { await new Promise((r) => setTimeout(r, attempt * 2000)); continue; }
+
+      const cleanedHtml = stripCodeFences(rawHtml);
+      const validation = validateReaderGuideOutput(cleanedHtml);
+
+      if (!validation.ok) {
+        console.warn("[ReaderGuide] Validation failed:", validation.errors);
+        if (attempt < maxRetries) {
+          validationFeedback = validation.errors.map((error) => `- ${error}`).join("\n");
+          await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+          continue;
+        }
       }
+
+      console.log(`✅ [ReaderGuide] Generated ${cleanedHtml.length} chars`);
+
+      return wrapReaderGuideHtml(cleanedHtml, {
+        characterName: data.characterName,
+        productionTitle: data.productionTitle,
+        productionType: data.productionType,
+        fallbackMode: Boolean(data.fallbackMode),
+      });
+    } catch (error) {
+      lastError = error;
+      if (error.name === "AbortError") {
+        console.error(`⏰ [ReaderGuide] Timeout on attempt ${attempt}`);
+        if (attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
+          continue;
+        }
+      }
+
       if (attempt < maxRetries) {
-        console.log(`🔄 [ReaderGuide] Retrying: ${err.message}`);
-        await new Promise((r) => setTimeout(r, attempt * 2000));
+        console.log(`🔄 [ReaderGuide] Retrying: ${error.message}`);
+        await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
         continue;
       }
+
       console.error(`❌ [ReaderGuide] All ${maxRetries} attempts failed`);
-      throw err;
+      throw error;
     }
   }
 
@@ -466,4 +536,5 @@ module.exports = {
   generateReaderGuide,
   wrapReaderGuideHtml,
   READER_SYSTEM_PROMPT,
+  validateReaderGuideOutput,
 };

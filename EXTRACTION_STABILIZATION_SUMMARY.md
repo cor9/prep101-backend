@@ -15,6 +15,8 @@ We transitioned from an "error-on-failure" model to a **"pivot-on-failure"** mod
 - **Primary Engine**: Switched to a hardened `pdf-parse` base.
 - **Repetition Filter (Watermark Killer)**: Implemented `removeRepeatedLines` in `services/textCleaner.js`. This automatically identifies and deletes lines appearing 3+ times (timestamps, project codes like `B540LT`, and page headers).
 - **Quality Grader**: Added a unique-to-total word ratio check. If the ratio is < 0.25 (highly repetitive) or word count < 100, the system triggers **Fallback Mode**.
+- **OCR Rescue Path**: The upload route now escalates to OCR when cleaned extraction is still sparse, empty, or repetitive after the primary pass.
+- **Short Sides Handling**: Readable uploads under 100 words are now treated as limited-but-usable instead of automatically corrupted.
 
 ### 2. Intelligent Fallback Engine (Archetype Mode)
 Instead of failing, the system now returns `fallbackMode: true` and proceeds with generation:
@@ -30,3 +32,5 @@ Instead of failing, the system now returns `fallbackMode: true` and proceeds wit
 - **Adobe SDK**: Do not attempt to re-enable Adobe as primary without confirming `node_modules/@adobe/pdfservices-node-sdk/**` is accurately tracked or moving to a serverful environment (Railway/DigitalOcean).
 - **File Inclusion**: `vercel.json` now explicitly includes `services/**`, `config/**`, and `methodology/**` to prevent runtime "module not found" errors.
 - **Pathing**: Always use `path.join(process.cwd(), ...)` for required folders in the Vercel environment.
+- **Monitoring**: `/api/health` now exposes the last extraction method, fallback status, and method attempts; use that before guessing which stage failed.
+- **OCR Caveat**: OCR still depends on PDF-to-image conversion working in the runtime environment, so watch production logs if scanned PDFs remain weak.

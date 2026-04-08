@@ -40,6 +40,16 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Resolved guide database saving issues
 - Updated Account page to show real guides
 - Enhanced error handling and user feedback
+- Wired OCR into PDF upload rescue flow for sparse/image-heavy files
+- Stopped short-but-readable sides from auto-triggering fallback mode
+- Added extraction attempt tracking to `/api/health` diagnostics
+
+## Extraction Status (2026-04-08)
+- `pdf-parse` remains the primary extractor
+- Adobe extraction is now treated as an upgrade path when enabled and basic extraction is sparse
+- OCR is now invoked when cleaned extraction is still sparse, empty, or repetitive
+- Short readable sides under 100 words are allowed through without forcing archetype fallback
+- Remaining risk: OCR depends on image conversion support in the deploy environment, so production monitoring still matters
 
 ## Architecture Decision Needed
 - Migrate to intended Next.js + Airtable architecture?
