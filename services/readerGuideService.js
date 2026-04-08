@@ -37,6 +37,29 @@ const REQUIRED_SECTION_TITLES = [
   "Quick Reset",
 ];
 
+const HIGH_RISK_TRIGGERS = [
+  "sex",
+  "porn",
+  "touches",
+  "orgasm",
+  "horny",
+  "bed",
+  "watching",
+  "intimate",
+  "shame",
+  "shamed",
+  "ashamed",
+  "embarrassed",
+  "power imbalance",
+  "older man",
+  "older woman",
+  "teacher",
+  "coach",
+  "boss",
+  "superior",
+  "subordinate",
+];
+
 const INTIMACY_TRIGGERS = [
   "porn",
   "sex",
@@ -75,6 +98,34 @@ const INTIMACY_AFTERMATH_TRIGGERS = [
   "aftermath",
   "silence after",
   "exposed",
+];
+
+const MORAL_CONTRADICTION_TRIGGERS = [
+  "lies",
+  "lying",
+  "betrays",
+  "betrayal",
+  "hides",
+  "secret",
+  "ashamed",
+  "guilty",
+  "guilt",
+  "wrong",
+  "crossed a line",
+];
+
+const POWER_IMBALANCE_TRIGGERS = [
+  "teacher",
+  "coach",
+  "principal",
+  "boss",
+  "manager",
+  "older",
+  "senior",
+  "authority",
+  "in charge",
+  "controls",
+  "pressures",
 ];
 
 const READER_SYSTEM_PROMPT = `You are generating a Reader Support Guide using a STRICT production system.
@@ -116,6 +167,26 @@ THEN:
 
 DO NOT return error unless ZERO context exists.
 
+HIGH-RISK SCENE HANDLER:
+
+When a scene includes sexual content, moral contradiction, shame transitions, or power imbalance:
+- Elevate the guidance immediately
+- Inject intimacy/high-risk handling
+- Map the emotional arc explicitly
+- Increase consequence density
+
+Scene Risk Flag:
+This scene contains behavior that may cause reader discomfort. That discomfort must NOT affect delivery.
+
+Reader Responsibility Upgrade:
+Your job is not to make this comfortable. Your job is to make it playable.
+
+Emotional Arc Callout:
+This scene lives or dies on the transition:
+curiosity -> participation -> awareness -> shame
+
+If the reader flattens or rushes any part of that, the arc disappears.
+
 Never output Markdown fences, JSON, commentary, or explanatory text before or after the HTML artifact.`;
 
 function safeReadExampleHtml() {
@@ -138,6 +209,11 @@ function stripCodeFences(text = "") {
 
 function countMeaningfulWords(text = "") {
   return (text.match(/\b[\w']+\b/g) || []).length;
+}
+
+function isHighRiskScene(content = "") {
+  const normalized = String(content || "").toLowerCase();
+  return HIGH_RISK_TRIGGERS.some((word) => normalized.includes(word));
 }
 
 function detectIntimacy(content = "") {
@@ -168,16 +244,35 @@ function buildReaderModeContext(data = {}) {
     .filter(Boolean)
     .join("\n");
 
+  const highRiskScene = isHighRiskScene(combinedContent);
   const intimacyMode = detectIntimacy(combinedContent);
   const actorAge = Number.parseInt(data.actorAge, 10);
   const parentContext = /parent/i.test(combinedContent) || (!Number.isNaN(actorAge) && actorAge < 18);
+  const moralContradiction = MORAL_CONTRADICTION_TRIGGERS.some((word) =>
+    combinedContent.toLowerCase().includes(word)
+  );
+  const powerImbalance = POWER_IMBALANCE_TRIGGERS.some((word) =>
+    combinedContent.toLowerCase().includes(word)
+  );
+  const shameTransition =
+    /shame|ashamed|embarrassed|exposed/i.test(combinedContent) ||
+    detectIntimacyArc(combinedContent);
+  const highRiskSignal =
+    highRiskScene || intimacyMode || moralContradiction || shameTransition || powerImbalance;
 
   return {
-    mode: intimacyMode ? "INTIMACY" : "STANDARD",
+    mode: highRiskSignal ? "HIGH_RISK" : "STANDARD",
+    highRiskScene: highRiskSignal,
     intimacyMode,
     intimacyArc: intimacyMode && detectIntimacyArc(combinedContent),
     actorAge: Number.isNaN(actorAge) ? null : actorAge,
     parentContext,
+    moralContradiction,
+    powerImbalance,
+    shameTransition,
+    fosterStyleScene:
+      /foster/i.test(combinedContent) &&
+      (highRiskScene || intimacyMode || shameTransition),
   };
 }
 
@@ -237,7 +332,8 @@ OUTPUT FORMAT:
 
 MANDATORY SECTION ORDER:
 - ⚠️ What Will Go Wrong
-${modeContext.intimacyMode ? "- ⚠️ When the Scene Crosses Into Intimacy" : ""}
+${modeContext.highRiskScene ? "- ⚠️ When the Scene Crosses Into Intimacy" : ""}
+${modeContext.highRiskScene ? "- Emotional Arc Mapping" : ""}
 - 01 Why This Matters
 - 02 Performance Engine
 - 03 Scene Snapshot
@@ -261,7 +357,7 @@ VOICE RULES:
 - Never repeat guidance across sections
 - Never include conflicting instructions
 - Every section must contain at least one high-stakes consequence frame
-${modeContext.intimacyMode ? "- Every bullet must follow ACTION -> CONSEQUENCE" : ""}
+${modeContext.highRiskScene ? "- Every bullet must follow ACTION -> CONSEQUENCE" : ""}
 
 SECTION-SPECIFIC REQUIREMENTS:
 - "What Will Go Wrong" leads the guide and contains exactly 3 bullets on a black background with red markers
@@ -271,15 +367,33 @@ SECTION-SPECIFIC REQUIREMENTS:
 - "Rhythm, Pace & Energy" is one merged section, never split into two
 - "Connection" must open with "NAME can only go as deep as you let them" or the closest natural name/pronoun adaptation
 - "Tone & Reference Anchor" must lead with consequence framing like "If you play it like X, it falls apart immediately"
-${modeContext.intimacyMode ? `- Add the section "⚠️ When the Scene Crosses Into Intimacy" directly after "What Will Go Wrong"
+${modeContext.highRiskScene ? `- Add the section "⚠️ When the Scene Crosses Into Intimacy" directly after "What Will Go Wrong"
+- Add the section "Emotional Arc Mapping" directly after the intimacy section
 - In "What Will Go Wrong", force-add the failures: pulling back due to discomfort, rushing intimate beats, judging the material
 - Disable comedic framing and force grounded realism throughout
 - Increase consequence density across the guide
+- Add this exact warning near the top of the high-risk guidance:
+  This scene contains behavior that may cause reader discomfort. That discomfort must NOT affect delivery.
+- Add this exact line:
+  Your job is not to make this comfortable. Your job is to make it playable.
+- Add this exact line:
+  This moment may feel uncomfortable. Do not adjust your performance to avoid that discomfort.
 - Always include these exact lines somewhere in the intimacy guide:
   Reader does NOT simulate physical behavior
   Reader provides emotional grounding only
+- In "Emotional Arc Mapping", include this transition line exactly:
+  curiosity -> participation -> awareness -> shame
 ${modeContext.parentContext ? "- Add this exact note in the intimacy section: This may feel uncomfortable. Stay neutral and professional." : ""}
-${modeContext.intimacyArc ? "- Track the emotional arc as: build -> tension -> exposure -> shame -> exit" : ""}` : ""}
+${modeContext.intimacyArc ? "- Track the emotional arc as: build -> tension -> exposure -> shame -> exit" : ""}
+${modeContext.fosterStyleScene ? `- Add a subsection or bullet block labeled "Scene 3 — Critical Reader Adjustment"
+- In that block, include all of these directives:
+  Treat the sexual content as behavior, not spectacle
+  Do not add humor or commentary to defuse discomfort
+  Stay vocally neutral — no judgment, no distancing
+  Allow stillness — this moment should feel contained, not rushed
+  Track the shift into shame — this is the scene
+- Add this exact consequence:
+  If you rush or soften this moment, Foster's entire psychological turn disappears.` : ""}` : ""}
 
 INPUT CONTEXT:
 ${metadataLines.join("\n")}
@@ -300,7 +414,7 @@ FINAL INSTRUCTIONS:
 - Reuse the same class naming and overall HTML approach as the example whenever possible.
 - If readable lines exist, anchor Key Beats and consequences to the actual text.
 - If fallback mode is active, stay high-level and do not fake line-specific analysis.
-- If MODE is INTIMACY, build an Intimacy Protocol Guide without sanitizing the material.
+- If MODE is HIGH_RISK, elevate the guidance and do not sanitize the material.
 - Return a complete HTML document with inline CSS and no extra commentary.`;
 }
 
@@ -381,15 +495,30 @@ function validateReaderGuideOutput(html, options = {}) {
     errors.push('Include the mandatory "the audition dies instantly" contrast line.');
   }
 
-  if (modeContext.intimacyMode) {
+  if (modeContext.highRiskScene) {
     if (!/When the Scene Crosses Into Intimacy/i.test(cleaned)) {
       errors.push('Add the intimacy section "When the Scene Crosses Into Intimacy".');
+    }
+    if (!/Emotional Arc Mapping/i.test(cleaned)) {
+      errors.push('Add the "Emotional Arc Mapping" section.');
     }
     if (!/Reader does NOT simulate physical behavior/i.test(cleaned)) {
       errors.push('Include the exact role-lock line "Reader does NOT simulate physical behavior".');
     }
     if (!/Reader provides emotional grounding only/i.test(cleaned)) {
       errors.push('Include the exact role-lock line "Reader provides emotional grounding only".');
+    }
+    if (!/This scene contains behavior that may cause reader discomfort\. That discomfort must NOT affect delivery\./i.test(cleaned)) {
+      errors.push("Include the scene risk flag warning.");
+    }
+    if (!/Your job is not to make this comfortable\. Your job is to make it playable\./i.test(cleaned)) {
+      errors.push("Include the reader responsibility upgrade line.");
+    }
+    if (!/This moment may feel uncomfortable\. Do not adjust your performance to avoid that discomfort\./i.test(cleaned)) {
+      errors.push("Include the forced discomfort line.");
+    }
+    if (!/curiosity\s*[-=]?>\s*participation\s*[-=]?>\s*awareness\s*[-=]?>\s*shame/i.test(cleaned)) {
+      errors.push("Include the high-risk emotional arc transition.");
     }
     if (modeContext.parentContext && !/This may feel uncomfortable\. Stay neutral and professional\./i.test(cleaned)) {
       errors.push("Include the parent/minor professionalism note.");
@@ -407,6 +536,17 @@ function validateReaderGuideOutput(html, options = {}) {
     }
     if (!/judging the material|judge/i.test(intimacyWarnings)) {
       errors.push('Add the judging-the-material failure to "What Will Go Wrong".');
+    }
+    if (modeContext.fosterStyleScene) {
+      if (!/Scene 3\s*[-—]\s*Critical Reader Adjustment/i.test(cleaned)) {
+        errors.push('Add the "Scene 3 — Critical Reader Adjustment" block.');
+      }
+      if (!/Treat the sexual content as behavior, not spectacle/i.test(cleaned)) {
+        errors.push("Add the Scene 3 behavior-not-spectacle directive.");
+      }
+      if (!/If you rush or soften this moment, Foster's entire psychological turn disappears\./i.test(cleaned)) {
+        errors.push("Add the Foster psychological-turn consequence line.");
+      }
     }
   }
 

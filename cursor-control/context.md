@@ -56,6 +56,9 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Intimacy mode injects a required handling section, disables comedic framing, and locks the reader to emotional grounding rather than simulated physicality
 - Minor/parent context now adds a professionalism note for intimate material
 - Partial intimate text now pivots to an intimacy protocol guide instead of generic fallback
+- Reader101 now elevates any high-risk scene involving sexual content, moral contradiction, shame transitions, or power imbalance
+- High-risk mode forces the scene-risk warning, playability framing, explicit emotional arc mapping, and consequence-heavy directives
+- Foster-style scenes now require a Scene 3 critical adjustment block centered on shame and neutrality
 
 ## Architecture Decision Needed
 - Migrate to intended Next.js + Airtable architecture?

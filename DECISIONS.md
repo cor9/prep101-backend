@@ -17,3 +17,8 @@
 **Issue:** Reader101 was treating intimate material like standard reader coaching, which risks sanitizing the scene or pushing readers into the wrong kind of participation.
 **Decision:** Added intimacy detection, an intimacy-only section, stricter consequence-based prompt rules, exact role-lock language, parent/minor professionalism guidance, and an intimacy-specific fallback path for partial text.
 **Status:** Success
+
+## 2026-04-08
+**Issue:** Reader101 still needed stronger system-level handling for high-risk scenes involving shame, moral contradiction, and power imbalance, not just obvious intimacy keywords.
+**Decision:** Added a high-risk scene classifier, injected system-level discomfort/playability language, forced emotional arc mapping, and required Foster-style Scene 3 adjustments for shame-heavy material.
+**Status:** Success
