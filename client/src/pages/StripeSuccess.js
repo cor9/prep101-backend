@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useAuth } from '../contexts/AuthContext';
+import API_BASE from '../config/api';
 import '../App.css';
 
 const StripeSuccess = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [countdown, setCountdown] = useState(3);
+  const [syncMessage, setSyncMessage] = useState('Syncing your subscription...');
 
   useEffect(() => {
     // Start countdown and redirect
@@ -22,6 +26,51 @@ const StripeSuccess = () => {
     return () => clearInterval(timer);
   }, [navigate]);
 
+  useEffect(() => {
+    const token = user?.accessToken || user?.token || localStorage.getItem('prep101_token');
+    if (!token) {
+      setSyncMessage('Processing your purchase...');
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncSubscription = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/stripe/sync-subscription`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (cancelled) return;
+
+        if (response.ok && result?.success) {
+          if (result.synced) {
+            setSyncMessage('Your subscription is active and linked to your account.');
+          } else {
+            setSyncMessage('Purchase received. Finalizing account access...');
+          }
+        } else {
+          setSyncMessage('Purchase received. Finishing account setup...');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSyncMessage('Purchase received. Finishing account setup...');
+        }
+      }
+    };
+
+    syncSubscription();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   return (
     <div className="stripe-success-container">
       <div className="stripe-success-content">
@@ -36,6 +85,7 @@ const StripeSuccess = () => {
         <div className="processing-message">
           <LoadingSpinner size="medium" />
           <p>Processing your purchase...</p>
+          <p>{syncMessage}</p>
           <p className="countdown">Redirecting to dashboard in {countdown} seconds</p>
         </div>
         

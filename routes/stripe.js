@@ -3,8 +3,81 @@ const { body, validationResult } = require('express-validator');
 const auth = require('../middleware/auth');
 const stripeService = require('../services/stripeService');
 const User = require('../models/User');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const {
+  runAdminQuery,
+  tables,
+  normalizeUserRow,
+} = require('../lib/supabaseAdmin');
 
 const router = express.Router();
+
+function normalizeEmail(email) {
+  return typeof email === 'string' ? email.trim().toLowerCase() : null;
+}
+
+async function findUserRecord(req) {
+  if (User && req.userId) {
+    try {
+      const row = await User.findByPk(req.userId);
+      if (row) return { source: 'sequelize', row };
+    } catch (error) {
+      console.error('Sequelize user lookup failed during Stripe sync:', error.message);
+    }
+  }
+
+  const userId = req.userId || req.user?.id;
+  if (!userId) return null;
+
+  const row = await runAdminQuery(async (client) => {
+    const { data, error } = await client
+      .from(tables.users)
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  });
+
+  return row ? { source: 'supabase', row: normalizeUserRow(row) } : null;
+}
+
+async function updateUserRecord(userRef, updates) {
+  if (!userRef) return null;
+
+  if (userRef.source === 'sequelize') {
+    await userRef.row.update(updates);
+    await userRef.row.reload();
+    return { source: 'sequelize', row: userRef.row };
+  }
+
+  const row = await runAdminQuery(async (client) => {
+    const { data, error } = await client
+      .from(tables.users)
+      .update(updates)
+      .eq('id', userRef.row.id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data;
+  });
+
+  return { source: 'supabase', row: normalizeUserRow(row) };
+}
+
+function selectBestSubscription(subscriptions) {
+  if (!Array.isArray(subscriptions) || subscriptions.length === 0) return null;
+
+  const rankedStatuses = ['active', 'trialing', 'past_due', 'unpaid', 'canceled', 'incomplete'];
+  return [...subscriptions].sort((a, b) => {
+    const statusRankA = rankedStatuses.indexOf(a.status);
+    const statusRankB = rankedStatuses.indexOf(b.status);
+    if (statusRankA !== statusRankB) return statusRankA - statusRankB;
+    return (b.created || 0) - (a.created || 0);
+  })[0];
+}
 
 // GET /api/stripe/prices - Get available subscription prices
 router.get('/prices', async (req, res) => {
@@ -160,6 +233,125 @@ router.get('/subscription-status', auth, async (req, res) => {
     res.status(500).json({ 
       message: 'Failed to get subscription status',
       error: error.message 
+    });
+  }
+});
+
+// POST /api/stripe/sync-subscription - Reconcile logged-in user with Stripe
+router.post('/sync-subscription', auth, async (req, res) => {
+  try {
+    const userRef = await findUserRecord(req);
+    if (!userRef) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const email = normalizeEmail(userRef.row.email || req.user?.email);
+    let customerId = userRef.row.stripeCustomerId || userRef.row.customerId || null;
+
+    if (!customerId && email) {
+      const customers = await stripe.customers.list({ email, limit: 10 });
+      const customer = customers.data.find((entry) => !entry.deleted) || null;
+      customerId = customer?.id || null;
+    }
+
+    if (!customerId) {
+      return res.json({
+        success: true,
+        synced: false,
+        reason: 'no_customer_found',
+        user: {
+          id: userRef.row.id,
+          email: userRef.row.email,
+          subscription: userRef.row.subscription,
+          subscriptionStatus: userRef.row.subscriptionStatus,
+          guidesLimit: userRef.row.guidesLimit,
+          guidesUsed: userRef.row.guidesUsed,
+        },
+      });
+    }
+
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+      limit: 10,
+      expand: ['data.items.data.price'],
+    });
+
+    const subscription = selectBestSubscription(subscriptions.data);
+    if (!subscription) {
+      const updatedUser = await updateUserRecord(userRef, {
+        customerId,
+        stripeCustomerId: customerId,
+      });
+
+      return res.json({
+        success: true,
+        synced: false,
+        reason: 'no_subscription_found',
+        user: {
+          id: updatedUser.row.id,
+          email: updatedUser.row.email,
+          subscription: updatedUser.row.subscription,
+          subscriptionStatus: updatedUser.row.subscriptionStatus,
+          guidesLimit: updatedUser.row.guidesLimit,
+          guidesUsed: updatedUser.row.guidesUsed,
+          stripeCustomerId: updatedUser.row.stripeCustomerId,
+        },
+      });
+    }
+
+    const priceIds = (subscription.items?.data || [])
+      .map((item) => item?.price?.id)
+      .filter(Boolean);
+    const primaryPriceId = priceIds[0] || null;
+    const inferredSubscription = primaryPriceId
+      ? stripeService.getSubscriptionFromPriceId(primaryPriceId)
+      : 'premium';
+    const guidesLimit = stripeService.getGuidesLimitFromSubscription(inferredSubscription);
+
+    const updatedUser = await updateUserRecord(userRef, {
+      customerId,
+      stripeCustomerId: customerId,
+      subscriptionId: subscription.id,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: primaryPriceId,
+      subscription: inferredSubscription,
+      subscriptionStatus: subscription.status,
+      guidesLimit,
+      currentPeriodStart: subscription.current_period_start
+        ? new Date(subscription.current_period_start * 1000).toISOString()
+        : null,
+      currentPeriodEnd: subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null,
+    });
+
+    return res.json({
+      success: true,
+      synced: true,
+      user: {
+        id: updatedUser.row.id,
+        email: updatedUser.row.email,
+        subscription: updatedUser.row.subscription,
+        subscriptionStatus: updatedUser.row.subscriptionStatus,
+        guidesLimit: updatedUser.row.guidesLimit,
+        guidesUsed: updatedUser.row.guidesUsed,
+        stripeCustomerId: updatedUser.row.stripeCustomerId,
+        stripeSubscriptionId: updatedUser.row.stripeSubscriptionId,
+        stripePriceId: updatedUser.row.stripePriceId,
+      },
+      subscription: {
+        id: subscription.id,
+        status: subscription.status,
+        priceIds,
+      },
+    });
+  } catch (error) {
+    console.error('Error syncing subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to sync subscription',
+      error: error.message,
     });
   }
 });

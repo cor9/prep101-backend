@@ -128,7 +128,9 @@ async function backfillStripeLink(userRef, { customerId = null, subscriptionId =
 
   const updates = {};
   if (customerId && !userRef.row.stripeCustomerId) updates.stripeCustomerId = customerId;
+  if (customerId && !userRef.row.customerId) updates.customerId = customerId;
   if (subscriptionId && !userRef.row.stripeSubscriptionId) updates.stripeSubscriptionId = subscriptionId;
+  if (subscriptionId && !userRef.row.subscriptionId) updates.subscriptionId = subscriptionId;
   if (priceId && !userRef.row.stripePriceId) updates.stripePriceId = priceId;
 
   if (!Object.keys(updates).length) return userRef;
@@ -203,7 +205,9 @@ async function handleSubscriptionCreated(subscription) {
     const guidesLimit = inferGuidesLimit(subscriptionTier);
 
     await updateWrappedUser(userRef, {
+      customerId: subscription.customer,
       stripeCustomerId: subscription.customer,
+      subscriptionId: subscription.id,
       stripeSubscriptionId: subscription.id,
       stripePriceId: priceId,
       subscription: subscriptionTier,
@@ -248,7 +252,9 @@ async function handleSubscriptionUpdated(subscription) {
     const guidesLimit = inferGuidesLimit(subscriptionTier);
 
     await updateWrappedUser(userRef, {
+      customerId: subscription.customer,
       stripeCustomerId: subscription.customer,
+      subscriptionId: subscription.id,
       stripeSubscriptionId: subscription.id,
       stripePriceId: priceId,
       subscriptionStatus: subscription.status,
