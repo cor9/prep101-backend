@@ -88,6 +88,7 @@ router.post("/generate", auth, async (req, res) => {
       modifier = null,   // null | 'wilder' | 'take2' | 'spin'
       spinAgain = false,
       previousGenerationId = null, // enables spin-aware generation
+      fallbackMode = false,
     } = req.body;
 
     // ── Validation ──────────────────────────────────────────────────────────
@@ -176,6 +177,7 @@ router.post("/generate", auth, async (req, res) => {
       storyline,
       modifier: actualModifier,
       spinAgain: actualSpinAgain,
+      fallbackMode,
       previousOutputSummary, // injected into prompt for spin-aware variation
     };
 

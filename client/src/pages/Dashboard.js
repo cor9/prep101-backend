@@ -222,6 +222,7 @@ const Dashboard = () => {
         filename: uploadData.filename,
         wordCount: uploadData.wordCount,
         characterNames: uploadData.characterNames,
+        fallbackMode: uploadData.fallbackMode || false,
         ...formData,
       };
 

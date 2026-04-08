@@ -268,6 +268,7 @@ const BoldChoices = () => {
         sceneText,
         preview: isPreview,
         format: "html",
+        fallbackMode: uploadData?.fallbackMode || false,
       };
 
       const res = await fetch(`${API_BASE}/api/bold-choices/generate`, {
