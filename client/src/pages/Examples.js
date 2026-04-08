@@ -17,6 +17,16 @@ const Examples = () => {
       heading: 'Reader101 Example 02',
       sub: 'Reader support guide artifact',
       href: 'https://claude.ai/public/artifacts/b59ca4c0-8704-4b5e-97a2-a4854a95a038'
+    },
+    {
+      heading: 'Reader101 Example 03',
+      sub: 'Reader support guide artifact',
+      href: 'https://claude.ai/public/artifacts/71bb1408-32fc-486a-a9b4-404e4b975fd1'
+    },
+    {
+      heading: 'Reader101 Example 04',
+      sub: 'Reader support guide artifact',
+      href: 'https://claude.ai/public/artifacts/12b76d6c-4074-4c72-91e7-1237abe891bc'
     }
   ];
 
