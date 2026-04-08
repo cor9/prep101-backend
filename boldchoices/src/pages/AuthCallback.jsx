@@ -15,6 +15,7 @@ export default function AuthCallback() {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     const redirect = params.get('redirect') || '/generate';
+    const retryCount = Number(params.get('retry') || '0');
 
     const run = async () => {
       if (token) {
@@ -23,12 +24,17 @@ export default function AuthCallback() {
           if (active) navigate(redirect, { replace: true });
         } catch (_) {
           if (active) {
-            const callbackUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}`;
+            if (retryCount >= 1) {
+              navigate('/login', { replace: true });
+              return;
+            }
+
+            const callbackUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}&retry=${retryCount + 1}`;
             window.location.href = `https://prep101.site/auth-bridge?redirect=${encodeURIComponent(callbackUrl)}`;
           }
         }
       } else {
-        const callbackUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}`;
+        const callbackUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}&retry=${retryCount}`;
         window.location.href = `https://prep101.site/auth-bridge?redirect=${encodeURIComponent(callbackUrl)}`;
       }
     };
