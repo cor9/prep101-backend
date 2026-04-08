@@ -116,12 +116,17 @@ function renderSceneSnapshot(scenes = []) {
 function renderFallbackNote(data = {}) {
   const notes = [];
 
-  if (data.fallbackMode) {
-    notes.push("⚠️ Limited script text detected. Upload clearer sides for line-specific detail.");
-  }
-
   if (Array.isArray(data.warnings)) {
-    notes.push(...data.warnings.map((warning) => normalizeLine(warning)).filter(Boolean));
+    notes.push(
+      ...data.warnings
+        .map((warning) => normalizeLine(warning))
+        .filter(
+          (warning) =>
+            warning &&
+            !/limited script text detected/i.test(warning) &&
+            !/upload clearer sides for line-specific detail/i.test(warning)
+        )
+    );
   }
 
   if (!notes.length) {

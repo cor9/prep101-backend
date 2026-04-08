@@ -1,7 +1,6 @@
 const assert = require("assert");
 const {
   __private: { evaluateExtraction, resolvePipelineResult },
-  LIMITED_SCRIPT_WARNING,
   IMAGE_BASED_READING_MESSAGE,
 } = require("../services/pdfIngestPipeline");
 
@@ -91,10 +90,9 @@ No. Keep driving ${index + 1}.
     ocrStage: stage("ocr", "", 50, "ocr"),
     visionStage: stage("vision", "", 1, "vision"),
   });
-  assert.ok(
-    case5.warnings.includes(LIMITED_SCRIPT_WARNING),
-    "All-fail case should surface the limited-text warning"
-  );
+  assert.equal(case5.limited, true, "All-fail case should remain internally limited");
+  assert.deepEqual(case5.warnings, [], "All-fail case should not surface a limited-text warning");
+  assert.equal(case5.uploadMessage, null, "All-fail case should not send user-facing fallback copy");
 
   console.log("pdf ingest pipeline routing tests passed");
 }

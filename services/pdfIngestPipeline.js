@@ -19,8 +19,6 @@ try {
   extractWithAdobe = null;
 }
 
-const LIMITED_SCRIPT_WARNING =
-  "⚠️ Limited script text detected. Guide generated from available context. Upload clearer sides for line-specific detail.";
 const IMAGE_BASED_READING_MESSAGE =
   "This file's formatting is interfering with text extraction. We're switching to image-based reading to recover the script.";
 
@@ -458,13 +456,11 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
       text: visionStage.text,
       source: "vision",
       confidence: buildConfidence(visionStage.wordCount, "vision", limited),
-      warnings: limited
-        ? [IMAGE_BASED_READING_MESSAGE, LIMITED_SCRIPT_WARNING]
-        : [IMAGE_BASED_READING_MESSAGE],
+      warnings: [IMAGE_BASED_READING_MESSAGE],
       characterNames: visionStage.characterNames,
       wordCount: visionStage.wordCount,
       limited,
-      uploadMessage: limited ? LIMITED_SCRIPT_WARNING : IMAGE_BASED_READING_MESSAGE,
+      uploadMessage: IMAGE_BASED_READING_MESSAGE,
       diagnostics: { textStage, ocrStage, visionStage },
     };
   }
@@ -475,14 +471,14 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
       .sort((a, b) => (b?.wordCount || 0) - (a?.wordCount || 0))[0] || textStage;
 
   return {
-    text: bestStage?.text || "Limited script text detected.",
+    text: bestStage?.text || "",
     source: bestStage?.source || "vision",
     confidence: "low",
-    warnings: [LIMITED_SCRIPT_WARNING],
+    warnings: [],
     characterNames: bestStage?.characterNames || [],
     wordCount: bestStage?.wordCount || 0,
     limited: true,
-    uploadMessage: LIMITED_SCRIPT_WARNING,
+    uploadMessage: null,
     diagnostics: { textStage, ocrStage, visionStage },
   };
 }
@@ -508,7 +504,6 @@ async function ingestPdf(pdfBuffer, options = {}) {
 }
 
 module.exports = {
-  LIMITED_SCRIPT_WARNING,
   IMAGE_BASED_READING_MESSAGE,
   ingestPdf,
   __private: {
