@@ -25,7 +25,7 @@ const FileUpload = ({ onUpload }) => {
     formData.append('file', file);
 
     try {
-      const token = localStorage.getItem('token'); // Basic auth check
+      const token = localStorage.getItem('prep101_token');
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
       const response = await fetch(`${API_BASE}/api/upload`, {
@@ -34,20 +34,20 @@ const FileUpload = ({ onUpload }) => {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Upload failed');
+      }
 
       if (data.success) {
         onUpload(data);
       } else {
-        throw new Error(data.message || 'Upload failed');
+        throw new Error(data.error || data.message || 'Upload failed');
       }
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Failed to upload file. Please try again.');
+      toast.error(error.message || 'Failed to upload file. Please try again.');
     } finally {
       setUploading(false);
     }

@@ -268,22 +268,21 @@ function cleanBasicText(text) {
 }
 
 // Content quality assessment function
-// NOTE: Very lenient on upload, stricter on generation
-// Content quality assessment function
+// Stricter on generation, lenient on upload to allow correction
 function assessContentQuality(text, wordCount, isUpload = false) {
-  // Use centralized quality checker
+  // Use centralized quality checker from services/textCleaner.js
   const assessment = checkTextQuality(text, wordCount);
   
-  // UPLOAD CHECK: Only reject completely empty/corrupted files
+  // UPLOAD CHECK: Only reject completely empty or severely corrupted files
   if (isUpload) {
     if (assessment.quality === "poor" && assessment.reason === "empty_or_too_short") {
       return { quality: "poor", reason: "insufficient_content" };
     }
-    // For uploads, accept everything else and let generation handle quality
+    // Accept everything else during upload and let the cleaning process handle it
     return { quality: "good", reason: "sufficient_content" };
   }
 
-  // GENERATION CHECK: Return full assessment
+  // GENERATION CHECK: Return full assessment to block bad outputs
   return {
     quality: assessment.quality,
     reason: assessment.reason,

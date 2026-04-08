@@ -17,8 +17,16 @@ export const AuthProvider = ({ children }) => {
         const { user: currentUser, error } = await getCurrentUser();
         if (error) {
           console.error('Error loading user:', error);
-        } else {
-          console.log('AuthContext: User loaded:', currentUser?.email || 'none');
+        } else if (currentUser) {
+          console.log('AuthContext: User loaded:', currentUser.email);
+          // Double check token is attached
+          if (!currentUser.accessToken || !currentUser.token) {
+            const storedToken = localStorage.getItem('prep101_token');
+            if (storedToken) {
+              currentUser.accessToken = storedToken;
+              currentUser.token = storedToken;
+            }
+          }
           setUser(currentUser);
         }
       } catch (error) {

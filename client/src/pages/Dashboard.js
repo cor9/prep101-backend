@@ -199,11 +199,11 @@ const Dashboard = () => {
     const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout
 
     try {
+      const token = user?.accessToken || user?.token || localStorage.getItem('prep101_token');
+
       const headers = {
         "Content-Type": "application/json",
-        ...(user?.accessToken || user?.token
-          ? { Authorization: `Bearer ${user.accessToken || user.token}` }
-          : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
 
       const payload = {
