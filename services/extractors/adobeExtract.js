@@ -3,6 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const unzipper = require('unzipper');
+const { scrubWatermarks } = require('../textCleaner');
 const {
   ServicePrincipalCredentials,
   PDFServices,
@@ -47,23 +48,7 @@ function isWatermarkText(s) {
 
 // Enhanced text cleaning function
 function cleanExtractedText(text) {
-  if (!text) return '';
-  
-  return text
-    .replace(/\r/g, '')
-    .replace(/Sides by Breakdown Services - Actors Access/gi, '')
-    .replace(/Page \d+ of \d+/gi, '')
-    .replace(/\b\d{1,2}:\d{2}:\d{2}\s*[AP]M\b/gi, '')
-    .replace(/\b\d{1,2}:\d{2}:\d{2}\b/g, '')
-    .replace(/\b[A-Z]\d{3,}[A-Z]{2}\b/gi, '')
-    // Enhanced cleaning patterns
-    .replace(/\b\d{5,}\b/g, '') // Remove numeric watermarks
-    .replace(/^\d{1,2}:\d{2}:\d{2}\s*$/gm, '') // Remove timestamp lines
-    .replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/gm, '') // Remove date-time lines
-    .replace(/^[0-9\s\-_:]+$/gm, '') // Remove lines with only numbers/symbols
-    .replace(/^[A-Za-z]{1,2}\s*$/gm, '') // Remove single/double letter lines
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return scrubWatermarks(text);
 }
 
 function summarize(text) {

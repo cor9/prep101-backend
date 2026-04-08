@@ -178,6 +178,7 @@ app.use((req, res, next) => {
 
 // Continue with other imports
 const pdfParse = require("pdf-parse");
+const { scrubWatermarks, assessQuality: checkTextQuality } = require("./services/textCleaner");
 // Try to load Adobe extractor, but don't fail if it's not available
 let extractWithAdobe;
 try {
@@ -263,86 +264,31 @@ const extractionStats = {
 
 // Enhanced text cleaning function for basic extraction
 function cleanBasicText(text) {
-  if (!text) return "";
-
-  return (
-    text
-      .replace(/\r/g, "")
-      .replace(/Sides by Breakdown Services - Actors Access/gi, "")
-      .replace(/Page \d+ of \d+/gi, "")
-      // Enhanced cleaning patterns
-      .replace(/\b\d{5,}\b/g, "") // Remove numeric watermarks
-      .replace(/^\d{1,2}:\d{2}:\d{2}\s*$/gm, "") // Remove timestamp lines
-      .replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/gm, "") // Remove date-time lines
-      .replace(/^[0-9\s\-_:]+$/gm, "") // Remove lines with only numbers/symbols
-      .replace(/^[A-Za-z]{1,2}\s*$/gm, "") // Remove single/double letter lines
-      .replace(/\n{3,}/g, "\n\n")
-      .trim()
-  );
+  return scrubWatermarks(text);
 }
 
 // Content quality assessment function
 // NOTE: Very lenient on upload, stricter on generation
+// Content quality assessment function
 function assessContentQuality(text, wordCount, isUpload = false) {
+  // Use centralized quality checker
+  const assessment = checkTextQuality(text, wordCount);
+  
   // UPLOAD CHECK: Only reject completely empty/corrupted files
   if (isUpload) {
-    if (!text || wordCount < 10) {
+    if (assessment.quality === "poor" && assessment.reason === "empty_or_too_short") {
       return { quality: "poor", reason: "insufficient_content" };
     }
     // For uploads, accept everything else and let generation handle quality
     return { quality: "good", reason: "sufficient_content" };
   }
 
-  // GENERATION CHECK: Stricter validation before spending API tokens
-  if (!text || wordCount < 25) {
-    return { quality: "poor", reason: "insufficient_content" };
-  }
-
-  // Check for repetitive content patterns
-  const repetitivePatterns = [
-    /\b\d{5,}\b/g, // Numeric watermarks
-    /^\d{1,2}:\d{2}:\d{2}\s*$/gm, // Timestamps
-    /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/gm, // Date-time stamps
-    /- Aug \d{1,2}, \d{4} \d{1,2}:\d{2} (AM|PM) -/g, // Specific timestamp pattern from logs
-    /^\d{1,2}:\d{2} (AM|PM) -/gm, // Time AM/PM pattern
-  ];
-
-  // Check for repetitive content
-  const repetitiveMatches = repetitivePatterns.reduce((count, pattern) => {
-    return count + (text.match(pattern) || []).length;
-  }, 0);
-
-  const repetitiveRatio = repetitiveMatches / Math.max(wordCount, 1);
-
-  // Check for high repetition of the same phrases
-  const words = text.toLowerCase().split(/\s+/);
-  const wordFreq = {};
-  words.forEach((word) => {
-    if (word.length > 3) {
-      // Only count words longer than 3 chars
-      wordFreq[word] = (wordFreq[word] || 0) + 1;
-    }
-  });
-
-  const maxFreq = Math.max(...Object.values(wordFreq));
-  const repetitionRatio = maxFreq / Math.max(wordCount, 1);
-
-  // Lenient criteria - only reject truly corrupted content
-  if (repetitiveRatio > 0.5) {
-    // More than 50% repetitive patterns
-    return { quality: "poor", reason: "repetitive_content", repetitiveRatio };
-  }
-
-  if (repetitionRatio > 0.5) {
-    // More than 50% of content is the same word
-    return { quality: "poor", reason: "high_repetition", repetitionRatio };
-  }
-
-  if (wordCount < 100) {
-    return { quality: "low", reason: "minimal_content" };
-  }
-
-  return { quality: "good", reason: "sufficient_content" };
+  // GENERATION CHECK: Return full assessment
+  return {
+    quality: assessment.quality,
+    reason: assessment.reason,
+    repetitiveRatio: assessment.ratio || 0
+  };
 }
 
 // Basic extraction helper used as fallback

@@ -5,6 +5,7 @@ const {
 } = require("../config/models");
 
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
+const { scrubWatermarks } = require("./textCleaner");
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
 const BOLD_CHOICES_SYSTEM_PROMPT = `You are Corey Ralston.
@@ -221,24 +222,7 @@ Examples:
 The goal is: casting sees two completely different actors using the same lines`;
 
 // ─── BUILD USER PROMPT ────────────────────────────────────────────────────────
-function scrubWatermarks(text) {
-  if (!text) return text;
-  return text
-    // Destroy specific date/time watermarks "- Feb 17, 2026 9:41 AM -"
-    .replace(/\-\s*[a-zA-Z]{3,4}\s+\d{1,2},\s*\d{4}\s+\d{1,2}:\d{2}\s*[AP]M\s*\-/gi, " ")
-    // Aggressively destroy repetitive uppercase project tags like B540LT-B540LT
-    .replace(/\b[A-Z0-9]{6,12}\b(?:-\b[A-Z0-9]{6,12}\b)*/gi, (match) => {
-      // If it's a fully uppercase code block like B540LT or B540LT-B540LT, destroy it
-      if (match === match.toUpperCase() && match.length > 5) return " ";
-      return match;
-    })
-    .replace(/\bB\d{3,}[A-Z0-9]*\b/gi, " ")
-    .replace(/(?:B540LT|B568CR|74222)/gi, " ")
-    .replace(/\b\d{5,}\b/g, " ")
-    .replace(/\-{2,}/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
+// scrubWatermarks removed, now imported from textCleaner.js
 
 function buildUserPrompt(data) {
   const lines = [];

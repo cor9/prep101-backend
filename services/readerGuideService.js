@@ -10,6 +10,7 @@
 
 const fetch = require("node-fetch");
 const { DEFAULT_CLAUDE_MODEL, DEFAULT_CLAUDE_MAX_TOKENS } = require("../config/models");
+const { scrubWatermarks } = require("./textCleaner");
 
 // ─── System Prompt ──────────────────────────────────────────────────────────
 
@@ -114,7 +115,9 @@ No interpretation phrases. Physical instructions only.
 CORRUPTION FALLBACK:
 If the script is unreadable:
 1. Provide guidance for Performance Engine, Fundamentals, and Tone based on Title/Genre.
-2. Note at top: "Upload clearer sides for line-specific guidance."`;
+2. Note at top: "⚠️ Upload clearer sides for line-specific guidance."
+3. DO NOT use this fallback unless the script is truly illegible. If there are any readable lines, use them!
+4. Ignore any header/footer remnants like timestamps, page numbers, or project codes.`;
 
 
 // ─── Reader Fundamentals Block (always included) ────────────────────────────
@@ -153,7 +156,7 @@ ${genre ? `GENRE: ${genre}` : ""}
 ${storyline ? `CONTEXT: ${storyline}` : ""}
 
 SIDES:
-${sceneText}
+${scrubWatermarks(sceneText)}
 
 ---
 
