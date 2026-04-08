@@ -1,6 +1,6 @@
 {
   "name": "prep101-frontend",
-  "version": "0.1.0",
+  "version": "0.2.0-optimized",
   "private": true,
   "dependencies": {
     "@stripe/react-stripe-js": "^3.9.2",

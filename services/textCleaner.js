@@ -43,7 +43,6 @@ function scrubWatermarks(text) {
     
     // 6) Clean up formatting artifacts
     .replace(/^[0-9\s\-_:]+$/gm, " ") // Lines with only numbers/symbols
-    .replace(/^[A-Za-z]{1,2}\s*$/gm, " ") // Single/double letter lines (often artifacts)
     .replace(/\-{2,}/g, " ") // Long dashes
     .replace(/\n{3,}/g, "\n\n") // Excessive newlines
     .replace(/[ \t]{2,}/g, " ") // Multiple spaces
@@ -54,7 +53,7 @@ function scrubWatermarks(text) {
  * Assesses the quality of the text based on common corruption markers.
  */
 function assessQuality(text, wordCount) {
-  if (!text || wordCount < 10) return { quality: "poor", reason: "empty_or_too_short" };
+  if (!text || wordCount < 3) return { quality: "poor", reason: "empty_or_too_short" };
 
   const repetitivePatterns = [
     /\b\d{5,}\b/g,

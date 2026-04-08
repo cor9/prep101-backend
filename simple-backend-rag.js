@@ -2710,7 +2710,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         error:
           contentQuality.reason === "watermark_heavy"
             ? "Limited content: please upload clean sides without watermarks or timestamps"
-            : "Limited content: please upload a script with actual dialogue and scene content",
+            : "Limited content: the extracted text is too short. Please try a different PDF or upload a clean version of the script.",
         contentQuality: contentQuality.reason,
         extractionMethod: result.method,
         extractionConfidence: result.confidence || "low",
