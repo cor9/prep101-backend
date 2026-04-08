@@ -6,6 +6,16 @@ import Navbar from '../components/Navbar.jsx';
 import GuideResult from '../components/GuideResult.jsx';
 import API_BASE from '../config/api.js';
 
+const isLegacyFallbackMessage = (value = '') =>
+  /limited script text detected|upload clearer sides for line-specific detail/i.test(
+    String(value || '')
+  );
+
+const sanitizeWarnings = (warnings = []) =>
+  (Array.isArray(warnings) ? warnings : []).filter(
+    (warning) => !isLegacyFallbackMessage(warning)
+  );
+
 // ── STYLES ──────────────────────────────────────────────────────────────────
 const S = {
   page: {
@@ -268,10 +278,46 @@ export default function Generate() {
       if (!res.ok) throw new Error(data.error || 'Upload failed');
 
       if (data.sceneText || data.preview) {
-        setUploadData(data);
+        const sceneText = data.sceneText || data.text || '';
+        const uploadIds = data.uploadIds || (data.uploadId ? [data.uploadId] : []);
+        const primaryUploadId = data.uploadId || uploadIds[0] || null;
+        const scenePayloads =
+          data.scenePayloads ||
+          (primaryUploadId && sceneText
+            ? {
+                [primaryUploadId]: {
+                  filename: data.filename || data.originalName || file.name,
+                  sceneText,
+                  characterNames: data.characterNames || [],
+                  extractionMethod: data.extractionMethod || 'upload',
+                  extractionConfidence: data.extractionConfidence || 'unknown',
+                  wordCount: data.wordCount || 0,
+                  fileType: data.fileType || 'sides',
+                  fallbackMode: Boolean(data.fallbackMode),
+                  warnings: sanitizeWarnings(data.warnings),
+                  source: data.source || data.extractionMethod || 'text',
+                },
+              }
+            : {});
+        const sanitizedUploadMessage = isLegacyFallbackMessage(data.uploadMessage)
+          ? null
+          : data.uploadMessage;
+
+        setUploadData({
+          ...data,
+          uploadMessage: sanitizedUploadMessage,
+          warnings: sanitizeWarnings(data.warnings),
+          sceneText,
+          uploadIds,
+          scenePayloads,
+        });
         setUploadedFileName(file.name);
         setForm(f => ({ ...f, sceneText: '' })); // clear out any pasted text to avoid confusion
-        toast.success(`Extracted ${data.wordCount || '?'} words`, { id: toastId });
+        if (sanitizedUploadMessage) {
+          toast(sanitizedUploadMessage, { id: toastId, icon: '🧠', duration: 5000 });
+        } else {
+          toast.success(`Extracted ${data.wordCount || '?'} words`, { id: toastId });
+        }
       } else {
         toast.error('Could not extract text — try pasting directly', { id: toastId });
       }
@@ -319,6 +365,8 @@ export default function Generate() {
         sceneText,
         preview: false,
         format: 'json',
+        fallbackMode: Boolean(uploadData?.fallbackMode),
+        warnings: uploadData?.warnings || [],
         ...(modifier ? { modifier } : {}),
         ...(isRetry ? { spinAgain: true, previousGenerationId: generationId } : {}),
       };
