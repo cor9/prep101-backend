@@ -7,6 +7,19 @@ import '../styles/shared.css';
 const Examples = () => {
   const navigate = useNavigate();
 
+  const readerTiles = [
+    {
+      heading: 'Reader101 Example 01',
+      sub: 'Reader support guide artifact',
+      href: 'https://claude.site/public/artifacts/c6e99d33-7f23-45fc-b461-046af09d07ec'
+    },
+    {
+      heading: 'Reader101 Example 02',
+      sub: 'Reader support guide artifact',
+      href: 'https://claude.ai/public/artifacts/b59ca4c0-8704-4b5e-97a2-a4854a95a038'
+    }
+  ];
+
   // === EXACT ORDER (Top → Bottom, Left → Right) ===
   const tiles = [
     // Row 1
@@ -75,6 +88,153 @@ const Examples = () => {
         </div>
 
         <div className="container-wide">
+          <div
+            className="card-white"
+            style={{
+              marginBottom: '2rem',
+              borderTop: '4px solid #14b8a6'
+            }}
+          >
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '999px',
+                  background: 'rgba(20, 184, 166, 0.12)',
+                  color: '#0f766e',
+                  fontSize: '0.85rem',
+                  fontWeight: '800',
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  marginBottom: '1rem'
+                }}
+              >
+                Reader101
+              </div>
+              <h2
+                style={{
+                  fontSize: '2rem',
+                  fontWeight: '900',
+                  color: 'var(--gray-800)',
+                  margin: '0 0 0.75rem 0'
+                }}
+              >
+                Reader Support Guide Examples
+              </h2>
+              <p
+                style={{
+                  color: 'var(--gray-600)',
+                  margin: 0,
+                  fontSize: '1rem',
+                  maxWidth: '720px',
+                  lineHeight: '1.6'
+                }}
+              >
+                A few live Reader101 examples. More are coming as soon as the updated front end is stable again.
+              </p>
+            </div>
+
+            <div className="grid-responsive">
+              {readerTiles.map((t) => (
+                <div
+                  key={t.href}
+                  className="card-white"
+                  style={{
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    margin: 0,
+                    background: 'linear-gradient(180deg, #ffffff 0%, #f4fffd 100%)',
+                    border: '1px solid rgba(20, 184, 166, 0.16)'
+                  }}
+                  onClick={() => open(t.href)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.boxShadow = '0 28px 80px rgba(20,184,166,.12)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 22px 70px rgba(0,0,0,.10)';
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '0.35rem 0.7rem',
+                      borderRadius: '999px',
+                      background: '#0f172a',
+                      color: '#f8fafc',
+                      fontSize: '0.75rem',
+                      fontWeight: '800',
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      marginBottom: '1rem'
+                    }}
+                  >
+                    Example
+                  </div>
+                  <h3 style={{
+                    fontSize: '1.25rem',
+                    fontWeight: '800',
+                    color: 'var(--gray-800)',
+                    margin: '0 0 0.5rem 0',
+                    lineHeight: '1.3'
+                  }}>
+                    {t.heading}
+                  </h3>
+                  <p style={{
+                    color: 'var(--gray-600)',
+                    margin: '0 0 1.5rem 0',
+                    fontSize: '0.95rem'
+                  }}>
+                    {t.sub}
+                  </p>
+                  <button
+                    className="btn"
+                    style={{
+                      width: '100%',
+                      background: 'linear-gradient(135deg, #14b8a6, #0f766e)',
+                      color: '#ecfeff',
+                      border: 'none',
+                      fontWeight: '700',
+                      fontSize: '1rem',
+                      padding: '0.875rem 1.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      boxShadow: '0 8px 20px rgba(15, 118, 110, 0.22)',
+                      cursor: 'pointer'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      open(t.href);
+                    }}
+                  >
+                    <span>Open Reader101 Example</span>
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <path
+                        d="M7 17L17 7M17 7H7M17 7V17"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Grid */}
           <div className="grid-responsive">
             {tiles.map((t) => (
