@@ -177,25 +177,15 @@ app.use((req, res, next) => {
 });
 
 // Continue with other imports
-const pdfParse = require("pdf-parse");
 // methodology folder is now included in vercel.json
+const { scrubWatermarks, assessQuality } = require(path.join(
+  process.cwd(),
+  "services",
+  "textCleaner"
+));
 const {
-  scrubWatermarks,
-  assessQuality,
-  analyzeWatermarkInterference,
-} = require(path.join(process.cwd(), "services", "textCleaner"));
-// Try to load Adobe extractor, but don't fail if it's not available
-let extractWithAdobe;
-let adobeImportError = null;
-try {
-  const adobePath = path.join(process.cwd(), "services", "extractors", "adobeExtract");
-  const adobeModule = require(adobePath);
-  extractWithAdobe = adobeModule.extractWithAdobe;
-} catch (error) {
-  console.error("❌ Adobe extractor import FAILED:", error.message);
-  adobeImportError = error.message;
-  extractWithAdobe = null;
-}
+  ingestPdf,
+} = require(path.join(process.cwd(), "services", "pdfIngestPipeline"));
 const {
   DEFAULT_CLAUDE_MODEL,
   DEFAULT_CLAUDE_MAX_TOKENS,
@@ -266,14 +256,9 @@ const upload = multer({
 const uploads = {};
 // Track extraction diagnostics for /api/health
 const extractionStats = {
-  totals: { adobe: 0, basic: 0, ocr: 0 },
+  totals: { text: 0, ocr: 0, vision: 0 },
   last: null,
 };
-
-// Enhanced text cleaning function for basic extraction
-function cleanBasicText(text) {
-  return scrubWatermarks(text);
-}
 
 // Content quality assessment function
 // Stricter on generation, lenient on upload to allow correction
@@ -301,191 +286,6 @@ function assessContentQuality(text, wordCount, isUpload = false) {
 
 function getMeaningfulWordCount(text = "") {
   return (text.match(/\b[\w']+\b/g) || []).length;
-}
-
-function isSparseForUpgrade(text = "", wordCount = 0) {
-  return !text || text.trim().length < 300 || wordCount < 50;
-}
-
-function shouldPromoteCandidateExtraction(currentQuality, currentWordCount, nextQuality, nextWordCount) {
-  if (nextQuality.usable && !currentQuality.usable) return true;
-  if (nextQuality.quality === "good" && currentQuality.quality !== "good") return true;
-  if (nextWordCount > currentWordCount) return true;
-  return false;
-}
-
-// Basic extraction helper used as fallback
-async function extractWithBasic(pdfBuffer) {
-  const data = await pdfParse(pdfBuffer);
-  let text = cleanBasicText(data.text || "");
-
-  const wordCount = (text.match(/\b\w+\b/g) || []).length;
-  const confidence =
-    wordCount > 600 ? "high" : wordCount > 300 ? "medium" : "low";
-
-  // Character names in ALL-CAPS ending with colon
-  const characterPattern = /^[A-Z][A-Z\s]+:/gm;
-  const characterNames = [
-    ...new Set(
-      (text.match(characterPattern) || []).map((n) => n.replace(":", "").trim())
-    ),
-  ];
-
-  return { text, method: "basic", wordCount, confidence, characterNames };
-}
-
-// OCR extraction using Claude's vision model as fallback
-async function extractWithOCR(pdfBuffer) {
-  try {
-    console.log("[OCR] Starting OCR extraction with Claude Vision...");
-
-    // Convert PDF to images first
-    const pdf2pic = require("pdf2pic");
-    const fs = require("fs");
-    const os = require("os");
-    const path = require("path");
-
-    // Create temporary directory for images
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pdf-ocr-"));
-    const tempPdfPath = path.join(tempDir, "input.pdf");
-    fs.writeFileSync(tempPdfPath, pdfBuffer);
-
-    // Convert PDF to images
-    const options = {
-      density: 300,
-      saveFilename: "page",
-      savePath: tempDir,
-      format: "png",
-      width: 2048,
-      height: 2048,
-    };
-
-    const convert = pdf2pic.fromPath(tempPdfPath, options);
-
-    // Try to get page count by attempting to convert pages until it fails
-    let pageCount = 0;
-    let maxPages = 10; // Reasonable limit for sides
-
-    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
-      try {
-        const testPage = await convert(pageNum);
-        if (testPage && testPage.path) {
-          pageCount = pageNum;
-        } else {
-          break;
-        }
-      } catch (error) {
-        break;
-      }
-    }
-
-    console.log(`[OCR] PDF has ${pageCount} pages`);
-
-    if (pageCount === 0) {
-      throw new Error("Failed to detect any pages in PDF");
-    }
-
-    let allText = "";
-
-    // Process each page
-    for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-      console.log(`[OCR] Processing page ${pageNum}/${pageCount}...`);
-
-      const pageData = await convert(pageNum);
-
-      if (!pageData || !pageData.path) {
-        console.log(`[OCR] Failed to convert page ${pageNum}, skipping...`);
-        continue;
-      }
-
-      // Read the image file
-      const imageBuffer = fs.readFileSync(pageData.path);
-      const base64Image = imageBuffer.toString("base64");
-
-      // Prepare the message for Claude Vision
-      const message = {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `Please extract all the text from this script/sides image (page ${pageNum} of ${pageCount.length}). Focus on:
-1. Character names (in ALL CAPS followed by colon)
-2. Dialogue and scene descriptions
-3. Stage directions and parentheticals
-4. Scene headings and transitions
-
-Ignore watermarks, timestamps, page numbers, and other metadata. Return only the clean script content.`,
-          },
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: "image/png",
-              data: base64Image,
-            },
-          },
-        ],
-      };
-
-      // Call Claude Vision API for this page
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-3-5-sonnet-20241022",
-          max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
-          messages: [message],
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.log(`[OCR] Failed to process page ${pageNum}: ${errorText}`);
-        continue;
-      }
-
-      const result = await response.json();
-      const pageText = result.content[0].text || "";
-
-      // Add page text to total (with separator)
-      if (pageText.trim()) {
-        allText += (allText ? "\n\n" : "") + pageText.trim();
-      }
-    }
-
-    // Clean up temporary files
-    fs.rmSync(tempDir, { recursive: true, force: true });
-
-    // Clean the extracted text from all pages
-    let text = cleanBasicText(allText);
-
-    const wordCount = (text.match(/\b\w+\b/g) || []).length;
-    const confidence =
-      wordCount > 600 ? "high" : wordCount > 300 ? "medium" : "low";
-
-    // Character names in ALL-CAPS ending with colon
-    const characterPattern = /^[A-Z][A-Z\s]+:/gm;
-    const characterNames = [
-      ...new Set(
-        (text.match(characterPattern) || []).map((n) =>
-          n.replace(":", "").trim()
-        )
-      ),
-    ];
-
-    console.log(
-      `[OCR] Extraction completed: ${wordCount} words, ${characterNames.length} characters found`
-    );
-
-    return { text, method: "ocr", wordCount, confidence, characterNames };
-  } catch (error) {
-    console.error("[OCR] Extraction failed:", error.message);
-    throw new Error(`OCR extraction failed: ${error.message}`);
-  }
 }
 
 // Import and mount new API routes (with error handling)
@@ -1544,16 +1344,11 @@ You are working with audition sides only. Focus your analysis on what's provided
         );
 
         const POLICY = `
-ABORT CONDITION:
-If the sides/script appears corrupted OR predominantly consists of repetitive technical data (e.g., repeating timestamps like "00:00:00", watermarks, project codes like "B540LT", or metadata strings) rather than actual dialogue and scene descriptions, DO NOT attempt to generate a guide. 
-
-Instead, immediately output EXACTLY the phrase "[ERROR: SIDES_CORRUPTED]" and nothing else. No formatting, no apologies, no helpful suggestions. Just that bracketed text.
-
-
 SCRIPT INTEGRITY:
 - Use ONLY facts present in SCRIPT below. If key facts (title, studio, location, time period) are not in the script, write "Not stated in sides" rather than inventing.
 - Do NOT hallucinate project names, franchises, or studio info not explicitly in the script.
 - For sparse scripts: acknowledge limited information, focus on what IS present, and give MORE imaginative/empathetic coaching to compensate.
+- Never abort. If the script text is limited or partially corrupted, still generate the guide from the available signal plus title/genre/character context.
 - NO EVIDENCE TAGS or inline citations—trust the reader knows you're referencing the script. Just COACH.
 - Tone: warm, direct, industry-savvy; balance encouragement with honest craft notes. Avoid generic motivational fluff.
 `;
@@ -1590,7 +1385,7 @@ Instead of line-by-line analysis, focus on:
 - Archetypal character behavior for this project type.
 - The "vibe" and rhythm of ${data.productionTitle}.
 - Universal beats and choices for this genre.
-Do NOT reference specific script text or use [ERROR: SIDES_CORRUPTED]. Build the guide from your deep acting knowledge and the provided methodology.` : `
+Do NOT reference specific script text that is not actually present. Build the guide from your deep acting knowledge and the provided methodology.` : `
 SCRIPT:
 ${data.sceneText}${fileTypeContext}
 `}
@@ -1717,11 +1512,7 @@ ${data.sceneText}${fileTypeContext}
           console.log(
             `🎯 Methodology files used: ${relevantMethodology.length}`
           );
-          const rawText = result.content[0].text;
-          if (rawText.includes("[ERROR: SIDES_CORRUPTED]")) {
-            throw new Error("SIDES_CORRUPTED: The uploaded script appears to be corrupted, mostly timestamps, or lacks readable dialogue. Please upload a clean PDF.");
-          }
-          return rawText;
+          return result.content[0].text;
         } else {
           throw new Error("Invalid response format from API");
         }
@@ -2479,11 +2270,7 @@ ${childMethodologyContext}
         console.log(
           `📊 Child guide length: ${result.content[0].text.length} characters`
         );
-        const rawText = result.content[0].text;
-        if (rawText.includes("[ERROR: SIDES_CORRUPTED]")) {
-          throw new Error("SIDES_CORRUPTED: The uploaded script appears to be corrupted, mostly timestamps, or lacks readable dialogue. Please upload a clean PDF.");
-        }
-        return rawText;
+        return result.content[0].text;
       } else {
         throw new Error("Invalid response format from API");
       }
@@ -2643,157 +2430,52 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "Please upload a PDF file" });
     }
 
-    const extractionAttempts = [];
-    const adobeEnabled = process.env.ADOBE_PDF_EXTRACT_ENABLED === "true";
-    const adobeForce = process.env.ADOBE_FORCE_ENABLE === "true";
-
-    // 1) Primary Extraction: pdf-parse is our rock-solid primary base
     console.log(`[UPLOAD] Extracting text from ${req.file.originalname}`);
-    let result = await extractWithBasic(req.file.buffer);
-    extractionAttempts.push({ method: "basic", chars: (result?.text || "").length });
+    const pipelineResult = await ingestPdf(req.file.buffer, { maxPages: 10 });
+    const cleanedText = pipelineResult.text || "";
+    const quality = assessQuality(cleanedText);
+    const wordCount = pipelineResult.wordCount || quality.wordCount || getMeaningfulWordCount(cleanedText);
+    const extractionMethod = pipelineResult.source || "text";
+    const fallbackMode = Boolean(pipelineResult.limited);
 
-    let cleanedText = scrubWatermarks(result.text || "");
-    let quality = assessQuality(cleanedText);
-    let wordCount = quality.wordCount || getMeaningfulWordCount(cleanedText);
-    let watermarkInterference = analyzeWatermarkInterference(result.text || cleanedText);
-    let ocrRecoveryUsed = false;
-
-    const adoptCandidate = (candidateResult, methodLabel) => {
-      if (!candidateResult?.text) return false;
-
-      const candidateCleanedText = scrubWatermarks(candidateResult.text || "");
-      const candidateQuality = assessQuality(candidateCleanedText);
-      const candidateWordCount =
-        candidateQuality.wordCount || getMeaningfulWordCount(candidateCleanedText);
-
-      if (
-        !shouldPromoteCandidateExtraction(
-          quality,
-          wordCount,
-          candidateQuality,
-          candidateWordCount
-        )
-      ) {
-        return false;
-      }
-
-      result = candidateResult;
-      cleanedText = candidateCleanedText;
-      quality = candidateQuality;
-      wordCount = candidateWordCount;
-      if (methodLabel === "ocr") {
-        ocrRecoveryUsed = true;
-      }
-      return true;
-    };
-
-    if (watermarkInterference.shouldEscalateToOCR) {
-      console.log("[UPLOAD] Watermark interference detected, switching to OCR-first recovery...", watermarkInterference);
-      const ocrResult = await extractWithOCR(req.file.buffer).catch((error) => {
-        console.error("[UPLOAD] OCR-first recovery failed:", error?.message || error);
-        return null;
-      });
-      extractionAttempts.push({
-        method: "ocr",
-        chars: (ocrResult?.text || "").length,
-        reason: "watermark_interference",
-      });
-      adoptCandidate(ocrResult, "ocr");
-    }
-
-    // 2) Adobe upgrade path: use when enabled and basic extraction is sparse
-    if ((adobeEnabled || adobeForce) && extractWithAdobe && isSparseForUpgrade(cleanedText, wordCount)) {
-      console.log("[UPLOAD] Basic extraction sparse, trying Adobe...");
-      const adobeResult = await extractWithAdobe(req.file.buffer).catch((error) => {
-        console.error("[UPLOAD] Adobe extraction failed:", error?.message || error);
-        return null;
-      });
-      extractionAttempts.push({ method: "adobe", chars: (adobeResult?.text || "").length });
-      adoptCandidate(adobeResult, "adobe");
-    }
-
-    // 3) OCR rescue path for image-heavy or still-sparse PDFs
-    if (
-      extractionAttempts.filter((attempt) => attempt.method === "ocr").length === 0 &&
-      (isSparseForUpgrade(cleanedText, wordCount) ||
-        quality.quality === "repetitive" ||
-        quality.quality === "empty")
-    ) {
-      console.log("[UPLOAD] Extraction still sparse or corrupted, trying OCR...");
-      const ocrResult = await extractWithOCR(req.file.buffer).catch((error) => {
-        console.error("[UPLOAD] OCR extraction failed:", error?.message || error);
-        return null;
-      });
-      extractionAttempts.push({ method: "ocr", chars: (ocrResult?.text || "").length });
-      adoptCandidate(ocrResult, "ocr");
-    }
-
-    watermarkInterference = analyzeWatermarkInterference(cleanedText);
-
-    const unreadableExtraction =
-      quality.quality === "empty" || quality.quality === "repetitive";
-    const fallbackMode = !unreadableExtraction && (!quality.usable || quality.fallbackRecommended);
-    extractionStats.totals[result.method] = (extractionStats.totals[result.method] || 0) + 1;
+    extractionStats.totals[extractionMethod] =
+      (extractionStats.totals[extractionMethod] || 0) + 1;
     extractionStats.last = {
       filename: req.file.originalname,
-      method: result.method,
+      method: extractionMethod,
       wordCount,
       quality: quality.quality,
       fallbackMode,
-      attempts: extractionAttempts,
-      adobeEnabled,
-      adobeImportError,
+      warnings: pipelineResult.warnings || [],
+      diagnostics: pipelineResult.diagnostics || null,
       timestamp: new Date().toISOString(),
     };
 
-    console.log(`[UPLOAD] Extraction Complete: ${quality.quality} (${wordCount} words)`);
-
-    if (unreadableExtraction) {
-      return res.status(422).json({
-        success: false,
-        error:
-          extractionAttempts.some((attempt) => attempt.method === "ocr")
-            ? "We switched to image-based reading to recover the script, but this PDF is still dominated by watermarks or repeated metadata. Please upload a cleaner export or clearer screenshots."
-            : "We couldn't extract readable sides from this PDF. The file appears dominated by watermarks or repeated metadata. Please upload a cleaner export or clearer screenshots.",
-        contentQuality: quality.reason,
-        debug: {
-          method: result.method,
-          attempts: extractionAttempts,
-          quality: quality.quality,
-          wordCount,
-          ratio: quality.ratio,
-          watermarkInterference,
-        },
-      });
-    }
+    console.log(
+      `[UPLOAD] Extraction Complete: ${extractionMethod} / ${quality.quality} (${wordCount} words)`
+    );
 
     // 4) Metadata & Storage
     const uploadId = Date.now().toString();
     const fileType = req.body.fileType || "sides";
     
-    // Extract character names from the CLEANED text
-    const characterPattern = /^[A-Z][A-Z\s]+:/gm;
-    const characterNames = result.characterNames || [
-      ...new Set(
-        (cleanedText.match(characterPattern) || []).map((n) =>
-          n.replace(":", "").trim()
-        )
-      ),
-    ];
+    const characterNames = pipelineResult.characterNames || [];
 
     uploads[uploadId] = {
       filename: req.file.originalname,
       sceneText: cleanedText,
       characterNames,
-      extractionMethod: result.method,
-      extractionConfidence: result.confidence || (quality.usable ? 'high' : 'low'),
+      extractionMethod,
+      extractionConfidence:
+        pipelineResult.confidence || (quality.usable ? "high" : "low"),
       uploadTime: new Date(),
       wordCount: wordCount,
       fileType: fileType,
       userId: req.userId || req.user?.id || null,
       fallbackMode,
       quality,
-      ocrRecoveryUsed,
+      warnings: pipelineResult.warnings || [],
+      source: extractionMethod,
     };
 
     // 5) SMART RESPONSE: Success flag even on low quality, with fallback flag
@@ -2806,23 +2488,24 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       sceneText: cleanedText,
       characterNames,
       wordCount: wordCount,
-      extractionMethod: result.method,
-      extractionConfidence: result.confidence || (quality.usable ? 'high' : 'low'),
+      extractionMethod,
+      extractionConfidence:
+        pipelineResult.confidence || (quality.usable ? "high" : "low"),
       fileType,
       quality: quality.quality,
       fallbackMode,
-      ocrRecoveryUsed,
-      uploadMessage: ocrRecoveryUsed
-        ? "This file’s formatting is interfering with standard text extraction. We switched to image-based reading to recover the script."
-        : null,
+      source: extractionMethod,
+      confidence:
+        pipelineResult.confidence || (quality.usable ? "high" : "low"),
+      warnings: pipelineResult.warnings || [],
+      uploadMessage: pipelineResult.uploadMessage || null,
       debug: {
-        method: result.method,
+        method: extractionMethod,
         usable: quality.usable,
         reason: quality.reason,
         ratio: quality.ratio,
         shortButReadable: Boolean(quality.shortButReadable),
-        attempts: extractionAttempts,
-        watermarkInterference,
+        diagnostics: pipelineResult.diagnostics || null,
       }
     });
 
@@ -2885,6 +2568,8 @@ app.post("/api/guides/generate", auth, async (req, res) => {
           fileType: "sides", // Default
           userId: req.userId,
           fallbackMode: Boolean(req.body.fallbackMode),
+          warnings: req.body.warnings || [],
+          source: req.body.source || "text",
         };
       }
     }
@@ -2909,6 +2594,8 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         fileType: fallback.fileType || "sides",
         userId: req.userId || req.user?.id || null,
         fallbackMode: Boolean(fallback.fallbackMode),
+        warnings: fallback.warnings || [],
+        source: fallback.source || fallback.extractionMethod || "text",
       };
     }
 
@@ -3022,6 +2709,9 @@ app.post("/api/guides/generate", auth, async (req, res) => {
             fallback.wordCount ||
             (fallback.sceneText.match(/\b\w+\b/g) || []).length,
           fileType: fallback.fileType || "sides",
+          fallbackMode: Boolean(fallback.fallbackMode),
+          warnings: fallback.warnings || [],
+          source: fallback.source || fallback.extractionMethod || "text",
         };
       }
       return null;
@@ -3080,7 +2770,18 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       contentQuality.quality === "too_short";
 
     const shouldForceReaderFallback =
-      isReaderMode && (isFallbackGeneration || readerFallbackTriggeredByCorruption);
+      isReaderMode &&
+      (isFallbackGeneration ||
+        readerFallbackTriggeredByCorruption ||
+        readerUnreadableCorruption);
+
+    const shouldForcePrepFallback =
+      !isReaderMode &&
+      (isFallbackGeneration ||
+        contentQuality.quality === "empty" ||
+        contentQuality.quality === "repetitive" ||
+        contentQuality.quality === "too_short" ||
+        combinedWordCount < 100);
 
     const hasReaderMetadata = Boolean(
       characterName?.trim() ||
@@ -3090,61 +2791,12 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       storyline?.trim()
     );
 
-    // Only reject if TRULY terrible (< 10 words or > 80% corrupted)
-    if (
-      !isReaderMode &&
-      contentQuality.quality === "poor" &&
-      (combinedWordCount < 10 ||
-        (contentQuality.repetitiveRatio &&
-          contentQuality.repetitiveRatio > 0.8) ||
-        (contentQuality.repetitionRatio &&
-          contentQuality.repetitionRatio > 0.8))
-    ) {
-      let errorMessage =
-        "Unable to generate guide: content appears to be corrupted or empty";
-
-      if (contentQuality.repetitiveRatio > 0.8) {
-        errorMessage =
-          "Unable to generate guide: content is mostly watermarks/timestamps (>80%)";
-      } else if (contentQuality.repetitionRatio > 0.8) {
-        errorMessage =
-          "Unable to generate guide: content is mostly repetitive text (>80%)";
-      } else if (combinedWordCount < 10) {
-        errorMessage =
-          "Unable to generate guide: insufficient content (less than 10 words)";
-      }
-
-      console.warn("[GENERATION] Rejecting due to poor quality:", {
+    if (shouldForcePrepFallback) {
+      console.warn("[GENERATION] Limited-text fallback engaged for Prep101:", {
         wordCount: combinedWordCount,
         repetitiveRatio: contentQuality.repetitiveRatio,
         repetitionRatio: contentQuality.repetitionRatio,
         reason: contentQuality.reason,
-      });
-
-      return res.status(422).json({
-        success: false,
-        error: errorMessage,
-        contentQuality: contentQuality.reason,
-        details: {
-          combinedWordCount,
-          repetitiveRatio: contentQuality.repetitiveRatio,
-          repetitionRatio: contentQuality.repetitionRatio,
-        },
-      });
-    }
-
-    if (isReaderMode && readerUnreadableCorruption) {
-      return res.status(422).json({
-        success: false,
-        error:
-          "We couldn't extract readable sides from this PDF. The file appears dominated by watermarks or repeated metadata. Please upload a cleaner export or clearer screenshots.",
-        contentQuality: contentQuality.reason,
-        details: {
-          combinedWordCount,
-          meaningfulWordCount,
-          repetitiveRatio: contentQuality.repetitiveRatio,
-          repetitionRatio: contentQuality.repetitionRatio,
-        },
       });
     }
 
@@ -3155,13 +2807,6 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         reason: contentQuality.reason,
         repetitiveRatio: contentQuality.repetitiveRatio,
         uploadFallback: isFallbackGeneration,
-      });
-    }
-
-    if (isReaderMode && shouldForceReaderFallback && !hasReaderMetadata && meaningfulWordCount === 0) {
-      return res.status(422).json({
-        success: false,
-        error: "Unable to generate Reader101 guide: zero usable script text and no role/title/genre metadata available.",
       });
     }
 
@@ -3276,7 +2921,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       productionType: productionType.trim(),
       extractionMethod: allUploadData[0].extractionMethod,
       hasFullScript: hasFullScript,
-      fallbackMode: isFallbackGeneration,
+      fallbackMode: shouldForcePrepFallback,
       uploadData: allUploadData,
     });
 

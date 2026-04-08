@@ -63,6 +63,8 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Dashboard now caches the latest upload payload in `sessionStorage` so a refresh does not immediately strand users with a stale `uploadId`
 - Watermark-heavy or repetitive PDFs now hard-fail extraction instead of quietly dropping into fallback coaching, and the generic "we'll build it from tone" upload toast was removed
 - Upload now detects watermark interference heuristically, escalates to OCR earlier, and shows an "image-based reading" recovery message when OCR rescues the sides
+- PDF ingest now runs as a staged pipeline: text extraction first, local OCR next when available, then per-page vision fallback, and it returns `text/source/confidence/warnings` instead of hard-failing the upload
+- Guide generation no longer aborts on corrupted sides tokens; limited-text uploads stay in fallback guide mode all the way through generation
 
 ## Architecture Decision Needed
 - Migrate to intended Next.js + Airtable architecture?

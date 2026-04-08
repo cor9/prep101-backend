@@ -58,6 +58,8 @@ const FileUpload = ({ onUpload }) => {
                   wordCount: data.wordCount || 0,
                   fileType: data.fileType || 'sides',
                   fallbackMode: Boolean(data.fallbackMode),
+                  warnings: data.warnings || [],
+                  source: data.source || data.extractionMethod || 'text',
                 },
               }
             : {});

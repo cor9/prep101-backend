@@ -37,3 +37,8 @@
 **Issue:** Some watermarked PDFs are visually readable but break standard text extraction because the underlying text layer is garbage or unordered.
 **Decision:** Added watermark-interference heuristics, escalated those files to OCR earlier in the upload pipeline, and surfaced an explicit image-based-reading recovery message when OCR is used successfully.
 **Status:** Success
+
+## 2026-04-08
+**Issue:** The PDF ingest path still depended on ad hoc extraction patches and could reject low-signal uploads instead of routing them through a deterministic multi-stage recovery flow.
+**Decision:** Added a dedicated staged ingest module with text -> OCR -> vision routing, standardized the extraction contract to `text/source/confidence/warnings`, added routing tests for clean/watermarked/scanned/corrupted cases, and removed generation-side hard-fails so limited text still produces a guide-compatible result.
+**Status:** Success

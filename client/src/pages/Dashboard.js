@@ -241,6 +241,8 @@ const Dashboard = () => {
                 wordCount: uploadData.wordCount || 0,
                 fileType: uploadData.fileType || "sides",
                 fallbackMode: Boolean(uploadData.fallbackMode),
+                warnings: uploadData.warnings || [],
+                source: uploadData.source || uploadData.extractionMethod || "text",
               },
             }
           : {});
@@ -255,6 +257,8 @@ const Dashboard = () => {
         wordCount: uploadData.wordCount,
         characterNames: uploadData.characterNames,
         fallbackMode: uploadData.fallbackMode || false,
+        warnings: uploadData.warnings || [],
+        source: uploadData.source || uploadData.extractionMethod || "text",
         ...formData,
       };
 
