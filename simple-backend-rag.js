@@ -178,14 +178,18 @@ app.use((req, res, next) => {
 
 // Continue with other imports
 const pdfParse = require("pdf-parse");
-const { scrubWatermarks, assessQuality: checkTextQuality } = require("./services/textCleaner");
+// methodology folder is now included in vercel.json
+const { scrubWatermarks, assessQuality: checkTextQuality } = require(path.join(process.cwd(), "services", "textCleaner"));
 // Try to load Adobe extractor, but don't fail if it's not available
 let extractWithAdobe;
+let adobeImportError = null;
 try {
-  extractWithAdobe =
-    require("./services/extractors/adobeExtract").extractWithAdobe;
+  const adobePath = path.join(process.cwd(), "services", "extractors", "adobeExtract");
+  const adobeModule = require(adobePath);
+  extractWithAdobe = adobeModule.extractWithAdobe;
 } catch (error) {
   console.error("❌ Adobe extractor import FAILED:", error.message);
+  adobeImportError = error.message;
   extractWithAdobe = null;
 }
 const {
@@ -2627,7 +2631,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       result = {
         success: false,
         method: "adobe",
-        reason: "adobe-not-available",
+        reason: adobeImportError ? `import-failed: ${adobeImportError}` : "adobe-not-available",
       };
     }
 
