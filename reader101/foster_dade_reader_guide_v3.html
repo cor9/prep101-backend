@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reader Support Guide — Foster Dade</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Literata:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0e0d0b;font-family:'Literata',Georgia,serif;color:#e8e4dc;}
+.guide{max-width:800px;margin:0 auto;padding:2rem 1.25rem 4rem;}
+
+.guide-header{padding-bottom:1.25rem;margin-bottom:1.75rem;border-bottom:2px solid #8B6914;}
+.guide-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#f0ebe0;letter-spacing:-.01em;}
+.guide-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#7a7568;margin-top:5px;text-transform:uppercase;letter-spacing:.1em;}
+.tag-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+.tag{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;padding:3px 10px;border-radius:2px;border:1px solid #3a3830;color:#a09880;background:transparent;}
+.tag-hot{border-color:#6b1a1a;color:#c07070;}
+.tag-risk{border-color:#4a1a40;color:#c070a0;}
+
+.section{margin-bottom:1.25rem;border:1px solid #2a2820;border-radius:4px;overflow:hidden;}
+
+.sec-head{display:flex;align-items:center;gap:12px;padding:10px 16px;}
+.sh-dark{background:#1a1915;}
+.sh-amber{background:#5c3205;}
+.sh-teal{background:#073d31;}
+.sh-coral{background:#3d1508;}
+.sh-red{background:#1a0000;}
+.sh-muted{background:#1e1d19;}
+.sh-intimacy{background:#2a0a1a;}
+.sh-risk{background:#1a0a2a;}
+
+.sec-num{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;min-width:22px;color:#6b6558;}
+.warn{color:#c23b3b;}
+.intimate{color:#c05080;}
+.risk{color:#8060c0;}
+
+.sec-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#f0ebe0;}
+.sec-title.tm{color:#c8c2b4;}
+
+.badge{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;padding:2px 8px;border-radius:2px;background:rgba(255,255,255,.08);color:#a09880;text-transform:uppercase;letter-spacing:.06em;}
+.badge-hot{background:rgba(192,80,128,.15);color:#c05080;}
+.badge-risk{background:rgba(128,96,192,.15);color:#a080e0;}
+
+.sec-body{padding:12px 16px 14px;}
+.sec-body ul{list-style:none;}
+.sec-body li{font-size:13.5px;color:#c8c2b4;line-height:1.7;padding:3px 0 3px 20px;position:relative;}
+.sec-body li::before{content:"—";position:absolute;left:0;color:#5a5548;}
+.ref{font-style:italic;color:#a09070;}
+.consequence{font-size:12.5px;color:#5a5548;display:block;padding-left:20px;margin-top:2px;margin-bottom:5px;font-style:italic;}
+.consequence-hot{color:#804060;}
+
+.intro-text{font-size:13.5px;color:#c8c2b4;line-height:1.75;padding:12px 16px 14px;}
+
+.warn-box{padding:14px 16px;background:#100000;}
+.warn-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:#c23b3b;margin-bottom:12px;}
+.warn-box ul{list-style:none;}
+.warn-box li{font-size:13.5px;color:#e0d8cc;line-height:1.7;padding:3px 0 3px 20px;position:relative;}
+.warn-box li::before{content:"✕";position:absolute;left:0;color:#c23b3b;font-size:11px;top:5px;}
+.warn-footer{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a5548;margin-top:12px;font-style:italic;}
+
+.intimacy-box{padding:14px 16px;background:#1a0610;}
+.intimacy-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:#c05080;margin-bottom:12px;}
+.intimacy-box ul{list-style:none;}
+.intimacy-box li{font-size:13.5px;color:#e0d0d8;line-height:1.7;padding:3px 0 3px 20px;position:relative;}
+.intimacy-box li::before{content:"→";position:absolute;left:0;color:#c05080;font-size:11px;top:4px;}
+.intimacy-rule{font-size:13px;color:#a06080;display:block;padding:10px 0 4px;font-style:italic;border-top:1px solid #3a1528;margin-top:10px;}
+.intimacy-consequence{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#804060;margin-top:10px;display:block;}
+
+.risk-box{padding:14px 16px;background:#10080a;}
+.risk-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:#a080e0;margin-bottom:12px;}
+.risk-flag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#c8b0f8;background:#1e1230;border:1px solid #3a2860;border-radius:3px;padding:8px 12px;margin-bottom:12px;display:block;}
+.risk-box ul{list-style:none;}
+.risk-box li{font-size:13.5px;color:#d8d0e8;line-height:1.7;padding:3px 0 3px 20px;position:relative;}
+.risk-box li::before{content:"→";position:absolute;left:0;color:#a080e0;font-size:11px;top:4px;}
+.risk-consequence{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6a5080;margin-top:12px;display:block;font-style:italic;}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 16px 14px;}
+.col-card{border:1px solid #2a2820;border-radius:4px;overflow:hidden;}
+.col-head{padding:8px 12px;}
+.chdo{background:#073d31;}
+.chavoid{background:#3d1508;}
+.col-label-do{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:#7ecdb5;}
+.col-label-avoid{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:#e8a090;}
+.col-body{padding:10px 12px;background:#14130f;}
+.col-body li{font-size:12.5px;color:#b8b2a4;line-height:1.65;padding:3px 0 3px 14px;position:relative;list-style:none;}
+.col-body li::before{content:"—";position:absolute;left:0;color:#4a4840;}
+
+.scene-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px 16px 14px;}
+.scene-card{border:1px solid #2a2820;border-radius:4px;overflow:hidden;}
+.scene-head{background:#1a1915;padding:8px 12px;display:flex;align-items:center;gap:8px;}
+.scene-label{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:#8a8070;}
+.scene-risk-badge{font-family:'IBM Plex Mono',monospace;font-size:8px;padding:1px 6px;border-radius:2px;background:rgba(192,80,128,.2);color:#c05080;margin-left:auto;}
+.scene-body{padding:8px 12px;background:#14130f;}
+.scene-body li{font-size:12px;color:#b0aa9a;line-height:1.65;padding:2px 0 2px 14px;position:relative;list-style:none;}
+.scene-body li::before{content:"—";position:absolute;left:0;color:#4a4840;}
+
+.engine-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 16px 14px;}
+.engine-card{border-radius:4px;overflow:hidden;border:1px solid #2a2820;}
+.engine-head{padding:9px 12px;}
+.eh-amber{background:#5c3205;}
+.eh-coral{background:#3d1508;}
+.el-amber{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:#d4a050;}
+.el-coral{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:#e0a090;}
+.engine-body{padding:10px 12px;background:#14130f;}
+.engine-body ul{list-style:none;}
+.engine-body li{font-size:12.5px;color:#b8b2a4;line-height:1.65;padding:3px 0 3px 14px;position:relative;}
+.engine-body li::before{content:"—";position:absolute;left:0;color:#4a4840;}
+.engine-body .consequence{padding-left:0;margin-top:6px;font-size:12px;color:#5a5548;font-style:italic;display:block;}
+
+.inset-box{background:#14130f;border:1px solid #2a2820;border-radius:4px;margin:10px 16px 14px;padding:12px 14px;}
+.inset-title{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:#6b6558;margin-bottom:10px;}
+.inset-box li{font-size:13px;color:#b0aa9a;line-height:1.65;padding:3px 0 3px 16px;position:relative;list-style:none;}
+.inset-box li::before{content:"—";position:absolute;left:0;color:#4a4840;}
+
+.wr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 16px 14px;}
+.wr-card{border-radius:4px;overflow:hidden;border:1px solid #2a2820;}
+.wr-head{padding:8px 12px;}
+.wh-wrong{background:#3d0808;}
+.wh-right{background:#073d31;}
+.wl-wrong{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:#e08080;}
+.wl-right{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:#7ecdb5;}
+.wr-body{padding:10px 12px;background:#14130f;}
+.wr-body li{font-size:12.5px;color:#b8b2a4;line-height:1.65;padding:3px 0 3px 14px;position:relative;list-style:none;}
+.wr-body li.wrong::before{content:"✕";position:absolute;left:0;color:#c23b3b;font-size:10px;top:5px;}
+.wr-body li.right::before{content:"✓";position:absolute;left:0;color:#5ecdb5;font-size:10px;top:5px;}
+
+.arc-track{padding:12px 16px 14px;}
+.arc-row{display:flex;align-items:stretch;gap:0;margin-bottom:8px;}
+.arc-step{flex:1;padding:8px 10px;background:#14130f;border:1px solid #2a2820;font-size:11.5px;color:#b0aa9a;line-height:1.5;text-align:center;}
+.arc-step:first-child{border-radius:4px 0 0 4px;}
+.arc-step:last-child{border-radius:0 4px 4px 0;}
+.arc-step.collapse{background:#1a0610;border-color:#3a1528;}
+.arc-arrow{display:flex;align-items:center;padding:0 4px;color:#5a5548;font-size:12px;}
+.arc-label{font-family:'IBM Plex Mono',monospace;font-size:8px;color:#c05080;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px;}
+.arc-label.neutral{color:#8a8070;}
+.arc-note{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a3848;margin-top:8px;font-style:italic;display:block;}
+
+.philosophy-box{background:#0e0c08;border:1px solid #3a3020;border-radius:4px;margin:0;padding:14px 16px;}
+.philosophy-line{font-family:'Playfair Display',serif;font-size:14px;font-style:italic;color:#d4b060;line-height:1.8;display:block;margin-bottom:6px;}
+.philosophy-line+.philosophy-line{border-top:1px solid #2a2015;padding-top:8px;margin-top:2px;}
+
+.anchor-line{font-family:'Playfair Display',serif;font-size:15px;font-style:italic;color:#d4b060;padding:12px 16px 0;}
+
+.reset-box{background:#14130f;border:1px solid #2a2820;border-radius:4px;margin:10px 16px 14px;padding:12px 14px;}
+.reset-box li{font-size:13px;color:#b8b2a4;line-height:1.75;padding:3px 0 3px 16px;position:relative;list-style:none;}
+.reset-box li::before{content:"—";position:absolute;left:0;color:#4a4840;}
+
+@media(max-width:520px){.two-col,.scene-grid,.engine-grid,.wr-grid{grid-template-columns:1fr;}.arc-row{flex-direction:column;}.arc-arrow{transform:rotate(90deg);text-align:center;}}
+</style>
+</head>
+<body>
+<div class="guide">
+
+  <div class="guide-header">
+    <div class="guide-title">Reader Support Guide — Foster Dade</div>
+    <div class="guide-sub">Foster Dade · Pilot · Hulu / Warner Brothers TV · Series Lead</div>
+    <div class="tag-row">
+      <span class="tag">2 Scenes</span>
+      <span class="tag">Unreliable Narrator</span>
+      <span class="tag">You Read: Annabeth · Jack · Jae</span>
+      <span class="tag">V.O. → straight or slightly off camera</span>
+      <span class="tag tag-hot">⚠ Intimacy Content</span>
+      <span class="tag tag-risk">⚠ Moral Collapse Arc</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-red">
+      <span class="sec-num warn">⚠</span>
+      <span class="sec-title">What Will Go Wrong</span>
+    </div>
+    <div class="warn-box">
+      <div class="warn-title">Most readers will kill this audition by doing one of these:</div>
+      <ul>
+        <li>Play Annabeth as a villain — she's not. If she's cold, Foster has nothing real to lose. He needs something genuine to destroy.</li>
+        <li>Rush past <span class="ref">"No. You're not crazy, Foster"</span> — that beat is the hinge of Scene 1. Step on it and the whole scene falls flat.</li>
+        <li>Treat Scene 2's intimacy sequence as something to get through — it's not a hazard to navigate. It's the scene. Rushing it erases Foster's moral collapse entirely.</li>
+        <li>Signal discomfort through tone, pacing, or volume during explicit content — the actor will feel it and lose their ground immediately.</li>
+        <li>Play the porn exchange for laughs — the humor lives in the writing. Your job is to mean every word at face value.</li>
+      </ul>
+      <div class="warn-footer">Any one of these kills the audition. Full stop.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">—</span>
+      <span class="sec-title">What This Guide Is For</span>
+    </div>
+    <div class="philosophy-box">
+      <span class="philosophy-line">Reader101 is not about reading lines. It is about protecting the actor's ability to fully commit — especially in uncomfortable material.</span>
+      <span class="philosophy-line">Prep101 gives the actor their internal truth. You are their external support system. Your job is not to make this comfortable. Your job is to make it playable.</span>
+      <span class="philosophy-line">In high-risk scenes: the reader is responsible for holding the emotional reality so the actor can go there without a net.</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-risk">
+      <span class="sec-num risk">⚑</span>
+      <span class="sec-title">High-Risk Scene Classification</span>
+      <span class="badge badge-risk">scene 2 flagged</span>
+    </div>
+    <div class="risk-box">
+      <div class="risk-title">This scene contains behavior that may cause reader discomfort. That discomfort must not affect delivery.</div>
+      <span class="risk-flag">Scene 2 contains: sexual content · moral contradiction · shame transition · power imbalance between self-image and behavior</span>
+      <ul>
+        <li>Treat sexual content as behavior — not spectacle, not comedy, not something to survive</li>
+        <li>Do not add humor or commentary to defuse your own discomfort</li>
+        <li>Stay vocally neutral — no judgment, no distancing, no editorial in your tone</li>
+        <li>Allow stillness — this moment should feel contained, not rushed past</li>
+        <li>Track the shift into shame — that transition IS the scene</li>
+        <li>You are not performing the physical act — you are holding the emotional reality that makes the act mean something</li>
+        <li>If you are a parent reader: your discomfort is normal and valid. Your role is technical and supportive, not participatory. Stay professional, stay flat, trust the actor.</li>
+      </ul>
+      <span class="risk-consequence">If you rush or soften Scene 2's intimacy beat, Foster's psychological turn disappears. The arc from curiosity to shame is the entire point of the scene — and you are half of it.</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-intimacy">
+      <span class="sec-num intimate">⚠</span>
+      <span class="sec-title">When the Scene Crosses Into Intimacy</span>
+      <span class="badge badge-hot">intimacy mode</span>
+    </div>
+    <div class="intimacy-box">
+      <div class="intimacy-title">Scene 2 contains explicit sexual dialogue and shared physical space. This is how you handle it:</div>
+      <ul>
+        <li>Do not sanitize explicit language — deliver every word at face value</li>
+        <li>Do not rush to get past the moment — the discomfort is the scene</li>
+        <li>No nervous humor, no softening, no apologetic tone</li>
+        <li>Do not signal your own discomfort through pacing, volume, or breaks in presence</li>
+        <li>Commit to full presence without physically performing the behavior</li>
+        <li>Intimate scenes in production are choreographed by an intimacy coordinator — in the audition room, the actor is finding emotional truth only. Match that register exactly.</li>
+      </ul>
+      <span class="intimacy-rule">Your steadiness is the floor the actor stands on. If you shift, they fall.</span>
+      <span class="intimacy-consequence">If you pull back here, the actor cannot fully commit — and the scene collapses.</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-amber">
+      <span class="sec-num nl">01</span>
+      <span class="sec-title">Why This Matters</span>
+    </div>
+    <p class="intro-text">Foster is the unreliable narrator of his own downfall — a kid who uses sensitivity as a weapon while believing he's above the corruption around him. Scene 1 shows the first real betrayal. Scene 2 shows him becoming the thing he claims to despise. <strong>He can only collapse if you give him something real to collapse against and beside.</strong> The intimacy sequence isn't about the act — it's about a boy who just lost his one genuine connection sitting next to someone and still feeling completely, devastatingly alone. If you're just delivering lines, the collapse has no floor.</p>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">02</span>
+      <span class="sec-title">Performance Engine</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card">
+        <div class="engine-head eh-amber"><div class="el-amber">Foster's Drive</div></div>
+        <div class="engine-body">
+          <ul>
+            <li>Weaponizes sensitivity while believing he's being honest</li>
+            <li>Needs to be the moral center of every room he's in</li>
+            <li>Scene 2's intimacy isn't desire — it's numbness reaching for warmth</li>
+            <li>The shame that follows is the moment he becomes what he judges</li>
+          </ul>
+          <span class="consequence">If he has nothing real to react to, the self-delusion has no mirror — and the whole psychological arc disappears.</span>
+        </div>
+      </div>
+      <div class="engine-card">
+        <div class="engine-head eh-coral"><div class="el-coral">Your Fuel</div></div>
+        <div class="engine-body">
+          <ul>
+            <li>Annabeth: conflicted, not calculating — she actually liked him</li>
+            <li>Jack: genuinely easy — warmth with zero agenda</li>
+            <li>Jack's casual offer in Scene 2 costs him nothing. That ease is what makes Foster's shame devastating by contrast.</li>
+          </ul>
+          <span class="consequence">The moment either character feels like a plot mechanism, Foster's reaction reads as overblown instead of earned.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">03</span>
+      <span class="sec-title">Scene Snapshot</span>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 1 — Meadow / Jae / Foster's Room</div></div>
+        <div class="scene-body"><ul>
+          <li>You are Annabeth, then Jae</li>
+          <li>Annabeth: apology → father revelation → collapse</li>
+          <li>Foster walks. Gets high with Jae. Writes.</li>
+          <li>Closes on Foster's V.O. thesis: what he most wants and most fears</li>
+          <li>Subtext: Foster learns vulnerability can be a weapon. The lesson starts here.</li>
+        </ul></div>
+      </div>
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 2 — Jack's Room / Roof</div><span class="scene-risk-badge">high-risk</span></div>
+        <div class="scene-body"><ul>
+          <li>You are Jack</li>
+          <li>Opens: Jack defuses Annabeth — warm, easy, no agenda</li>
+          <li>Pivot: hacked porn, both boys high, watching</li>
+          <li>Shared intimacy → awareness → shame → exit</li>
+          <li>Subtext: Foster becomes what he judges. He doesn't know it yet. We do.</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-amber">
+      <span class="sec-num nl">04</span>
+      <span class="sec-title">Your Job</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Annabeth's apology — don't let it sound rehearsed. She's been dreading this exact moment.</li>
+      <li>Most readers play <span class="ref">"I liked you from the second I saw you"</span> as damage control. Wrong. She means it. That's what makes it worse.</li>
+      <li><span class="ref">"No. You're not crazy, Foster."</span> — drop every other register. Full stop. Not a softening — a collapse.<span class="consequence">Same tone as the apology = the reveal lands as nothing.</span></li>
+      <li><span class="ref">"My dad... he said to make sure I get into Foster Dade's good graces."</span> — say it like it costs her to say it. This is the moment she loses him and she knows it.</li>
+      <li>As Jae: one line, glassy, dry, matter-of-fact. One gear below everything else in the script.</li>
+      <li>As Jack: <span class="ref">"Her dad's a fucking loser... give 'em some grace."</span> — observation, not advice. Read it like he's lived it.</li>
+      <li><span class="ref">"Hey... Wanna see something?"</span> — quiet, delighted, specific. Let the mischief come from the writing.</li>
+      <li>The explicit exchange — <span class="ref">"Is she... eating her ass?" / "Maybe her pussy? Hard to tell."</span> — dry, factual, stoned. Two kids analyzing a math problem. No winking. Mean every word.<span class="consequence">Humor signaling here destroys the intimacy arc that follows.</span></li>
+      <li>Jack's offer — deliver it with zero performance. Casual as an offer to share headphones.<span class="consequence">Any hesitation or irony in your delivery erases Foster's isolation — which is the whole scene.</span></li>
+      <li><span class="ref">"Dade. This is —" / "Private. Obviously."</span> — overlap hard on the em-dash. Flat and final.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-risk">
+      <span class="sec-num risk">↓</span>
+      <span class="sec-title">Scene 2 — Moral Collapse Arc</span>
+      <span class="badge badge-risk">track this</span>
+    </div>
+    <div class="arc-track">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#8060a0;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">This scene is about moral collapse and identity fracture — not the sexual act itself. You are responsible for holding half this arc.</div>
+      <div class="arc-row">
+        <div class="arc-step"><span class="arc-label neutral">Jack</span>Warmth &amp; grace<br><span style="font-size:10px;color:#6a6458;">defusing the night</span></div>
+        <div class="arc-arrow">→</div>
+        <div class="arc-step"><span class="arc-label neutral">both</span>Curiosity<br><span style="font-size:10px;color:#6a6458;">the screen, the dare</span></div>
+        <div class="arc-arrow">→</div>
+        <div class="arc-step"><span class="arc-label">Foster</span>Participation<br><span style="font-size:10px;color:#6a6458;">involuntary, then chosen</span></div>
+        <div class="arc-arrow">→</div>
+        <div class="arc-step"><span class="arc-label">Foster</span>Awareness<br><span style="font-size:10px;color:#6a6458;">seeing Jack see him</span></div>
+        <div class="arc-arrow">→</div>
+        <div class="arc-step arc-step collapse"><span class="arc-label">Foster</span>Shame &amp; exit<br><span style="font-size:10px;color:#c05080;">joy then collapse</span></div>
+      </div>
+      <span class="arc-note">Jack never travels this arc. His ease is the contrast that gives Foster's shame its full weight. Play ease — not obliviousness. Jack isn't unaware. He just doesn't carry the same freight.</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">05</span>
+      <span class="sec-title">Playing Multiple Characters</span>
+      <span class="badge">mandatory</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Annabeth (S1): breaking under the weight of her own betrayal — warm and guilty simultaneously</li>
+      <li>Jae (S1, brief): stoned, amused, zero stakes — one clean note</li>
+      <li>Jack (S2): peer-equal warmth, unbothered by everything that bothers Foster — including Scene 2</li>
+      <li><strong>If Annabeth and Jack feel the same, the audition dies instantly.</strong></li>
+      <li>Annabeth's warmth has guilt underneath it. Jack's warmth is clean. Never swap these.</li>
+      <li>Full pause, full reset between characters. No bleed.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nl">06</span>
+      <span class="sec-title tm">Reader Fundamentals</span>
+    </div>
+    <div class="inset-box">
+      <div class="inset-title">This is where readers quietly ruin auditions:</div>
+      <ul>
+        <li>Dropping energy mid-line — the actor feels it and pulls back</li>
+        <li>Reading ahead instead of reacting — you become a cue machine, not a scene partner</li>
+        <li>Treating silence like dead air — silence is where Foster lives. Honor it.</li>
+        <li>Signaling discomfort during intimate or explicit material — through tone, speed, or volume</li>
+        <li>Never act over the actor. Support. Don't compete.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-intimacy">
+      <span class="sec-num intimate">⚠</span>
+      <span class="sec-title">Reader Behavior in High-Risk Material</span>
+    </div>
+    <div class="wr-grid">
+      <div class="wr-card">
+        <div class="wr-head wh-wrong"><div class="wl-wrong">Wrong Instincts</div></div>
+        <div class="wr-body"><ul>
+          <li class="wrong">Softening explicit lines — lowering volume, swallowing words</li>
+          <li class="wrong">Adding a nervous laugh to relieve your own tension</li>
+          <li class="wrong">Physically disengaging — leaning back, breaking presence</li>
+          <li class="wrong">Rushing pacing to get through the uncomfortable part</li>
+          <li class="wrong">Judging the scene through your delivery</li>
+          <li class="wrong">Treating the shame beat as a landing point — it's a transition, not an ending</li>
+        </ul></div>
+      </div>
+      <div class="wr-card">
+        <div class="wr-head wh-right"><div class="wl-right">Correct Action</div></div>
+        <div class="wr-body"><ul>
+          <li class="right">Neutral, grounded delivery — same register as every other line</li>
+          <li class="right">Let discomfort exist without commenting on it</li>
+          <li class="right">Maintain presence and eye-line throughout</li>
+          <li class="right">Honor silence and aftermath — don't rush past them</li>
+          <li class="right">Track the arc internally — your awareness supports Foster's transition</li>
+          <li class="right">Hold the emotional reality of the moment, not the literal behavior</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">07</span>
+      <span class="sec-title">Key Beats</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>S1: <span class="ref">"WHAT! What do you want from me"</span> — react like you've been chasing him. He's already cornered before you speak.</li>
+      <li>S1: After <span class="ref">"Sometimes with Jack and I... stupid shit happens"</span> — don't rush the ellipsis. That pause is her trying to find the least damaging words.</li>
+      <li>S1: <span class="ref">"No. You're not crazy, Foster."</span> — full register drop. Not a softening — a weight.<span class="consequence">Same tone as the apology = reveal has no teeth. The drop IS the scene.</span></li>
+      <li>S1: <span class="ref">"Because of your father."</span> — flat. The horror is in the information, not the delivery.</li>
+      <li>S1: After <span class="ref">"Tell your dad you asked me for the favor. And I said no."</span> — don't follow him. Let the exit land.</li>
+      <li>S2: <span class="ref">"Her dad's a fucking loser... People screw up, Dade, give 'em some grace."</span> — read it like he's lived it. Observation, not advice.<span class="consequence">Sounds like a lesson = dead.</span></li>
+      <li>S2: <span class="ref">"Huynh got past the firewall."</span> — small, delighted, specific. Best news of his week.</li>
+      <li>S2: Jack's offer — zero performance, zero hesitation. Casual as offering to share a bag of chips.<span class="consequence">Any irony or hesitation collapses Foster's isolation — the moral weight of the scene disappears.</span></li>
+      <li>S2: After the shared moment — stillness is a beat. Don't fill it. Foster's shame needs room to exist.</li>
+      <li>S2: <span class="ref">"Dade. This is —" / "Private. Obviously."</span> — hard overlap on the em-dash. Flat and final. Not a joke. A boundary.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nl">08</span>
+      <span class="sec-title tm">Rhythm, Pace & Energy</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Scene 1 open (meadow): hot and urgent — Annabeth is running to catch him</li>
+      <li>Scene 1 at <span class="ref">"No. You're not crazy"</span>: temperature drops. Hold the new register — don't drift back up.</li>
+      <li>Scene 1 Jae section: flat and brief — one gear below everything else in the script</li>
+      <li>Scene 2 open: warm and easy — Jack defusing, medium pace, no friction</li>
+      <li>Scene 2 intimacy sequence: do not accelerate — this is slow and present, not fast and nervous</li>
+      <li>Scene 2 aftermath: stillness is a beat. Honor it before moving to the exit.</li>
+      <li>Em-dashes (—) are hard cuts — interrupt there, don't trail off</li>
+      <li>Skip parentheticals aloud — actor direction only</li>
+      <li>V.O. and blogspot lines belong to Foster — never read them</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">09</span>
+      <span class="sec-title">Do This / Avoid This</span>
+    </div>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="col-head chdo"><div class="col-label-do">Do This</div></div>
+        <div class="col-body"><ul>
+          <li>Play Annabeth's revelation like it costs her the one thing she actually wanted</li>
+          <li>Let Jack's warmth be uncomplicated — he's the only character without an agenda</li>
+          <li>Treat explicit dialogue with the same flat realism as every other line in the scene</li>
+          <li>Give Foster's exits real weight — don't fill the silence after he leaves</li>
+          <li>Hold the same pace through the intimacy sequence as the rest of the scene</li>
+        </ul></div>
+      </div>
+      <div class="col-card">
+        <div class="col-head chavoid"><div class="col-label-avoid">Avoid This</div></div>
+        <div class="col-body"><ul>
+          <li>Playing Annabeth as cold — she's collateral damage, not a villain</li>
+          <li>Rushing Jack's <span class="ref">"give 'em some grace"</span> — that's the emotional center of Scene 2</li>
+          <li>Signaling during the porn exchange — play it completely straight</li>
+          <li>Changing pacing, volume, or presence during high-risk content</li>
+          <li>Matching Foster's escalation — stay grounded while he goes there</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">10</span>
+      <span class="sec-title">Connection</span>
+      <span class="badge">critical</span>
+    </div>
+    <p class="anchor-line">Foster can only collapse as far as you let him.</p>
+    <div class="sec-body" style="padding-top:10px;"><ul>
+      <li>Annabeth's genuine feeling is what makes Foster's rage heartbreaking — if she's just using him, the scene is plot, not gut punch</li>
+      <li>Hold the pause after <span class="ref">"No. You're not crazy."</span> — that's the last moment before his world changes shape</li>
+      <li>Jack's ease in Scene 2 is the whole scene — if Jack is tense, Foster's shame has no mirror</li>
+      <li>The intimacy sequence lands only if Jack's offer feels genuinely casual — your comfort level in that moment gives Foster's collapse its full weight</li>
+      <li>Foster's closing V.O. only works if he actually had something real to lose tonight — and lost it in both scenes</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-coral">
+      <span class="sec-num nl">11</span>
+      <span class="sec-title">Tone & Reference Anchor</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>If you play this like teen drama, it collapses immediately — this is literary realism, not elevated soap</li>
+      <li>Touchstones: <em>The Catcher in the Rye</em>, early <em>Euphoria</em> (before the spectacle), <em>Less Than Zero</em> — interior, literary, morally unstable</li>
+      <li>Foster thinks he's Holden Caulfield calling out the phonies. He's becoming Tom Ripley. Your characters are part of what's seducing him.</li>
+      <li>Humor is wry and accidental — it comes from characters taking themselves seriously, never from playing for laughs</li>
+      <li>2008–2009 period specificity: Blackberry, MacBook, Blogspot — zero contemporary irony</li>
+      <li>American accent throughout — consistent across all three characters, no drift</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nl">12</span>
+      <span class="sec-title tm">Quick Reset</span>
+    </div>
+    <div class="reset-box"><ul>
+      <li>Scene 1: Meadow. Annabeth wants forgiveness. Foster gets betrayal. He walks — and starts learning how to use pain as a tool.</li>
+      <li>Scene 1 cont.: Jae's room. Foster gets high. Writes the thing he most needs to say and least understands about himself.</li>
+      <li>Scene 2: Jack's room. Jack offers grace. Then accidental intimacy. Foster becomes what he judges. He climbs out the window alone.</li>
+      <li>Your job: Be real. Stay grounded. Hold the arc. Give him something real to collapse against.</li>
+    </ul></div>
+  </div>
+
+</div>
+</body>
+</html>

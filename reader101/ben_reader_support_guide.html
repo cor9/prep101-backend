@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reader Support Guide — Ben</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #F5F2EC;
+  font-family: 'Syne', sans-serif;
+  color: #1a1a1a;
+}
+
+.guide {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+/* HEADER */
+.guide-header {
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.75rem;
+  border-bottom: 3px solid #C4501A;
+}
+.guide-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: -0.02em;
+}
+.guide-sub {
+  font-size: 11px;
+  color: #777;
+  margin-top: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'DM Mono', monospace;
+}
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1.5px solid #ccc;
+  color: #555;
+  background: #edeae3;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.03em;
+}
+
+/* SECTION SHELL */
+.section {
+  margin-bottom: 1.25rem;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+/* HEADERS */
+.sec-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+}
+.sh-black   { background: #1a1a1a; }
+.sh-orange  { background: #C4501A; }
+.sh-teal    { background: #0D6651; }
+.sh-brown   { background: #5C2E0A; }
+.sh-red     { background: #8B1F1F; }
+.sh-muted   { background: #E8E4DC; }
+.sh-slate   { background: #2C3E35; }
+
+.sec-num {
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 22px;
+  font-family: 'DM Mono', monospace;
+}
+.nl { color: #888; }
+.nm { color: #666; }
+
+.sec-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.tl { color: #F5F2EC; }
+.tm { color: #1a1a1a; }
+
+.badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.18);
+  color: #F5F2EC;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-family: 'DM Mono', monospace;
+}
+
+/* BODY */
+.sec-body {
+  padding: 14px 18px 16px;
+  background: #fff;
+}
+.sec-body ul { list-style: none; }
+.sec-body li {
+  font-size: 14px;
+  color: #1a1a1a;
+  line-height: 1.65;
+  padding: 4px 0 4px 20px;
+  position: relative;
+}
+.sec-body li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #999;
+}
+
+.ref {
+  font-style: italic;
+  color: #555;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+}
+.consequence {
+  font-size: 13px;
+  color: #888;
+  display: block;
+  padding-left: 20px;
+  margin-top: 2px;
+  margin-bottom: 6px;
+  font-style: italic;
+}
+
+/* WARN BOX */
+.warn-box {
+  background: #111;
+  padding: 16px 18px;
+}
+.warn-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #E85A35;
+  margin-bottom: 12px;
+  font-family: 'DM Mono', monospace;
+}
+.warn-box ul { list-style: none; }
+.warn-box li {
+  font-size: 14px;
+  color: #F0EDE6;
+  line-height: 1.65;
+  padding: 4px 0 4px 22px;
+  position: relative;
+}
+.warn-box li::before {
+  content: "✕";
+  position: absolute;
+  left: 0;
+  color: #E85A35;
+  font-size: 12px;
+  font-weight: 700;
+}
+.warn-footer {
+  font-size: 12px;
+  color: #777;
+  margin-top: 12px;
+  font-style: italic;
+  font-family: 'DM Mono', monospace;
+}
+
+/* INTRO */
+.intro-text {
+  font-size: 14px;
+  color: #1a1a1a;
+  line-height: 1.75;
+  padding: 14px 18px 16px;
+  background: #fff;
+}
+
+/* ENGINE GRID */
+.engine-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 14px 18px 16px;
+  background: #fff;
+}
+.engine-card {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+.engine-head { padding: 9px 13px; }
+.eh-orange { background: #C4501A; }
+.eh-teal   { background: #0D6651; }
+.el-orange {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #FAD4C0;
+  font-family: 'DM Mono', monospace;
+}
+.el-teal {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #A8E8D0;
+  font-family: 'DM Mono', monospace;
+}
+.engine-body { padding: 11px 13px; background: #fff; }
+.engine-body p {
+  font-size: 13px;
+  color: #1a1a1a;
+  line-height: 1.7;
+}
+.engine-body .consequence {
+  padding-left: 0;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #888;
+}
+
+/* SCENE GRID */
+.scene-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 14px 18px 16px;
+  background: #fff;
+}
+.scene-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.scene-head {
+  background: #1a1a1a;
+  padding: 8px 12px;
+}
+.scene-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #D8D4C8;
+  font-family: 'DM Mono', monospace;
+}
+.scene-body { padding: 10px 13px; background: #fff; }
+.scene-body ul { list-style: none; }
+.scene-body li {
+  font-size: 13px;
+  color: #1a1a1a;
+  line-height: 1.6;
+  padding: 3px 0 3px 16px;
+  position: relative;
+}
+.scene-body li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #999;
+}
+
+/* TWO COL */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 14px 18px 16px;
+  background: #fff;
+}
+.col-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.col-head { padding: 9px 13px; }
+.chdo     { background: #0D6651; }
+.chavoid  { background: #5C2E0A; }
+.col-label-do {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #A8E8D0;
+  font-family: 'DM Mono', monospace;
+}
+.col-label-avoid {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #F5C4A8;
+  font-family: 'DM Mono', monospace;
+}
+.col-body { padding: 11px 13px; background: #fff; }
+.col-body ul { list-style: none; }
+.col-body li {
+  font-size: 13px;
+  color: #1a1a1a;
+  line-height: 1.6;
+  padding: 3px 0 3px 14px;
+  position: relative;
+}
+.col-body li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #999;
+}
+
+/* INSET BOX */
+.inset-box {
+  background: #F0EDE6;
+  border-radius: 8px;
+  margin: 0 18px 16px;
+  padding: 13px 15px;
+}
+.inset-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #777;
+  margin-bottom: 10px;
+  font-family: 'DM Mono', monospace;
+}
+.inset-box ul { list-style: none; }
+.inset-box li {
+  font-size: 13px;
+  color: #1a1a1a;
+  line-height: 1.65;
+  padding: 3px 0 3px 16px;
+  position: relative;
+}
+.inset-box li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #999;
+}
+
+/* ANCHOR LINE */
+.anchor-line {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  padding: 14px 18px 0;
+  font-style: italic;
+  background: #fff;
+  letter-spacing: -0.01em;
+}
+
+/* RESET BOX */
+.reset-box {
+  background: #F0EDE6;
+  border-radius: 8px;
+  margin: 0 18px 16px;
+  padding: 13px 15px;
+}
+.reset-box ul { list-style: none; }
+.reset-box li {
+  font-size: 13px;
+  color: #1a1a1a;
+  line-height: 1.75;
+  padding: 3px 0 3px 16px;
+  position: relative;
+}
+.reset-box li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #999;
+}
+
+.sec-body-inset {
+  background: #fff;
+  padding-top: 14px;
+}
+
+@media (max-width: 540px) {
+  .engine-grid, .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="guide">
+
+  <div class="guide-header">
+    <div class="guide-title">Reader Support Guide — Gary</div>
+    <div class="guide-sub">BEN · Multicam Sitcom · Disney Style · 1 Scene</div>
+    <div class="tag-row">
+      <span class="tag">1 Scene</span>
+      <span class="tag">Multicam · Broad Comedy</span>
+      <span class="tag">You Read: Gary</span>
+      <span class="tag">Actor Plays: Ben</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-red">
+      <span class="sec-num nl">⚠</span>
+      <span class="sec-title tl">What Will Go Wrong</span>
+    </div>
+    <div class="warn-box">
+      <div class="warn-title">Readers kill this audition three ways:</div>
+      <ul>
+        <li>Playing Gary as an oblivious bumbler — he's confident, not clueless. That difference is everything.</li>
+        <li>Laughing at Ben's jokes instead of genuinely defending yourself — if Gary folds, Ben has nothing to fight</li>
+        <li>Rushing the back half — Ben's honeymoon spiral is the whole audition. If Gary talks over it, it's gone.</li>
+      </ul>
+      <div class="warn-footer">Any one of these kills the read. Full stop.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-orange">
+      <span class="sec-num nl">01</span>
+      <span class="sec-title tl">Why This Matters</span>
+    </div>
+    <p class="intro-text">Ben only works if Gary actually believes he's helping. This isn't a scene about a dumb dad — it's a scene about a <strong>confident dad giving terrible advice with total sincerity.</strong> If Gary doesn't fully commit to the bit, Ben has no wall to throw himself against. The comedy lives in Ben's neurotic escalation. Your job: be the calm, reasonable straight man who genuinely cannot understand why his kid is being so difficult about blow-drying.</p>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">02</span>
+      <span class="sec-title tl">Performance Engine</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card">
+        <div class="engine-head eh-orange"><div class="el-orange">Ben's Drive</div></div>
+        <div class="engine-body">
+          <p>Ben is a 14-year-old catastrophizer taking a simple piece of hair advice and mapping it to total romantic ruin.</p>
+          <span class="consequence">He needs Gary to stay earnest and unrattled — the bigger the contrast, the funnier Ben's spiral becomes.</span>
+        </div>
+      </div>
+      <div class="engine-card">
+        <div class="engine-head eh-teal"><div class="el-teal">Your Fuel</div></div>
+        <div class="engine-body">
+          <p>Gary is not defensive — he's <em>patient</em>. He thinks the advice is genuinely good. He used to be Gare The Hair, for god's sake.</p>
+          <span class="consequence">The moment Gary seems embarrassed by the advice, the whole engine cuts out.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-black">
+      <span class="sec-num nl">03</span>
+      <span class="sec-title tl">Scene Snapshot</span>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 1 — Living Room · Single Scene</div></div>
+        <div class="scene-body"><ul>
+          <li>Gary opens: sincere offer to share hair wisdom he still believes in</li>
+          <li>Ben immediately goes in on the baldness — Gary absorbs it, doesn't break</li>
+          <li>"Gare The Hair" lands as a genuine flex, not a punchline Gary is embarrassed by</li>
+          <li>Blow Dry debate escalates — Gary stays logical, Ben goes nuclear with the honeymoon scenario</li>
+          <li>Gary's button: <span class="ref">"Don't you think you're overthinking this?"</span> — said with the patience of a saint</li>
+          <li>Ben's button: <span class="ref">"Gare... With No Hair?"</span> — lands as the final gut punch. Let it hit.</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-orange">
+      <span class="sec-num nl">04</span>
+      <span class="sec-title tl">Your Job</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Don't play Gary as defeated by the bald jokes — he is genuinely unbothered, which makes Ben's escalation funnier</li>
+      <li>Wrong instinct: make Gary warm and dad-like. Right instinct: make him <em>specific</em> — he's a guy who still has opinions about hair even though he's bald</li>
+      <li>Most readers add a laugh or a wink at <span class="ref">"Gare The Hair"</span> — don't. Gary says it with pride. That's where the comedy lives.</li>
+      <li><span class="ref">"Do not poo-poo the poof"</span> — deliver it like this is real, vetted advice. Not a punchline. Gary means it.</li>
+      <li>After Ben's honeymoon spiral — land <span class="ref">"Don't you think you're overthinking this?"</span> flat, calm, genuinely confused</li>
+      <li>Don't react during the BWAAAH noise — let Ben do the full bit. Stay present, stay unimpressed.</li>
+      <li>When Ben rewrites your nickname to <span class="ref">"Gare With No Hair"</span> — take the hit. Don't laugh it off. Let the actor feel it land.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-black">
+      <span class="sec-num nl">05</span>
+      <span class="sec-title tl">Playing Gary</span>
+      <span class="badge">mandatory</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Gary is the only character you play — but he has two gears and you must use both</li>
+      <li>Gear 1: Confident advisor — he genuinely believes he's helping. Full sincerity, no irony.</li>
+      <li>Gear 2: Patient parent — by the honeymoon spiral, he's tired but not mean. Never condescending.</li>
+      <li><strong>If Gary seems sarcastic or self-aware at any point, Ben's neurosis loses its target.</strong></li>
+      <li>Gary's confidence is not arrogance — it's the specific delusion of a dad who thinks he still has game</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">06</span>
+      <span class="sec-title tm">Reader Fundamentals</span>
+    </div>
+    <div class="sec-body-inset">
+      <div class="inset-box">
+        <div class="inset-title">This is where readers quietly ruin auditions:</div>
+        <ul>
+          <li>Dropping energy mid-line — the actor feels it and pulls back</li>
+          <li>Reading ahead instead of reacting — you stop being a scene partner and become a cue machine</li>
+          <li>Treating silence like dead air — silence is where Ben lives. Honor it.</li>
+          <li>Never act over the actor. Support. Don't compete.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">07</span>
+      <span class="sec-title tl">Key Beats</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Opening: <span class="ref">"So you ready for my tips on how to have awesome hair?"</span> — deliver this like it's a gift. Gary is excited to give this advice.</li>
+      <li><span class="ref">"I'm aware of the level of my baldness."</span> — zero defensiveness. Gary is just stating facts.</li>
+      <li><span class="ref">"Gare The Hair"</span> — say it like it was a genuinely cool nickname. No self-mockery. It was cool. He knows it was cool.</li>
+      <li>The Two Words exchange (<span class="ref">"Blow. Dry."</span> / <span class="ref">"No. Way."</span>) — this is ping-pong. Zero air. Match Ben's rhythm exactly.</li>
+      <li><span class="ref">"Do not poo-poo the poof"</span> — hold brief eye contact (or a pause). This is real wisdom being dispensed.</li>
+      <li>The honeymoon bit: go fully quiet and still. Let Ben run the whole spiral — BWAAAH, the whisper, all of it.
+        <span class="consequence">If you make any sound or move during this bit, you step on the actor's biggest moment.</span>
+      </li>
+      <li><span class="ref">"Don't you think you're overthinking this?"</span> — this is the button. Flat. Calm. Exhausted but not defeated.</li>
+      <li>End: let Ben's <span class="ref">"Gare... With No Hair?"</span> fully land before the scene ends. Don't fill the silence.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">08</span>
+      <span class="sec-title tm">Rhythm, Pace & Energy</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Opening through nickname reveal: medium pace, warm — Gary is setting a mood, not rushing</li>
+      <li>Blow Dry debate: picks up — this is a rapid back-and-forth. Don't let it breathe too much.</li>
+      <li>Honeymoon spiral: full stop. You go quiet. Ben takes the wheel completely.</li>
+      <li><span class="ref">"Two words. Blow. Dry."</span> — your punchiest line. Give each word a beat.</li>
+      <li><span class="ref">"Don't you think you're overthinking this?"</span> — your flattest delivery. Bone dry.</li>
+      <li>Em-dashes are hard cuts — interrupt there, don't trail off</li>
+      <li>Parentheticals are actor direction only — skip them aloud</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-black">
+      <span class="sec-num nl">09</span>
+      <span class="sec-title tl">Do This / Avoid This</span>
+    </div>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="col-head chdo"><div class="col-label-do">Do This</div></div>
+        <div class="col-body"><ul>
+          <li>Stay fully committed to Gary's sincere belief in every piece of advice</li>
+          <li>Hold still and silent through Ben's physical bit with the blow dryer noise</li>
+          <li>Deliver <span class="ref">"Gare The Hair"</span> like it lands as a real flex</li>
+          <li>Let the final nickname twist hit without softening it for Gary</li>
+        </ul></div>
+      </div>
+      <div class="col-card">
+        <div class="col-head chavoid"><div class="col-label-avoid">Avoid This</div></div>
+        <div class="col-body"><ul>
+          <li>Playing Gary as defeated or embarrassed by the bald jokes — he's not</li>
+          <li>Adding a chuckle or wink to <span class="ref">"Gare The Hair"</span> — irony kills the joke</li>
+          <li>Reacting during Ben's honeymoon spiral — own your stillness</li>
+          <li>Delivering <span class="ref">"overthinking this"</span> with warmth — it needs to be tired and flat</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">10</span>
+      <span class="sec-title tl">Connection</span>
+      <span class="badge">critical</span>
+    </div>
+    <p class="anchor-line">Ben can only spiral as high as Gary stays grounded.</p>
+    <div class="sec-body" style="padding-top: 12px;"><ul>
+      <li>Gary's confidence is the launchpad — every bit of Ben's anxiety needs something solid to bounce off</li>
+      <li>When Gary says <span class="ref">"A girl's not gonna know that"</span> — mean it. Gary genuinely believes this is sound logic.</li>
+      <li>Hold space after Ben's honeymoon spiral — your silence is what tells the audience Ben just went very, very far</li>
+      <li>The nickname is the emotional button of the whole scene — let Ben's <span class="ref">"Gare With No Hair"</span> land before moving on</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-brown">
+      <span class="sec-num nl">11</span>
+      <span class="sec-title tl">Tone & Reference Anchor</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>If you play Gary like a sitcom dunce, the whole dynamic collapses — he has to be smart and wrong at the same time</li>
+      <li>Touchstone: classic Disney multicam — think <em>Good Luck Charlie</em> or early <em>Suite Life</em> dad energy. Earnest, confident, slightly out of touch.</li>
+      <li>This is NOT single-cam dry wit — it's broad, warm, and played for the back row</li>
+      <li>Humor comes from commitment, not from winking at the audience — Gary never knows he's the joke</li>
+      <li>American accent throughout — confident, unhurried, mid-register</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">12</span>
+      <span class="sec-title tm">Quick Reset</span>
+    </div>
+    <div class="reset-box"><ul>
+      <li>One scene. Living room. Gary gives hair advice. Ben melts down. Gary stays calm.</li>
+      <li>Gary's superpower: sincerity. He believes every word he says. So should you.</li>
+      <li>The bald jokes don't land because Gary doesn't let them land. That's where the comedy lives.</li>
+      <li>Your job: Be the wall. Let Ben throw himself at it. Trust the scene.</li>
+    </ul></div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reader Support Guide — June | Last Kids on Earth</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #fff; font-family: system-ui, sans-serif; }
+.guide { max-width: 780px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+.guide-header { padding-bottom: 1rem; margin-bottom: 1.5rem; border-bottom: 3px solid #BA7517; }
+.guide-title { font-size: 22px; font-weight: 500; color: #1a1a1a; }
+.guide-sub { font-size: 12px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tag { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; border: 1px solid #ccc; color: #555; background: #f5f5f5; }
+
+.section { margin-bottom: 1.25rem; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; }
+
+.sec-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+.sh-dark  { background: #2C2C2A; }
+.sh-amber { background: #633806; }
+.sh-teal  { background: #085041; }
+.sh-coral { background: #4A1B0C; }
+.sh-red   { background: #791F1F; }
+.sh-muted { background: #f0efeb; }
+
+.sec-num { font-size: 11px; font-weight: 500; min-width: 20px; }
+.nl { color: #B4B2A9; }
+.nm { color: #666; }
+
+.sec-title { font-size: 15px; font-weight: 500; }
+.tl { color: #F1EFE8; }
+.tm { color: #1a1a1a; }
+
+.badge { margin-left: auto; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; background: rgba(255,255,255,0.15); color: #F1EFE8; }
+
+.sec-body { padding: 12px 16px 14px; }
+.sec-body ul { list-style: none; }
+.sec-body li { font-size: 14px; color: #1a1a1a; line-height: 1.65; padding: 3px 0 3px 18px; position: relative; }
+.sec-body li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+.ref { font-style: italic; color: #666; }
+.consequence { font-size: 13px; color: #666; display: block; padding-left: 18px; margin-top: 1px; margin-bottom: 4px; font-style: italic; }
+
+.intro-text { font-size: 14px; color: #1a1a1a; line-height: 1.7; padding: 12px 16px 14px; }
+
+.warn-box { margin: 0; padding: 14px 16px; background: #1a1a1a; }
+.warn-title { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: #E24B4A; margin-bottom: 10px; }
+.warn-box ul { list-style: none; }
+.warn-box li { font-size: 14px; color: #F1EFE8; line-height: 1.65; padding: 3px 0 3px 18px; position: relative; }
+.warn-box li::before { content: "✕"; position: absolute; left: 0; color: #E24B4A; font-size: 12px; }
+.warn-footer { font-size: 13px; color: #888; margin-top: 10px; font-style: italic; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 16px 14px; }
+.col-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+.col-head { padding: 8px 12px; }
+.chdo { background: #085041; }
+.chavoid { background: #4A1B0C; }
+.col-label-do { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #9FE1CB; }
+.col-label-avoid { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #F5C4B3; }
+.col-body { padding: 10px 12px; }
+.col-body li { font-size: 13px; color: #1a1a1a; line-height: 1.6; padding: 3px 0 3px 14px; position: relative; list-style: none; }
+.col-body li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+.scene-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 14px; }
+.scene-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+.scene-head { background: #2C2C2A; padding: 7px 10px; }
+.scene-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #D3D1C7; }
+.scene-body { padding: 8px 10px; }
+.scene-body li { font-size: 12px; color: #1a1a1a; line-height: 1.6; padding: 2px 0 2px 14px; position: relative; list-style: none; }
+.scene-body li::before { content: "—"; position: absolute; left: 0; color: #888; font-size: 12px; }
+
+.engine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px 14px; }
+.engine-card { border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
+.engine-head { padding: 8px 12px; }
+.eh-amber { background: #633806; }
+.eh-coral { background: #4A1B0C; }
+.el-amber { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #FAC775; }
+.el-coral { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #F5C4B3; }
+.engine-body { padding: 10px 12px; }
+.engine-body p { font-size: 13px; color: #1a1a1a; line-height: 1.7; }
+.engine-body .consequence { padding-left: 0; margin-top: 8px; font-size: 13px; color: #666; font-style: italic; }
+
+.inset-box { background: #f5f5f3; border-radius: 8px; margin: 12px 16px 14px; padding: 12px 14px; }
+.inset-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #666; margin-bottom: 8px; }
+.inset-box li { font-size: 13px; color: #1a1a1a; line-height: 1.65; padding: 3px 0 3px 16px; position: relative; list-style: none; }
+.inset-box li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+.anchor-line { font-size: 15px; font-weight: 500; color: #1a1a1a; padding: 12px 16px 0; font-style: italic; }
+
+.reset-box { background: #f5f5f3; border-radius: 8px; margin: 12px 16px 14px; padding: 12px 14px; }
+.reset-box li { font-size: 13px; color: #1a1a1a; line-height: 1.7; padding: 3px 0 3px 16px; position: relative; list-style: none; }
+.reset-box li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+@media (max-width: 520px) {
+  .two-col, .scene-grid, .engine-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="guide">
+
+  <div class="guide-header">
+    <div class="guide-title">Reader Support Guide — June</div>
+    <div class="guide-sub">Last Kids on Earth · Disney Branded Television · Series Regular</div>
+    <div class="tag-row">
+      <span class="tag">3 Scenes</span>
+      <span class="tag">Percy Jackson Tone</span>
+      <span class="tag">You Read: Ruby · Jack</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-red">
+      <span class="sec-num nl">⚠</span>
+      <span class="sec-title tl">What Will Go Wrong</span>
+    </div>
+    <div class="warn-box">
+      <div class="warn-title">Most readers will kill this audition by doing one of these three things:</div>
+      <ul>
+        <li>Play Ruby too comedic — and destroy the real fear underneath it</li>
+        <li>Rush Scene 2 and blow straight past the emotional turn</li>
+        <li>Step on June's monologue in Scene 3 and take the scene away from her</li>
+      </ul>
+      <div class="warn-footer">If any of these happen, the audition doesn't land. Full stop.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-amber">
+      <span class="sec-num nl">01</span>
+      <span class="sec-title tl">Why This Matters</span>
+    </div>
+    <p class="intro-text">June is the engine of every scene. She's running on zero sleep, the world is ending, and she's still the most organized person in the room. But here's the thing — <strong>she can only fight for control if you give her something to fight against.</strong> If you read this like a placeholder, she's acting alone. These sides are deceptively emotional inside an action-comedy shell. Your job isn't to stay out of the way. It's to be so real that she has no choice but to go there.</p>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">02</span>
+      <span class="sec-title tl">Performance Engine</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card">
+        <div class="engine-head eh-amber"><div class="el-amber">June's Drive</div></div>
+        <div class="engine-body">
+          <p>June is controlling chaos, protecting Ruby (even when Ruby hates it), burying guilt about her parents, and refusing to fall apart — all at once.</p>
+          <span class="consequence">If you don't push back, she never has to fight for that control. You lose the scene.</span>
+        </div>
+      </div>
+      <div class="engine-card">
+        <div class="engine-head eh-coral"><div class="el-coral">Your Fuel</div></div>
+        <div class="engine-body">
+          <p>Push back with real stakes. Let silences land before you speak. Stay grounded — this is NOT a comedy read.</p>
+          <span class="consequence">The moment you go campy, the whole tone collapses and takes June with it.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">03</span>
+      <span class="sec-title tl">Scene Snapshot</span>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 1 — Bathroom</div></div>
+        <div class="scene-body"><ul>
+          <li>You are Ruby — June's younger sister</li>
+          <li>Panicked, sarcastic, wants out</li>
+          <li>June holds Ruby in place with logic</li>
+          <li>Ends on June cracking: <span class="ref">"Not great."</span></li>
+        </ul></div>
+      </div>
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 2 — Rooftop</div></div>
+        <div class="scene-body"><ul>
+          <li>You are Jack — new kid, potential ally</li>
+          <li>Zombie banter opens it — then it pivots hard</li>
+          <li>June confesses the divorce, the text, all of it</li>
+          <li>Ends: <span class="ref">"anywhere but here."</span></li>
+        </ul></div>
+      </div>
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 3 — Driver's Ed Car</div></div>
+        <div class="scene-body"><ul>
+          <li>You are Jack — dual steering chaos</li>
+          <li>Apex predator on their tail</li>
+          <li>June fires her thesis mid-swerve</li>
+          <li>Reveal: Jack let go 3 blocks ago</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-amber">
+      <span class="sec-num nl">04</span>
+      <span class="sec-title tl">Your Job</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Read every line like it has weight — zombies are real, stakes are life/death</li>
+      <li>S1 as Ruby: be genuinely scared — not sitcom scared, not sarcasm-as-a-shield scared. Actually scared.</li>
+      <li>Most readers will punch <span class="ref">"You dumped him. He's not coming."</span> or add attitude. Don't. It's not a dig — it's information. Flat truth lands harder than attitude ever will.</li>
+      <li>S2 as Jack: the pivot at <span class="ref">"Just thinking about my mom"</span> is everything — drop the banter, go fully present</li>
+      <li>After the dad/text reveal — <span class="ref">"Oh god. What'd you do?"</span> is shock, not curiosity. Play the difference.</li>
+      <li>S3 as Jack: read like you're white-knuckling a wheel with a monster on the bumper</li>
+      <li>Let June's full monologue run — every interruption costs her the scene</li>
+      <li>Deliver <span class="ref">"You won the argument three blocks ago."</span> quiet and flat. It's a reveal, not a punchline.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">05</span>
+      <span class="sec-title tl">Playing Multiple Characters</span>
+      <span class="badge">mandatory</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Ruby (Scene 1): younger sister — reactive, raw, dark humor as armor against real fear</li>
+      <li>Jack (Scenes 2–3): peer — easy, curious, then genuinely moved by what June reveals</li>
+      <li><strong>If Ruby and Jack feel the same, the audition dies instantly.</strong></li>
+      <li>Signal character shifts with a brief pause and full reset between roles</li>
+      <li>Ruby's sarcasm is defensive — she's protecting herself. Jack's is playful — he's connecting. Never swap these.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">06</span>
+      <span class="sec-title tm">Reader Fundamentals</span>
+    </div>
+    <div class="inset-box">
+      <div class="inset-title">This is where readers quietly ruin auditions:</div>
+      <ul>
+        <li>Dropping energy mid-line — the actor feels it and pulls back</li>
+        <li>Reading ahead instead of reacting — you stop being a scene partner and become a cue machine</li>
+        <li>Treating silence like dead air — silence is where June lives. Honor it.</li>
+        <li>Never act over the actor. Support. Don't compete.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">07</span>
+      <span class="sec-title tl">Key Beats</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>S1: Hit <span class="ref">"NOBODY'S OKAY"</span> — uppercase means something. Give it full volume.</li>
+      <li>S1: After <span class="ref">"I kinda couldn't stand her"</span> — pause before Ruby moves to the door. Let that land.</li>
+      <li>S1: Ruby removing the barricade is a physical decision — make it sound like one</li>
+      <li>S2: The bounce exchange is ping-pong — zero air between lines. If you pause, the rhythm dies.</li>
+      <li>S2: Full stop after <span class="ref">"it took a couple of soldiers to keep her on that bus."</span><span class="consequence">If you rush this, you kill the emotional turn that follows. That turn is the whole scene.</span></li>
+      <li>S2: The dad/text reveal is the gut punch of the audition — react like it hits you</li>
+      <li>S3: <span class="ref">"FLOOR IT"</span> — land it like the car is actually being eaten</li>
+      <li>S3: Hands-off reveal is the button. Let June's <span class="ref">"Oh."</span> be the real ending.<span class="consequence">Play it like you've been patiently waiting to drop it. Because Jack has.</span></li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">08</span>
+      <span class="sec-title tm">Rhythm, Pace & Energy</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Scenes 1 & 3: elevated pace — danger is present and physical</li>
+      <li>Scene 2 (first half): medium, dry — zombie-killing as stress relief</li>
+      <li>Scene 2 (second half): drop hard at <span class="ref">"You okay?"</span> — go quiet and conversational</li>
+      <li>Scene 3: high throughout — moving car, monster, full chaos energy</li>
+      <li>Ruby's <span class="ref">"NOBODY'S OKAY"</span> — your loudest line across all three scenes</li>
+      <li>Jack's <span class="ref">"You won the argument three blocks ago"</span> — your quietest. Dry, flat, zero performance.</li>
+      <li>Em-dashes (—) are hard cuts — interrupt there, don't trail off</li>
+      <li>Skip parentheticals aloud — they're actor direction only</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">09</span>
+      <span class="sec-title tl">Do This / Avoid This</span>
+    </div>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="col-head chdo"><div class="col-label-do">Do This</div></div>
+        <div class="col-body"><ul>
+          <li>React to June's logic like it's new info every time</li>
+          <li>Let humor and danger coexist — both are fully real</li>
+          <li>Honor Jack's genuine curiosity in Scene 2 — he actually wants to know</li>
+          <li>Play Scene 3's ending completely straight — the comedy is already in the writing</li>
+        </ul></div>
+      </div>
+      <div class="col-card">
+        <div class="col-head chavoid"><div class="col-label-avoid">Avoid This</div></div>
+        <div class="col-body"><ul>
+          <li>Playing Ruby as pure comedic relief — the fear is real and it needs to be</li>
+          <li>Rushing the bounce exchange — the rhythm IS the joke</li>
+          <li>Soft-reacting to the dad/text reveal — that's the emotional centerpiece</li>
+          <li>Adding physicality during June's monologue — she owns Scene 3, not you</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">10</span>
+      <span class="sec-title tl">Connection</span>
+      <span class="badge">critical</span>
+    </div>
+    <p class="anchor-line">June can only go as deep as you let her.</p>
+    <div class="sec-body" style="padding-top:10px;"><ul>
+      <li>S1: Ruby's fear is what makes June's steadiness land — if Ruby's not scared, June's not heroic</li>
+      <li>S2: Jack's listening is the whole scene. Don't perform listening. Actually listen.</li>
+      <li>Hold space after <span class="ref">"I'm not letting myself think about that"</span> — that pause is June's whole character in two seconds</li>
+      <li>S3: Your steering choices create June's obstacle — commit fully or the conflict disappears</li>
+      <li>June's final <span class="ref">"Oh."</span> only works if your reveal genuinely surprises her. Play it that way.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-coral">
+      <span class="sec-num nl">11</span>
+      <span class="sec-title tl">Tone & Reference Anchor</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Touchstone: Percy Jackson (2024 Disney+) — grounded kids in genuinely impossible situations</li>
+      <li>If you play this like multi-cam or animated tone, it falls apart immediately — the whole show breaks</li>
+      <li>Humor comes from character logic, not from winking at the audience</li>
+      <li>Every joke lands because the characters take their situation seriously — play that straight</li>
+      <li>American accent throughout — no drift between Ruby and Jack</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">12</span>
+      <span class="sec-title tm">Quick Reset</span>
+    </div>
+    <div class="reset-box"><ul>
+      <li>Scene 1: Bathroom. Ruby is scared. June is the wall. You crack it at the end.</li>
+      <li>Scene 2: Rooftop. Banter → grief. Jack opens the door. June walks through it.</li>
+      <li>Scene 3: Car chase. June fires her thesis. Jack already let go of the wheel.</li>
+      <li>Your job: Be real. Let the actor fly. Trust the scene.</li>
+    </ul></div>
+  </div>
+
+</div>
+</body>
+</html>

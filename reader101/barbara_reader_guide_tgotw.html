@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reader Support Guide — Barbara | The God of the Woods</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #F5F2EC; font-family: 'DM Sans', sans-serif; }
+.guide { max-width: 780px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+.guide-header { padding-bottom: 1.2rem; margin-bottom: 1.5rem; border-bottom: 3px solid #3B5C3A; }
+.guide-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #1a1a18; letter-spacing: -0.01em; }
+.guide-sub { font-family: 'DM Mono', monospace; font-size: 11px; color: #666; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.08em; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tag { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; border: 1px solid #b0a990; color: #555; background: #edeae2; }
+
+.section { margin-bottom: 1.25rem; border: 1px solid #ccc8bc; border-radius: 10px; overflow: hidden; }
+
+.sec-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+.sh-pine   { background: #1E3A22; }
+.sh-bark   { background: #3D2208; }
+.sh-dusk   { background: #2C2318; }
+.sh-slate  { background: #1F2B2A; }
+.sh-rust   { background: #5C1F1F; }
+.sh-fog    { background: #E8E4DA; }
+
+.sec-num { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; min-width: 20px; }
+.nl { color: #7A8C7A; }
+.nm { color: #777; }
+
+.sec-title { font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; }
+.tl { color: #F1EDE3; }
+.tm { color: #1a1a18; }
+
+.badge { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; background: rgba(255,255,255,0.13); color: #D4CDB8; letter-spacing: 0.04em; }
+
+.sec-body { padding: 12px 16px 14px; }
+.sec-body ul { list-style: none; }
+.sec-body li { font-size: 14px; color: #1a1a18; line-height: 1.65; padding: 3px 0 3px 18px; position: relative; }
+.sec-body li::before { content: "—"; position: absolute; left: 0; color: #999; }
+
+.ref { font-style: italic; color: #555; font-family: 'Playfair Display', serif; }
+.consequence { font-size: 13px; color: #777; display: block; padding-left: 18px; margin-top: 1px; margin-bottom: 4px; font-style: italic; }
+
+.intro-text { font-size: 14px; color: #1a1a18; line-height: 1.75; padding: 12px 16px 14px; }
+.intro-text strong { font-weight: 600; }
+
+.warn-box { margin: 0; padding: 14px 16px; background: #141410; }
+.warn-title { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: #C94040; margin-bottom: 10px; }
+.warn-box ul { list-style: none; }
+.warn-box li { font-size: 14px; color: #EDE9DF; line-height: 1.65; padding: 3px 0 3px 18px; position: relative; }
+.warn-box li::before { content: "✕"; position: absolute; left: 0; color: #C94040; font-size: 12px; }
+.warn-footer { font-family: 'DM Mono', monospace; font-size: 12px; color: #666; margin-top: 10px; font-style: italic; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 16px 14px; }
+.col-card { border: 1px solid #ccc8bc; border-radius: 8px; overflow: hidden; }
+.col-head { padding: 8px 12px; }
+.chdo { background: #1E3A22; }
+.chavoid { background: #3D2208; }
+.col-label-do { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #8EC89A; }
+.col-label-avoid { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #EDAF98; }
+.col-body { padding: 10px 12px; }
+.col-body li { font-size: 13px; color: #1a1a18; line-height: 1.6; padding: 3px 0 3px 14px; position: relative; list-style: none; }
+.col-body li::before { content: "—"; position: absolute; left: 0; color: #999; }
+
+.scene-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 14px; }
+.scene-card { border: 1px solid #ccc8bc; border-radius: 8px; overflow: hidden; }
+.scene-head { background: #1F2B2A; padding: 7px 10px; }
+.scene-label { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: #9FBFBA; }
+.scene-body { padding: 8px 10px; background: #FAF8F3; }
+.scene-body li { font-size: 12px; color: #1a1a18; line-height: 1.6; padding: 2px 0 2px 14px; position: relative; list-style: none; }
+.scene-body li::before { content: "—"; position: absolute; left: 0; color: #aaa; font-size: 12px; }
+
+.engine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px 14px; }
+.engine-card { border-radius: 8px; overflow: hidden; border: 1px solid #ccc8bc; }
+.engine-head { padding: 8px 12px; }
+.eh-bark { background: #3D2208; }
+.eh-rust { background: #5C1F1F; }
+.el-bark { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #E8C090; }
+.el-rust { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #EDAF98; }
+.engine-body { padding: 10px 12px; background: #FAF8F3; }
+.engine-body p { font-size: 13px; color: #1a1a18; line-height: 1.7; }
+.engine-body .consequence { padding-left: 0; margin-top: 8px; font-size: 13px; color: #777; font-style: italic; }
+
+.inset-box { background: #EDE9DF; border-radius: 8px; margin: 12px 16px 14px; padding: 12px 14px; }
+.inset-title { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #777; margin-bottom: 8px; }
+.inset-box li { font-size: 13px; color: #1a1a18; line-height: 1.65; padding: 3px 0 3px 16px; position: relative; list-style: none; }
+.inset-box li::before { content: "—"; position: absolute; left: 0; color: #aaa; }
+
+.anchor-line { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 500; color: #1a1a18; padding: 12px 16px 0; font-style: italic; }
+
+.reset-box { background: #EDE9DF; border-radius: 8px; margin: 12px 16px 14px; padding: 12px 14px; }
+.reset-box li { font-size: 13px; color: #1a1a18; line-height: 1.7; padding: 3px 0 3px 16px; position: relative; list-style: none; }
+.reset-box li::before { content: "—"; position: absolute; left: 0; color: #aaa; }
+
+@media (max-width: 520px) {
+  .two-col, .scene-grid, .engine-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="guide">
+
+  <div class="guide-header">
+    <div class="guide-title">Reader Support Guide — Barbara</div>
+    <div class="guide-sub">The God of the Woods · Netflix / Sony Pictures Television · Series Regular</div>
+    <div class="tag-row">
+      <span class="tag">3 Scenes</span>
+      <span class="tag">1975 Summer Camp</span>
+      <span class="tag">You Read: Lee · Louise · Tracy</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-rust">
+      <span class="sec-num nl">⚠</span>
+      <span class="sec-title tl">What Will Go Wrong</span>
+    </div>
+    <div class="warn-box">
+      <div class="warn-title">Most readers will kill this audition by doing one of these three things:</div>
+      <ul>
+        <li>Play Tracy too innocent in Scene 2 and rob the moment of its charged subtext</li>
+        <li>Rush the silence after Barbara's dead brother monologue and bury the emotional center of the audition</li>
+        <li>Play Louise as a throwaway line — she's the only adult voice, and if she's flat, the dynamic collapses</li>
+      </ul>
+      <div class="warn-footer">If any of these happen, the audition doesn't land. Full stop.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-bark">
+      <span class="sec-num nl">01</span>
+      <span class="sec-title tl">Why This Matters</span>
+    </div>
+    <p class="intro-text">Barbara is doing everything she can to look like she has it together. <strong>She doesn't.</strong> She's 13, her family is a wound that won't close, and she just kissed her best friend's crush during a game of truth or dare. Every scene is Barbara performing control while something cracks underneath. <strong>She can only crack if you give her something real to crack against.</strong> If you phone in Tracy's hurt in Scene 3, Barbara's apology goes nowhere. These sides live or die on the emotional authenticity of the characters around her. That's you.</p>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-pine">
+      <span class="sec-num nl">02</span>
+      <span class="sec-title tl">Performance Engine</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card">
+        <div class="engine-head eh-bark"><div class="el-bark">Barbara's Drive</div></div>
+        <div class="engine-body">
+          <p>Barbara is managing everything — her image, her guilt, her grief, her desire to be seen — while appearing effortlessly above it all. Fragile, doing everything she can to hide it.</p>
+          <span class="consequence">If you don't push back with real stakes, she never has to drop the act. The scene flatlines.</span>
+        </div>
+      </div>
+      <div class="engine-card">
+        <div class="engine-head eh-rust"><div class="el-rust">Your Fuel</div></div>
+        <div class="engine-body">
+          <p>Be genuinely affected. Let silences sit. In Scene 3, Tracy's hurt has to be real — not performed hurt. Tracy thinks Barbara is closer to a god than a girl. That awe lives underneath everything.</p>
+          <span class="consequence">The moment you play Tracy as a generic sad kid, the whole emotional architecture falls apart.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-slate">
+      <span class="sec-num nl">03</span>
+      <span class="sec-title tl">Scene Snapshot</span>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 1 — Campsite</div></div>
+        <div class="scene-body"><ul>
+          <li>You read: Lee &amp; Louise</li>
+          <li>Barbara opens with a challenge — Lee deflects with charm</li>
+          <li>Louise is the tension valve — one line, placed perfectly</li>
+          <li>Ends on a standoff with no winner</li>
+        </ul></div>
+      </div>
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 2 — Campsite</div></div>
+        <div class="scene-body"><ul>
+          <li>You read: Tracy</li>
+          <li>Barbara reads the room — Tracy doesn't, then suddenly does</li>
+          <li>Charged subtext: Tracy realizes she may have a crush on Barbara</li>
+          <li>Ends on Tracy being quietly redirected: <span class="ref">"Kinda like you and Lowell."</span></li>
+        </ul></div>
+      </div>
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 3 — Tent / Night</div></div>
+        <div class="scene-body"><ul>
+          <li>You read: Tracy</li>
+          <li>Tracy is silently crying — doesn't want to be seen</li>
+          <li>Barbara enters, apologizes, then breaks open</li>
+          <li>Ends: <span class="ref">"I'm glad we did."</span></li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-bark">
+      <span class="sec-num nl">04</span>
+      <span class="sec-title tl">Your Job</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>S1 as Lee: Don't play him as a flirt — play him as someone who finds her interesting but won't say so</li>
+      <li>Most readers will play Lee's <span class="ref">"Figures"</span> as a dismissal. It's not. It's appreciation with a poker face.</li>
+      <li>S1 as Louise: Don't throw away <span class="ref">"Easy. I've heard you play guitar."</span> — land it like a warning that has history behind it</li>
+      <li>S2 as Tracy: Don't rush the moment she realizes the proximity mirrors Louise and Lee — let it register physically before she scoots away</li>
+      <li>Most readers play <span class="ref">"What signs?"</span> as innocent curiosity. Play it as someone who absolutely wants to know but doesn't want to want to know.</li>
+      <li>S3 as Tracy: Enter already crying — don't build to it. She's been there a while.</li>
+      <li>Play <span class="ref">"It's your tent, too"</span> as a door-closing, not an invitation</li>
+      <li>After Barbara's dead brother speech — <span class="ref">"I think I'd miss you if we'd never met"</span> is the most important line in the audition. Don't perform it. Mean it.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-slate">
+      <span class="sec-num nl">05</span>
+      <span class="sec-title tl">Playing Multiple Characters</span>
+      <span class="badge">mandatory</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Lee (Scene 1): older, guarded — intellectually engaged, emotionally unavailable by choice</li>
+      <li>Louise (Scene 1): warm authority — she knows these two, and she's seen this before</li>
+      <li>Tracy (Scenes 2–3): 13, earnest, perpetually one beat behind Barbara — and that's okay with her</li>
+      <li><strong>If Lee and Tracy feel the same, the audition dies instantly.</strong></li>
+      <li>Signal character shifts with a full reset — brief pause, different energy baseline before the first word</li>
+      <li>Lee's deflection is adult armor. Tracy's questions are genuine exposure. Never swap these.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-fog">
+      <span class="sec-num nm">06</span>
+      <span class="sec-title tm">Reader Fundamentals</span>
+    </div>
+    <div class="inset-box">
+      <div class="inset-title">This is where readers quietly ruin auditions:</div>
+      <ul>
+        <li>Dropping energy mid-line — the actor feels it and pulls back</li>
+        <li>Reading ahead instead of reacting — you stop being a scene partner and become a cue machine</li>
+        <li>Treating silence like dead air — silence is where Barbara lives. Honor it.</li>
+        <li>Never act over the actor. Support. Don't compete.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-pine">
+      <span class="sec-num nl">07</span>
+      <span class="sec-title tl">Key Beats</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>S1: Lee's <span class="ref">"The stories I could tell you about that night. If I remembered them."</span> — deliver it with a half-smile. He's performing, and he knows she knows it.</li>
+      <li>S1: <span class="ref">"Not everyone has to like music that's, y'know, musical."</span> — land the pause before "musical." That hesitation is the entire joke.</li>
+      <li>S1: Louise's line is a beat-ender — deliver it and hold. Don't soften it or the scene loses its tension.</li>
+      <li>S2: The moment Tracy scoots away — make it sound like a physical decision. Because it is.</li>
+      <li>S2: Full stop before <span class="ref">"Kinda like you and Lowell."</span><span class="consequence">If you rush this, you kill the gut-punch of the redirect. That's what Barbara does — she deflects perfectly, every time.</span></li>
+      <li>S3: Tracy's <span class="ref">"For what?"</span> — play it as self-protection, not genuine confusion. She knows exactly what it's for.</li>
+      <li>S3: <span class="ref">"We were playing truth or dare, you were just following the rules."</span> — play it flat. Tracy is doing the work of forgiving someone she can't afford to lose.</li>
+      <li>S3: After Barbara's final monologue — don't rush to fill the silence. That silence is Barbara waiting for the judgment. Honor it fully.<span class="consequence">If you speak too fast, you take the weight of the moment away from the actor.</span></li>
+      <li>S3: <span class="ref">"I think I'd miss you if we'd never met."</span> — the quietest moment in the audition. Drop the volume completely. No performance. Just say it.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-fog">
+      <span class="sec-num nm">08</span>
+      <span class="sec-title tm">Rhythm, Pace &amp; Energy</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Scene 1: medium-elevated — conversational sparring, both sides coiled</li>
+      <li>Scene 2: slow burn — Tracy is working hard to follow. Don't get ahead of her.</li>
+      <li>Scene 3 (first half): guarded and quiet — two people performing nonchalance at each other</li>
+      <li>Scene 3 (second half): drop further at <span class="ref">"Don't let me off the hook"</span> — this is where the walls come all the way down</li>
+      <li>Lee's <span class="ref">"Figures"</span> — your driest moment across all three scenes. One word. No decoration.</li>
+      <li>Tracy's final line — your most exposed. Quieter than anything else you'll deliver.</li>
+      <li>Em-dashes (—) are hard cuts — interrupt there, don't trail off</li>
+      <li>Skip parentheticals aloud — they're actor direction only</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-slate">
+      <span class="sec-num nl">09</span>
+      <span class="sec-title tl">Do This / Avoid This</span>
+    </div>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="col-head chdo"><div class="col-label-do">Do This</div></div>
+        <div class="col-body"><ul>
+          <li>React to Barbara's observations like they're landing in real time — because they are</li>
+          <li>Let humor and grief coexist in Scene 3 — both are fully present</li>
+          <li>Play Tracy's awe of Barbara as a constant undercurrent, even when she's hurt</li>
+          <li>Play Scene 3's final exchange completely still — the emotion is already in the writing</li>
+        </ul></div>
+      </div>
+      <div class="col-card">
+        <div class="col-head chavoid"><div class="col-label-avoid">Avoid This</div></div>
+        <div class="col-body"><ul>
+          <li>Playing Lee as a flirt — he's a sparring partner, not a pursuer</li>
+          <li>Softening Tracy's hurt in Scene 3 — the wound is real and it needs to be</li>
+          <li>Rushing past the subtext in Scene 2 — the moment Tracy registers the proximity is the scene</li>
+          <li>Adding warmth to Tracy's early lines in Scene 3 — she's protecting herself, not welcoming</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-pine">
+      <span class="sec-num nl">10</span>
+      <span class="sec-title tl">Connection</span>
+      <span class="badge">critical</span>
+    </div>
+    <p class="anchor-line">Barbara can only break open if you give her something real to break against.</p>
+    <div class="sec-body" style="padding-top:10px;"><ul>
+      <li>S1: Lee's intellectual resistance is what makes Barbara's provocation land — if he rolls over, she has no scene</li>
+      <li>S2: Tracy's moment of physical awareness is the whole scene — if you miss it, Barbara's final redirect has no target</li>
+      <li>Hold space after <span class="ref">"When I was scared."</span> — that pause is Barbara's entire history in two seconds</li>
+      <li>S3: Tracy's quiet forgiveness is what frees Barbara to cry — commit fully or the release disappears</li>
+      <li>Barbara's final <span class="ref">"I'm glad we did."</span> only works if your line genuinely reaches her. Play it that way.</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-bark">
+      <span class="sec-num nl">11</span>
+      <span class="sec-title tl">Tone &amp; Reference Anchor</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>If you play this like a '70s period piece with winking nostalgia, it falls apart immediately — the show doesn't live there</li>
+      <li>Touchstone: <em>Minding the Gap</em>, <em>Thirteen</em>, early Greta Gerwig — kids carrying weight they have no language for yet</li>
+      <li>Humor in Scene 1 comes from two intelligent people refusing to admit they find each other interesting — play the refusal</li>
+      <li>The tent scene is not a crying scene. It's a scene about two kids learning to stay when staying is hard.</li>
+      <li>American accent throughout — no drift between Lee, Louise, and Tracy</li>
+      <li>1975 setting means nothing for your read — the emotional reality is completely contemporary</li>
+    </ul></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head sh-fog">
+      <span class="sec-num nm">12</span>
+      <span class="sec-title tm">Quick Reset</span>
+    </div>
+    <div class="reset-box"><ul>
+      <li>Scene 1: Campsite. Lee and Barbara spar. Louise holds the line. Nobody blinks first.</li>
+      <li>Scene 2: Barbara sees everything. Tracy sees almost everything. One of those things changes the scene.</li>
+      <li>Scene 3: Tent. Barbara comes to apologize. She ends up confessing something bigger. Tracy holds her.</li>
+      <li>Your job: Be real. Stay present. Let the actor fly. Trust the scene.</li>
+    </ul></div>
+  </div>
+
+</div>
+</body>
+</html>
