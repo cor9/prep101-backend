@@ -169,14 +169,7 @@ const Dashboard = () => {
     } catch (error) {
       console.warn("Could not cache upload data for recovery:", error);
     }
-    if (data.fallbackMode) {
-      toast("We couldn't fully read your sides — but we'll build your guide using character and tone!", { 
-        icon: "🧠",
-        duration: 6000
-      });
-    } else {
-      toast.success("PDF processed — ready to generate!");
-    }
+    toast.success("PDF processed — ready to generate!");
   };
 
   // Open HTML in a new tab (Blob URL). Optionally reuse a pre-opened window.

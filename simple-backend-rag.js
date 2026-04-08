@@ -2692,7 +2692,9 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       }
     }
 
-    const fallbackMode = !quality.usable || quality.fallbackRecommended;
+    const unreadableExtraction =
+      quality.quality === "empty" || quality.quality === "repetitive";
+    const fallbackMode = !unreadableExtraction && (!quality.usable || quality.fallbackRecommended);
     extractionStats.totals[result.method] = (extractionStats.totals[result.method] || 0) + 1;
     extractionStats.last = {
       filename: req.file.originalname,
@@ -2707,6 +2709,22 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     };
 
     console.log(`[UPLOAD] Extraction Complete: ${quality.quality} (${wordCount} words)`);
+
+    if (unreadableExtraction) {
+      return res.status(422).json({
+        success: false,
+        error:
+          "We couldn't extract readable sides from this PDF. The file appears dominated by watermarks or repeated metadata. Please upload a cleaner export or clearer screenshots.",
+        contentQuality: quality.reason,
+        debug: {
+          method: result.method,
+          attempts: extractionAttempts,
+          quality: quality.quality,
+          wordCount,
+          ratio: quality.ratio,
+        },
+      });
+    }
 
     // 4) Metadata & Storage
     const uploadId = Date.now().toString();
@@ -3003,15 +3021,16 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       false
     );
 
-    const readerFallbackTriggeredByCorruption =
-      meaningfulWordCount < 50 ||
-      contentQuality.quality === "poor" ||
-      contentQuality.quality === "too_short" ||
+    const readerUnreadableCorruption =
+      contentQuality.quality === "empty" ||
       contentQuality.quality === "repetitive" ||
       (contentQuality.repetitiveRatio &&
         contentQuality.repetitiveRatio > 0.8) ||
       (contentQuality.repetitionRatio &&
         contentQuality.repetitionRatio > 0.8);
+
+    const readerFallbackTriggeredByCorruption =
+      contentQuality.quality === "too_short";
 
     const shouldForceReaderFallback =
       isReaderMode && (isFallbackGeneration || readerFallbackTriggeredByCorruption);
@@ -3061,6 +3080,21 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         contentQuality: contentQuality.reason,
         details: {
           combinedWordCount,
+          repetitiveRatio: contentQuality.repetitiveRatio,
+          repetitionRatio: contentQuality.repetitionRatio,
+        },
+      });
+    }
+
+    if (isReaderMode && readerUnreadableCorruption) {
+      return res.status(422).json({
+        success: false,
+        error:
+          "We couldn't extract readable sides from this PDF. The file appears dominated by watermarks or repeated metadata. Please upload a cleaner export or clearer screenshots.",
+        contentQuality: contentQuality.reason,
+        details: {
+          combinedWordCount,
+          meaningfulWordCount,
           repetitiveRatio: contentQuality.repetitiveRatio,
           repetitionRatio: contentQuality.repetitionRatio,
         },

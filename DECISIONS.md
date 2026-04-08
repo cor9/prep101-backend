@@ -27,3 +27,8 @@
 **Issue:** Guide generation could fail with "Upload session expired" in serverless cold starts because the upload response returned `text` while the generate flow expected `sceneText`, so the client fallback payload was often empty.
 **Decision:** Normalized upload payloads on the client, returned `sceneText` from `/api/upload`, restored missing uploads from `scenePayloads` before throwing an expiry error, and cached the latest upload payload in `sessionStorage` for refresh recovery.
 **Status:** Success
+
+## 2026-04-08
+**Issue:** Watermark-heavy PDFs were still slipping into generic fallback coaching, which created unacceptable UX and hid extraction failures behind "we'll build it from tone" messaging.
+**Decision:** Strengthened watermark stripping heuristics, removed the generic fallback upload toast, and changed unreadable watermark/repetition cases to fail explicitly with an extraction error instead of generating fallback guides.
+**Status:** Success
