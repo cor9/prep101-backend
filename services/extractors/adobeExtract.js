@@ -14,6 +14,13 @@ const {
   PDFServicesResponse,
 } = require('@adobe/pdfservices-node-sdk');
 
+// Force Vercel NFT to include internal Adobe modules
+try {
+  require('@adobe/pdfservices-node-sdk/lib/internal/auth/SessionToken');
+} catch (e) {
+  // Just for bundling
+}
+
 const ADOBE_ENABLED = process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true';
 const TOP_BOTTOM_BAND = 0.02; // Reduced from 0.08 to be more inclusive of dialogue near margins
 
