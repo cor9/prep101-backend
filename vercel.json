@@ -8,6 +8,18 @@
       "includeFiles": "{services/**,config/**,models/**,middleware/**,routes/**,methodology/**,pdfservices-api-credentials.json,package.json,node_modules/@adobe/pdfservices-node-sdk/**}"
     }
   },
+  "redirects": [
+    {
+      "source": "/app/stripe/success",
+      "destination": "https://prep101.site/app/stripe/success",
+      "permanent": false
+    },
+    {
+      "source": "/payment-success",
+      "destination": "https://prep101.site/payment-success",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
