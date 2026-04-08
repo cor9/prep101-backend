@@ -2,16 +2,16 @@
   "version": 2,
   "outputDirectory": ".",
   "functions": {
-    "api/simple-backend-rag.js": {
+    "simple-backend-rag.js": {
       "maxDuration": 300,
       "memory": 1024,
-      "includeFiles": "{methodology,services,config,models,middleware,routes}/**"
+      "includeFiles": "{services,config,models,middleware,routes}/**"
     }
   },
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/api/simple-backend-rag"
+      "source": "/api/(.*)",
+      "destination": "/simple-backend-rag.js"
     }
   ]
 }
