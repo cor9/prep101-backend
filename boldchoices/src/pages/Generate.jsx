@@ -387,25 +387,7 @@ export default function Generate() {
       setGuideData(data.data);
       if (data.generationId) setGenerationId(data.generationId);
       setResultMeta({ ...form, isPreview: false });
-
-      // Re-request as HTML for display
-      const htmlPayload = { ...payload, format: 'html' };
-      if (modifier) htmlPayload.modifier = modifier;
-      if (isRetry) htmlPayload.spinAgain = true;
-
-      const htmlRes = await fetch(`${API_BASE}/api/bold-choices/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user?.accessToken || user?.token}`,
-        },
-        body: JSON.stringify(htmlPayload),
-      });
-
-      // Use the already-fetched JSON data and just render HTML on server
-      // Actually: for simplicity, we'll just use data.html if available, or re-fetch
-      // The backend returns { success, html, data } — let's just fetch once with html format
-      setResultHtml(null); // reset, refetch below
+      setResultHtml(null);
 
       toast.dismiss(toastId);
     } catch (err) {
@@ -427,11 +409,13 @@ export default function Generate() {
         },
         body: JSON.stringify({
           ...form,
-          sceneText: form.sceneText.trim(),
+          sceneText,
           preview: false,
           format: 'html',
+          fallbackMode: Boolean(uploadData?.fallbackMode),
+          warnings: uploadData?.warnings || [],
           ...(modifier ? { modifier } : {}),
-          ...(isRetry ? { spinAgain: true } : {}),
+          ...(isRetry ? { spinAgain: true, previousGenerationId: generationId } : {}),
         }),
       });
 
@@ -459,7 +443,7 @@ export default function Generate() {
     } finally {
       setIsGenerating(false);
     }
-  }, [form, blobUrl, user]);
+  }, [form, blobUrl, user, uploadData, generationId]);
 
   const handleGenerate = () => doGenerate();
   const handleSpinAgain = () => doGenerate({ isRetry: true });
