@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{TITLE}}</title>
+  <style>
+    :root {
+      --color-bg: #101513;
+      --color-surface: #171d1a;
+      --color-surface-soft: #212824;
+      --color-border: rgba(241, 239, 232, 0.12);
+      --color-text-primary: #F1EFE8;
+      --color-text-muted: #B7B0A3;
+      --color-amber: #633806;
+      --color-teal: #085041;
+      --color-coral: #4A1B0C;
+      --color-dark: #2C2C2A;
+      --color-danger: #791F1F;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(8, 80, 65, 0.38), transparent 34%),
+        radial-gradient(circle at top right, rgba(99, 56, 6, 0.28), transparent 30%),
+        linear-gradient(180deg, #0c110f 0%, #101513 100%);
+      color: var(--color-text-primary);
+      font-family: "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+      padding: 24px 16px 48px;
+    }
+    .guide { max-width: 860px; margin: 0 auto; }
+    .guide-header {
+      padding: 0 0 18px;
+      margin-bottom: 22px;
+      border-bottom: 3px solid #BA7517;
+    }
+    .guide-title { font-size: clamp(28px, 4vw, 40px); font-weight: 700; color: var(--color-text-primary); }
+    .guide-sub { margin-top: 8px; font-size: 12px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .tag {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(241, 239, 232, 0.12);
+      color: var(--color-text-primary);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .notice-box {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(241, 239, 232, 0.12);
+      background: rgba(121, 31, 31, 0.18);
+    }
+    .notice-box p { color: var(--color-text-primary); font-size: 14px; line-height: 1.65; }
+    .section {
+      margin-bottom: 18px;
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: rgba(23, 29, 26, 0.94);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+      backdrop-filter: blur(8px);
+    }
+    .sec-head { display: flex; align-items: center; gap: 10px; padding: 11px 16px; }
+    .sh-amber { background: #633806; }
+    .sh-teal { background: #085041; }
+    .sh-coral { background: #4A1B0C; }
+    .sh-dark { background: #2C2C2A; }
+    .sh-red { background: #791F1F; }
+    .sh-muted { background: rgba(241, 239, 232, 0.08); }
+    .sec-num { min-width: 24px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #D5D1C8; }
+    .sec-title { font-size: 15px; font-weight: 800; }
+    .tl { color: #F1EFE8; }
+    .tm { color: #F1EFE8; }
+    .badge {
+      margin-left: auto;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      color: #F1EFE8;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .sec-body, .intro-text { padding: 13px 16px 16px; }
+    p, li { color: var(--color-text-primary); }
+    .intro-text p, .engine-body p { line-height: 1.7; font-size: 14px; }
+    ul { list-style: none; }
+    li {
+      font-size: 14px;
+      line-height: 1.65;
+      padding: 4px 0 4px 18px;
+      position: relative;
+    }
+    li::before { content: "—"; position: absolute; left: 0; color: #9B9182; }
+    .warn-box { background: #090909; padding: 14px 16px; }
+    .warn-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #F26A6A; margin-bottom: 10px; }
+    .warn-box li::before { content: "✕"; color: #E24B4A; }
+    .warn-footer { margin-top: 10px; font-size: 13px; color: var(--color-text-muted); font-style: italic; }
+    .engine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 13px 16px 16px; }
+    .engine-card, .scene-card, .col-card {
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.03);
+    }
+    .engine-head, .scene-head, .col-head { padding: 9px 12px; }
+    .eh-left { background: #633806; }
+    .eh-right { background: #4A1B0C; }
+    .engine-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+    .engine-label-left { color: #FAC775; }
+    .engine-label-right { color: #F5C4B3; }
+    .engine-body { padding: 11px 12px; }
+    .consequence, .consequence-inline {
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+    .scene-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 13px 16px 16px; }
+    .scene-head { background: #2C2C2A; }
+    .scene-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #D5D1C8; }
+    .scene-body { padding: 9px 10px; }
+    .scene-body li { font-size: 12px; padding-left: 14px; }
+    .anchor-line {
+      padding: 13px 16px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      font-style: italic;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 13px 16px 16px; }
+    .ch-do { background: #085041; }
+    .ch-avoid { background: #4A1B0C; }
+    .col-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #F1EFE8; }
+    .col-body { padding: 11px 12px; }
+    .ref { color: #D5C0AA; font-style: italic; }
+    @media (max-width: 640px) {
+      .engine-grid, .scene-grid, .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="guide">
+    <div class="guide-header">
+      <div class="guide-title">{{TITLE}}</div>
+      <div class="guide-sub">{{SUB}}</div>
+      <div class="tag-row">{{TAG_ROW}}</div>
+    </div>
+
+    {{NOTICE_BLOCK}}
+
+    <div class="section">
+      <div class="sec-head sh-red">
+        <span class="sec-num">⚠</span>
+        <span class="sec-title tl">What Will Go Wrong</span>
+      </div>
+      <div class="warn-box">
+        <div class="warn-title">Most readers kill the audition by doing one of these three things:</div>
+        {{WHAT_WILL_GO_WRONG}}
+        <div class="warn-footer">{{WHAT_WILL_GO_WRONG_FOOTER}}</div>
+      </div>
+    </div>
+
+    {{HIGH_RISK_SECTION}}
+    {{EMOTIONAL_ARC_SECTION}}
+
+    <div class="section">
+      <div class="sec-head sh-amber">
+        <span class="sec-num">01</span>
+        <span class="sec-title tl">Why This Matters</span>
+      </div>
+      <div class="intro-text">{{WHY_IT_MATTERS}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-teal">
+        <span class="sec-num">02</span>
+        <span class="sec-title tl">Performance Engine</span>
+      </div>
+      <div class="engine-grid">{{PERFORMANCE_ENGINE}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-dark">
+        <span class="sec-num">03</span>
+        <span class="sec-title tl">Scene Snapshot</span>
+      </div>
+      <div class="scene-grid">{{SCENE_SNAPSHOT}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-amber">
+        <span class="sec-num">04</span>
+        <span class="sec-title tl">Your Job</span>
+      </div>
+      <div class="sec-body">{{YOUR_JOB}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-dark">
+        <span class="sec-num">05</span>
+        <span class="sec-title tl">Playing Multiple Characters</span>
+        <span class="badge">mandatory</span>
+      </div>
+      <div class="sec-body">{{PLAYING_MULTIPLE_CHARACTERS}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-muted">
+        <span class="sec-num">06</span>
+        <span class="sec-title tm">Reader Fundamentals</span>
+      </div>
+      <div class="sec-body">{{READER_FUNDAMENTALS}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-teal">
+        <span class="sec-num">07</span>
+        <span class="sec-title tl">Key Beats</span>
+      </div>
+      <div class="sec-body">{{KEY_BEATS}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-muted">
+        <span class="sec-num">08</span>
+        <span class="sec-title tm">Rhythm, Pace &amp; Energy</span>
+      </div>
+      <div class="sec-body">{{RHYTHM}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-dark">
+        <span class="sec-num">09</span>
+        <span class="sec-title tl">Do This / Avoid This</span>
+      </div>
+      <div class="two-col">
+        <div class="col-card">
+          <div class="col-head ch-do"><div class="col-label">Do This</div></div>
+          <div class="col-body">{{DO_THIS}}</div>
+        </div>
+        <div class="col-card">
+          <div class="col-head ch-avoid"><div class="col-label">Avoid This</div></div>
+          <div class="col-body">{{AVOID_THIS}}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-teal">
+        <span class="sec-num">10</span>
+        <span class="sec-title tl">Connection</span>
+        <span class="badge">critical</span>
+      </div>
+      <div class="anchor-line">{{ANCHOR_LINE}}</div>
+      <div class="sec-body">{{CONNECTION}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-coral">
+        <span class="sec-num">11</span>
+        <span class="sec-title tl">Tone &amp; Reference Anchor</span>
+      </div>
+      <div class="sec-body">{{TONE_REFERENCE_ANCHOR}}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-muted">
+        <span class="sec-num">12</span>
+        <span class="sec-title tm">Quick Reset</span>
+      </div>
+      <div class="sec-body">{{QUICK_RESET}}</div>
+    </div>
+  </div>
+</body>
+</html>

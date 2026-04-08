@@ -42,3 +42,8 @@
 **Issue:** The PDF ingest path still depended on ad hoc extraction patches and could reject low-signal uploads instead of routing them through a deterministic multi-stage recovery flow.
 **Decision:** Added a dedicated staged ingest module with text -> OCR -> vision routing, standardized the extraction contract to `text/source/confidence/warnings`, added routing tests for clean/watermarked/scanned/corrupted cases, and removed generation-side hard-fails so limited text still produces a guide-compatible result.
 **Status:** Success
+
+## 2026-04-08
+**Issue:** Reader101 was still asking the model to write full HTML artifacts, which made section order, wording severity, and high-risk handling vulnerable to drift.
+**Decision:** Split Reader101 into a fixed-template architecture under `reader101/templates` and `reader101/system`, moved generation to structured JSON-only content, added template selection plus deterministic rendering, and kept the existing `generateReaderGuide()` service contract as a wrapper over the new builder.
+**Status:** Success

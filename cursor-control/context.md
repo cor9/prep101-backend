@@ -65,6 +65,9 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Upload now detects watermark interference heuristically, escalates to OCR earlier, and shows an "image-based reading" recovery message when OCR rescues the sides
 - PDF ingest now runs as a staged pipeline: text extraction first, local OCR next when available, then per-page vision fallback, and it returns `text/source/confidence/warnings` instead of hard-failing the upload
 - Guide generation no longer aborts on corrupted sides tokens; limited-text uploads stay in fallback guide mode all the way through generation
+- Reader101 generation is now split into a fixed-template system under `reader101/templates` and `reader101/system` instead of asking the model to author full HTML directly
+- Claude now generates structured JSON content only, while template selection, normalization, and HTML rendering happen deterministically in code
+- High-risk scene handling still survives the refactor because the builder injects the required intimacy blocks, reader-role lock lines, and emotional-arc sections after normalization
 
 ## Architecture Decision Needed
 - Migrate to intended Next.js + Airtable architecture?
