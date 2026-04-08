@@ -59,6 +59,8 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Reader101 now elevates any high-risk scene involving sexual content, moral contradiction, shame transitions, or power imbalance
 - High-risk mode forces the scene-risk warning, playability framing, explicit emotional arc mapping, and consequence-heavy directives
 - Foster-style scenes now require a Scene 3 critical adjustment block centered on shame and neutrality
+- Upload-to-generate is now hardened for serverless cold starts by returning `sceneText` in upload responses and restoring missing uploads from client `scenePayloads`
+- Dashboard now caches the latest upload payload in `sessionStorage` so a refresh does not immediately strand users with a stale `uploadId`
 
 ## Architecture Decision Needed
 - Migrate to intended Next.js + Airtable architecture?

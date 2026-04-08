@@ -55,7 +55,15 @@ const nicePlan = (p) => {
 };
 
 const Dashboard = () => {
-  const [uploadData, setUploadData] = useState(null);
+  const [uploadData, setUploadData] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("prep101_upload_data");
+      return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+      console.warn("Could not restore cached upload data:", error);
+      return null;
+    }
+  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -156,6 +164,11 @@ const Dashboard = () => {
   // ====== FILE UPLOAD ======
   const handleFileUpload = (data) => {
     setUploadData(data);
+    try {
+      sessionStorage.setItem("prep101_upload_data", JSON.stringify(data));
+    } catch (error) {
+      console.warn("Could not cache upload data for recovery:", error);
+    }
     if (data.fallbackMode) {
       toast("We couldn't fully read your sides — but we'll build your guide using character and tone!", { 
         icon: "🧠",
@@ -213,13 +226,37 @@ const Dashboard = () => {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
 
+      const normalizedUploadIds = (
+        uploadData.uploadIds || [uploadData.uploadId]
+      ).filter(Boolean);
+      const normalizedSceneText = uploadData.sceneText || uploadData.text || "";
+      const normalizedFilename =
+        uploadData.filename || uploadData.originalName || "uploaded-sides.pdf";
+      const normalizedScenePayloads =
+        uploadData.scenePayloads ||
+        (normalizedUploadIds[0] && normalizedSceneText
+          ? {
+              [normalizedUploadIds[0]]: {
+                filename: normalizedFilename,
+                sceneText: normalizedSceneText,
+                characterNames: uploadData.characterNames || [],
+                extractionMethod: uploadData.extractionMethod || "upload",
+                extractionConfidence:
+                  uploadData.extractionConfidence || "unknown",
+                wordCount: uploadData.wordCount || 0,
+                fileType: uploadData.fileType || "sides",
+                fallbackMode: Boolean(uploadData.fallbackMode),
+              },
+            }
+          : {});
+
       const payload = {
-        uploadId: uploadData.uploadId || uploadData.uploadIds?.[0],
-        uploadIds: uploadData.uploadIds || [uploadData.uploadId],
-        scenePayloads: uploadData.scenePayloads || {},
+        uploadId: uploadData.uploadId || normalizedUploadIds[0],
+        uploadIds: normalizedUploadIds,
+        scenePayloads: normalizedScenePayloads,
         // Fallback data for stateless serverless environments
-        sceneText: uploadData.sceneText,
-        filename: uploadData.filename,
+        sceneText: normalizedSceneText,
+        filename: normalizedFilename,
         wordCount: uploadData.wordCount,
         characterNames: uploadData.characterNames,
         fallbackMode: uploadData.fallbackMode || false,
@@ -281,6 +318,11 @@ const Dashboard = () => {
       }
 
       toast.success("Guide generated successfully! Opening now...");
+      try {
+        sessionStorage.setItem("prep101_upload_data", JSON.stringify(uploadData));
+      } catch (error) {
+        console.warn("Could not refresh cached upload data after guide generation:", error);
+      }
 
       // Optimistic usage increment
       if (usage?.limit != null) {

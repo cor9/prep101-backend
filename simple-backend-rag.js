@@ -2740,11 +2740,15 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     return res.status(200).json({
       success: true,
       originalName: req.file.originalname,
+      filename: req.file.originalname,
       uploadId,
       text: cleanedText,
+      sceneText: cleanedText,
       characterNames,
       wordCount: wordCount,
       extractionMethod: result.method,
+      extractionConfidence: result.confidence || (quality.usable ? 'high' : 'low'),
+      fileType,
       quality: quality.quality,
       fallbackMode,
       debug: {
@@ -2800,22 +2804,47 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       : uploadId
         ? [uploadId]
         : [];
+    const scenePayloads = req.body.scenePayloads || {};
 
     // Fallback: Restore upload from request body if available (handles Vercel statelessness)
-    if (req.body.sceneText && uploadIdList.length > 0) {
+    if ((req.body.sceneText || req.body.text) && uploadIdList.length > 0) {
       const primaryId = uploadIdList[0];
       if (!uploads[primaryId]) {
         console.log(`[GENERATE] 🔄 Restoring upload ${primaryId} from client payload`);
         uploads[primaryId] = {
           filename: req.body.filename || "restored-upload.pdf",
-          sceneText: req.body.sceneText,
+          sceneText: req.body.sceneText || req.body.text,
           characterNames: req.body.characterNames || [],
           wordCount: req.body.wordCount || 0,
           uploadTime: new Date(),
           fileType: "sides", // Default
-          userId: req.userId
+          userId: req.userId,
+          fallbackMode: Boolean(req.body.fallbackMode),
         };
       }
+    }
+
+    for (const id of uploadIdList) {
+      if (uploads[id]) continue;
+
+      const fallback = scenePayloads[id];
+      if (!fallback?.sceneText) continue;
+
+      console.log(`[GENERATE] 🔄 Restoring upload ${id} from scenePayloads`);
+      uploads[id] = {
+        filename: fallback.filename || `upload_${id}.txt`,
+        sceneText: fallback.sceneText,
+        characterNames: fallback.characterNames || [],
+        extractionMethod: fallback.extractionMethod || "client-cache",
+        extractionConfidence: fallback.extractionConfidence || "unknown",
+        uploadTime: new Date(),
+        wordCount:
+          fallback.wordCount ||
+          (fallback.sceneText.match(/\b\w+\b/g) || []).length,
+        fileType: fallback.fileType || "sides",
+        userId: req.userId || req.user?.id || null,
+        fallbackMode: Boolean(fallback.fallbackMode),
+      };
     }
 
     // Debug request basics for faster triage
@@ -2913,7 +2942,6 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     }
 
     // Combine all upload data
-    const scenePayloads = req.body.scenePayloads || {};
     const allUploadData = uploadIdList.map((id) => {
       if (uploads[id]) return uploads[id];
       const fallback = scenePayloads[id];

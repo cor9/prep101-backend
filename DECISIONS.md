@@ -22,3 +22,8 @@
 **Issue:** Reader101 still needed stronger system-level handling for high-risk scenes involving shame, moral contradiction, and power imbalance, not just obvious intimacy keywords.
 **Decision:** Added a high-risk scene classifier, injected system-level discomfort/playability language, forced emotional arc mapping, and required Foster-style Scene 3 adjustments for shame-heavy material.
 **Status:** Success
+
+## 2026-04-08
+**Issue:** Guide generation could fail with "Upload session expired" in serverless cold starts because the upload response returned `text` while the generate flow expected `sceneText`, so the client fallback payload was often empty.
+**Decision:** Normalized upload payloads on the client, returned `sceneText` from `/api/upload`, restored missing uploads from `scenePayloads` before throwing an expiry error, and cached the latest upload payload in `sessionStorage` for refresh recovery.
+**Status:** Success

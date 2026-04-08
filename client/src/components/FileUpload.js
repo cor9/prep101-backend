@@ -42,7 +42,33 @@ const FileUpload = ({ onUpload }) => {
       }
 
       if (data.success) {
-        onUpload(data);
+        const sceneText = data.sceneText || data.text || '';
+        const uploadIds = data.uploadIds || (data.uploadId ? [data.uploadId] : []);
+        const primaryUploadId = data.uploadId || uploadIds[0] || null;
+        const scenePayloads =
+          data.scenePayloads ||
+          (primaryUploadId && sceneText
+            ? {
+                [primaryUploadId]: {
+                  filename: data.filename || data.originalName || file.name,
+                  sceneText,
+                  characterNames: data.characterNames || [],
+                  extractionMethod: data.extractionMethod || 'upload',
+                  extractionConfidence: data.extractionConfidence || 'unknown',
+                  wordCount: data.wordCount || 0,
+                  fileType: data.fileType || 'sides',
+                  fallbackMode: Boolean(data.fallbackMode),
+                },
+              }
+            : {});
+
+        onUpload({
+          ...data,
+          filename: data.filename || data.originalName || file.name,
+          sceneText,
+          uploadIds,
+          scenePayloads,
+        });
       } else {
         throw new Error(data.error || data.message || 'Upload failed');
       }
