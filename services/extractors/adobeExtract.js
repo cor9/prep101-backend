@@ -15,7 +15,7 @@ const {
 } = require('@adobe/pdfservices-node-sdk');
 
 const ADOBE_ENABLED = process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true';
-const TOP_BOTTOM_BAND = 0.08; // drop top/bottom 8% to kill headers/footers
+const TOP_BOTTOM_BAND = 0.02; // Reduced from 0.08 to be more inclusive of dialogue near margins
 
 function getCredentials() {
   // Use env vars if present (Standard for cloud/Vercel)
@@ -136,6 +136,7 @@ function collectTextWithCharBounds(structured) {
   let text = cleanExtractedText(kept.join('\n'));
 
   const wordCount = (text.match(/\b\w+\b/g) || []).length;
+  console.log(`[ADOBE] Extraction word count: ${wordCount}`);
   const confidence = wordCount > 600 ? 'high' : wordCount > 300 ? 'medium' : 'low';
   const characterPattern = /^[A-Z][A-Z\s]+:/gm;
   const characterNames = [...new Set((text.match(characterPattern) || []).map(n => n.replace(':', '').trim()))];
@@ -176,7 +177,8 @@ async function extractWithAdobe(pdfBuffer) {
 
     const structured = await parseStructuredZip(streamAsset.readStream);
     const { text, wordCount, confidence, characterNames } = collectTextWithCharBounds(structured);
-    if (!text) throw new Error('Adobe returned empty text');
+    console.log(`[ADOBE] Successful extraction, characters: ${text?.length || 0}`);
+    if (!text || text.length < 5) throw new Error('Adobe returned empty or near-empty text');
 
     return {
       success: true,
