@@ -37,6 +37,7 @@ const FileUpload = ({ onUpload }) => {
       const data = await response.json();
 
       if (!response.ok) {
+        console.log('❌ Backend Error Detail:', data);
         throw new Error(data.error || data.message || 'Upload failed');
       }
 
