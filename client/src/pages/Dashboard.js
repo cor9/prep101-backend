@@ -9,6 +9,11 @@ import Footer from "../components/Footer";
 import API_BASE from "../config/api";
 import Navbar from "../components/Navbar";
 import PromoCodeInput from "../components/PromoCodeInput";
+import {
+  ACCOUNT_LABEL,
+  buildBoldChoicesUrl,
+  buildReader101Url,
+} from "../utils/ecosystemLinks";
 import "../styles/shared.css";
 
 // Simple progress bar
@@ -74,6 +79,15 @@ const Dashboard = () => {
   const [lastGuideUrl, setLastGuideUrl] = useState(null);
 
   const { user } = useAuth();
+  const token = user?.accessToken || user?.token || localStorage.getItem("prep101_token");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const product = params.get("product");
+    if (product === "reader101" || product === "bold_choices" || product === "prep101") {
+      setGuideFilter(product);
+    }
+  }, []);
 
   // ====== GUIDES LIBRARY ======
   const [guides, setGuides] = useState([]);
@@ -412,10 +426,97 @@ const Dashboard = () => {
               className="logo-hero"
               loading="lazy"
             />
-            <h1 className="h1-hero">Dashboard</h1>
+            <h1 className="h1-hero">Your {ACCOUNT_LABEL}</h1>
             <p className="h2-hero">
-              Upload sides, fill role details, and generate your Prep101 guide.
+              One dashboard for Prep101, Reader101, and Bold Choices.
             </p>
+          </div>
+
+          <div
+            className="card-white"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "1rem",
+              marginBottom: "1.5rem",
+            }}
+          >
+            {[
+              {
+                label: "Prep101",
+                color: "#f59e0b",
+                description: "Upload sides and build full audition guides here.",
+                action: () => {
+                  setGuideFilter("prep101");
+                  window.history.replaceState({}, "", "/dashboard?product=prep101");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                },
+                cta: "Open Prep101",
+              },
+              {
+                label: "Reader101",
+                color: "#14b8a6",
+                description: "Carry your account over and open Reader101 without signing in again.",
+                action: () => {
+                  window.location.href = buildReader101Url({ token, useBridge: true });
+                },
+                cta: "Open Reader101",
+              },
+              {
+                label: "Bold Choices",
+                color: "#FF4D4D",
+                description: "Jump straight into Bold Choices with the same Child Actor 101 identity.",
+                action: () => {
+                  window.location.href = buildBoldChoicesUrl({ token, useBridge: true });
+                },
+                cta: "Open Bold Choices",
+              },
+            ].map((workspace) => (
+              <div
+                key={workspace.label}
+                style={{
+                  border: `1px solid ${workspace.color}33`,
+                  borderRadius: 16,
+                  padding: "1rem",
+                  background: `${workspace.color}10`,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: workspace.color,
+                    marginBottom: 8,
+                  }}
+                >
+                  {workspace.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    color: "#334155",
+                    lineHeight: 1.6,
+                    marginBottom: 14,
+                  }}
+                >
+                  {workspace.description}
+                </div>
+                <button
+                  onClick={workspace.action}
+                  className="btn btnPrimary"
+                  style={{
+                    width: "100%",
+                    background: workspace.color,
+                    border: "none",
+                    color: workspace.label === "Reader101" ? "#041311" : "#fff",
+                  }}
+                >
+                  {workspace.cta}
+                </button>
+              </div>
+            ))}
           </div>
 
           {/* Usage strip */}
@@ -587,7 +688,11 @@ const Dashboard = () => {
               {['all', 'prep101', 'reader101', 'bold_choices'].map(f => (
                 <button
                   key={f}
-                  onClick={() => setGuideFilter(f)}
+                  onClick={() => {
+                    setGuideFilter(f);
+                    const nextUrl = f === 'all' ? '/dashboard' : `/dashboard?product=${encodeURIComponent(f)}`;
+                    window.history.replaceState({}, '', nextUrl);
+                  }}
                   style={{
                     padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700,
                     border: '1.5px solid',

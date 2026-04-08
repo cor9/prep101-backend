@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import {
+  ACCOUNT_LABEL,
+  buildPrepAuthCallbackUrl,
+  buildReader101Url,
+} from '../utils/ecosystemLinks.js';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -9,6 +14,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isLanding = location.pathname === '/';
+  const token = user?.accessToken || user?.token;
 
   const handleLogout = () => {
     logout();
@@ -58,18 +64,20 @@ export default function Navbar() {
         {/* Ecosystem links — always visible on landing */}
         <div className="nav-ext-links" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <a
-            href="https://prep101.site"
+            href={token ? buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=prep101') : 'https://prep101.site'}
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link-ext nav-link-prep"
+            title={ACCOUNT_LABEL}
           >
             Prep101
           </a>
           <a
-            href="https://reader101.site"
+            href={buildReader101Url({ token })}
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link-ext nav-link-reader"
+            title={ACCOUNT_LABEL}
           >
             Reader101
           </a>
@@ -88,7 +96,7 @@ export default function Navbar() {
         {user ? (
           <>
             <span style={{ fontSize: 13, color: 'rgba(240,238,245,0.35)' }}>
-              {user.email?.split('@')[0]}
+              {user.email?.split('@')[0] || ACCOUNT_LABEL}
             </span>
             {location.pathname !== '/generate' && (
               <Link to="/generate">

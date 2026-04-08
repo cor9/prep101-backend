@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import Landing from './pages/Landing.jsx';
@@ -12,6 +12,7 @@ import AuthCallback from './pages/AuthCallback.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) {
     return (
       <div style={{
@@ -23,7 +24,10 @@ function ProtectedRoute({ children }) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    const redirect = `${location.pathname}${location.search || ''}`;
+    return <Navigate to={`/auth-callback?redirect=${encodeURIComponent(redirect)}`} replace />;
+  }
   return children;
 }
 

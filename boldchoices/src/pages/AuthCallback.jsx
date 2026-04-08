@@ -11,19 +11,31 @@ export default function AuthCallback() {
   const { loginWithToken } = useAuth();
 
   useEffect(() => {
+    let active = true;
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     const redirect = params.get('redirect') || '/generate';
 
-    if (token) {
-      loginWithToken(token);
-      navigate(redirect, { replace: true });
-    } else {
-      // No token — send to prep101 bridge
-      const callbackUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}`;
-      window.location.href = `https://prep101.site/auth-bridge?redirect=${encodeURIComponent(callbackUrl)}`;
-    }
-  }, []);
+    const run = async () => {
+      if (token) {
+        try {
+          await loginWithToken(token);
+          if (active) navigate(redirect, { replace: true });
+        } catch (_) {
+          if (active) {
+            const callbackUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}`;
+            window.location.href = `https://prep101.site/auth-bridge?redirect=${encodeURIComponent(callbackUrl)}`;
+          }
+        }
+      } else {
+        const callbackUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}`;
+        window.location.href = `https://prep101.site/auth-bridge?redirect=${encodeURIComponent(callbackUrl)}`;
+      }
+    };
+
+    run();
+    return () => { active = false; };
+  }, [loginWithToken, navigate]);
 
   return (
     <div style={{

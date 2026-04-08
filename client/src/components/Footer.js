@@ -1,5 +1,11 @@
 import React from 'react';
 import './Footer.css';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  ACCOUNT_LABEL,
+  buildBoldChoicesUrl,
+  buildReader101Url,
+} from '../utils/ecosystemLinks';
 
 const ECOSYSTEM = [
   { label: 'ChildActor101', href: 'https://childactor101.com' },
@@ -9,6 +15,18 @@ const ECOSYSTEM = [
 ];
 
 const Footer = () => {
+  const { user } = useAuth();
+  const token = user?.accessToken || user?.token;
+  const links = ECOSYSTEM.map((item) => {
+    if (item.label === 'Bold Choices') {
+      return { ...item, href: buildBoldChoicesUrl({ token, useBridge: Boolean(user) }) };
+    }
+    if (item.label === 'Reader101') {
+      return { ...item, href: buildReader101Url({ token, useBridge: Boolean(user) }) };
+    }
+    return item;
+  });
+
   return (
     <footer className="footer">
       <div className="footer-content">
@@ -19,7 +37,7 @@ const Footer = () => {
             The Ecosystem
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {ECOSYSTEM.map(({ label, href }) => (
+            {links.map(({ label, href }) => (
               <a
                 key={label}
                 href={href}
@@ -45,7 +63,7 @@ const Footer = () => {
         <div className="footer-main">
           © {new Date().getFullYear()} Prep101 · 
           <a href="/pricing">Pricing</a> · 
-          <a href="/account">Account</a> · 
+          <a href="/account" title={ACCOUNT_LABEL}>My Account</a> · 
           <a href="/terms">Terms</a> · 
           <a href="/privacy">Privacy</a> · 
           <a href="/refunds">Refunds</a> · 
@@ -54,7 +72,7 @@ const Footer = () => {
           <a href="/cookies">Cookies</a>
         </div>
         <div className="footer-tagline">
-          Prep101 — The gold standard in audition preparation.
+          Your Child Actor 101 account for Prep101, Reader101, and Bold Choices.
         </div>
       </div>
     </footer>

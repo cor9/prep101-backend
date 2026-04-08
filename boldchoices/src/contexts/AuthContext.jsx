@@ -9,13 +9,54 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const hydrateUserFromToken = async (token) => {
+    const res = await fetch(`${API_BASE}/api/auth/verify`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error('Session expired');
+    }
+
+    const data = await res.json();
+    if (!data.valid || !data.user) {
+      throw new Error('Invalid session');
+    }
+
+    return {
+      ...data.user,
+      accessToken: token,
+      token,
+    };
+  };
+
   // Restore session from localStorage on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('bc_user');
-      if (stored) setUser(JSON.parse(stored));
-    } catch (_) {}
-    setLoading(false);
+    const restore = async () => {
+      try {
+        const stored = localStorage.getItem('bc_user');
+        if (!stored) return;
+
+        const parsed = JSON.parse(stored);
+        const storedToken = parsed?.accessToken || parsed?.token;
+        if (!storedToken) {
+          setUser(parsed);
+          return;
+        }
+
+        const hydrated = await hydrateUserFromToken(storedToken);
+        setUser(hydrated);
+        localStorage.setItem('bc_user', JSON.stringify(hydrated));
+      } catch (_) {
+        localStorage.removeItem('bc_user');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restore();
   }, []);
 
   const login = async (email, password) => {
@@ -62,10 +103,11 @@ export function AuthProvider({ children }) {
   };
 
   // Called by AuthCallback when receiving a token from prep101.site bridge
-  const loginWithToken = (token) => {
-    const u = { accessToken: token, token };
+  const loginWithToken = async (token) => {
+    const u = await hydrateUserFromToken(token);
     setUser(u);
     localStorage.setItem('bc_user', JSON.stringify(u));
+    return u;
   };
 
   return (

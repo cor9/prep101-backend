@@ -21,7 +21,8 @@ const Home = () => {
           <h1 className="h1Dark">Audition prep parents call <strong style={{background:'none', color:'#FFC83A'}}>GOLD</strong>.</h1>
           <p className="taglineDark">
             Personalized coaching guides that break down every beat—so young actors show up <strong>prepared</strong>,
-            <strong> confident</strong>, and <strong>unforgettable</strong>.
+            <strong> confident</strong>, and <strong>unforgettable</strong>.<br />
+            One Child Actor 101 account powers Prep101, Reader101, and Bold Choices.
           </p>
           <div className="btnRow">
             <button className="btn btnPrimaryDark" onClick={primary}>Get Started</button>

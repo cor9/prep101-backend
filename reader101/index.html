@@ -62,6 +62,18 @@
       text-decoration: none; transition: background 0.2s;
     }
     .btn-nav:hover { background: var(--teal-dk); }
+    .account-pill {
+      display: none;
+      margin-top: 1rem;
+      background: rgba(20,184,166,0.1);
+      border: 1px solid rgba(20,184,166,0.22);
+      border-radius: 999px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--mist);
+    }
 
     /* ── HERO ─────────────────────────────────────────────────── */
     .hero {
@@ -320,11 +332,11 @@
       <a href="#how">How it works</a>
       <a href="#examples">Live Examples</a>
       <a href="#pricing">Pricing</a>
-      <a href="https://prep101.site" target="_blank" rel="noopener">Prep101</a>
-      <a href="https://boldchoices.site" target="_blank" rel="noopener">Bold Choices</a>
+      <a id="prep-link" href="https://prep101.site" target="_blank" rel="noopener">Prep101</a>
+      <a id="bold-link" href="https://boldchoices.site" target="_blank" rel="noopener">Bold Choices</a>
       <a href="https://childactor101.com" target="_blank" rel="noopener">ChildActor101</a>
       <a href="https://coaching.childactor101.com" target="_blank" rel="noopener">Coaching</a>
-      <a class="btn-nav" href="#pricing">Get Started</a>
+      <a id="account-link" class="btn-nav" href="https://prep101.site/dashboard?product=reader101">Open Account</a>
     </div>
   </nav>
 
@@ -336,6 +348,7 @@
         <div class="eyebrow-dot"></div>
         The reason your child's tape might not be landing
       </div>
+      <div id="account-pill" class="account-pill">Connected to your Child Actor 101 account</div>
 
       <img src="reader101-logo.png" alt="Reader101" style="width:100%; max-width:480px; height:auto; object-fit:contain; margin-bottom:1.5rem;" />
 
@@ -346,7 +359,7 @@
       </p>
 
       <div class="cta-group">
-        <a class="btn-primary" href="#pricing">Get My Reader Guide →</a>
+        <a id="primary-cta" class="btn-primary" href="https://prep101.site/dashboard?product=reader101">Open Reader101 in My Account →</a>
         <button class="btn-secondary" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
       </div>
 
@@ -642,15 +655,50 @@
     </div>
     <div class="footer-links">
       <a href="https://childactor101.com" target="_blank" rel="noopener">ChildActor101</a>
-      <a href="https://prep101.site" target="_blank" rel="noopener">Prep101</a>
-      <a href="https://boldchoices.site" target="_blank" rel="noopener">Bold Choices</a>
+      <a id="footer-prep-link" href="https://prep101.site" target="_blank" rel="noopener">Prep101</a>
+      <a id="footer-bold-link" href="https://boldchoices.site" target="_blank" rel="noopener">Bold Choices</a>
       <a href="https://coaching.childactor101.com" target="_blank" rel="noopener">Coaching by Corey</a>
       <a href="refund.html">Refund Policy</a>
     </div>
     <div class="footer-copy">
       A product of Prep101 &middot; &copy; 2026 Corey Ralston
     </div>
-  </footer>
+</footer>
+
+<script>
+  (function () {
+    var token = localStorage.getItem('ca101_token');
+    var prepDashboard = 'https://prep101.site/dashboard?product=reader101';
+    var boldCallbackBase = 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate';
+    var prepCallbackBase = 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent('https://prep101.site/dashboard?product=prep101');
+    var accountLink = document.getElementById('account-link');
+    var primaryCta = document.getElementById('primary-cta');
+    var prepLink = document.getElementById('prep-link');
+    var boldLink = document.getElementById('bold-link');
+    var footerPrepLink = document.getElementById('footer-prep-link');
+    var footerBoldLink = document.getElementById('footer-bold-link');
+    var accountPill = document.getElementById('account-pill');
+
+    if (token) {
+      if (accountPill) accountPill.style.display = 'inline-flex';
+      if (accountLink) {
+        accountLink.textContent = 'Open My Child Actor 101 Account';
+        accountLink.href = prepDashboard;
+      }
+      if (primaryCta) primaryCta.href = prepDashboard;
+      if (prepLink) prepLink.href = prepCallbackBase + '&token=' + encodeURIComponent(token);
+      if (boldLink) boldLink.href = boldCallbackBase + '&token=' + encodeURIComponent(token);
+      if (footerPrepLink) footerPrepLink.href = prepCallbackBase + '&token=' + encodeURIComponent(token);
+      if (footerBoldLink) footerBoldLink.href = boldCallbackBase + '&token=' + encodeURIComponent(token);
+    } else {
+      if (accountLink) {
+        accountLink.textContent = 'Sign In With Child Actor 101';
+        accountLink.href = 'https://prep101.site/auth-bridge?redirect=' + encodeURIComponent('https://reader101.site/auth-callback.html?redirect=' + encodeURIComponent(prepDashboard));
+      }
+      if (primaryCta) primaryCta.href = accountLink ? accountLink.href : '#pricing';
+    }
+  })();
+</script>
 
 </body>
 </html>

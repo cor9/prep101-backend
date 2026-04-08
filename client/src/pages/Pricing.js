@@ -89,7 +89,7 @@ const Pricing = () => {
         <section className="page-hero">
           <img src="/preplogo.png" alt="Prep101 logo" className="logo-hero" loading="lazy" />
           <h1 className="h1-hero">Simple, Transparent Pricing</h1>
-          <p className="h2-hero">Every tool your actor needs — from prep to performance.</p>
+          <p className="h2-hero">One Child Actor 101 account. Every tool your actor needs — from prep to performance.</p>
         </section>
 
         <div className="container-wide">

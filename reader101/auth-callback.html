@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reader101 — Opening Your Account</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #080d14;
+      color: #e2e8f0;
+      font-family: Inter, system-ui, sans-serif;
+    }
+    p {
+      color: rgba(226, 232, 240, 0.7);
+      font-size: 15px;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+  <p>Opening your Child Actor 101 account…</p>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var token = params.get('token');
+      var redirect = params.get('redirect') || 'https://prep101.site/dashboard?product=reader101';
+
+      if (token) {
+        localStorage.setItem('ca101_token', token);
+        window.location.replace(redirect || '/');
+        return;
+      }
+
+      var callbackUrl = 'https://reader101.site/auth-callback.html?redirect=' + encodeURIComponent(redirect);
+      window.location.replace('https://prep101.site/auth-bridge?redirect=' + encodeURIComponent(callbackUrl));
+    })();
+  </script>
+</body>
+</html>

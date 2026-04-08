@@ -20,6 +20,7 @@ import Terms from './pages/Terms';
 import AdminDashboard from './pages/AdminDashboard';
 import BoldChoices from './pages/BoldChoices';
 import AuthBridge from './pages/AuthBridge';
+import AuthCallback from './pages/AuthCallback';
 import './App.css';
 
 
@@ -118,6 +119,7 @@ function App() {
                 <Route path="/app/stripe/success" element={<StripeSuccess />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/terms" element={<Terms />} />
+                <Route path="/auth-callback" element={<AuthCallback />} />
                 <Route
                   path="/bold-choices"
                   element={

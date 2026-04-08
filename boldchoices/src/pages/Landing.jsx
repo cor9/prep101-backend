@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import Navbar from '../components/Navbar.jsx';
+import { buildPrepAuthCallbackUrl, buildReader101Url } from '../utils/ecosystemLinks.js';
 
 const S = {
   hero: {
@@ -369,10 +370,11 @@ const features = [
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const token = user?.accessToken || user?.token;
 
   const handleCTA = () => {
     if (user) navigate('/generate');
-    else navigate('/register');
+    else navigate('/auth-callback?redirect=%2Fgenerate');
   };
 
   return (
@@ -564,7 +566,11 @@ export default function Landing() {
             Prep101 builds the performance.<br /><br />
             Every beat. Every shift. Every choice — mapped, motivated, and ready to play.
           </p>
-          <button className="btn-upgrade" style={S.btnUpgrade} onClick={() => window.open('https://prep101.site', '_blank')}>
+          <button
+            className="btn-upgrade"
+            style={S.btnUpgrade}
+            onClick={() => window.open(token ? buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=prep101') : 'https://prep101.site', '_blank')}
+          >
             Explore Prep101 →
           </button>
         </div>
@@ -611,8 +617,8 @@ export default function Landing() {
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
           {[
             { label: 'ChildActor101', href: 'https://childactor101.com' },
-            { label: 'Prep101', href: 'https://prep101.site' },
-            { label: 'Reader101', href: 'https://reader101.site' },
+            { label: 'Prep101', href: token ? buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=prep101') : 'https://prep101.site' },
+            { label: 'Reader101', href: buildReader101Url({ token }) },
             { label: 'Coaching by Corey', href: 'https://coaching.childactor101.com' },
           ].map(({ label, href }) => (
             <a
