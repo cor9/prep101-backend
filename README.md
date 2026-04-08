@@ -38,6 +38,13 @@ PREP101 is a comprehensive acting coaching platform that combines AI-powered gui
 - **Advanced Search**: Search and filter guides by various criteria
 - **Guide Analytics**: Track guide performance and usage
 
+### **Reader101 & Bold Choices**
+- **Unified Ecosystem**: Seamless transition between Prep101, Reader101, and Bold Choices.
+- **Cross-Domain Auth**: Unified authentication bridge for shared sessions.
+- **Reader101 Support**: Scene-specific coaching for the person reading lines.
+- **Bold Choices Engine**: AI-powered character choice and risk-taking advisor.
+- **Advanced Text Cleaning**: Centralized watermark and metadata scrubbing for clean PDF extraction.
+
 ### **File Management**
 - **Multi-Format Support**: PDF, TXT, DOC, and DOCX script uploads
 - **File Validation**: Secure file type and size validation
@@ -196,6 +203,7 @@ npm start           # Start production server
 - **`BETA_TESTER_SYSTEM.md`** - Beta tester system guide
 - **`SETUP.md`** - Detailed setup instructions
 - **`env.template`** - Environment variable template
+- **`optimization_summary.md`** - Current pipeline optimization log
 
 ## 🎯 Next Steps
 
