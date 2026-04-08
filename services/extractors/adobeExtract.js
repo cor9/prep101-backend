@@ -18,12 +18,25 @@ const ADOBE_ENABLED = process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true';
 const TOP_BOTTOM_BAND = 0.08; // drop top/bottom 8% to kill headers/footers
 
 function getCredentials() {
+  // Use env vars if present (Standard for cloud/Vercel)
+  if (process.env.ADOBE_CLIENT_ID && process.env.ADOBE_CLIENT_SECRET) {
+    return new ServicePrincipalCredentials({
+      clientId: process.env.ADOBE_CLIENT_ID,
+      clientSecret: process.env.ADOBE_CLIENT_SECRET,
+    });
+  }
+
+  // Fallback to JSON file if it exists
   const credentialsPath = process.env.ADOBE_PDF_CREDENTIALS_PATH || './pdfservices-api-credentials.json';
-  const raw = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-  return new ServicePrincipalCredentials({
-    clientId: raw.client_credentials.client_id,
-    clientSecret: raw.client_credentials.client_secret,
-  });
+  if (fs.existsSync(credentialsPath)) {
+    const raw = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    return new ServicePrincipalCredentials({
+      clientId: raw.client_credentials?.client_id || raw.clientId,
+      clientSecret: raw.client_credentials?.client_secret || raw.clientSecret,
+    });
+  }
+  
+  throw new Error('Adobe PDF credentials not found (set ADOBE_CLIENT_ID or check JSON)');
 }
 
 function isWatermarkText(s) {
@@ -41,7 +54,6 @@ function isWatermarkText(s) {
     /^\d{1,2}:\d{2}:\d{2}\s*$/i, // Timestamps
     /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*$/i, // Date-time stamps
     /^[0-9\s\-_:]+$/i, // Lines with only numbers, spaces, dashes, underscores, colons
-    /[A-Za-z]{1,2}\s*$/i, // Single or double letter lines
   ];
   return patterns.some(re => re.test(t));
 }
