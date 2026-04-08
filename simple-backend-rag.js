@@ -2776,6 +2776,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       uploadId,
       uploadIds,
       characterName,
+      actorAge,
       productionTitle,
       productionType,
       roleSize,
@@ -3071,6 +3072,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       const readerGuideHtml = await generateReaderGuide({
         sceneText: combinedSceneText,
         characterName: characterName.trim(),
+        actorAge: actorAge || "",
         productionTitle: productionTitle.trim(),
         productionType: productionType.trim(),
         genre: genre || "",
@@ -3906,7 +3908,7 @@ app.get("/api/health", (req, res) => {
 
 // ── Reader101 no-auth test endpoint ───────────────────────────────────────────
 app.post("/api/reader-test", async (req, res) => {
-  const { sceneText, characterName, productionTitle, productionType, genre } = req.body;
+  const { sceneText, characterName, actorAge, productionTitle, productionType, genre, storyline } = req.body;
   if (!sceneText) {
     return res.status(400).json({ error: "sceneText is required" });
   }
@@ -3915,9 +3917,11 @@ app.post("/api/reader-test", async (req, res) => {
     const html = await generateReaderGuide({
       sceneText,
       characterName: characterName || "Actor",
+      actorAge: actorAge || "",
       productionTitle: productionTitle || "",
       productionType: productionType || "",
       genre: genre || "",
+      storyline: storyline || "",
     });
     res.json({ success: true, guideContent: html });
   } catch (err) {

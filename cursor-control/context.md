@@ -51,6 +51,12 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Short readable sides under 100 words are allowed through without forcing archetype fallback
 - Remaining risk: OCR depends on image conversion support in the deploy environment, so production monitoring still matters
 
+## Reader101 Status (2026-04-08)
+- Reader101 now has a dedicated intimacy mode trigger based on script and metadata content
+- Intimacy mode injects a required handling section, disables comedic framing, and locks the reader to emotional grounding rather than simulated physicality
+- Minor/parent context now adds a professionalism note for intimate material
+- Partial intimate text now pivots to an intimacy protocol guide instead of generic fallback
+
 ## Architecture Decision Needed
 - Migrate to intended Next.js + Airtable architecture?
 - Or update project rules to reflect current working implementation?

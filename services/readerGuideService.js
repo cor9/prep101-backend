@@ -37,6 +37,46 @@ const REQUIRED_SECTION_TITLES = [
   "Quick Reset",
 ];
 
+const INTIMACY_TRIGGERS = [
+  "porn",
+  "sex",
+  "touches",
+  "kissing",
+  "horny",
+  "bed",
+  "watching",
+  "naked",
+  "orgasm",
+  "arousal",
+  "physical proximity",
+];
+
+const INTIMACY_ESCALATION_TRIGGERS = [
+  "closer",
+  "harder",
+  "faster",
+  "pulls in",
+  "leans in",
+  "can't stop",
+  "wants more",
+  "breathless",
+  "escalates",
+];
+
+const INTIMACY_AFTERMATH_TRIGGERS = [
+  "shame",
+  "ashamed",
+  "embarrassed",
+  "exit",
+  "leaves",
+  "walks away",
+  "gets up",
+  "afterward",
+  "aftermath",
+  "silence after",
+  "exposed",
+];
+
 const READER_SYSTEM_PROMPT = `You are generating a Reader Support Guide using a STRICT production system.
 
 You MUST follow:
@@ -100,6 +140,47 @@ function countMeaningfulWords(text = "") {
   return (text.match(/\b[\w']+\b/g) || []).length;
 }
 
+function detectIntimacy(content = "") {
+  const normalized = String(content || "").toLowerCase();
+  return INTIMACY_TRIGGERS.some((word) => normalized.includes(word));
+}
+
+function detectIntimacyArc(content = "") {
+  const normalized = String(content || "").toLowerCase();
+  const hasEscalation = INTIMACY_ESCALATION_TRIGGERS.some((word) =>
+    normalized.includes(word)
+  );
+  const hasAftermath = INTIMACY_AFTERMATH_TRIGGERS.some((word) =>
+    normalized.includes(word)
+  );
+  return hasEscalation && hasAftermath;
+}
+
+function buildReaderModeContext(data = {}) {
+  const combinedContent = [
+    data.sceneText || "",
+    data.storyline || "",
+    data.genre || "",
+    data.productionTitle || "",
+    data.productionType || "",
+    data.characterName || "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const intimacyMode = detectIntimacy(combinedContent);
+  const actorAge = Number.parseInt(data.actorAge, 10);
+  const parentContext = /parent/i.test(combinedContent) || (!Number.isNaN(actorAge) && actorAge < 18);
+
+  return {
+    mode: intimacyMode ? "INTIMACY" : "STANDARD",
+    intimacyMode,
+    intimacyArc: intimacyMode && detectIntimacyArc(combinedContent),
+    actorAge: Number.isNaN(actorAge) ? null : actorAge,
+    parentContext,
+  };
+}
+
 function buildReaderPrompt(data, validationFeedback = "") {
   const {
     sceneText,
@@ -109,16 +190,27 @@ function buildReaderPrompt(data, validationFeedback = "") {
     genre,
     storyline,
     fallbackMode,
+    actorAge,
   } = data;
 
   const cleanedSceneText = scrubWatermarks(sceneText || "").trim();
   const meaningfulWordCount = countMeaningfulWords(cleanedSceneText);
+  const modeContext = buildReaderModeContext({
+    sceneText: cleanedSceneText,
+    characterName,
+    productionTitle,
+    productionType,
+    genre,
+    storyline,
+    actorAge,
+  });
 
   const metadataLines = [
     characterName ? `ROLE: ${characterName}` : "",
     productionTitle ? `TITLE: ${productionTitle}` : "",
     productionType ? `FORMAT: ${productionType}` : "",
     genre ? `GENRE: ${genre}` : "",
+    actorAge ? `ACTOR AGE: ${actorAge}` : "",
     storyline ? `STORY / CONTEXT: ${storyline}` : "",
   ].filter(Boolean);
 
@@ -127,7 +219,8 @@ function buildReaderPrompt(data, validationFeedback = "") {
 - Ignore extracted script text.
 - Build the guide from Title, Genre, Role, and any clean story metadata only.
 - Add this note near the top of the guide body: "⚠️ Upload clearer sides for line-specific guidance."
-- Do NOT quote lines or invent scene-specific dialogue.`
+- Do NOT quote lines or invent scene-specific dialogue.
+${modeContext.intimacyMode ? "- Intimacy was detected, so do NOT fallback to generic. Generate an Intimacy Protocol Guide based on detected tone and genre." : ""}`
     : `READABLE SIDES:
 ${cleanedSceneText || "[No readable sides provided]"}`;
 
@@ -144,6 +237,7 @@ OUTPUT FORMAT:
 
 MANDATORY SECTION ORDER:
 - ⚠️ What Will Go Wrong
+${modeContext.intimacyMode ? "- ⚠️ When the Scene Crosses Into Intimacy" : ""}
 - 01 Why This Matters
 - 02 Performance Engine
 - 03 Scene Snapshot
@@ -167,6 +261,7 @@ VOICE RULES:
 - Never repeat guidance across sections
 - Never include conflicting instructions
 - Every section must contain at least one high-stakes consequence frame
+${modeContext.intimacyMode ? "- Every bullet must follow ACTION -> CONSEQUENCE" : ""}
 
 SECTION-SPECIFIC REQUIREMENTS:
 - "What Will Go Wrong" leads the guide and contains exactly 3 bullets on a black background with red markers
@@ -176,10 +271,20 @@ SECTION-SPECIFIC REQUIREMENTS:
 - "Rhythm, Pace & Energy" is one merged section, never split into two
 - "Connection" must open with "NAME can only go as deep as you let them" or the closest natural name/pronoun adaptation
 - "Tone & Reference Anchor" must lead with consequence framing like "If you play it like X, it falls apart immediately"
+${modeContext.intimacyMode ? `- Add the section "⚠️ When the Scene Crosses Into Intimacy" directly after "What Will Go Wrong"
+- In "What Will Go Wrong", force-add the failures: pulling back due to discomfort, rushing intimate beats, judging the material
+- Disable comedic framing and force grounded realism throughout
+- Increase consequence density across the guide
+- Always include these exact lines somewhere in the intimacy guide:
+  Reader does NOT simulate physical behavior
+  Reader provides emotional grounding only
+${modeContext.parentContext ? "- Add this exact note in the intimacy section: This may feel uncomfortable. Stay neutral and professional." : ""}
+${modeContext.intimacyArc ? "- Track the emotional arc as: build -> tension -> exposure -> shame -> exit" : ""}` : ""}
 
 INPUT CONTEXT:
 ${metadataLines.join("\n")}
 MEANINGFUL WORDS IN SIDES: ${meaningfulWordCount}
+MODE: ${modeContext.mode}
 
 ${readableSidesBlock}
 
@@ -195,6 +300,7 @@ FINAL INSTRUCTIONS:
 - Reuse the same class naming and overall HTML approach as the example whenever possible.
 - If readable lines exist, anchor Key Beats and consequences to the actual text.
 - If fallback mode is active, stay high-level and do not fake line-specific analysis.
+- If MODE is INTIMACY, build an Intimacy Protocol Guide without sanitizing the material.
 - Return a complete HTML document with inline CSS and no extra commentary.`;
 }
 
@@ -210,9 +316,10 @@ function extractSectionSlice(html, title, nextTitle) {
   return end === -1 ? html.slice(start) : html.slice(start, end);
 }
 
-function validateReaderGuideOutput(html) {
+function validateReaderGuideOutput(html, options = {}) {
   const cleaned = stripCodeFences(html);
   const errors = [];
+  const modeContext = buildReaderModeContext(options);
 
   if (!/<html[\s>]/i.test(cleaned) || !/<\/html>/i.test(cleaned)) {
     errors.push("Return a complete self-contained HTML document.");
@@ -272,6 +379,35 @@ function validateReaderGuideOutput(html) {
 
   if (!/the audition dies instantly/i.test(cleaned)) {
     errors.push('Include the mandatory "the audition dies instantly" contrast line.');
+  }
+
+  if (modeContext.intimacyMode) {
+    if (!/When the Scene Crosses Into Intimacy/i.test(cleaned)) {
+      errors.push('Add the intimacy section "When the Scene Crosses Into Intimacy".');
+    }
+    if (!/Reader does NOT simulate physical behavior/i.test(cleaned)) {
+      errors.push('Include the exact role-lock line "Reader does NOT simulate physical behavior".');
+    }
+    if (!/Reader provides emotional grounding only/i.test(cleaned)) {
+      errors.push('Include the exact role-lock line "Reader provides emotional grounding only".');
+    }
+    if (modeContext.parentContext && !/This may feel uncomfortable\. Stay neutral and professional\./i.test(cleaned)) {
+      errors.push("Include the parent/minor professionalism note.");
+    }
+    const intimacyWarnings = extractSectionSlice(
+      cleaned,
+      "What Will Go Wrong",
+      "Why This Matters"
+    );
+    if (!/discomfort|pulling back/i.test(intimacyWarnings)) {
+      errors.push('Add the discomfort failure to "What Will Go Wrong".');
+    }
+    if (!/rushing intimate beats|rush/i.test(intimacyWarnings)) {
+      errors.push('Add the rushed intimacy failure to "What Will Go Wrong".');
+    }
+    if (!/judging the material|judge/i.test(intimacyWarnings)) {
+      errors.push('Add the judging-the-material failure to "What Will Go Wrong".');
+    }
   }
 
   return {
@@ -437,6 +573,8 @@ async function generateReaderGuide(data) {
   console.log(`   Character: ${data.characterName}`);
   console.log(`   Production: ${data.productionTitle} (${data.productionType})`);
   console.log(`   Fallback: ${Boolean(data.fallbackMode)}`);
+  const modeContext = buildReaderModeContext(data);
+  console.log(`   Reader Mode: ${modeContext.mode}`);
 
   const maxRetries = 2;
   let lastError = null;
@@ -489,7 +627,7 @@ async function generateReaderGuide(data) {
       }
 
       const cleanedHtml = stripCodeFences(rawHtml);
-      const validation = validateReaderGuideOutput(cleanedHtml);
+      const validation = validateReaderGuideOutput(cleanedHtml, data);
 
       if (!validation.ok) {
         console.warn("[ReaderGuide] Validation failed:", validation.errors);

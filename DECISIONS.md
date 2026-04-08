@@ -12,3 +12,8 @@
 **Issue:** Repo context files were stale about current PDF extraction behavior and monitoring.
 **Decision:** Updated project context and extraction summary docs to reflect the live pipeline, health diagnostics, and remaining OCR deployment caveat.
 **Status:** Success
+
+## 2026-04-08
+**Issue:** Reader101 was treating intimate material like standard reader coaching, which risks sanitizing the scene or pushing readers into the wrong kind of participation.
+**Decision:** Added intimacy detection, an intimacy-only section, stricter consequence-based prompt rules, exact role-lock language, parent/minor professionalism guidance, and an intimacy-specific fallback path for partial text.
+**Status:** Success
