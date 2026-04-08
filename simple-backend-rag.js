@@ -179,7 +179,7 @@ app.use((req, res, next) => {
 // Continue with other imports
 const pdfParse = require("pdf-parse");
 // methodology folder is now included in vercel.json
-const { scrubWatermarks, assessQuality: checkTextQuality } = require(path.join(process.cwd(), "services", "textCleaner"));
+const { scrubWatermarks, assessQuality } = require(path.join(process.cwd(), "services", "textCleaner"));
 // Try to load Adobe extractor, but don't fail if it's not available
 let extractWithAdobe;
 let adobeImportError = null;
@@ -275,7 +275,7 @@ function cleanBasicText(text) {
 // Stricter on generation, lenient on upload to allow correction
 function assessContentQuality(text, wordCount, isUpload = false) {
   // Use centralized quality checker from services/textCleaner.js
-  const assessment = checkTextQuality(text, wordCount);
+  const assessment = assessQuality(text, wordCount);
   
   // UPLOAD CHECK: Only reject completely empty or severely corrupted files
   if (isUpload) {
