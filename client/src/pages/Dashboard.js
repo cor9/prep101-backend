@@ -169,7 +169,9 @@ const Dashboard = () => {
     } catch (error) {
       console.warn("Could not cache upload data for recovery:", error);
     }
-    toast.success("PDF processed — ready to generate!");
+    if (!data.uploadMessage) {
+      toast.success("PDF processed — ready to generate!");
+    }
   };
 
   // Open HTML in a new tab (Blob URL). Optionally reuse a pre-opened window.

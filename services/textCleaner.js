@@ -59,6 +59,58 @@ function isLikelyWatermarkLine(line) {
   return false;
 }
 
+function analyzeWatermarkInterference(text) {
+  const source = String(text || '');
+  const lines = source
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const substantialLines = lines.filter((line) => line.length >= 4);
+  const lineCounts = {};
+  substantialLines.forEach((line) => {
+    lineCounts[line] = (lineCounts[line] || 0) + 1;
+  });
+
+  const duplicateLines = substantialLines.filter((line) => lineCounts[line] > 1);
+  const likelyWatermarkLines = substantialLines.filter((line) => isLikelyWatermarkLine(line));
+
+  const repeatedCodeMatches =
+    source.match(/\b[A-Z]?\d{3,}[A-Z0-9-]*\b/g) ||
+    source.match(/\b[A-Z0-9]{6,}\b/g) ||
+    [];
+
+  const repeatedCodeCounts = {};
+  repeatedCodeMatches.forEach((token) => {
+    repeatedCodeCounts[token] = (repeatedCodeCounts[token] || 0) + 1;
+  });
+
+  const repeatedWatermarkTokens = Object.entries(repeatedCodeCounts)
+    .filter(([, count]) => count > 1)
+    .map(([token]) => token);
+
+  const duplicateLineRatio = substantialLines.length
+    ? duplicateLines.length / substantialLines.length
+    : 0;
+  const watermarkLineRatio = substantialLines.length
+    ? likelyWatermarkLines.length / substantialLines.length
+    : 0;
+
+  const shouldEscalateToOCR =
+    repeatedWatermarkTokens.length > 0 ||
+    duplicateLineRatio >= 0.3 ||
+    watermarkLineRatio >= 0.2;
+
+  return {
+    repeatedWatermarkTokens,
+    duplicateLineRatio,
+    watermarkLineRatio,
+    likelyWatermarkLineCount: likelyWatermarkLines.length,
+    lineCount: substantialLines.length,
+    shouldEscalateToOCR,
+  };
+}
+
 function cleanExtractedText(text) {
   if (!text) return '';
 
@@ -189,4 +241,5 @@ module.exports = {
   removeRepeatedLines,
   assessQuality,
   isLikelyWatermarkLine,
+  analyzeWatermarkInterference,
 };

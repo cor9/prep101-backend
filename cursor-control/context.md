@@ -62,6 +62,7 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Upload-to-generate is now hardened for serverless cold starts by returning `sceneText` in upload responses and restoring missing uploads from client `scenePayloads`
 - Dashboard now caches the latest upload payload in `sessionStorage` so a refresh does not immediately strand users with a stale `uploadId`
 - Watermark-heavy or repetitive PDFs now hard-fail extraction instead of quietly dropping into fallback coaching, and the generic "we'll build it from tone" upload toast was removed
+- Upload now detects watermark interference heuristically, escalates to OCR earlier, and shows an "image-based reading" recovery message when OCR rescues the sides
 
 ## Architecture Decision Needed
 - Migrate to intended Next.js + Airtable architecture?

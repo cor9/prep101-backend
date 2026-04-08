@@ -69,6 +69,10 @@ const FileUpload = ({ onUpload }) => {
           uploadIds,
           scenePayloads,
         });
+
+        if (data.uploadMessage) {
+          toast(data.uploadMessage, { icon: '🧠', duration: 5000 });
+        }
       } else {
         throw new Error(data.error || data.message || 'Upload failed');
       }

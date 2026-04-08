@@ -218,7 +218,9 @@ const BoldChoices = () => {
     if (data?.sceneText) {
       setForm((f) => ({ ...f, sceneText: data.sceneText }));
     }
-    toast.success("Sides uploaded — scene text ready!");
+    if (!data.uploadMessage) {
+      toast.success("Sides uploaded — scene text ready!");
+    }
   };
 
   const openGuideInTab = (html) => {

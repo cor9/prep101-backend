@@ -179,7 +179,11 @@ app.use((req, res, next) => {
 // Continue with other imports
 const pdfParse = require("pdf-parse");
 // methodology folder is now included in vercel.json
-const { scrubWatermarks, assessQuality } = require(path.join(process.cwd(), "services", "textCleaner"));
+const {
+  scrubWatermarks,
+  assessQuality,
+  analyzeWatermarkInterference,
+} = require(path.join(process.cwd(), "services", "textCleaner"));
 // Try to load Adobe extractor, but don't fail if it's not available
 let extractWithAdobe;
 let adobeImportError = null;
@@ -301,6 +305,13 @@ function getMeaningfulWordCount(text = "") {
 
 function isSparseForUpgrade(text = "", wordCount = 0) {
   return !text || text.trim().length < 300 || wordCount < 50;
+}
+
+function shouldPromoteCandidateExtraction(currentQuality, currentWordCount, nextQuality, nextWordCount) {
+  if (nextQuality.usable && !currentQuality.usable) return true;
+  if (nextQuality.quality === "good" && currentQuality.quality !== "good") return true;
+  if (nextWordCount > currentWordCount) return true;
+  return false;
 }
 
 // Basic extraction helper used as fallback
@@ -2644,6 +2655,51 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     let cleanedText = scrubWatermarks(result.text || "");
     let quality = assessQuality(cleanedText);
     let wordCount = quality.wordCount || getMeaningfulWordCount(cleanedText);
+    let watermarkInterference = analyzeWatermarkInterference(result.text || cleanedText);
+    let ocrRecoveryUsed = false;
+
+    const adoptCandidate = (candidateResult, methodLabel) => {
+      if (!candidateResult?.text) return false;
+
+      const candidateCleanedText = scrubWatermarks(candidateResult.text || "");
+      const candidateQuality = assessQuality(candidateCleanedText);
+      const candidateWordCount =
+        candidateQuality.wordCount || getMeaningfulWordCount(candidateCleanedText);
+
+      if (
+        !shouldPromoteCandidateExtraction(
+          quality,
+          wordCount,
+          candidateQuality,
+          candidateWordCount
+        )
+      ) {
+        return false;
+      }
+
+      result = candidateResult;
+      cleanedText = candidateCleanedText;
+      quality = candidateQuality;
+      wordCount = candidateWordCount;
+      if (methodLabel === "ocr") {
+        ocrRecoveryUsed = true;
+      }
+      return true;
+    };
+
+    if (watermarkInterference.shouldEscalateToOCR) {
+      console.log("[UPLOAD] Watermark interference detected, switching to OCR-first recovery...", watermarkInterference);
+      const ocrResult = await extractWithOCR(req.file.buffer).catch((error) => {
+        console.error("[UPLOAD] OCR-first recovery failed:", error?.message || error);
+        return null;
+      });
+      extractionAttempts.push({
+        method: "ocr",
+        chars: (ocrResult?.text || "").length,
+        reason: "watermark_interference",
+      });
+      adoptCandidate(ocrResult, "ocr");
+    }
 
     // 2) Adobe upgrade path: use when enabled and basic extraction is sparse
     if ((adobeEnabled || adobeForce) && extractWithAdobe && isSparseForUpgrade(cleanedText, wordCount)) {
@@ -2653,44 +2709,26 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         return null;
       });
       extractionAttempts.push({ method: "adobe", chars: (adobeResult?.text || "").length });
-
-      if (adobeResult?.text) {
-        const adobeCleanedText = scrubWatermarks(adobeResult.text || "");
-        const adobeQuality = assessQuality(adobeCleanedText);
-        const adobeWordCount =
-          adobeQuality.wordCount || getMeaningfulWordCount(adobeCleanedText);
-
-        if (adobeWordCount > wordCount) {
-          result = adobeResult;
-          cleanedText = adobeCleanedText;
-          quality = adobeQuality;
-          wordCount = adobeWordCount;
-        }
-      }
+      adoptCandidate(adobeResult, "adobe");
     }
 
     // 3) OCR rescue path for image-heavy or still-sparse PDFs
-    if (isSparseForUpgrade(cleanedText, wordCount) || quality.quality === "repetitive" || quality.quality === "empty") {
+    if (
+      extractionAttempts.filter((attempt) => attempt.method === "ocr").length === 0 &&
+      (isSparseForUpgrade(cleanedText, wordCount) ||
+        quality.quality === "repetitive" ||
+        quality.quality === "empty")
+    ) {
       console.log("[UPLOAD] Extraction still sparse or corrupted, trying OCR...");
       const ocrResult = await extractWithOCR(req.file.buffer).catch((error) => {
         console.error("[UPLOAD] OCR extraction failed:", error?.message || error);
         return null;
       });
       extractionAttempts.push({ method: "ocr", chars: (ocrResult?.text || "").length });
-
-      if (ocrResult?.text) {
-        const ocrCleanedText = scrubWatermarks(ocrResult.text || "");
-        const ocrQuality = assessQuality(ocrCleanedText);
-        const ocrWordCount = ocrQuality.wordCount || getMeaningfulWordCount(ocrCleanedText);
-
-        if (ocrWordCount > wordCount) {
-          result = ocrResult;
-          cleanedText = ocrCleanedText;
-          quality = ocrQuality;
-          wordCount = ocrWordCount;
-        }
-      }
+      adoptCandidate(ocrResult, "ocr");
     }
+
+    watermarkInterference = analyzeWatermarkInterference(cleanedText);
 
     const unreadableExtraction =
       quality.quality === "empty" || quality.quality === "repetitive";
@@ -2714,7 +2752,9 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       return res.status(422).json({
         success: false,
         error:
-          "We couldn't extract readable sides from this PDF. The file appears dominated by watermarks or repeated metadata. Please upload a cleaner export or clearer screenshots.",
+          extractionAttempts.some((attempt) => attempt.method === "ocr")
+            ? "We switched to image-based reading to recover the script, but this PDF is still dominated by watermarks or repeated metadata. Please upload a cleaner export or clearer screenshots."
+            : "We couldn't extract readable sides from this PDF. The file appears dominated by watermarks or repeated metadata. Please upload a cleaner export or clearer screenshots.",
         contentQuality: quality.reason,
         debug: {
           method: result.method,
@@ -2722,6 +2762,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
           quality: quality.quality,
           wordCount,
           ratio: quality.ratio,
+          watermarkInterference,
         },
       });
     }
@@ -2752,6 +2793,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       userId: req.userId || req.user?.id || null,
       fallbackMode,
       quality,
+      ocrRecoveryUsed,
     };
 
     // 5) SMART RESPONSE: Success flag even on low quality, with fallback flag
@@ -2769,6 +2811,10 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       fileType,
       quality: quality.quality,
       fallbackMode,
+      ocrRecoveryUsed,
+      uploadMessage: ocrRecoveryUsed
+        ? "This file’s formatting is interfering with standard text extraction. We switched to image-based reading to recover the script."
+        : null,
       debug: {
         method: result.method,
         usable: quality.usable,
@@ -2776,6 +2822,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         ratio: quality.ratio,
         shortButReadable: Boolean(quality.shortButReadable),
         attempts: extractionAttempts,
+        watermarkInterference,
       }
     });
 

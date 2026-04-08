@@ -32,3 +32,8 @@
 **Issue:** Watermark-heavy PDFs were still slipping into generic fallback coaching, which created unacceptable UX and hid extraction failures behind "we'll build it from tone" messaging.
 **Decision:** Strengthened watermark stripping heuristics, removed the generic fallback upload toast, and changed unreadable watermark/repetition cases to fail explicitly with an extraction error instead of generating fallback guides.
 **Status:** Success
+
+## 2026-04-08
+**Issue:** Some watermarked PDFs are visually readable but break standard text extraction because the underlying text layer is garbage or unordered.
+**Decision:** Added watermark-interference heuristics, escalated those files to OCR earlier in the upload pipeline, and surfaced an explicit image-based-reading recovery message when OCR is used successfully.
+**Status:** Success
