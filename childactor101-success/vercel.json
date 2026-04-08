@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "redirects": [
+    {
+      "source": "/app/stripe/success",
+      "destination": "https://prep101.site/app/stripe/success",
+      "permanent": false
+    },
+    {
+      "source": "/payment-success",
+      "destination": "https://prep101.site/payment-success",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
