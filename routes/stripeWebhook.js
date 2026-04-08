@@ -1,233 +1,393 @@
-const express = require('express');
-const stripeService = require('../services/stripeService');
-const User = require('../models/User');
+const express = require("express");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const stripeService = require("../services/stripeService");
+const User = require("../models/User");
+const {
+  runAdminQuery,
+  tables,
+  normalizeUserRow,
+} = require("../lib/supabaseAdmin");
 
 const router = express.Router();
 
+function normalizeEmail(email) {
+  return typeof email === "string" ? email.trim().toLowerCase() : null;
+}
+
+function inferPaidPlan(priceId) {
+  const mapped = stripeService.getSubscriptionFromPriceId(priceId);
+  if (mapped && mapped !== "free") return mapped;
+  return "premium";
+}
+
+function inferGuidesLimit(subscriptionTier) {
+  if (subscriptionTier === "premium") return 999;
+  if (subscriptionTier === "basic") return 10;
+  return stripeService.getGuidesLimitFromSubscription(subscriptionTier);
+}
+
+async function fetchCustomerEmail(customerId) {
+  if (!customerId) return null;
+
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer && !customer.deleted) {
+      return normalizeEmail(customer.email);
+    }
+  } catch (error) {
+    console.error("Error fetching Stripe customer email:", error.message);
+  }
+
+  return null;
+}
+
+function wrapUser(row, source) {
+  if (!row) return null;
+  return { source, row };
+}
+
+async function findUserByField(field, value) {
+  if (!value) return null;
+
+  if (User) {
+    try {
+      const row = await User.findOne({ where: { [field]: value } });
+      if (row) return wrapUser(row, "sequelize");
+    } catch (error) {
+      console.error(`Sequelize lookup failed for ${field}:`, error.message);
+    }
+  }
+
+  try {
+    const row = await runAdminQuery(async (client) => {
+      const { data, error } = await client
+        .from(tables.users)
+        .select("*")
+        .eq(field, value)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    });
+
+    if (row) return wrapUser(normalizeUserRow(row), "supabase");
+  } catch (error) {
+    console.error(`Supabase lookup failed for ${field}:`, error.message);
+  }
+
+  return null;
+}
+
+async function updateWrappedUser(userRef, updates) {
+  if (!userRef) return null;
+
+  if (userRef.source === "sequelize") {
+    await userRef.row.update(updates);
+    await userRef.row.reload();
+    return wrapUser(userRef.row, "sequelize");
+  }
+
+  const row = await runAdminQuery(async (client) => {
+    const { data, error } = await client
+      .from(tables.users)
+      .update(updates)
+      .eq("id", userRef.row.id)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return data;
+  });
+
+  return wrapUser(normalizeUserRow(row), "supabase");
+}
+
+async function resolveUser({ customerId = null, subscriptionId = null, email = null }) {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (customerId) {
+    const byCustomer = await findUserByField("stripeCustomerId", customerId);
+    if (byCustomer) return byCustomer;
+  }
+
+  if (subscriptionId) {
+    const bySubscription = await findUserByField("stripeSubscriptionId", subscriptionId);
+    if (bySubscription) return bySubscription;
+  }
+
+  if (normalizedEmail) {
+    const byEmail = await findUserByField("email", normalizedEmail);
+    if (byEmail) return byEmail;
+  }
+
+  return null;
+}
+
+async function backfillStripeLink(userRef, { customerId = null, subscriptionId = null, priceId = null }) {
+  if (!userRef) return null;
+
+  const updates = {};
+  if (customerId && !userRef.row.stripeCustomerId) updates.stripeCustomerId = customerId;
+  if (subscriptionId && !userRef.row.stripeSubscriptionId) updates.stripeSubscriptionId = subscriptionId;
+  if (priceId && !userRef.row.stripePriceId) updates.stripePriceId = priceId;
+
+  if (!Object.keys(updates).length) return userRef;
+  return updateWrappedUser(userRef, updates);
+}
+
+async function handleCheckoutCompleted(session) {
+  try {
+    const email =
+      normalizeEmail(session.customer_details?.email) ||
+      normalizeEmail(session.customer_email) ||
+      (await fetchCustomerEmail(session.customer));
+
+    let userRef = await resolveUser({
+      customerId: session.customer,
+      subscriptionId: session.subscription,
+      email,
+    });
+
+    if (!userRef) {
+      console.error("User not found for checkout.session.completed:", {
+        sessionId: session.id,
+        customerId: session.customer,
+        email,
+      });
+      return;
+    }
+
+    userRef = await backfillStripeLink(userRef, {
+      customerId: session.customer,
+      subscriptionId: session.subscription,
+    });
+
+    const updates = {
+      subscriptionStatus: "active",
+    };
+
+    if (session.mode === "subscription") {
+      updates.subscription = "premium";
+      updates.guidesLimit = 999;
+    }
+
+    await updateWrappedUser(userRef, updates);
+    console.log(`✅ Checkout completed linked for user ${userRef.row.email}`);
+  } catch (error) {
+    console.error("Error handling checkout completed:", error);
+  }
+}
+
+async function handleSubscriptionCreated(subscription) {
+  try {
+    const priceId = subscription.items?.data?.[0]?.price?.id || null;
+    const email = await fetchCustomerEmail(subscription.customer);
+    let userRef = await resolveUser({
+      customerId: subscription.customer,
+      subscriptionId: subscription.id,
+      email,
+    });
+
+    if (!userRef) {
+      console.error("User not found for subscription:", subscription.id);
+      return;
+    }
+
+    userRef = await backfillStripeLink(userRef, {
+      customerId: subscription.customer,
+      subscriptionId: subscription.id,
+      priceId,
+    });
+
+    const subscriptionTier = inferPaidPlan(priceId);
+    const guidesLimit = inferGuidesLimit(subscriptionTier);
+
+    await updateWrappedUser(userRef, {
+      stripeCustomerId: subscription.customer,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId,
+      subscription: subscriptionTier,
+      subscriptionStatus: subscription.status,
+      guidesLimit,
+      currentPeriodStart: subscription.current_period_start
+        ? new Date(subscription.current_period_start * 1000).toISOString()
+        : null,
+      currentPeriodEnd: subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null,
+    });
+
+    console.log(`✅ Subscription created for user ${userRef.row.email}: ${subscriptionTier}`);
+  } catch (error) {
+    console.error("Error handling subscription created:", error);
+  }
+}
+
+async function handleSubscriptionUpdated(subscription) {
+  try {
+    const priceId = subscription.items?.data?.[0]?.price?.id || null;
+    const email = await fetchCustomerEmail(subscription.customer);
+    let userRef = await resolveUser({
+      customerId: subscription.customer,
+      subscriptionId: subscription.id,
+      email,
+    });
+
+    if (!userRef) {
+      console.error("User not found for subscription update:", subscription.id);
+      return;
+    }
+
+    userRef = await backfillStripeLink(userRef, {
+      customerId: subscription.customer,
+      subscriptionId: subscription.id,
+      priceId,
+    });
+
+    const subscriptionTier = inferPaidPlan(priceId);
+    const guidesLimit = inferGuidesLimit(subscriptionTier);
+
+    await updateWrappedUser(userRef, {
+      stripeCustomerId: subscription.customer,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId,
+      subscriptionStatus: subscription.status,
+      subscription: subscriptionTier,
+      guidesLimit,
+      currentPeriodStart: subscription.current_period_start
+        ? new Date(subscription.current_period_start * 1000).toISOString()
+        : null,
+      currentPeriodEnd: subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null,
+    });
+
+    console.log(`✅ Subscription updated for user ${userRef.row.email}: ${subscription.status}`);
+  } catch (error) {
+    console.error("Error handling subscription updated:", error);
+  }
+}
+
+async function handleSubscriptionDeleted(subscription) {
+  try {
+    const email = await fetchCustomerEmail(subscription.customer);
+    const userRef = await resolveUser({
+      customerId: subscription.customer,
+      subscriptionId: subscription.id,
+      email,
+    });
+
+    if (!userRef) {
+      console.error("User not found for subscription deletion:", subscription.id);
+      return;
+    }
+
+    await updateWrappedUser(userRef, {
+      subscription: "free",
+      subscriptionStatus: "canceled",
+      guidesLimit: 1,
+    });
+
+    console.log(`❌ Subscription canceled for user ${userRef.row.email}`);
+  } catch (error) {
+    console.error("Error handling subscription deleted:", error);
+  }
+}
+
+async function handlePaymentSucceeded(invoice) {
+  try {
+    const email = await fetchCustomerEmail(invoice.customer);
+    const userRef = await resolveUser({
+      customerId: invoice.customer,
+      subscriptionId: invoice.subscription,
+      email,
+    });
+
+    if (!userRef) {
+      console.error("User not found for payment succeeded:", invoice.id);
+      return;
+    }
+
+    if (invoice.billing_reason === "subscription_cycle") {
+      await updateWrappedUser(userRef, {
+        guidesUsed: 0,
+        subscriptionStatus: "active",
+      });
+      console.log(`💰 Payment succeeded for user ${userRef.row.email}, reset guides counter`);
+    }
+  } catch (error) {
+    console.error("Error handling payment succeeded:", error);
+  }
+}
+
+async function handlePaymentFailed(invoice) {
+  try {
+    const email = await fetchCustomerEmail(invoice.customer);
+    const userRef = await resolveUser({
+      customerId: invoice.customer,
+      subscriptionId: invoice.subscription,
+      email,
+    });
+
+    if (!userRef) {
+      console.error("User not found for payment failed:", invoice.id);
+      return;
+    }
+
+    await updateWrappedUser(userRef, {
+      subscriptionStatus: "past_due",
+    });
+
+    console.log(`❌ Payment failed for user ${userRef.row.email}`);
+  } catch (error) {
+    console.error("Error handling payment failed:", error);
+  }
+}
+
 // Stripe webhook endpoint - must use raw body for signature verification
-router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+router.post("/stripe", express.raw({ type: "application/json" }), async (req, res) => {
+  const sig = req.headers["stripe-signature"];
 
   let event;
 
   try {
     event = stripeService.verifyWebhookSignature(req.body, sig);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    console.error("Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  console.log('🔔 Stripe webhook received:', event.type);
+  console.log("🔔 Stripe webhook received:", event.type);
 
   try {
     switch (event.type) {
-      case 'customer.subscription.created':
+      case "checkout.session.completed":
+        await handleCheckoutCompleted(event.data.object);
+        break;
+      case "customer.subscription.created":
         await handleSubscriptionCreated(event.data.object);
         break;
-      
-      case 'customer.subscription.updated':
+      case "customer.subscription.updated":
         await handleSubscriptionUpdated(event.data.object);
         break;
-      
-      case 'customer.subscription.deleted':
+      case "customer.subscription.deleted":
         await handleSubscriptionDeleted(event.data.object);
         break;
-      
-      case 'invoice.payment_succeeded':
+      case "invoice.payment_succeeded":
         await handlePaymentSucceeded(event.data.object);
         break;
-      
-      case 'invoice.payment_failed':
+      case "invoice.payment_failed":
         await handlePaymentFailed(event.data.object);
         break;
-      
-      case 'customer.subscription.trial_will_end':
-        await handleTrialWillEnd(event.data.object);
-        break;
-      
-      case 'customer.subscription.trial_ended':
-        await handleTrialEnded(event.data.object);
-        break;
-      
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
 
-    res.json({ received: true });
+    return res.json({ received: true });
   } catch (error) {
-    console.error('Error processing webhook:', error);
-    res.status(500).json({ error: 'Webhook processing failed' });
+    console.error("Error processing webhook:", error);
+    return res.status(500).json({ error: "Webhook processing failed" });
   }
 });
-
-// Handle subscription creation
-async function handleSubscriptionCreated(subscription) {
-  try {
-    const user = await User.findOne({
-      where: { stripeCustomerId: subscription.customer }
-    });
-
-    if (!user) {
-      console.error('User not found for subscription:', subscription.id);
-      return;
-    }
-
-    const subscriptionTier = stripeService.getSubscriptionFromPriceId(subscription.items.data[0].price.id);
-    const guidesLimit = stripeService.getGuidesLimitFromSubscription(subscriptionTier);
-
-    await user.update({
-      stripeSubscriptionId: subscription.id,
-      stripePriceId: subscription.items.data[0].price.id,
-      subscription: subscriptionTier,
-      subscriptionStatus: subscription.status,
-      guidesLimit: guidesLimit,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000)
-    });
-
-    console.log(`✅ Subscription created for user ${user.email}: ${subscriptionTier}`);
-  } catch (error) {
-    console.error('Error handling subscription created:', error);
-  }
-}
-
-// Handle subscription updates
-async function handleSubscriptionUpdated(subscription) {
-  try {
-    const user = await User.findOne({
-      where: { stripeSubscriptionId: subscription.id }
-    });
-
-    if (!user) {
-      console.error('User not found for subscription update:', subscription.id);
-      return;
-    }
-
-    const subscriptionTier = stripeService.getSubscriptionFromPriceId(subscription.items.data[0].price.id);
-    const guidesLimit = stripeService.getGuidesLimitFromSubscription(subscriptionTier);
-
-    await user.update({
-      subscriptionStatus: subscription.status,
-      subscription: subscriptionTier,
-      guidesLimit: guidesLimit,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000)
-    });
-
-    console.log(`✅ Subscription updated for user ${user.email}: ${subscription.status}`);
-  } catch (error) {
-    console.error('Error handling subscription updated:', error);
-  }
-}
-
-// Handle subscription deletion
-async function handleSubscriptionDeleted(subscription) {
-  try {
-    const user = await User.findOne({
-      where: { stripeSubscriptionId: subscription.id }
-    });
-
-    if (!user) {
-      console.error('User not found for subscription deletion:', subscription.id);
-      return;
-    }
-
-    await user.update({
-      subscription: 'free',
-      subscriptionStatus: 'canceled',
-      guidesLimit: 1
-    });
-
-    console.log(`❌ Subscription canceled for user ${user.email}`);
-  } catch (error) {
-    console.error('Error handling subscription deleted:', error);
-  }
-}
-
-// Handle successful payment
-async function handlePaymentSucceeded(invoice) {
-  try {
-    const user = await User.findOne({
-      where: { stripeCustomerId: invoice.customer }
-    });
-
-    if (!user) {
-      console.error('User not found for payment succeeded:', invoice.id);
-      return;
-    }
-
-    // Reset guides used counter for new billing period
-    if (invoice.billing_reason === 'subscription_cycle') {
-      await user.update({ guidesUsed: 0 });
-      console.log(`💰 Payment succeeded for user ${user.email}, reset guides counter`);
-    }
-  } catch (error) {
-    console.error('Error handling payment succeeded:', error);
-  }
-}
-
-// Handle failed payment
-async function handlePaymentFailed(invoice) {
-  try {
-    const user = await User.findOne({
-      where: { stripeCustomerId: invoice.customer }
-    });
-
-    if (!user) {
-      console.error('User not found for payment failed:', invoice.id);
-      return;
-    }
-
-    await user.update({
-      subscriptionStatus: 'past_due'
-    });
-
-    console.log(`❌ Payment failed for user ${user.email}`);
-  } catch (error) {
-    console.error('Error handling payment failed:', error);
-  }
-}
-
-// Handle trial ending soon
-async function handleTrialWillEnd(subscription) {
-  try {
-    const user = await User.findOne({
-      where: { stripeSubscriptionId: subscription.id }
-    });
-
-    if (!user) {
-      console.error('User not found for trial will end:', subscription.id);
-      return;
-    }
-
-    console.log(`⚠️ Trial ending soon for user ${user.email}`);
-    // You could send an email notification here
-  } catch (error) {
-    console.error('Error handling trial will end:', error);
-  }
-}
-
-// Handle trial ended
-async function handleTrialEnded(subscription) {
-  try {
-    const user = await User.findOne({
-      where: { stripeSubscriptionId: subscription.id }
-    });
-
-    if (!user) {
-      console.error('User not found for trial ended:', subscription.id);
-      return;
-    }
-
-    await user.update({
-      subscriptionStatus: subscription.status
-    });
-
-    console.log(`⏰ Trial ended for user ${user.email}`);
-  } catch (error) {
-    console.error('Error handling trial ended:', error);
-  }
-}
 
 module.exports = router;

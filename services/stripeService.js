@@ -189,11 +189,28 @@ class StripeService {
 
   // Helper method to get subscription tier from price ID
   getSubscriptionFromPriceId(priceId) {
+    if (!priceId) return "free";
+
     const priceMap = {
-      'price_basic': 'basic',
-      'price_premium': 'premium'
+      price_basic: "basic",
+      price_premium: "premium",
+      [process.env.STRIPE_BASIC_PRICE_ID]: "basic",
+      [process.env.STRIPE_STARTER_PRICE_ID]: "basic",
+      [process.env.STRIPE_PREMIUM_PRICE_ID]: "premium",
+      [process.env.STRIPE_READER_MONTHLY_PRICE_ID]: "premium",
+      [process.env.STRIPE_READER_ADDON_PRICE_ID]: "premium",
+      [process.env.STRIPE_BOLD_CHOICES_MONTHLY_PRICE_ID]: "premium",
+      [process.env.STRIPE_BOLD_CHOICES_ADDON_PRICE_ID]: "premium",
+      [process.env.STRIPE_BUNDLE_PRICE_ID]: "premium",
     };
-    return priceMap[priceId] || 'free';
+
+    const mapped = priceMap[priceId];
+    if (mapped) return mapped;
+
+    console.warn(
+      `⚠️ Unmapped Stripe price ID ${priceId} - defaulting paid subscription to premium access`
+    );
+    return "premium";
   }
 
   // Helper method to get guides limit from subscription
@@ -201,7 +218,7 @@ class StripeService {
     const limitMap = {
       'free': 1,
       'basic': 10,
-      'premium': 100
+      'premium': 999
     };
     return limitMap[subscription] || 1;
   }
