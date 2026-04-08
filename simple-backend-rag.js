@@ -2711,6 +2711,11 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
           contentQuality.reason === "watermark_heavy"
             ? "Limited content: please upload clean sides without watermarks or timestamps"
             : "Limited content: the extracted text is too short. Please try a different PDF or upload a clean version of the script.",
+        debug: {
+          extractedSnippet: result.text ? result.text.substring(0, 100) + "..." : "EMPTY",
+          wordCount: result.wordCount,
+          method: result.method
+        },
         contentQuality: contentQuality.reason,
         extractionMethod: result.method,
         extractionConfidence: result.confidence || "low",
