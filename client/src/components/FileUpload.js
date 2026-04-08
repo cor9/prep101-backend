@@ -46,7 +46,7 @@ const FileUpload = ({ onUpload }) => {
         throw new Error(data.error || data.message || 'Upload failed');
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('📋 PDF Upload Diagnostic:', error);
       toast.error(error.message || 'Failed to upload file. Please try again.');
     } finally {
       setUploading(false);
