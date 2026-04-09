@@ -5,29 +5,47 @@ import {
   ACCOUNT_LABEL,
   buildPrepAuthCallbackUrl,
   buildPrepOnboardingUrl,
+  buildPrepSelectActorUrl,
   buildReader101Url,
 } from '../utils/ecosystemLinks.js';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, selectActor } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isSwitchingActor, setIsSwitchingActor] = useState(false);
 
   const isLanding = location.pathname === '/';
-  const token = user?.accessToken || user?.token;
   const activeActor = user?.account?.activeActor;
+  const actors = user?.account?.actors || [];
   const needsOnboarding = Boolean(user?.account?.onboardingRequired);
+  const needsActorSelection = Boolean(user?.account?.needsActorSelection);
   const prepAccountHref = needsOnboarding
     ? buildPrepOnboardingUrl({
-        token,
         next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
       })
-    : buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=prep101');
+    : needsActorSelection
+      ? buildPrepSelectActorUrl({
+          next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
+        })
+      : buildPrepAuthCallbackUrl(null, 'https://prep101.site/dashboard?product=bold_choices');
 
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleActorChange = async (event) => {
+    const nextActorId = event.target.value;
+    if (!nextActorId || nextActorId === activeActor?.id) return;
+
+    setIsSwitchingActor(true);
+    try {
+      await selectActor(nextActorId);
+    } finally {
+      setIsSwitchingActor(false);
+    }
   };
 
   return (
@@ -73,7 +91,7 @@ export default function Navbar() {
         {/* Ecosystem links — always visible on landing */}
         <div className="nav-ext-links" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <a
-            href={token ? prepAccountHref : 'https://prep101.site'}
+            href={user ? prepAccountHref : 'https://prep101.site'}
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link-ext nav-link-prep"
@@ -82,7 +100,7 @@ export default function Navbar() {
             Prep101
           </a>
           <a
-            href={buildReader101Url({ token })}
+            href={buildReader101Url()}
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link-ext nav-link-reader"
@@ -104,11 +122,45 @@ export default function Navbar() {
 
         {user ? (
           <>
-            <span style={{ fontSize: 13, color: 'rgba(240,238,245,0.35)' }}>
-              {activeActor?.actorName
-                ? `Active Actor: ${activeActor.actorName}${activeActor.ageRange ? ` (${activeActor.ageRange})` : ''}`
-                : user.email?.split('@')[0] || ACCOUNT_LABEL}
-            </span>
+            {actors.length > 0 ? (
+              <>
+                <span style={{ fontSize: 13, color: 'rgba(240,238,245,0.35)' }}>Active Actor:</span>
+                <select
+                  value={activeActor?.id || ''}
+                  onChange={handleActorChange}
+                  disabled={isSwitchingActor}
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    color: '#F0EEF5',
+                    border: '1px solid rgba(255,255,255,0.16)',
+                    borderRadius: 8,
+                    padding: '8px 10px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  {actors.map((actor) => (
+                    <option key={actor.id} value={actor.id} style={{ color: '#0a0a0f' }}>
+                      {actor.actorName}
+                    </option>
+                  ))}
+                </select>
+                <a
+                  href={buildPrepSelectActorUrl({
+                    next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="nav-link"
+                >
+                  Add Actor
+                </a>
+              </>
+            ) : (
+              <span style={{ fontSize: 13, color: 'rgba(240,238,245,0.35)' }}>
+                {user.email?.split('@')[0] || ACCOUNT_LABEL}
+              </span>
+            )}
             {location.pathname !== '/generate' && (
               <Link to="/generate">
                 <button className="nav-btn nav-btn-primary">Generate</button>

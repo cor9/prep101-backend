@@ -70,6 +70,7 @@ function buildFallbackContext(user = {}) {
     actors: [],
     activeActor: null,
     onboardingRequired: true,
+    needsActorSelection: false,
     storage: "fallback",
   };
 }
@@ -157,7 +158,9 @@ async function buildAccountContext(user = {}, options = {}) {
 
   const actors = await listActorProfiles(user.id);
   const activeActor =
-    actors.find((actor) => actor.id === profile.activeActorId) || actors[0] || null;
+    actors.find((actor) => actor.id === profile.activeActorId) || null;
+  const needsActorSelection =
+    actors.length > 0 && (!profile.activeActorId || !activeActor);
 
   return {
     profile: {
@@ -169,8 +172,8 @@ async function buildAccountContext(user = {}, options = {}) {
     onboardingRequired:
       !profile.onboardingCompleted ||
       !profile.role ||
-      actors.length === 0 ||
-      !activeActor,
+      actors.length === 0,
+    needsActorSelection,
     storage: "supabase",
   };
 }
@@ -309,7 +312,59 @@ async function selectActiveActor(user = {}, actorId) {
   return buildAccountContext(user, { ensureProfile: true });
 }
 
+async function addActorProfile(user = {}, payload = {}) {
+  if (!supabaseAdmin) {
+    throw new Error("shared actor context requires Supabase admin configuration");
+  }
+
+  const profile = await ensureProfile(user);
+  if (!profile) {
+    throw new Error("profiles table is not available yet");
+  }
+
+  const actorName = String(payload.actorName || payload.name || "").trim();
+  if (!actorName) {
+    throw new Error("actorName is required");
+  }
+
+  const existingActors = await listActorProfiles(user.id);
+  const actorPayload = {
+    user_id: user.id,
+    actor_name: actorName,
+    age_range: String(payload.ageRange || "").trim() || null,
+    is_child: Boolean(payload.isChild),
+    sort_order:
+      typeof payload.sortOrder === "number"
+        ? payload.sortOrder
+        : existingActors.length,
+  };
+
+  const { data, error } = await supabaseAdmin
+    .from(ACTOR_PROFILES_TABLE)
+    .insert(actorPayload)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  const createdActor = normalizeActor(data);
+  const shouldActivate =
+    payload.makeActive !== false || !profile.activeActorId || existingActors.length === 0;
+
+  if (shouldActivate) {
+    const { error: profileError } = await supabaseAdmin
+      .from(PROFILES_TABLE)
+      .update({ active_actor_id: createdActor.id })
+      .eq("id", user.id);
+
+    if (profileError) throw profileError;
+  }
+
+  return buildAccountContext(user, { ensureProfile: true });
+}
+
 module.exports = {
+  addActorProfile,
   buildAccountContext,
   completeOnboarding,
   ensureProfile,

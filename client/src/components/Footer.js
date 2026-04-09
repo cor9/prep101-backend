@@ -16,13 +16,12 @@ const ECOSYSTEM = [
 
 const Footer = () => {
   const { user } = useAuth();
-  const token = user?.accessToken || user?.token;
   const links = ECOSYSTEM.map((item) => {
     if (item.label === 'Bold Choices') {
-      return { ...item, href: buildBoldChoicesUrl({ token, useBridge: Boolean(user) }) };
+      return { ...item, href: buildBoldChoicesUrl({ redirect: user ? '/generate' : '/' }) };
     }
     if (item.label === 'Reader101') {
-      return { ...item, href: buildReader101Url({ token, useBridge: Boolean(user) }) };
+      return { ...item, href: buildReader101Url() };
     }
     return item;
   });

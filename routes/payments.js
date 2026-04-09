@@ -3,9 +3,24 @@ const { body, validationResult } = require('express-validator');
 const PaymentService = require('../services/paymentService');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const {
+  buildPrep101Usage,
+  buildReader101Usage,
+  buildBoldChoicesUsage,
+  getPrimaryPlanName,
+} = require('../services/prep101EntitlementsService');
 
 const router = express.Router();
 const paymentService = new PaymentService();
+
+function getPlanDetails(user, plans) {
+  const planKey = getPrimaryPlanName(user);
+  return {
+    key: planKey,
+    label: paymentService.getPlanLabel(planKey),
+    config: plans[planKey] || plans[user?.subscription] || null,
+  };
+}
 
 // GET /api/payments/plans - Get available subscription plans
 router.get('/plans', async (req, res) => {
@@ -23,7 +38,7 @@ router.post(
   '/create-checkout-session',
   [
     auth,
-    body('plan').isIn(['starter', 'alacarte', 'premium'])
+    body('plan').isIn(['starter', 'alacarte'])
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -60,7 +75,15 @@ router.post(
       // Create checkout session
       const session = await paymentService.createCheckoutSession(
         customerId,
-        selectedPlan.priceId
+        selectedPlan.priceId,
+        {
+          mode: selectedPlan.billingType || 'subscription',
+          metadata: {
+            plan,
+            billingType: selectedPlan.billingType || 'subscription',
+            userId,
+          },
+        }
       );
 
       res.json({
@@ -81,7 +104,7 @@ router.post(
   '/create-subscription',
   [
     auth,
-    body('plan').isIn(['starter', 'alacarte', 'premium']),
+    body('plan').isIn(['starter']),
     body('paymentMethodId').notEmpty()
   ],
   async (req, res) => {
@@ -180,7 +203,7 @@ router.post(
   '/update-subscription',
   [
     auth,
-    body('plan').isIn(['basic', 'premium'])
+    body('plan').isIn(['starter'])
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -246,14 +269,21 @@ router.get('/subscription-status', auth, async (req, res) => {
     }
 
     const plans = paymentService.getSubscriptionPlans();
-    const currentPlan = plans[user.subscription];
+    const currentPlan = getPlanDetails(user, plans);
+    const prep101Usage = buildPrep101Usage(user);
+    const reader101Usage = buildReader101Usage(user);
+    const boldChoicesUsage = buildBoldChoicesUsage(user);
 
     res.json({
-      subscription: user.subscription,
+      subscription: currentPlan.key,
+      planDisplay: currentPlan.label,
       guidesUsed: user.guidesUsed,
       guidesLimit: user.guidesLimit,
-      currentPlan: currentPlan,
-      subscriptionDetails: subscriptionDetails
+      currentPlan: currentPlan.config,
+      prep101Usage,
+      reader101Usage,
+      boldChoicesUsage,
+      subscriptionDetails: subscriptionDetails,
     });
 
   } catch (error) {
@@ -328,42 +358,58 @@ router.get('/usage-analytics', auth, async (req, res) => {
       }
     });
 
-    // Calculate subscription efficiency
-    const subscriptionEfficiency = user.guidesLimit > 0 ? 
-      Math.round((user.guidesUsed / user.guidesLimit) * 100) : 0;
+    const prep101Usage = buildPrep101Usage(user);
+    const reader101Usage = buildReader101Usage(user);
+    const boldChoicesUsage = buildBoldChoicesUsage(user);
+    const hasFinitePrepLimit =
+      typeof prep101Usage.monthlyLimit === 'number' && prep101Usage.monthlyLimit > 0;
+    const subscriptionEfficiency = hasFinitePrepLimit
+      ? Math.round((prep101Usage.monthlyUsed / prep101Usage.monthlyLimit) * 100)
+      : null;
 
     // Get plan recommendations
     const plans = paymentService.getSubscriptionPlans();
-    const currentPlan = plans[user.subscription];
+    const currentPlan = getPlanDetails(user, plans);
     const recommendations = [];
 
-    if (user.guidesUsed >= user.guidesLimit * 0.8) {
+    if (hasFinitePrepLimit && prep101Usage.monthlyUsed >= prep101Usage.monthlyLimit * 0.8) {
       recommendations.push({
         type: 'upgrade',
-        message: 'You\'re approaching your monthly limit. Consider upgrading for more guides.',
-        suggestedPlan: user.subscription === 'free' ? 'basic' : 'premium'
+        message: getPrimaryPlanName(user) === 'free'
+          ? 'You are approaching your Prep101 limit. Consider moving to Starter for 5 guides per month.'
+          : 'You are approaching your Prep101 limit. Consider buying a Single A La Carte guide or the 3-Pack top-up.',
+        suggestedPlan: getPrimaryPlanName(user) === 'free' ? 'starter' : 'prep101_top_up'
       });
     }
 
-    if (user.guidesUsed < user.guidesLimit * 0.3 && user.subscription !== 'free') {
+    if (
+      hasFinitePrepLimit &&
+      prep101Usage.monthlyUsed < prep101Usage.monthlyLimit * 0.3 &&
+      ['basic', 'starter'].includes(String(user.subscription || '').toLowerCase())
+    ) {
       recommendations.push({
         type: 'downgrade',
-        message: 'You\'re using less than 30% of your monthly limit. Consider downgrading to save money.',
+        message: 'You are using less than 30% of your Prep101 monthly limit. Review whether Starter is still the right fit.',
         suggestedPlan: 'free'
       });
     }
 
     res.json({
       currentUsage: {
-        guidesUsed: user.guidesUsed,
-        guidesLimit: user.guidesLimit,
+        guidesUsed: prep101Usage.monthlyUsed,
+        guidesLimit: prep101Usage.monthlyLimit,
         efficiency: subscriptionEfficiency,
-        remaining: Math.max(0, user.guidesLimit - user.guidesUsed)
+        remaining: prep101Usage.totalRemaining,
+        topUpCredits: prep101Usage.topUpCredits,
       },
+      prep101Usage,
+      reader101Usage,
+      boldChoicesUsage,
       monthlyUsage,
       subscriptionEfficiency,
       recommendations,
-      currentPlan: currentPlan
+      currentPlan: currentPlan.config,
+      planDisplay: currentPlan.label,
     });
 
   } catch (error) {
@@ -391,7 +437,7 @@ router.post('/upgrade-plan', auth, async (req, res) => {
     }
 
     // Check if user is upgrading
-    const planHierarchy = { free: 0, basic: 1, premium: 2 };
+    const planHierarchy = { free: 0, basic: 1, starter: 1 };
     const currentPlanLevel = planHierarchy[user.subscription] || 0;
     const selectedPlanLevel = planHierarchy[plan] || 0;
 

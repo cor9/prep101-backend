@@ -370,7 +370,6 @@ const features = [
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const token = user?.accessToken || user?.token;
 
   const handleCTA = () => {
     if (user) navigate('/generate');
@@ -569,7 +568,7 @@ export default function Landing() {
           <button
             className="btn-upgrade"
             style={S.btnUpgrade}
-            onClick={() => window.open(token ? buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=prep101') : 'https://prep101.site', '_blank')}
+            onClick={() => window.open(user ? buildPrepAuthCallbackUrl(null, 'https://prep101.site/dashboard?product=prep101') : 'https://prep101.site', '_blank')}
           >
             Explore Prep101 →
           </button>
@@ -617,8 +616,8 @@ export default function Landing() {
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
           {[
             { label: 'ChildActor101', href: 'https://childactor101.com' },
-            { label: 'Prep101', href: token ? buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=prep101') : 'https://prep101.site' },
-            { label: 'Reader101', href: buildReader101Url({ token }) },
+            { label: 'Prep101', href: user ? buildPrepAuthCallbackUrl(null, 'https://prep101.site/dashboard?product=bold_choices') : 'https://prep101.site' },
+            { label: 'Reader101', href: buildReader101Url() },
             { label: 'Coaching by Corey', href: 'https://coaching.childactor101.com' },
           ].map(({ label, href }) => (
             <a

@@ -9,8 +9,41 @@ const {
   tables,
   normalizeUserRow,
 } = require('../lib/supabaseAdmin');
+const {
+  buildBoldChoicesUsage,
+  buildPrep101Usage,
+  buildReader101Usage,
+  getBoldChoicesCredits,
+  getBoldChoicesCreditsFromPriceId,
+  getBoldChoicesGrantedSessionIds,
+  getPrep101GrantedSessionIds,
+  getPrep101TopUpCredits,
+  getPrimaryPlanName,
+  getReader101Credits,
+  getReader101CreditsFromPriceId,
+  getReader101GrantedSessionIds,
+} = require('../services/prep101EntitlementsService');
 
 const router = express.Router();
+
+function formatPlanLabel(plan) {
+  switch (String(plan || '').toLowerCase()) {
+    case 'basic':
+    case 'starter':
+      return 'Starter';
+    case 'bundle':
+      return 'Bundle';
+    case 'reader101_monthly':
+      return 'Reader101 Monthly';
+    case 'boldchoices_monthly':
+      return 'Bold Choices Monthly';
+    case 'premium':
+      return 'Legacy Premium';
+    case 'free':
+    default:
+      return 'Free';
+  }
+}
 
 function normalizeEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : null;
@@ -79,23 +112,144 @@ function selectBestSubscription(subscriptions) {
   })[0];
 }
 
+async function fetchSessionPriceIds(sessionId) {
+  if (!sessionId) return [];
+
+  const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, {
+    limit: 10,
+    expand: ['data.price'],
+  });
+
+  return (lineItems.data || [])
+    .map((item) =>
+      typeof item.price === 'string' ? item.price : item.price?.id || null
+    )
+    .filter(Boolean);
+}
+
+async function syncOneTimeProductCredits(userRef, customerId) {
+  if (!userRef || !customerId) {
+    return {
+      userRef,
+      prep101BackfilledCredits: 0,
+      reader101BackfilledCredits: 0,
+      boldChoicesBackfilledCredits: 0,
+      backfilledSessionIds: [],
+    };
+  }
+
+  const prepGrantedSessionIds = getPrep101GrantedSessionIds(userRef.row);
+  const readerGrantedSessionIds = getReader101GrantedSessionIds(userRef.row);
+  const boldGrantedSessionIds = getBoldChoicesGrantedSessionIds(userRef.row);
+  const sessions = await stripe.checkout.sessions.list({
+    customer: customerId,
+    limit: 50,
+  });
+
+  let prep101BackfilledCredits = 0;
+  let reader101BackfilledCredits = 0;
+  let boldChoicesBackfilledCredits = 0;
+  const prepBackfilledSessionIds = [];
+  const readerBackfilledSessionIds = [];
+  const boldBackfilledSessionIds = [];
+
+  for (const session of sessions.data || []) {
+    if (
+      session.mode !== 'payment' ||
+      session.status !== 'complete' ||
+      (prepGrantedSessionIds.includes(session.id) &&
+        readerGrantedSessionIds.includes(session.id) &&
+        boldGrantedSessionIds.includes(session.id))
+    ) {
+      continue;
+    }
+
+    const priceIds = await fetchSessionPriceIds(session.id);
+    const prepCreditsForSession = priceIds.reduce(
+      (total, priceId) =>
+        total + stripeService.getPrep101TopUpCreditsFromPriceId(priceId),
+      0
+    );
+    const readerCreditsForSession = priceIds.reduce(
+      (total, priceId) => total + getReader101CreditsFromPriceId(priceId),
+      0
+    );
+    const boldCreditsForSession = priceIds.reduce(
+      (total, priceId) => total + getBoldChoicesCreditsFromPriceId(priceId),
+      0
+    );
+
+    if (
+      (prepCreditsForSession > 0 && !prepGrantedSessionIds.includes(session.id)) ||
+      (readerCreditsForSession > 0 && !readerGrantedSessionIds.includes(session.id)) ||
+      (boldCreditsForSession > 0 && !boldGrantedSessionIds.includes(session.id))
+    ) {
+      prep101BackfilledCredits += prepCreditsForSession;
+      reader101BackfilledCredits += readerCreditsForSession;
+      boldChoicesBackfilledCredits += boldCreditsForSession;
+      if (prepCreditsForSession > 0 && !prepGrantedSessionIds.includes(session.id)) {
+        prepBackfilledSessionIds.push(session.id);
+      }
+      if (readerCreditsForSession > 0 && !readerGrantedSessionIds.includes(session.id)) {
+        readerBackfilledSessionIds.push(session.id);
+      }
+      if (boldCreditsForSession > 0 && !boldGrantedSessionIds.includes(session.id)) {
+        boldBackfilledSessionIds.push(session.id);
+      }
+    }
+  }
+
+  if (
+    !prep101BackfilledCredits &&
+    !reader101BackfilledCredits &&
+    !boldChoicesBackfilledCredits
+  ) {
+    return {
+      userRef,
+      prep101BackfilledCredits: 0,
+      reader101BackfilledCredits: 0,
+      boldChoicesBackfilledCredits: 0,
+      backfilledSessionIds: [],
+    };
+  }
+
+  const updatedUserRef = await updateUserRecord(userRef, {
+    prep101TopUpCredits:
+      getPrep101TopUpCredits(userRef.row) + prep101BackfilledCredits,
+    prep101TopUpSessionIds: [...prepGrantedSessionIds, ...prepBackfilledSessionIds],
+    reader101Credits:
+      getReader101Credits(userRef.row) + reader101BackfilledCredits,
+    reader101SessionIds: [...readerGrantedSessionIds, ...readerBackfilledSessionIds],
+    boldChoicesCredits:
+      getBoldChoicesCredits(userRef.row) + boldChoicesBackfilledCredits,
+    boldChoicesSessionIds: [...boldGrantedSessionIds, ...boldBackfilledSessionIds],
+  });
+
+  return {
+    userRef: updatedUserRef,
+    prep101BackfilledCredits,
+    reader101BackfilledCredits,
+    boldChoicesBackfilledCredits,
+    backfilledSessionIds: [
+      ...new Set([
+        ...prepBackfilledSessionIds,
+        ...readerBackfilledSessionIds,
+        ...boldBackfilledSessionIds,
+      ]),
+    ],
+  };
+}
+
 // GET /api/stripe/prices - Get available subscription prices
 router.get('/prices', async (req, res) => {
   try {
     const prices = [
       {
-        id: 'price_basic',
-        name: 'Basic',
-        price: 9.99,
-        guidesLimit: 10,
-        features: ['10 guides per month', 'Full methodology access', 'Email support']
-      },
-      {
-        id: 'price_premium',
-        name: 'Premium',
-        price: 29.99,
-        guidesLimit: 100,
-        features: ['100 guides per month', 'Priority support', 'Advanced features', 'Early access']
+        id: 'price_starter',
+        name: 'Starter',
+        price: 19.99,
+        guidesLimit: 5,
+        features: ['5 guides per month', 'Full methodology access', 'Priority email support']
       }
     ];
 
@@ -125,7 +279,7 @@ router.post('/create-subscription', auth, [
 
     // Update user's guides limit based on subscription
     const subscriptionTier = stripeService.getSubscriptionFromPriceId(priceId);
-    const guidesLimit = stripeService.getGuidesLimitFromSubscription(subscriptionTier);
+    const guidesLimit = stripeService.getPrep101MonthlyLimitFromPriceId(priceId);
 
     await user.update({
       subscription: subscriptionTier,
@@ -142,6 +296,7 @@ router.post('/create-subscription', auth, [
       },
       user: {
         subscription: subscriptionTier,
+        planDisplay: formatPlanLabel(subscriptionTier),
         guidesLimit: guidesLimit
       }
     });
@@ -185,7 +340,7 @@ router.post('/reactivate-subscription', auth, async (req, res) => {
     const subscription = await stripeService.reactivateSubscription(user);
 
     // Update user's guides limit
-    const guidesLimit = stripeService.getGuidesLimitFromSubscription(user.subscription);
+    const guidesLimit = stripeService.getPrep101MonthlyLimitFromPriceId(user.stripePriceId);
     await user.update({ guidesLimit });
 
     res.json({
@@ -198,6 +353,7 @@ router.post('/reactivate-subscription', auth, async (req, res) => {
       },
       user: {
         subscription: user.subscription,
+        planDisplay: formatPlanLabel(getPrimaryPlanName(user)),
         guidesLimit: guidesLimit
       }
     });
@@ -220,10 +376,17 @@ router.get('/subscription-status', auth, async (req, res) => {
       success: true,
       subscription: subscription,
       user: {
-        subscription: user.subscription,
+        subscription: getPrimaryPlanName(user),
+        planDisplay: formatPlanLabel(getPrimaryPlanName(user)),
         subscriptionStatus: user.subscriptionStatus,
         guidesLimit: user.guidesLimit,
         guidesUsed: user.guidesUsed,
+        prep101TopUpCredits: user.prep101TopUpCredits || 0,
+        prep101Usage: buildPrep101Usage(user),
+        reader101Credits: user.reader101Credits || 0,
+        reader101Usage: buildReader101Usage(user),
+        boldChoicesCredits: user.boldChoicesCredits || 0,
+        boldChoicesUsage: buildBoldChoicesUsage(user),
         currentPeriodStart: user.currentPeriodStart,
         currentPeriodEnd: user.currentPeriodEnd
       }
@@ -240,7 +403,7 @@ router.get('/subscription-status', auth, async (req, res) => {
 // POST /api/stripe/sync-subscription - Reconcile logged-in user with Stripe
 router.post('/sync-subscription', auth, async (req, res) => {
   try {
-    const userRef = await findUserRecord(req);
+    let userRef = await findUserRecord(req);
     if (!userRef) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -262,13 +425,23 @@ router.post('/sync-subscription', auth, async (req, res) => {
         user: {
           id: userRef.row.id,
           email: userRef.row.email,
-          subscription: userRef.row.subscription,
+          subscription: getPrimaryPlanName(userRef.row),
+          planDisplay: formatPlanLabel(getPrimaryPlanName(userRef.row)),
           subscriptionStatus: userRef.row.subscriptionStatus,
           guidesLimit: userRef.row.guidesLimit,
           guidesUsed: userRef.row.guidesUsed,
+          prep101TopUpCredits: userRef.row.prep101TopUpCredits || 0,
+          prep101Usage: buildPrep101Usage(userRef.row),
+          reader101Credits: userRef.row.reader101Credits || 0,
+          reader101Usage: buildReader101Usage(userRef.row),
+          boldChoicesCredits: userRef.row.boldChoicesCredits || 0,
+          boldChoicesUsage: buildBoldChoicesUsage(userRef.row),
         },
       });
     }
+
+    const topUpSync = await syncOneTimeProductCredits(userRef, customerId);
+    userRef = topUpSync.userRef || userRef;
 
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
@@ -286,16 +459,37 @@ router.post('/sync-subscription', auth, async (req, res) => {
 
       return res.json({
         success: true,
-        synced: false,
-        reason: 'no_subscription_found',
+        synced:
+          topUpSync.prep101BackfilledCredits > 0 ||
+          topUpSync.reader101BackfilledCredits > 0 ||
+          topUpSync.boldChoicesBackfilledCredits > 0,
+        reason:
+          topUpSync.prep101BackfilledCredits > 0 ||
+          topUpSync.reader101BackfilledCredits > 0 ||
+          topUpSync.boldChoicesBackfilledCredits > 0
+            ? 'one_time_credits_backfilled'
+            : 'no_subscription_found',
         user: {
           id: updatedUser.row.id,
           email: updatedUser.row.email,
-          subscription: updatedUser.row.subscription,
+          subscription: getPrimaryPlanName(updatedUser.row),
+          planDisplay: formatPlanLabel(getPrimaryPlanName(updatedUser.row)),
           subscriptionStatus: updatedUser.row.subscriptionStatus,
           guidesLimit: updatedUser.row.guidesLimit,
           guidesUsed: updatedUser.row.guidesUsed,
+          prep101TopUpCredits: updatedUser.row.prep101TopUpCredits || 0,
+          prep101Usage: buildPrep101Usage(updatedUser.row),
+          reader101Credits: updatedUser.row.reader101Credits || 0,
+          reader101Usage: buildReader101Usage(updatedUser.row),
+          boldChoicesCredits: updatedUser.row.boldChoicesCredits || 0,
+          boldChoicesUsage: buildBoldChoicesUsage(updatedUser.row),
           stripeCustomerId: updatedUser.row.stripeCustomerId,
+        },
+        prep101TopUps: {
+          backfilledCredits: topUpSync.prep101BackfilledCredits,
+          reader101BackfilledCredits: topUpSync.reader101BackfilledCredits,
+          boldChoicesBackfilledCredits: topUpSync.boldChoicesBackfilledCredits,
+          backfilledSessionIds: topUpSync.backfilledSessionIds,
         },
       });
     }
@@ -306,8 +500,8 @@ router.post('/sync-subscription', auth, async (req, res) => {
     const primaryPriceId = priceIds[0] || null;
     const inferredSubscription = primaryPriceId
       ? stripeService.getSubscriptionFromPriceId(primaryPriceId)
-      : 'premium';
-    const guidesLimit = stripeService.getGuidesLimitFromSubscription(inferredSubscription);
+      : 'free';
+    const guidesLimit = stripeService.getPrep101MonthlyLimitFromPriceId(primaryPriceId);
 
     const updatedUser = await updateUserRecord(userRef, {
       customerId,
@@ -332,13 +526,26 @@ router.post('/sync-subscription', auth, async (req, res) => {
       user: {
         id: updatedUser.row.id,
         email: updatedUser.row.email,
-        subscription: updatedUser.row.subscription,
+        subscription: getPrimaryPlanName(updatedUser.row),
+        planDisplay: formatPlanLabel(getPrimaryPlanName(updatedUser.row)),
         subscriptionStatus: updatedUser.row.subscriptionStatus,
         guidesLimit: updatedUser.row.guidesLimit,
         guidesUsed: updatedUser.row.guidesUsed,
+        prep101TopUpCredits: updatedUser.row.prep101TopUpCredits || 0,
+        prep101Usage: buildPrep101Usage(updatedUser.row),
+        reader101Credits: updatedUser.row.reader101Credits || 0,
+        reader101Usage: buildReader101Usage(updatedUser.row),
+        boldChoicesCredits: updatedUser.row.boldChoicesCredits || 0,
+        boldChoicesUsage: buildBoldChoicesUsage(updatedUser.row),
         stripeCustomerId: updatedUser.row.stripeCustomerId,
         stripeSubscriptionId: updatedUser.row.stripeSubscriptionId,
         stripePriceId: updatedUser.row.stripePriceId,
+      },
+      prep101TopUps: {
+        backfilledCredits: topUpSync.prep101BackfilledCredits,
+        reader101BackfilledCredits: topUpSync.reader101BackfilledCredits,
+        boldChoicesBackfilledCredits: topUpSync.boldChoicesBackfilledCredits,
+        backfilledSessionIds: topUpSync.backfilledSessionIds,
       },
       subscription: {
         id: subscription.id,

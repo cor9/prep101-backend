@@ -11,6 +11,22 @@ const {
   runAdminQuery,
   tables: supabaseTables,
 } = require("../lib/supabaseAdmin");
+const {
+  buildPrep101Usage,
+  buildReader101Usage,
+  buildBoldChoicesUsage,
+  getPrimaryPlanName,
+} = require("../services/prep101EntitlementsService");
+
+const ADMIN_SUBSCRIPTION_VALUES = [
+  "free",
+  "basic",
+  "starter",
+  "premium",
+  "bundle",
+  "reader101_monthly",
+  "boldchoices_monthly",
+];
 
 const router = express.Router();
 
@@ -141,8 +157,7 @@ router.get("/dashboard", auth, requireAdmin, async (req, res) => {
 
       // Subscription breakdown
       User.findAll({
-        attributes: ["subscription", [fn("COUNT", col("id")), "count"]],
-        group: ["subscription"],
+        attributes: ["subscription", "stripePriceId"],
       }),
 
       // Active paid subscriptions
@@ -164,7 +179,7 @@ router.get("/dashboard", auth, requireAdmin, async (req, res) => {
       User.findAll({
         order: [["createdAt", "DESC"]],
         limit: 5,
-        attributes: ["id", "email", "name", "subscription", "createdAt"],
+        attributes: ["id", "email", "name", "subscription", "stripePriceId", "createdAt"],
       }),
 
       // Recent guides (last 5)
@@ -242,15 +257,22 @@ router.get("/dashboard", auth, requireAdmin, async (req, res) => {
           totalUsed: parseInt(usageData.totalGuidesUsed) || 0,
           avgPerUser: parseFloat(usageData.avgGuidesUsed || 0).toFixed(2),
         },
-        subscriptions: subscriptionBreakdown.map((row) => ({
-          type: row.subscription,
-          count: Number(row.get("count")),
+        subscriptions: Object.entries(
+          subscriptionBreakdown.reduce((acc, row) => {
+            const type = getPrimaryPlanName(row);
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+          }, {})
+        ).map(([type, count]) => ({
+          type,
+          count,
         })),
         recentUsers: recentUsers.map((u) => ({
           id: u.id,
           email: u.email,
           name: u.name,
           subscription: u.subscription,
+          planDisplay: getPrimaryPlanName(u),
           createdAt: u.createdAt,
         })),
         recentGuides: recentGuides.map((g) => ({
@@ -289,8 +311,7 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
     ]);
 
     const subscriptions = await User.findAll({
-      attributes: ["subscription", [fn("COUNT", col("id")), "count"]],
-      group: ["subscription"],
+      attributes: ["subscription", "stripePriceId"],
     });
 
     res.json({
@@ -298,9 +319,15 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
       stats: {
         totalUsers,
         totalGuides,
-        subscriptions: subscriptions.map((row) => ({
-          subscription: row.subscription,
-          count: Number(row.get("count")),
+        subscriptions: Object.entries(
+          subscriptions.reduce((acc, row) => {
+            const type = getPrimaryPlanName(row);
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+          }, {})
+        ).map(([subscription, count]) => ({
+          subscription,
+          count,
         })),
       },
     });
@@ -351,7 +378,7 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
     }
 
     // Subscription filter
-    if (subscription && ["free", "basic", "premium"].includes(subscription)) {
+    if (subscription && ADMIN_SUBSCRIPTION_VALUES.includes(subscription)) {
       where.subscription = subscription;
     }
 
@@ -386,8 +413,13 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
         "subscriptionStatus",
         "stripeCustomerId",
         "stripeSubscriptionId",
+        "stripePriceId",
+        "currentPeriodEnd",
         "guidesUsed",
         "guidesLimit",
+        "prep101TopUpCredits",
+        "reader101Credits",
+        "boldChoicesCredits",
         "isBetaTester",
         "betaAccessLevel",
         "betaStatus",
@@ -431,11 +463,20 @@ router.get("/users", auth, requireAdmin, async (req, res) => {
         email: u.email,
         name: u.name,
         subscription: u.subscription,
+        planDisplay: getPrimaryPlanName(u),
         subscriptionStatus: u.subscriptionStatus,
         stripeCustomerId: u.stripeCustomerId,
         stripeSubscriptionId: u.stripeSubscriptionId,
+        stripePriceId: u.stripePriceId,
+        currentPeriodEnd: u.currentPeriodEnd,
         guidesUsed: u.guidesUsed,
         guidesLimit: u.guidesLimit,
+        prep101TopUpCredits: u.prep101TopUpCredits,
+        reader101Credits: u.reader101Credits,
+        boldChoicesCredits: u.boldChoicesCredits,
+        prep101Usage: buildPrep101Usage(u),
+        reader101Usage: buildReader101Usage(u),
+        boldChoicesUsage: buildBoldChoicesUsage(u),
         guidesCount: stats.guidesCount,
         lastGuideAt: stats.lastGuideAt,
         isBetaTester: u.isBetaTester,
@@ -604,7 +645,7 @@ router.put("/users/:id", auth, requireAdmin, async (req, res) => {
     if (name !== undefined) updates.name = name;
     if (
       subscription !== undefined &&
-      ["free", "basic", "premium"].includes(subscription)
+      ADMIN_SUBSCRIPTION_VALUES.includes(subscription)
     ) {
       updates.subscription = subscription;
     }
@@ -1380,10 +1421,12 @@ router.get("/subscriptions", auth, requireAdmin, async (req, res) => {
         userId: u.id,
         email: u.email,
         name: u.name,
-        plan: u.subscription,
+        plan: getPrimaryPlanName(u),
+        storedSubscription: u.subscription,
         status: u.subscriptionStatus,
         stripeCustomerId: u.stripeCustomerId,
         stripeSubscriptionId: u.stripeSubscriptionId,
+        stripePriceId: u.stripePriceId,
         currentPeriodStart: u.currentPeriodStart,
         currentPeriodEnd: u.currentPeriodEnd,
         createdAt: u.createdAt,
@@ -1864,8 +1907,12 @@ router.get("/export/users", auth, requireAdmin, async (req, res) => {
         "name",
         "subscription",
         "subscriptionStatus",
+        "stripePriceId",
         "guidesUsed",
         "guidesLimit",
+        "prep101TopUpCredits",
+        "reader101Credits",
+        "boldChoicesCredits",
         "isBetaTester",
         "betaAccessLevel",
         "createdAt",
@@ -1879,9 +1926,15 @@ router.get("/export/users", auth, requireAdmin, async (req, res) => {
       "Email",
       "Name",
       "Subscription",
+      "Plan Display",
       "Status",
-      "Guides Used",
-      "Guides Limit",
+      "Prep101 Used",
+      "Prep101 Limit",
+      "Prep101 Top-Up Credits",
+      "Reader101 Credits",
+      "Reader101 Unlimited",
+      "Bold Choices Credits",
+      "Bold Choices Unlimited",
       "Beta Tester",
       "Beta Level",
       "Created At",
@@ -1891,9 +1944,15 @@ router.get("/export/users", auth, requireAdmin, async (req, res) => {
       u.email,
       u.name,
       u.subscription,
+      getPrimaryPlanName(u),
       u.subscriptionStatus,
       u.guidesUsed,
       u.guidesLimit,
+      u.prep101TopUpCredits,
+      u.reader101Credits,
+      buildReader101Usage(u).unlimited,
+      u.boldChoicesCredits,
+      buildBoldChoicesUsage(u).unlimited,
       u.isBetaTester,
       u.betaAccessLevel,
       u.createdAt?.toISOString(),

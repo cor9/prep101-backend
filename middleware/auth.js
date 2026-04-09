@@ -9,6 +9,7 @@ const SUPABASE_SERVICE_KEY =
   process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+const AUTH_COOKIE_NAME = "ca101_session";
 
 // Log Supabase configuration for debugging
 console.log("🔧 Supabase auth config:", {
@@ -135,6 +136,23 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
+function parseCookies(cookieHeader = "") {
+  return String(cookieHeader || "")
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .reduce((acc, part) => {
+      const separatorIndex = part.indexOf("=");
+      if (separatorIndex === -1) return acc;
+      const key = part.slice(0, separatorIndex).trim();
+      const value = part.slice(separatorIndex + 1).trim();
+      if (key) {
+        acc[key] = decodeURIComponent(value);
+      }
+      return acc;
+    }, {});
+}
+
 async function findOrCreateUserFromSupabase(supabaseUser) {
   if (!supabaseUser || !supabaseUser.email) return null;
 
@@ -170,6 +188,9 @@ async function findOrCreateUserFromSupabase(supabaseUser) {
         supabaseUser.user_metadata?.guidesUsed ??
         supabaseUser.app_metadata?.guidesUsed ??
         0,
+      prep101TopUpCredits: 0,
+      reader101Credits: 0,
+      boldChoicesCredits: 0,
       isBetaTester,
       betaAccessLevel,
     };
@@ -227,6 +248,9 @@ async function findOrCreateUserFromSupabase(supabaseUser) {
         supabaseUser.user_metadata?.guidesUsed ??
         supabaseUser.app_metadata?.guidesUsed ??
         0,
+      prep101TopUpCredits: 0,
+      reader101Credits: 0,
+      boldChoicesCredits: 0,
       isBetaTester,
       betaAccessLevel,
     };
@@ -314,8 +338,10 @@ async function getSupabaseUserFromToken(token) {
 
 module.exports = async (req, res, next) => {
   try {
+    const cookies = parseCookies(req.headers?.cookie);
     const token =
       req.header("Authorization")?.replace("Bearer ", "") ||
+      cookies[AUTH_COOKIE_NAME] ||
       req.query?.token ||
       req.query?.access_token ||
       req.body?.token ||
@@ -342,6 +368,7 @@ module.exports = async (req, res, next) => {
         );
         req.userId = user.id;
         req.user = user;
+        req.authToken = token;
         req.clientIP = clientIP;
         return next();
       }
@@ -403,6 +430,7 @@ module.exports = async (req, res, next) => {
     // Add user info to request
     req.userId = tokenUserId;
     req.user = user;
+    req.authToken = token;
     req.clientIP = clientIP;
 
     next();

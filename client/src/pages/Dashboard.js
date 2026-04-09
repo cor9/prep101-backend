@@ -14,7 +14,13 @@ import {
   buildBoldChoicesUrl,
   buildReader101Url,
 } from "../utils/ecosystemLinks";
+import { withApiCredentials } from "../utils/apiAuth";
 import "../styles/shared.css";
+
+const PREP101_STRIPE_LINKS = {
+  singleGuide: "https://buy.stripe.com/6oU3cv8Cb2jlbYN0tQ2wU3Z",
+  threePack: "https://buy.stripe.com/7sYaEX4lV9LN3sh90m2wV0d",
+};
 
 // Simple progress bar
 const ProgressBar = ({ value, max }) => {
@@ -45,7 +51,7 @@ const nicePlan = (p) => {
     case "free":
       return "Free";
     case "basic":
-      return "Basic";
+      return "Starter";
     case "premium":
       return "Premium";
     case "starter":
@@ -54,9 +60,81 @@ const nicePlan = (p) => {
       return "A la carte";
     case "unlimited":
       return "Unlimited";
+    case "bundle":
+      return "Bundle";
+    case "reader101_monthly":
+      return "Reader101 Monthly";
+    case "boldchoices_monthly":
+      return "Bold Choices Monthly";
     default:
       return "—";
   }
+};
+
+const DASHBOARD_CONTEXT = {
+  all: {
+    eyebrow: "Shared Account Hub",
+    title: `Your ${ACCOUNT_LABEL}`,
+    subtitle: "One account for Prep101, Reader101, and Bold Choices.",
+  },
+  prep101: {
+    eyebrow: "Prep101 Workspace",
+    title: `Prep101 inside ${ACCOUNT_LABEL}`,
+    subtitle:
+      "Upload sides, generate guides, and manage Prep101 credits from the same account.",
+  },
+  reader101: {
+    eyebrow: "Reader101 Workspace",
+    title: `Reader101 inside ${ACCOUNT_LABEL}`,
+    subtitle:
+      "Open Reader101 with the same login and actor context, without dropping into a Prep101-first frame.",
+  },
+  bold_choices: {
+    eyebrow: "Bold Choices Workspace",
+    title: `Bold Choices inside ${ACCOUNT_LABEL}`,
+    subtitle:
+      "Jump into actor-first choice work with the same shared account and active actor.",
+  },
+};
+
+const getProductContext = (key) =>
+  DASHBOARD_CONTEXT[key] || DASHBOARD_CONTEXT.all;
+
+const formatPrepAccess = (usage) => {
+  if (!usage) return "Checking access...";
+  if (usage.monthlyLimit == null) return "Unlimited Prep101";
+
+  const pieces = [`${usage.monthlyRemaining ?? 0} monthly left`];
+  if (Number(usage.topUpCredits || 0) > 0) {
+    pieces.push(
+      `${usage.topUpCredits} top-up ${
+        usage.topUpCredits === 1 ? "credit" : "credits"
+      }`
+    );
+  }
+  return pieces.join(" • ");
+};
+
+const formatReaderAccess = (usage) => {
+  if (!usage) return "Checking access...";
+  if (usage.unlimited) return "Unlimited Reader101";
+  if (usage.credits > 0) {
+    return `${usage.credits} Reader101 ${
+      usage.credits === 1 ? "credit" : "credits"
+    }`;
+  }
+  return "No Reader101 credits yet";
+};
+
+const formatBoldAccess = (usage) => {
+  if (!usage) return "Checking access...";
+  if (usage.unlimited) return "Unlimited Bold Choices";
+  if (usage.credits > 0) {
+    return `${usage.credits} Bold Choices ${
+      usage.credits === 1 ? "credit" : "credits"
+    }`;
+  }
+  return "Free monthly access only";
 };
 
 const Dashboard = () => {
@@ -79,9 +157,9 @@ const Dashboard = () => {
   const [lastGuideUrl, setLastGuideUrl] = useState(null);
 
   const { user } = useAuth();
-  const token = user?.accessToken || user?.token || localStorage.getItem("prep101_token");
   const activeActor = user?.account?.activeActor;
   const onboardingRequired = Boolean(user?.account?.onboardingRequired);
+  const needsActorSelection = Boolean(user?.account?.needsActorSelection);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -105,26 +183,42 @@ const Dashboard = () => {
       setUsageError(null);
 
       try {
-        const headers =
-          user?.accessToken || user?.token
-            ? { Authorization: `Bearer ${user.accessToken || user.token}` }
-            : {};
-
-        const res = await fetch(`${API_BASE}/api/auth/dashboard`, { headers });
+        const res = await fetch(
+          `${API_BASE}/api/auth/dashboard`,
+          withApiCredentials({}, user)
+        );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
         console.log("🔍 Dashboard API response:", json);
         if (!cancelled) {
-          // Transform the complex backend response to the simple format expected by the UI
+          const prep101Usage = json.user?.prep101Usage || {};
           const transformedUsage = {
             plan:
-              json.user?.subscription || json.subscription?.currentPlan?.name,
-            used: json.user?.guidesUsed || 0,
-            limit: json.user?.guidesLimit || 1,
+              prep101Usage.plan ||
+              json.user?.subscription ||
+              json.subscription?.currentPlan?.name,
+            used: prep101Usage.monthlyUsed ?? json.user?.guidesUsed ?? 0,
+            limit: prep101Usage.monthlyLimit ?? json.user?.guidesLimit ?? 1,
+            remaining: prep101Usage.totalRemaining,
+            monthlyRemaining: prep101Usage.monthlyRemaining,
+            topUpCredits:
+              prep101Usage.topUpCredits ?? json.user?.prep101TopUpCredits ?? 0,
             renewsAt:
+              prep101Usage.renewsAt ||
               json.subscription?.renewsAt ||
               new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
+            prep101: prep101Usage,
+            reader101: json.user?.reader101Usage || {
+              unlimited: false,
+              credits: json.user?.reader101Credits || 0,
+              canGenerate: (json.user?.reader101Credits || 0) > 0,
+            },
+            boldChoices: json.user?.boldChoicesUsage || {
+              unlimited: false,
+              credits: json.user?.boldChoicesCredits || 0,
+              canGenerate: (json.user?.boldChoicesCredits || 0) > 0,
+            },
           };
           console.log("🔍 Transformed usage data:", transformedUsage);
           setUsage(transformedUsage);
@@ -136,6 +230,23 @@ const Dashboard = () => {
             plan: user?.subscription || "free",
             used: user?.guidesUsed || 0,
             limit: user?.guidesLimit || 1,
+            remaining: user?.prep101Usage?.totalRemaining,
+            monthlyRemaining: user?.prep101Usage?.monthlyRemaining,
+            topUpCredits:
+              user?.prep101Usage?.topUpCredits ||
+              user?.prep101TopUpCredits ||
+              0,
+            prep101: user?.prep101Usage,
+            reader101: user?.reader101Usage || {
+              unlimited: false,
+              credits: user?.reader101Credits || 0,
+              canGenerate: (user?.reader101Credits || 0) > 0,
+            },
+            boldChoices: user?.boldChoicesUsage || {
+              unlimited: false,
+              credits: user?.boldChoicesCredits || 0,
+              canGenerate: (user?.boldChoicesCredits || 0) > 0,
+            },
             renewsAt: new Date(
               Date.now() + 1000 * 60 * 60 * 24 * 7
             ).toISOString(), // +7 days
@@ -155,9 +266,8 @@ const Dashboard = () => {
   useEffect(() => {
     if (!user) return;
     setGuidesLoading(true);
-    const token = user?.accessToken || user?.token;
     fetch(`${API_BASE}/api/guides`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+      ...withApiCredentials({}, user)
     })
       .then(r => r.ok ? r.json() : { guides: [] })
       .then(data => setGuides(data.guides || []))
@@ -167,6 +277,7 @@ const Dashboard = () => {
 
   const remaining = useMemo(() => {
     if (!usage) return 0;
+    if (typeof usage.remaining === "number") return Math.max(0, usage.remaining);
     if (usage.limit == null) return Infinity; // unlimited
     return Math.max(0, usage.limit - (usage.used || 0));
   }, [usage]);
@@ -176,6 +287,19 @@ const Dashboard = () => {
     if (usage.limit == null) return true;
     return remaining > 0;
   }, [usage, remaining]);
+  const isPrep101StarterPlan = useMemo(() => {
+    const plan = String(usage?.plan || user?.subscription || "").toLowerCase();
+    return plan === "starter" || plan === "basic";
+  }, [usage?.plan, user?.subscription]);
+  const dashboardContext = useMemo(
+    () =>
+      getProductContext(
+        ["prep101", "reader101", "bold_choices"].includes(guideFilter)
+          ? guideFilter
+          : "all"
+      ),
+    [guideFilter]
+  );
 
   // ====== FILE UPLOAD ======
   const handleFileUpload = (data) => {
@@ -218,7 +342,11 @@ const Dashboard = () => {
       return;
     }
     if (!canGenerate) {
-      toast.error("You've hit your guide limit. Upgrade for more this month.");
+      toast.error(
+        isPrep101StarterPlan
+          ? "You've used your 5 Prep101 guides. Buy 1 more guide or a 3-pack to keep going."
+          : "You've hit your guide limit. Visit pricing for more options."
+      );
       return;
     }
 
@@ -230,11 +358,8 @@ const Dashboard = () => {
     const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout
 
     try {
-      const token = user?.accessToken || user?.token || localStorage.getItem('prep101_token');
-
       const headers = {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
 
       const normalizedUploadIds = (
@@ -283,7 +408,7 @@ const Dashboard = () => {
 
       const res = await fetch(`${API_BASE}/api/guides/generate`, {
         method: "POST",
-        headers,
+        ...withApiCredentials({ headers }, user),
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
@@ -339,9 +464,41 @@ const Dashboard = () => {
         console.warn("Could not refresh cached upload data after guide generation:", error);
       }
 
-      // Optimistic usage increment
-      if (usage?.limit != null) {
-        setUsage((u) => ({ ...u, used: (u?.used || 0) + 1 }));
+      if (data?.prep101Usage) {
+        setUsage((u) => ({
+          ...u,
+          plan: data.prep101Usage.plan || u?.plan,
+          used: data.prep101Usage.monthlyUsed ?? u?.used ?? 0,
+          limit: data.prep101Usage.monthlyLimit ?? u?.limit ?? null,
+          remaining: data.prep101Usage.totalRemaining,
+          monthlyRemaining: data.prep101Usage.monthlyRemaining,
+          topUpCredits: data.prep101Usage.topUpCredits ?? u?.topUpCredits ?? 0,
+          renewsAt: data.prep101Usage.renewsAt || u?.renewsAt,
+          prep101: data.prep101Usage,
+        }));
+      } else if (usage?.limit != null) {
+        setUsage((u) => ({
+          ...u,
+          used: (u?.used || 0) + 1,
+          remaining:
+            typeof u?.remaining === "number"
+              ? Math.max(0, u.remaining - 1)
+              : u?.remaining,
+          prep101: u?.prep101
+            ? {
+                ...u.prep101,
+                monthlyUsed: (u.prep101.monthlyUsed || 0) + 1,
+                monthlyRemaining:
+                  typeof u.prep101.monthlyRemaining === "number"
+                    ? Math.max(0, u.prep101.monthlyRemaining - 1)
+                    : u.prep101.monthlyRemaining,
+                totalRemaining:
+                  typeof u.prep101.totalRemaining === "number"
+                    ? Math.max(0, u.prep101.totalRemaining - 1)
+                    : u.prep101.totalRemaining,
+              }
+            : u?.prep101,
+        }));
       }
     } catch (err) {
       console.error("Guide generation error:", err);
@@ -428,10 +585,20 @@ const Dashboard = () => {
               className="logo-hero"
               loading="lazy"
             />
-            <h1 className="h1-hero">Your {ACCOUNT_LABEL}</h1>
-            <p className="h2-hero">
-              One dashboard for Prep101, Reader101, and Bold Choices.
-            </p>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "#8b5e3c",
+                marginBottom: 10,
+              }}
+            >
+              {dashboardContext.eyebrow}
+            </div>
+            <h1 className="h1-hero">{dashboardContext.title}</h1>
+            <p className="h2-hero">{dashboardContext.subtitle}</p>
             {activeActor && (
               <div style={{
                 display: 'inline-flex',
@@ -467,6 +634,23 @@ const Dashboard = () => {
             </div>
           )}
 
+          {!onboardingRequired && needsActorSelection && (
+            <div className="card-white" style={{ marginBottom: '1.5rem', border: '1px solid #0f172a' }}>
+              <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>
+                Choose the actor this work is for
+              </div>
+              <div style={{ color: '#475569', marginBottom: 12 }}>
+                Your account has actor profiles, but none is selected as the active context yet.
+              </div>
+              <button
+                className="btn btnPrimary"
+                onClick={() => (window.location.href = '/select-actor')}
+              >
+                Choose Active Actor
+              </button>
+            </div>
+          )}
+
           <div
             className="card-white"
             style={{
@@ -481,6 +665,7 @@ const Dashboard = () => {
                 label: "Prep101",
                 color: "#f59e0b",
                 description: "Upload sides and build full audition guides here.",
+                status: formatPrepAccess(usage?.prep101 || user?.prep101Usage || null),
                 action: () => {
                   setGuideFilter("prep101");
                   window.history.replaceState({}, "", "/dashboard?product=prep101");
@@ -492,8 +677,9 @@ const Dashboard = () => {
                 label: "Reader101",
                 color: "#14b8a6",
                 description: "Carry your account over and open Reader101 without signing in again.",
+                status: formatReaderAccess(usage?.reader101 || user?.reader101Usage || null),
                 action: () => {
-                  window.location.href = buildReader101Url({ token, useBridge: true });
+                  window.location.href = buildReader101Url();
                 },
                 cta: "Open Reader101",
               },
@@ -501,8 +687,9 @@ const Dashboard = () => {
                 label: "Bold Choices",
                 color: "#FF4D4D",
                 description: "Jump straight into Bold Choices with the same Child Actor 101 identity.",
+                status: formatBoldAccess(usage?.boldChoices || user?.boldChoicesUsage || null),
                 action: () => {
-                  window.location.href = buildBoldChoicesUrl({ token, useBridge: true });
+                  window.location.href = buildBoldChoicesUrl();
                 },
                 cta: "Open Bold Choices",
               },
@@ -533,10 +720,26 @@ const Dashboard = () => {
                     fontSize: 14,
                     color: "#334155",
                     lineHeight: 1.6,
-                    marginBottom: 14,
+                    marginBottom: 10,
                   }}
                 >
                   {workspace.description}
+                </div>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    borderRadius: 999,
+                    background: "#fff",
+                    color: "#0f172a",
+                    padding: "6px 10px",
+                    marginBottom: 14,
+                  }}
+                >
+                  {workspace.status}
                 </div>
                 <button
                   onClick={workspace.action}
@@ -585,17 +788,87 @@ const Dashboard = () => {
                       : `${usage.used || 0} / ${usage.limit} used`}
                   </div>
                 </div>
+                {Number(usage?.topUpCredits || 0) > 0 && (
+                  <div
+                    style={{
+                      color: "#0f766e",
+                      fontWeight: 700,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {usage.topUpCredits} Prep101 top-up credit
+                    {usage.topUpCredits === 1 ? "" : "s"} remaining
+                  </div>
+                )}
                 {usage?.limit != null && (
                   <>
                     <ProgressBar value={usage.used || 0} max={usage.limit} />
                     <div
                       style={{ color: "#64748b", marginTop: 6, fontSize: 13 }}
                     >
-                      {remaining} remaining •{" "}
+                      {remaining} total remaining •{" "}
                       {renewText ? `renews ${renewText}` : "monthly"}
                     </div>
                   </>
                 )}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 10,
+                    marginTop: 14,
+                  }}
+                >
+                  {[
+                    {
+                      label: "Prep101",
+                      tone: "#f59e0b",
+                      value: formatPrepAccess(usage?.prep101 || null),
+                    },
+                    {
+                      label: "Reader101",
+                      tone: "#14b8a6",
+                      value: formatReaderAccess(usage?.reader101 || null),
+                    },
+                    {
+                      label: "Bold Choices",
+                      tone: "#ef4444",
+                      value: formatBoldAccess(usage?.boldChoices || null),
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      style={{
+                        border: `1px solid ${item.tone}33`,
+                        borderRadius: 12,
+                        padding: "0.8rem 0.9rem",
+                        background: `${item.tone}10`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: item.tone,
+                          marginBottom: 6,
+                        }}
+                      >
+                        {item.label}
+                      </div>
+                      <div
+                        style={{
+                          color: "#1e293b",
+                          fontWeight: 700,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {item.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 {!canGenerate && (
                   <div
                     style={{
@@ -607,19 +880,51 @@ const Dashboard = () => {
                       padding: "8px 10px",
                     }}
                   >
-                    You've hit your monthly limit. Upgrade on the Pricing page
-                    for more guides.
-                    <button
-                      onClick={() => (window.location.href = "/pricing")}
-                      className="btn btnPrimary"
-                      style={{
-                        marginLeft: 10,
-                        padding: "6px 10px",
-                        fontSize: "0.875rem",
-                      }}
-                    >
-                      See Plans
-                    </button>
+                    <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                      {isPrep101StarterPlan
+                        ? "You've used your 5 Prep101 Starter guides."
+                        : "You've hit your monthly limit."}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {isPrep101StarterPlan ? (
+                        <>
+                          <button
+                            onClick={() => (window.location.href = PREP101_STRIPE_LINKS.singleGuide)}
+                            className="btn"
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: "0.875rem",
+                              background: "#0f172a",
+                              color: "#fff",
+                              border: "none",
+                            }}
+                          >
+                            Buy Single A La Carte — $11.99
+                          </button>
+                          <button
+                            onClick={() => (window.location.href = PREP101_STRIPE_LINKS.threePack)}
+                            className="btn btnPrimary"
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: "0.875rem",
+                            }}
+                          >
+                            Buy 3-Pack — $21.99
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => (window.location.href = "/pricing")}
+                          className="btn btnPrimary"
+                          style={{
+                            padding: "6px 10px",
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          See Plans
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </>
@@ -757,7 +1062,6 @@ const Dashboard = () => {
                   const typeColors = { prep101: '#f59e0b', reader101: '#14b8a6', bold_choices: '#FF4D4D' };
                   const typeLabels = { prep101: 'Prep101', reader101: 'Reader101', bold_choices: 'Bold Choices' };
                   const color = typeColors[g.guideType] || '#94a3b8';
-                  const token = user?.accessToken || user?.token;
                   return (
                     <div key={g.id} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -792,7 +1096,7 @@ const Dashboard = () => {
                           Open
                         </a>
                         <a
-                          href={`${API_BASE}${g.htmlUrl || `/api/guides/${g.id}/html`}${token ? `?token=${encodeURIComponent(token)}` : ''}`}
+                          href={`${API_BASE}${g.htmlUrl || `/api/guides/${g.id}/html`}`}
                           download
                           style={{
                             fontSize: 12, fontWeight: 700, color: '#0f172a',
@@ -803,7 +1107,7 @@ const Dashboard = () => {
                           HTML
                         </a>
                         <a
-                          href={`${API_BASE}${g.pdfUrl || `/api/guides/${g.id}/pdf`}${token ? `?token=${encodeURIComponent(token)}` : ''}`}
+                          href={`${API_BASE}${g.pdfUrl || `/api/guides/${g.id}/pdf`}`}
                           download
                           style={{
                             fontSize: 12, fontWeight: 700, color: '#0f172a',

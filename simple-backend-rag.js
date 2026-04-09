@@ -10,8 +10,15 @@ const {
   isSupabaseAdminConfigured,
   tables: supabaseTables,
   normalizeGuideRow,
+  normalizeUserRow,
 } = require("./lib/supabaseAdmin");
 const { createClient } = require("@supabase/supabase-js");
+const {
+  buildReader101Usage,
+  buildPrep101Usage,
+  getReader101ConsumptionUpdate,
+  getPrep101ConsumptionUpdate,
+} = require("./services/prep101EntitlementsService");
 
 // Create app immediately for fast health checks
 const app = express();
@@ -714,8 +721,23 @@ async function ensureSupabaseUser(user) {
         name: user.name || user.email.split("@")[0],
         password: "supabase_auth", // Placeholder - actual auth is via Supabase Auth
         subscription: user.subscription || "free",
-        guidesUsed: 0,
-        guidesLimit: 25, // Default for beta users
+        guidesUsed: typeof user.guidesUsed === "number" ? user.guidesUsed : 0,
+        guidesLimit: typeof user.guidesLimit === "number" ? user.guidesLimit : 1,
+        prep101TopUpCredits:
+          typeof user.prep101TopUpCredits === "number" ? user.prep101TopUpCredits : 0,
+        prep101TopUpSessionIds: Array.isArray(user.prep101TopUpSessionIds)
+          ? user.prep101TopUpSessionIds
+          : [],
+        reader101Credits:
+          typeof user.reader101Credits === "number" ? user.reader101Credits : 0,
+        reader101SessionIds: Array.isArray(user.reader101SessionIds)
+          ? user.reader101SessionIds
+          : [],
+        boldChoicesCredits:
+          typeof user.boldChoicesCredits === "number" ? user.boldChoicesCredits : 0,
+        boldChoicesSessionIds: Array.isArray(user.boldChoicesSessionIds)
+          ? user.boldChoicesSessionIds
+          : [],
       })
       .select("id")
       .single()
@@ -728,6 +750,65 @@ async function ensureSupabaseUser(user) {
 
   console.log(`✅ User ${user.id} created in Supabase Users table`);
   return true;
+}
+
+async function loadBillingUser(user) {
+  const userId = user?.id;
+  if (!userId) return user;
+
+  if (User) {
+    try {
+      const row = await User.findByPk(userId);
+      if (row) return row;
+    } catch (error) {
+      console.error("Failed to load billing user via Sequelize:", error.message);
+    }
+  }
+
+  if (!isSupabaseAdminConfigured()) return user;
+
+  const row = await runAdminQuery(async (client) => {
+    const { data, error } = await client
+      .from(supabaseTables.users)
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  });
+
+  return row ? normalizeUserRow(row) : user;
+}
+
+async function persistBillingUserUpdates(user, updates) {
+  if (!user || !updates || !Object.keys(updates).length) return user;
+
+  if (typeof user.update === "function") {
+    await user.update(updates);
+    if (typeof user.reload === "function") {
+      await user.reload();
+    }
+    return user;
+  }
+
+  if (!isSupabaseAdminConfigured() || !user.id) {
+    return { ...user, ...updates };
+  }
+
+  const row = await runAdminQuery(async (client) => {
+    const { data, error } = await client
+      .from(supabaseTables.users)
+      .update(updates)
+      .eq("id", user.id)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return data;
+  });
+
+  return row ? normalizeUserRow(row) : { ...user, ...updates };
 }
 
 // Load methodology files into memory for RAG
@@ -2652,8 +2733,9 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       });
     }
 
-    const currentUser =
-      req.user || (User && req.userId ? await User.findByPk(req.userId) : null);
+    const currentUser = await loadBillingUser(
+      req.user || (User && req.userId ? await User.findByPk(req.userId) : null)
+    );
 
     if (!currentUser) {
       return res.status(401).json({
@@ -2662,34 +2744,30 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       });
     }
 
-    const userGuidesUsed = currentUser.guidesUsed || 0;
-    const userGuideLimit =
-      typeof currentUser.guidesLimit === "number"
-        ? currentUser.guidesLimit
-        : null;
+    const prep101Usage = buildPrep101Usage(currentUser);
+    const reader101Usage = buildReader101Usage(currentUser);
     const isAdminUser =
       currentUser.betaAccessLevel === "admin" ||
       currentUser.subscription === "admin";
-    const hasUnlimitedPlan =
-      isAdminUser ||
-      userGuideLimit === null ||
-      userGuideLimit <= 0 ||
-      userGuideLimit >= 999 ||
-      (currentUser.subscription &&
-        currentUser.subscription.toLowerCase() !== "free");
+    const hasReaderAccess = isAdminUser || reader101Usage.canGenerate;
+    const hasPrep101Access = isAdminUser || prep101Usage.canGenerate;
 
-    if (
-      !hasUnlimitedPlan &&
-      userGuideLimit !== null &&
-      userGuideLimit > 0 &&
-      userGuidesUsed >= userGuideLimit
-    ) {
+    if (isReaderMode && !hasReaderAccess) {
+      return res.status(403).json({
+        success: false,
+        error: "Reader101 access is required before generating a reader guide.",
+        reader101Usage,
+      });
+    }
+
+    if (!isReaderMode && !hasPrep101Access) {
       return res.status(403).json({
         success: false,
         error:
-          "Monthly guide limit reached. Upgrade your subscription for more guides.",
-        guidesUsed: userGuidesUsed,
-        guidesLimit: userGuideLimit,
+          "You've used your monthly Prep101 guides and have no top-up credits remaining.",
+        guidesUsed: prep101Usage.monthlyUsed,
+        guidesLimit: prep101Usage.monthlyLimit,
+        prep101Usage,
       });
     }
 
@@ -2869,16 +2947,16 @@ app.post("/api/guides/generate", auth, async (req, res) => {
           savedReaderGuide = await supabaseInsertGuide(readerPayload, { user: currentUser });
         }
 
-        // Reader guides count against the same usage limit as actor guides
-        if (
-          !hasUnlimitedPlan &&
-          userGuideLimit !== null &&
-          userGuideLimit > 0 &&
-          typeof currentUser.increment === "function"
-        ) {
-          await currentUser.increment("guidesUsed").catch((err) => {
-            console.error("Failed to increment guide usage:", err?.message || err);
-          });
+        let updatedBillingUser = currentUser;
+        const consumption = getReader101ConsumptionUpdate(currentUser);
+        if (!consumption.allowed) {
+          throw new Error("Reader101 credits were exhausted before the guide could be saved.");
+        }
+        if (Object.keys(consumption.updates).length > 0) {
+          updatedBillingUser = await persistBillingUserUpdates(
+            currentUser,
+            consumption.updates
+          );
         }
 
         return res.json({
@@ -2889,6 +2967,8 @@ app.post("/api/guides/generate", auth, async (req, res) => {
           childGuideRequested: false,
           childGuideQueued: false,
           childGuideCompleted: false,
+          reader101Usage: buildReader101Usage(updatedBillingUser),
+          reader101CreditSource: consumption.source,
           metadata: {
             characterName: characterName.trim(),
             productionTitle: productionTitle.trim(),
@@ -2996,18 +3076,16 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         `💾 Guide saved via ${persistenceMethod} with ID: ${persistedGuide.id}`
       );
 
-      if (
-        !hasUnlimitedPlan &&
-        userGuideLimit !== null &&
-        userGuideLimit > 0 &&
-        typeof currentUser.increment === "function"
-      ) {
-        await currentUser.increment("guidesUsed").catch((err) => {
-          console.error(
-            "Failed to increment guide usage:",
-            err?.message || err
-          );
-        });
+      let updatedBillingUser = currentUser;
+      const consumption = getPrep101ConsumptionUpdate(currentUser);
+      if (!consumption.allowed) {
+        throw new Error("Prep101 credits were exhausted before the guide could be saved.");
+      }
+      if (Object.keys(consumption.updates).length > 0) {
+        updatedBillingUser = await persistBillingUserUpdates(
+          currentUser,
+          consumption.updates
+        );
       }
 
       let childGuideQueued = false;
@@ -3076,6 +3154,8 @@ app.post("/api/guides/generate", auth, async (req, res) => {
               : null,
         generatedAt: new Date(),
         savedToDatabase: true,
+        prep101Usage: buildPrep101Usage(updatedBillingUser),
+        prep101CreditSource: consumption.source,
         metadata: {
           characterName,
           productionTitle,

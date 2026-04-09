@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
-import { buildPrepOnboardingUrl } from './utils/ecosystemLinks.js';
+import { buildPrepOnboardingUrl, buildPrepSelectActorUrl } from './utils/ecosystemLinks.js';
 import Landing from './pages/Landing.jsx';
 import Generate from './pages/Generate.jsx';
 import Login from './pages/Login.jsx';
@@ -27,20 +27,23 @@ function ProtectedRoute({ children }) {
   }
   if (!user) {
     const redirect = `${location.pathname}${location.search || ''}`;
-    return <Navigate to={`/auth-callback?redirect=${encodeURIComponent(redirect)}`} replace />;
+    return <Navigate to={`/login?next=${encodeURIComponent(redirect)}`} replace />;
   }
   if (user?.account?.onboardingRequired) {
-    const token = user?.accessToken || user?.token;
     const next = `https://boldchoices.site${location.pathname}${location.search || ''}`;
-    return <AccountSetupRedirect token={token} next={next} />;
+    return <AccountSetupRedirect next={next} />;
+  }
+  if (user?.account?.needsActorSelection) {
+    const next = `https://boldchoices.site${location.pathname}${location.search || ''}`;
+    return <ActorSelectionRedirect next={next} />;
   }
   return children;
 }
 
-function AccountSetupRedirect({ token, next }) {
+function AccountSetupRedirect({ next }) {
   useEffect(() => {
-    window.location.replace(buildPrepOnboardingUrl({ token, next }));
-  }, [token, next]);
+    window.location.replace(buildPrepOnboardingUrl({ next }));
+  }, [next]);
 
   return (
     <div style={{
@@ -49,6 +52,22 @@ function AccountSetupRedirect({ token, next }) {
       fontSize: 14, letterSpacing: '0.05em'
     }}>
       Opening your Child Actor 101 account setup...
+    </div>
+  );
+}
+
+function ActorSelectionRedirect({ next }) {
+  useEffect(() => {
+    window.location.replace(buildPrepSelectActorUrl({ next }));
+  }, [next]);
+
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'center', alignItems: 'center',
+      height: '100vh', background: '#0a0a0f', color: 'rgba(255,255,255,0.6)',
+      fontSize: 14, letterSpacing: '0.05em'
+    }}>
+      Opening actor selection...
     </div>
   );
 }

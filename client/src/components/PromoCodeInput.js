@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import API_BASE from '../config/api';
+import { withApiCredentials } from '../utils/apiAuth';
 
 const PromoCodeInput = ({ onRedeemSuccess }) => {
     const [code, setCode] = useState('');
@@ -19,14 +20,13 @@ const PromoCodeInput = ({ onRedeemSuccess }) => {
         setLoading(true);
 
         try {
-            const headers = {
-                'Content-Type': 'application/json',
-                ...(user?.accessToken || user?.token ? { 'Authorization': `Bearer ${user.accessToken || user.token}` } : {})
-            };
-
             const res = await fetch(`${API_BASE}/api/promo-codes/redeem`, {
                 method: 'POST',
-                headers,
+                ...withApiCredentials({
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                }, user),
                 body: JSON.stringify({ code: code.trim() })
             });
 

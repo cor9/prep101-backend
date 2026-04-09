@@ -1,5 +1,15 @@
 let stripe = null;
 
+const STRIPE_PRICE_IDS = {
+  starter:
+    process.env.STRIPE_STARTER_PRICE_ID || "price_1SYK8iDALb4OhZMWTMqOgCV8",
+  alacarte:
+    process.env.STRIPE_ALACARTE_PRICE_ID || "price_1SYKCHDALb4OhZMWBoTPIEww",
+  prep101ThreePack:
+    process.env.STRIPE_PREP101_THREE_PACK_PRICE_ID ||
+    "price_1TKBjxDALb4OhZMWdBQ9pQIV",
+};
+
 class PaymentService {
   constructor() {
     const { config } = require('../config/config');
@@ -163,12 +173,19 @@ class PaymentService {
   }
 
   // Create a Stripe Checkout session
-  async createCheckoutSession(customerId, priceId, successUrl = null, cancelUrl = null) {
+  async createCheckoutSession(customerId, priceId, options = {}) {
     if (!stripe) {
       throw new Error('Stripe is not configured');
     }
 
     try {
+      const {
+        successUrl = null,
+        cancelUrl = null,
+        mode = 'subscription',
+        metadata = {},
+      } = options;
+
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         payment_method_types: ['card'],
@@ -178,13 +195,14 @@ class PaymentService {
             quantity: 1,
           },
         ],
-        mode: 'subscription',
+        mode,
         success_url: successUrl || 'https://prep101.site/app/stripe/success',
         cancel_url: cancelUrl || 'https://prep101.site/pricing',
         allow_promotion_codes: true,
         billing_address_collection: 'required',
         metadata: {
-          source: 'prep101'
+          source: 'prep101',
+          ...metadata,
         }
       });
       
@@ -201,31 +219,48 @@ class PaymentService {
       free: {
         name: 'Free',
         price: 0,
+        billingType: 'none',
         guidesLimit: 0,
         features: ['Redeem promo codes for free guides', 'Core scene breakdown & tips', 'Parent + kid versions included', 'Email support']
       },
       starter: {
         name: 'Starter',
         price: 19.99,
-        priceId: process.env.STRIPE_STARTER_PRICE_ID,
-        guidesLimit: 3,
-        features: ['3 guides per month', 'Detailed beats, subtext & buttons', 'Genre-aware notes', 'Parent deep-dive + kid-ready guide', 'Priority email support', 'Printable PDF delivery']
+        priceId: STRIPE_PRICE_IDS.starter,
+        billingType: 'subscription',
+        guidesLimit: 5,
+        features: ['5 guides per month', 'Detailed beats, subtext & buttons', 'Genre-aware notes', 'Parent deep-dive + kid-ready guide', 'Priority email support', 'Printable PDF delivery']
       },
       alacarte: {
         name: 'A la carte',
         price: 11.99,
-        priceId: process.env.STRIPE_ALACARTE_PRICE_ID,
+        priceId: STRIPE_PRICE_IDS.alacarte,
+        billingType: 'payment',
         guidesLimit: 1,
         features: ['1 guide (one-time purchase)', 'Same depth as Starter guides', 'Parent + kid versions', 'PDF delivery']
-      },
-      premium: {
-        name: 'Premium',
-        price: 79.99,
-        priceId: process.env.STRIPE_PREMIUM_PRICE_ID,
-        guidesLimit: 999, // Unlimited
-        features: ['Unlimited guides per month', 'Advanced scene & character analysis', '2 Self-Tape Feedbacks included', 'Parent deep-dive + kid-ready guide', 'Rush-friendly priority support', 'PDF delivery + rehearsal variations']
       }
     };
+  }
+
+  getPlanLabel(planKey) {
+    switch (String(planKey || '').toLowerCase()) {
+      case 'basic':
+      case 'starter':
+        return 'Starter';
+      case 'alacarte':
+        return 'Single A La Carte';
+      case 'bundle':
+        return 'Bundle';
+      case 'reader101_monthly':
+        return 'Reader101 Monthly';
+      case 'boldchoices_monthly':
+        return 'Bold Choices Monthly';
+      case 'premium':
+        return 'Legacy Premium';
+      case 'free':
+      default:
+        return 'Free';
+    }
   }
 
   // Get add-on services

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import Footer from '../components/Footer';
@@ -15,6 +15,11 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const nextDestination = useMemo(
+    () => new URLSearchParams(location.search).get('next'),
+    [location.search]
+  );
 
   const handleChange = (e) => {
     setFormData({
@@ -46,6 +51,10 @@ const Register = () => {
     try {
      await register(formData.email, formData.password, formData.name);
       toast.success('Account created successfully!');
+      if (nextDestination) {
+        window.location.replace(nextDestination);
+        return;
+      }
       navigate('/account');
     } catch (error) {
       console.error('Registration error:', error);

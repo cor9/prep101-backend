@@ -3,6 +3,8 @@ import toast from 'react-hot-toast';
 import API_BASE from '../config/api';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { useAuth } from '../contexts/AuthContext';
+import { withApiCredentials } from '../utils/apiAuth';
 import '../styles/shared.css';
 
 // Tab options for navigation
@@ -15,8 +17,75 @@ const TABS = [
   { id: 'growth', label: 'Growth' }
 ];
 
+const nicePlan = (plan) => {
+  switch (String(plan || '').toLowerCase()) {
+    case 'basic':
+    case 'starter':
+      return 'Starter';
+    case 'bundle':
+      return 'Bundle';
+    case 'reader101_monthly':
+      return 'Reader101 Monthly';
+    case 'boldchoices_monthly':
+      return 'Bold Choices Monthly';
+    case 'premium':
+      return 'Legacy Premium';
+    case 'free':
+      return 'Free';
+    default:
+      return plan || 'Free';
+  }
+};
+
+const planBadgeTone = (plan) => {
+  switch (String(plan || '').toLowerCase()) {
+    case 'bundle':
+      return 'green';
+    case 'basic':
+    case 'starter':
+      return 'blue';
+    case 'reader101_monthly':
+    case 'boldchoices_monthly':
+      return 'yellow';
+    default:
+      return 'gray';
+  }
+};
+
+const summarizeUserAccess = (user) => {
+  const pieces = [];
+  const prep = user?.prep101Usage;
+  const reader = user?.reader101Usage;
+  const bold = user?.boldChoicesUsage;
+
+  if (prep) {
+    if (prep.monthlyLimit == null) {
+      pieces.push('Prep101 unlimited');
+    } else {
+      pieces.push(`Prep101 ${prep.monthlyUsed || 0}/${prep.monthlyLimit || 0}`);
+      if (prep.topUpCredits > 0) {
+        pieces.push(`${prep.topUpCredits} top-up`);
+      }
+    }
+  }
+
+  if (reader?.unlimited) {
+    pieces.push('Reader unlimited');
+  } else if (reader?.credits > 0) {
+    pieces.push(`Reader ${reader.credits} credit${reader.credits === 1 ? '' : 's'}`);
+  }
+
+  if (bold?.unlimited) {
+    pieces.push('Bold unlimited');
+  } else if (bold?.credits > 0) {
+    pieces.push(`Bold ${bold.credits} credit${bold.credits === 1 ? '' : 's'}`);
+  }
+
+  return pieces;
+};
+
 const AdminDashboard = () => {
-  const [sessionToken, setSessionToken] = useState(null);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -59,10 +128,8 @@ const AdminDashboard = () => {
   const guidesTotalPages = Math.max(1, Math.ceil(guidesTotal / limit));
 
   // API fetch helper
-  const apiFetch = useCallback(async (endpoint, token) => {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+  const apiFetch = useCallback(async (endpoint) => {
+    const res = await fetch(`${API_BASE}${endpoint}`, withApiCredentials({}, user));
     if (res.status === 403) {
       setForbidden(true);
       throw new Error('Admin access required');
@@ -74,9 +141,9 @@ const AdminDashboard = () => {
   }, []);
 
   // Fetch dashboard overview
-  const fetchDashboard = useCallback(async (token) => {
+  const fetchDashboard = useCallback(async () => {
     try {
-      const data = await apiFetch('/api/admin/dashboard', token);
+      const data = await apiFetch('/api/admin/dashboard');
       setDashboard(data.dashboard);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
@@ -85,7 +152,7 @@ const AdminDashboard = () => {
   }, [apiFetch, forbidden]);
 
   // Fetch users
-  const fetchUsers = useCallback(async (token, opts = {}) => {
+  const fetchUsers = useCallback(async (opts = {}) => {
     const page = opts.page || usersPage;
     const search = typeof opts.search === 'string' ? opts.search : usersSearch;
 
@@ -94,7 +161,7 @@ const AdminDashboard = () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search.trim()) params.set('search', search.trim());
 
-      const data = await apiFetch(`/api/admin/users?${params}`, token);
+      const data = await apiFetch(`/api/admin/users?${params}`);
       setUsers(data.users || []);
       setUsersPage(data.page || page);
       setUsersTotal(data.total || 0);
@@ -107,7 +174,7 @@ const AdminDashboard = () => {
   }, [apiFetch, usersPage, usersSearch, forbidden]);
 
   // Fetch guides
-  const fetchGuides = useCallback(async (token, opts = {}) => {
+  const fetchGuides = useCallback(async (opts = {}) => {
     const page = opts.page || guidesPage;
     const search = typeof opts.search === 'string' ? opts.search : guidesSearch;
 
@@ -116,7 +183,7 @@ const AdminDashboard = () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search.trim()) params.set('search', search.trim());
 
-      const data = await apiFetch(`/api/admin/guides?${params}`, token);
+      const data = await apiFetch(`/api/admin/guides?${params}`);
       setGuides(data.guides || []);
       setGuidesPage(data.page || page);
       setGuidesTotal(data.total || 0);
@@ -129,9 +196,9 @@ const AdminDashboard = () => {
   }, [apiFetch, guidesPage, guidesSearch, forbidden]);
 
   // Fetch guide analytics
-  const fetchGuideAnalytics = useCallback(async (token) => {
+  const fetchGuideAnalytics = useCallback(async () => {
     try {
-      const data = await apiFetch('/api/admin/guides/analytics', token);
+      const data = await apiFetch('/api/admin/guides/analytics');
       setGuideAnalytics(data.analytics);
     } catch (err) {
       console.error('Guide analytics error:', err);
@@ -139,10 +206,10 @@ const AdminDashboard = () => {
   }, [apiFetch]);
 
   // Fetch revenue
-  const fetchRevenue = useCallback(async (token) => {
+  const fetchRevenue = useCallback(async () => {
     setRevenueLoading(true);
     try {
-      const data = await apiFetch('/api/admin/revenue', token);
+      const data = await apiFetch('/api/admin/revenue');
       if (data.success === false) {
         console.error('Revenue fetch failed:', data.message);
         toast.error(data.message || 'Failed to load revenue data');
@@ -162,12 +229,12 @@ const AdminDashboard = () => {
   }, [apiFetch, forbidden]);
 
   // Fetch promo codes
-  const fetchPromoCodes = useCallback(async (token) => {
+  const fetchPromoCodes = useCallback(async () => {
     setPromoLoading(true);
     try {
       const [codesData, analyticsData] = await Promise.all([
-        apiFetch('/api/admin/promo-codes', token),
-        apiFetch('/api/admin/promo-codes/analytics', token)
+        apiFetch('/api/admin/promo-codes'),
+        apiFetch('/api/admin/promo-codes/analytics')
       ]);
 
       if (codesData.success === false) {
@@ -197,12 +264,12 @@ const AdminDashboard = () => {
   }, [apiFetch, forbidden]);
 
   // Fetch growth data
-  const fetchGrowth = useCallback(async (token) => {
+  const fetchGrowth = useCallback(async () => {
     setGrowthLoading(true);
     try {
       const [growthData, activityData] = await Promise.all([
-        apiFetch('/api/admin/growth', token),
-        apiFetch('/api/admin/activity?days=30', token)
+        apiFetch('/api/admin/growth'),
+        apiFetch('/api/admin/activity?days=30')
       ]);
       setGrowth(growthData.growth);
       setActivity(activityData.activity);
@@ -218,14 +285,11 @@ const AdminDashboard = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        // Get token from localStorage (where the app stores it after login)
-        const token = localStorage.getItem('prep101_token');
-        if (!token) {
+        if (!user) {
           throw new Error('Please log in to access the admin dashboard');
         }
 
-        setSessionToken(token);
-        await fetchDashboard(token);
+        await fetchDashboard();
       } catch (err) {
         console.error('Admin init error:', err);
         toast.error(err.message || 'Failed to initialize');
@@ -234,51 +298,52 @@ const AdminDashboard = () => {
       }
     };
     init();
-  }, [fetchDashboard]);
+  }, [fetchDashboard, user]);
 
   // Load tab data when tab changes
   useEffect(() => {
-    if (!sessionToken || forbidden) return;
+    if (!user || forbidden) return;
 
     switch (activeTab) {
       case 'users':
-        fetchUsers(sessionToken, { page: 1 });
+        fetchUsers({ page: 1 });
         break;
       case 'guides':
-        fetchGuides(sessionToken, { page: 1 });
-        fetchGuideAnalytics(sessionToken);
+        fetchGuides({ page: 1 });
+        fetchGuideAnalytics();
         break;
       case 'revenue':
-        fetchRevenue(sessionToken);
+        fetchRevenue();
         break;
       case 'promo':
-        fetchPromoCodes(sessionToken);
+        fetchPromoCodes();
         break;
       case 'growth':
-        fetchGrowth(sessionToken);
+        fetchGrowth();
         break;
       default:
         break;
     }
-  }, [activeTab, sessionToken, forbidden, fetchUsers, fetchGuides, fetchGuideAnalytics, fetchRevenue, fetchPromoCodes, fetchGrowth]);
+  }, [activeTab, user, forbidden, fetchUsers, fetchGuides, fetchGuideAnalytics, fetchRevenue, fetchPromoCodes, fetchGrowth]);
 
   // User actions
   const handleGrantGuide = async (userId, amount = 1) => {
-    if (!sessionToken) return;
+    if (!user) return;
     setBusyUserId(userId);
     try {
       const res = await fetch(`${API_BASE}/api/admin/users/${userId}/guides`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${sessionToken}`
-        },
+        ...withApiCredentials({
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }, user),
         body: JSON.stringify({ addGuides: amount })
       });
       if (!res.ok) throw new Error('Failed to update');
       const data = await res.json();
       toast.success(`Added ${amount} guide(s) for ${data.user?.email || 'user'}`);
-      fetchUsers(sessionToken);
+      fetchUsers();
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -287,20 +352,21 @@ const AdminDashboard = () => {
   };
 
   const handleResetUsage = async (userId) => {
-    if (!sessionToken) return;
+    if (!user) return;
     setBusyUserId(userId);
     try {
       const res = await fetch(`${API_BASE}/api/admin/users/${userId}/guides`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${sessionToken}`
-        },
+        ...withApiCredentials({
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }, user),
         body: JSON.stringify({ guidesUsed: 0 })
       });
       if (!res.ok) throw new Error('Failed to reset');
       toast.success('Usage reset');
-      fetchUsers(sessionToken);
+      fetchUsers();
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -552,7 +618,7 @@ const AdminDashboard = () => {
             {subscriptions.map(sub => (
               <div key={sub.type} style={{ textAlign: 'center', padding: '1rem', background: '#f9fafb', borderRadius: '0.5rem', minWidth: '100px' }}>
                 <div style={{ fontSize: '1.5rem', fontWeight: '600' }}>{sub.count}</div>
-                <div style={{ fontSize: '0.85rem', color: '#6b7280', textTransform: 'capitalize' }}>{sub.type}</div>
+                <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{nicePlan(sub.type)}</div>
               </div>
             ))}
           </div>
@@ -579,9 +645,14 @@ const AdminDashboard = () => {
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{u.name}</div>
                       </td>
                       <td style={styles.td}>
-                        <span style={styles.badge(u.subscription === 'premium' ? 'green' : u.subscription === 'basic' ? 'blue' : 'gray')}>
-                          {u.subscription}
+                        <span style={styles.badge(planBadgeTone(u.planDisplay || u.subscription))}>
+                          {nicePlan(u.planDisplay || u.subscription)}
                         </span>
+                        {u.subscriptionStatus && (
+                          <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
+                            {u.subscriptionStatus}
+                          </div>
+                        )}
                       </td>
                       <td style={styles.td}>{new Date(u.createdAt).toLocaleDateString()}</td>
                     </tr>
@@ -626,7 +697,7 @@ const AdminDashboard = () => {
   const renderUsers = () => (
     <div style={styles.card}>
       <div style={{ ...styles.flexRow, justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <form onSubmit={(e) => { e.preventDefault(); fetchUsers(sessionToken, { page: 1, search: usersSearch }); }} style={styles.flexRow}>
+        <form onSubmit={(e) => { e.preventDefault(); fetchUsers({ page: 1, search: usersSearch }); }} style={styles.flexRow}>
           <input
             type="text"
             placeholder="Search by email or name..."
@@ -638,7 +709,7 @@ const AdminDashboard = () => {
             {usersLoading ? 'Searching...' : 'Search'}
           </button>
         </form>
-        <button type="button" className="btn btnSecondary" onClick={() => fetchUsers(sessionToken, { page: 1 })} disabled={usersLoading}>
+        <button type="button" className="btn btnSecondary" onClick={() => fetchUsers({ page: 1 })} disabled={usersLoading}>
           Refresh
         </button>
       </div>
@@ -674,15 +745,24 @@ const AdminDashboard = () => {
                   )}
                 </td>
                 <td style={styles.td}>
-                  <span style={styles.badge(u.subscription === 'premium' ? 'green' : u.subscription === 'basic' ? 'blue' : 'gray')}>
-                    {u.subscription}
+                  <span style={styles.badge(planBadgeTone(u.planDisplay || u.subscription))}>
+                    {nicePlan(u.planDisplay || u.subscription)}
                   </span>
                   <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
                     {new Date(u.createdAt).toLocaleDateString()}
                   </div>
                 </td>
                 <td style={styles.td}>
-                  <div>{u.guidesUsed} / {u.guidesLimit}</div>
+                  <div>
+                    {u.prep101Usage?.monthlyLimit == null
+                      ? 'Prep101 unlimited'
+                      : `${u.prep101Usage?.monthlyUsed ?? u.guidesUsed} / ${u.prep101Usage?.monthlyLimit ?? u.guidesLimit}`}
+                  </div>
+                  {summarizeUserAccess(u).slice(1).map((line) => (
+                    <div key={line} style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>
+                      {line}
+                    </div>
+                  ))}
                   <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Total: {u.guidesCount}</div>
                 </td>
                 <td style={styles.td}>
@@ -719,10 +799,10 @@ const AdminDashboard = () => {
       <div style={{ ...styles.flexRow, justifyContent: 'space-between', marginTop: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
         <div>Page {usersPage} of {usersTotalPages} ({usersTotal} users)</div>
         <div style={styles.flexRow}>
-          <button className="btn btnSecondary" disabled={usersPage <= 1 || usersLoading} onClick={() => fetchUsers(sessionToken, { page: usersPage - 1 })}>
+          <button className="btn btnSecondary" disabled={usersPage <= 1 || usersLoading} onClick={() => fetchUsers({ page: usersPage - 1 })}>
             Previous
           </button>
-          <button className="btn btnSecondary" disabled={usersPage >= usersTotalPages || usersLoading} onClick={() => fetchUsers(sessionToken, { page: usersPage + 1 })}>
+          <button className="btn btnSecondary" disabled={usersPage >= usersTotalPages || usersLoading} onClick={() => fetchUsers({ page: usersPage + 1 })}>
             Next
           </button>
         </div>
@@ -784,7 +864,7 @@ const AdminDashboard = () => {
 
       <div style={styles.card}>
         <div style={{ ...styles.flexRow, justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <form onSubmit={(e) => { e.preventDefault(); fetchGuides(sessionToken, { page: 1, search: guidesSearch }); }} style={styles.flexRow}>
+          <form onSubmit={(e) => { e.preventDefault(); fetchGuides({ page: 1, search: guidesSearch }); }} style={styles.flexRow}>
             <input
               type="text"
               placeholder="Search character or production..."
@@ -839,10 +919,10 @@ const AdminDashboard = () => {
         <div style={{ ...styles.flexRow, justifyContent: 'space-between', marginTop: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
           <div>Page {guidesPage} of {guidesTotalPages} ({guidesTotal} guides)</div>
           <div style={styles.flexRow}>
-            <button className="btn btnSecondary" disabled={guidesPage <= 1 || guidesLoading} onClick={() => fetchGuides(sessionToken, { page: guidesPage - 1 })}>
+            <button className="btn btnSecondary" disabled={guidesPage <= 1 || guidesLoading} onClick={() => fetchGuides({ page: guidesPage - 1 })}>
               Previous
             </button>
-            <button className="btn btnSecondary" disabled={guidesPage >= guidesTotalPages || guidesLoading} onClick={() => fetchGuides(sessionToken, { page: guidesPage + 1 })}>
+            <button className="btn btnSecondary" disabled={guidesPage >= guidesTotalPages || guidesLoading} onClick={() => fetchGuides({ page: guidesPage + 1 })}>
               Next
             </button>
           </div>

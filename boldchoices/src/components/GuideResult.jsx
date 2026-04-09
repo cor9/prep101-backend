@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import API_BASE from '../config/api.js';
+import { withApiCredentials } from '../utils/apiAuth.js';
 
 /**
  * GuideResult
@@ -34,20 +35,10 @@ export default function GuideResult({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [savedChoices, setSavedChoices] = useState(new Set()); // track saved choice keys
 
-  const isPro = user && (user.subscription === 'pro' || user.isPro);
-  const getAuthToken = () => {
-    const directToken = user?.accessToken || user?.token;
-    if (directToken) return directToken;
-
-    try {
-      const stored = localStorage.getItem('bc_user');
-      if (!stored) return null;
-      const parsed = JSON.parse(stored);
-      return parsed?.accessToken || parsed?.token || null;
-    } catch (_) {
-      return null;
-    }
-  };
+  const hasModifierAccess =
+    Boolean(user?.boldChoicesUsage?.modifierAccess) ||
+    Boolean(user?.betaAccessLevel === 'admin') ||
+    Boolean(user?.subscription === 'pro' || user?.isPro);
 
   // ── #9: Auto-scroll to result ─────────────────────────────────────────────
   useEffect(() => {
@@ -91,9 +82,7 @@ export default function GuideResult({
 
       const choiceKey = e.data.choice?.substring(0, 60) || 'unknown';
       const toastId = toast.loading('Saving choice...');
-      const token = getAuthToken();
-
-      if (!token) {
+      if (!user) {
         toast.error('Please sign in again to save choices.', { id: toastId });
         return;
       }
@@ -101,10 +90,11 @@ export default function GuideResult({
       try {
         const res = await fetch(`${API_BASE}/api/bold-choices/save`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+          ...withApiCredentials({
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }, user),
           body: JSON.stringify({
             choice: e.data.choice,
             character: meta?.characterName,
@@ -130,15 +120,15 @@ export default function GuideResult({
   // ── Analytics helper ──────────────────────────────────────────────────────
   const trackEvent = async (event, extraMeta = {}) => {
     try {
-      const token = getAuthToken();
-      if (!token) return;
+      if (!user) return;
 
       await fetch(`${API_BASE}/api/bold-choices/analytics`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        ...withApiCredentials({
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }, user),
         body: JSON.stringify({
           event,
           meta: { characterName: meta?.characterName, show: meta?.show, generationId, ...extraMeta },
@@ -169,7 +159,7 @@ export default function GuideResult({
   });
 
   const handleProtectedAction = (action, eventName) => {
-    if (!isPro) {
+    if (!hasModifierAccess) {
       trackEvent('upgrade_clicked', { trigger: eventName });
       setShowUpgradeModal(true);
     } else {

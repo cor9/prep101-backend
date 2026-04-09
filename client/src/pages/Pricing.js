@@ -13,7 +13,7 @@ const Pricing = () => {
     // Prep101
     STARTER:          'https://buy.stripe.com/00wfZh5pZ8HJ2odgsO2wU40',
     ALA_CARTE:        'https://buy.stripe.com/6oU3cv8Cb2jlbYN0tQ2wU3Z',
-    PREMIUM:          'https://buy.stripe.com/4gM28rg4D6zBaUJ1xU2wU3Y',
+    THREE_PACK:       'https://buy.stripe.com/7sYaEX4lV9LN3sh90m2wV0d',
     ADDON_COACH:      'https://buy.stripe.com/fZu00j8Cb9LN8MB4K62wU3H',
     ADDON_FEEDBACK:   'https://buy.stripe.com/6oU3cv9Gf1fhgf31xU2wU3G',
     // Reader101
@@ -100,16 +100,26 @@ const Pricing = () => {
               📋 Prep101 — Acting Guides
             </h2>
           </div>
-          <div className="grid-2" style={{ marginBottom: '3rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
             <PlanCard
-              name="A la Carte"
+              name="Single A La Carte"
               price="$11.99"
               period="/guide"
               tagline="Buy a single guide whenever you need it."
               features={['1 guide (one-time)', 'Full beats, subtext & buttons', 'Parent + kid versions', 'PDF delivery']}
-              cta="Buy Single Guide"
+              cta="Buy Single A La Carte"
               href={STRIPE.ALA_CARTE}
               badge="Pay as you go"
+            />
+            <PlanCard
+              name="3-Pack"
+              price="$21.99"
+              period="/pack"
+              tagline="Three extra Prep101 guides at the best post-Starter value."
+              features={['3 guides (one-time)', 'Perfect when you have used your monthly 5', 'Same full Prep101 depth and PDF delivery', 'Lower per-guide cost than buying singles']}
+              cta="Buy 3-Pack"
+              href={STRIPE.THREE_PACK}
+              badge="Best top-up"
             />
             <PlanCard
               name="Starter"
@@ -301,7 +311,7 @@ const Pricing = () => {
               </h2>
               {[
                 { q: 'Can I cancel anytime?', a: "Yes. Cancel anytime — you'll keep access through the end of your billing period." },
-                { q: 'What if I need more guides?', a: 'Purchase additional guides individually at $11.99 (Prep101) or $11.99 (Reader101), or upgrade your plan.' },
+                { q: 'What if I need more Prep101 guides?', a: 'If you use your 5 Starter guides, you can buy one additional Prep101 guide for $11.99 or a 3-pack for $21.99.' },
                 { q: 'Do you offer refunds?', a: '30-day money-back guarantee on all paid plans. Not happy? Contact us.' },
                 { q: 'What is Reader101?', a: 'A guide for the parent or reader holding lines during a self-tape — specific coaching on pacing, energy, connection, and how not to hurt the performance.' },
               ].map(faq => (

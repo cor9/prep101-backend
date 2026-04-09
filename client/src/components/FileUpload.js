@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 import API_BASE from '../config/api';
+import { withApiCredentials } from '../utils/apiAuth';
 
 const isLegacyFallbackMessage = (value = '') =>
   /limited script text detected|upload clearer sides for line-specific detail/i.test(
@@ -35,12 +36,9 @@ const FileUpload = ({ onUpload }) => {
     formData.append('file', file);
 
     try {
-      const token = localStorage.getItem('prep101_token');
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
       const response = await fetch(`${API_BASE}/api/upload`, {
         method: 'POST',
-        headers: headers,
+        ...withApiCredentials(),
         body: formData,
       });
 

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Navbar from "../components/Navbar";
 import API_BASE from "../config/api";
+import { withApiCredentials } from "../utils/apiAuth";
 import "../styles/shared.css";
 import "../styles/guide.css";
 
@@ -52,18 +53,17 @@ const GuideView = () => {
 
   useEffect(() => {
     const fetchGuide = async () => {
-      if (!user?.accessToken && !user?.token) {
+      if (!user) {
         setError("Authentication required");
         setLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(`${API_BASE}/api/guides/${id}`, {
-          headers: {
-            Authorization: `Bearer ${user.accessToken || user.token}`,
-          },
-        });
+        const response = await fetch(
+          `${API_BASE}/api/guides/${id}`,
+          withApiCredentials({}, user)
+        );
 
         if (!response.ok) {
           if (response.status === 401) {
@@ -95,8 +95,7 @@ const GuideView = () => {
   };
 
   const handleEmailGuide = async () => {
-    const token = user?.accessToken || user?.token || localStorage.getItem('prep101_token');
-    if (!token) {
+    if (!user) {
       setError("Please log in to email guide");
       return;
     }
@@ -104,10 +103,11 @@ const GuideView = () => {
     try {
       const res = await fetch(`${API_BASE}/api/guides/${id}/email`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        ...withApiCredentials({
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }, user),
       });
 
       if (!res.ok) {
@@ -197,14 +197,12 @@ const GuideView = () => {
   };
 
   const handleDownloadPdf = () => {
-    const token = user?.accessToken || user?.token || localStorage.getItem("prep101_token");
-    const url = `${API_BASE}/api/guides/${id}/pdf${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    const url = `${API_BASE}/api/guides/${id}/pdf`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleDownloadHtml = () => {
-    const token = user?.accessToken || user?.token || localStorage.getItem("prep101_token");
-    const url = `${API_BASE}/api/guides/${id}/html${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    const url = `${API_BASE}/api/guides/${id}/html`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 

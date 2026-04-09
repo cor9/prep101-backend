@@ -6,17 +6,30 @@ const { generateBoldChoices } = require("../services/boldChoicesService");
 const { renderBoldChoicesTemplate } = require("../services/boldChoicesTemplate");
 const { checkAndIncrement } = require("../services/boldChoicesUsage");
 const auth = require("../middleware/auth");
+const { buildAccountContext } = require("../services/accountContextService");
 const {
   runAdminQuery,
   tables,
   normalizeGuideRow,
+  normalizeUserRow,
 } = require("../lib/supabaseAdmin");
+const {
+  buildBoldChoicesUsage,
+  getBoldChoicesConsumptionUpdate,
+} = require("../services/prep101EntitlementsService");
 
 let Guide = null;
 try {
   Guide = require("../models/Guide");
 } catch (error) {
   console.warn("[BoldChoices] Guide model unavailable:", error.message);
+}
+
+let User = null;
+try {
+  User = require("../models/User");
+} catch (error) {
+  console.warn("[BoldChoices] User model unavailable:", error.message);
 }
 
 // ── In-memory generation store (ephemeral cache; persisted copy in DB below) ──
@@ -82,6 +95,11 @@ async function ensureGuideUser(user = {}) {
         stripeSubscriptionId: user.stripeSubscriptionId || null,
         stripePriceId: user.stripePriceId || null,
         subscriptionStatus: user.subscriptionStatus || "active",
+        boldChoicesCredits:
+          typeof user.boldChoicesCredits === "number" ? user.boldChoicesCredits : 0,
+        boldChoicesSessionIds: Array.isArray(user.boldChoicesSessionIds)
+          ? user.boldChoicesSessionIds
+          : [],
       },
       { onConflict: "id" }
     )
@@ -116,6 +134,59 @@ async function persistGuideToLibrary(user, payload) {
   }
 
   return normalizeGuideRow(result.data);
+}
+
+async function loadBillingUser(user) {
+  const userId = user?.id;
+  if (!userId) return user;
+
+  if (User) {
+    try {
+      const row = await User.findByPk(userId);
+      if (row) return row;
+    } catch (error) {
+      console.error("[BoldChoices] Failed to load billing user:", error.message);
+    }
+  }
+
+  const row = await runAdminQuery(async (client) => {
+    const { data, error } = await client
+      .from(tables.users)
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  }, null);
+
+  return row ? normalizeUserRow(row) : user;
+}
+
+async function persistBillingUserUpdates(user, updates) {
+  if (!user || !updates || !Object.keys(updates).length) return user;
+
+  if (typeof user.update === "function") {
+    await user.update(updates);
+    if (typeof user.reload === "function") {
+      await user.reload();
+    }
+    return user;
+  }
+
+  const row = await runAdminQuery(async (client) => {
+    const { data, error } = await client
+      .from(tables.users)
+      .update(updates)
+      .eq("id", user.id)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return data;
+  });
+
+  return row ? normalizeUserRow(row) : { ...user, ...updates };
 }
 
 // ── Schema guard ──────────────────────────────────────────────────────────────
@@ -186,20 +257,51 @@ router.post("/generate", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid modifier. Use: wilder | take2 | spin | null" });
     }
 
+    const currentUser = await loadBillingUser(req.user);
     const OWNER_EMAIL = process.env.OWNER_EMAIL || 'corey@childactor101.com';
-    const isAdmin = req.user && req.user.email === OWNER_EMAIL;
-    const isPro = isAdmin || (req.user && (req.user.subscription === 'pro' || req.user.isPro ||
-      req.user.betaAccessLevel === 'admin' || req.user.subscription === 'premium'));
-    const userId = req.userId || (req.user && req.user.id);
+    const isAdmin = currentUser && currentUser.email === OWNER_EMAIL;
+    const boldChoicesUsage = buildBoldChoicesUsage(currentUser);
+    const hasUnlimitedAccess =
+      isAdmin ||
+      currentUser?.betaAccessLevel === 'admin' ||
+      boldChoicesUsage.unlimited;
+    const userId = req.userId || (currentUser && currentUser.id);
+    const account = await buildAccountContext(currentUser || req.user, { ensureProfile: true });
+    const activeActor = account?.activeActor || null;
+
+    if (!activeActor) {
+      return res.status(400).json({
+        error: "Choose an active actor before generating Bold Choices.",
+      });
+    }
 
     // ── Modifier paywall ────────────────────────────────────────────────────
-    if (!isPro && modifier && modifier !== null) {
+    if (!hasUnlimitedAccess && modifier && modifier !== null) {
       logEvent("upgrade_clicked", userId, { modifier, characterName, productionTitle });
       return res.status(403).json({ error: "Upgrade required for this feature" });
     }
 
-    // ── Durable daily limit (free users) ────────────────────────────────────
-    if (!isPro) {
+    let billingUser = currentUser;
+    let boldCreditConsumption = null;
+
+    if (!hasUnlimitedAccess && boldChoicesUsage.credits > 0) {
+      boldCreditConsumption = getBoldChoicesConsumptionUpdate(currentUser);
+      if (!boldCreditConsumption.allowed) {
+        return res.status(403).json({
+          error: 'Bold Choices credit unavailable. Please refresh and try again.',
+          boldChoicesUsage,
+        });
+      }
+      if (Object.keys(boldCreditConsumption.updates).length > 0) {
+        billingUser = await persistBillingUserUpdates(
+          currentUser,
+          boldCreditConsumption.updates
+        );
+      }
+    }
+
+    // ── Durable daily limit (free users without purchased credits) ──────────
+    if (!hasUnlimitedAccess && !boldCreditConsumption) {
       const { allowed, count } = await checkAndIncrement(userId, 1);
       if (!allowed) {
         logEvent('limit_reached', userId, { count, characterName });
@@ -255,6 +357,9 @@ router.post("/generate", auth, async (req, res) => {
       genre,
       characterDescription,
       storyline,
+      activeActorName: activeActor.actorName,
+      activeActorIsChild: Boolean(activeActor.isChild),
+      toneMode: "actor-first",
       modifier: actualModifier,
       spinAgain: actualSpinAgain,
       fallbackMode,
@@ -380,6 +485,9 @@ router.post("/generate", auth, async (req, res) => {
       meta,
       modifier,
       generationId,
+      boldChoicesUsage: buildBoldChoicesUsage(billingUser),
+      boldChoicesCreditSource:
+        boldCreditConsumption?.source || (hasUnlimitedAccess ? "unlimited" : "free"),
       savedGuideId,
       savedGuideRecordId,
       savedToAccount: Boolean(savedGuideRecordId),

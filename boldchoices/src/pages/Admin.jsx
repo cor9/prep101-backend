@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import API_BASE from '../config/api.js';
 import Navbar from '../components/Navbar.jsx';
+import { withApiCredentials } from '../utils/apiAuth.js';
 
 const S = {
   container: {
@@ -88,7 +89,7 @@ const S = {
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -107,9 +108,7 @@ export default function Admin() {
     const fetchStats = async () => {
       try {
         const res = await fetch(`${API_BASE}/api/bold-choices/admin/dashboard`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          ...withApiCredentials({}, user),
         });
         const data = await res.json();
         
@@ -123,8 +122,8 @@ export default function Admin() {
       }
     };
 
-    if (token) fetchStats();
-  }, [user, navigate, token]);
+    fetchStats();
+  }, [user, navigate]);
 
   if (loading) return <div style={{...S.container, display: 'flex', justifyContent: 'center', alignItems: 'center'}}>Loading Admin...</div>;
   

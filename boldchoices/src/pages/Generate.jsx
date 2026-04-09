@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import Navbar from '../components/Navbar.jsx';
 import GuideResult from '../components/GuideResult.jsx';
 import API_BASE from '../config/api.js';
+import { withApiCredentials } from '../utils/apiAuth.js';
 
 const isLegacyFallbackMessage = (value = '') =>
   /limited script text detected|upload clearer sides for line-specific detail/i.test(
@@ -217,6 +218,15 @@ const SLOGANS = [
   'Building your Take 2 strategy...',
 ];
 
+const describeBoldUsage = (usage) => {
+  if (!usage) return 'Checking access...';
+  if (usage.unlimited) return 'Unlimited monthly access is active.';
+  if (usage.credits > 0) {
+    return `${usage.credits} Bold Choices credit${usage.credits === 1 ? '' : 's'} remaining.`;
+  }
+  return 'Using the free monthly generation path.';
+};
+
 // ── COMPONENT ───────────────────────────────────────────────────────────────
 export default function Generate() {
   const { user } = useAuth();
@@ -249,6 +259,7 @@ export default function Generate() {
   const [generationId, setGenerationId] = useState(null); // tracks current generation
   const resultRef = useRef(null);
   const activeActor = user?.account?.activeActor;
+  const [boldUsage, setBoldUsage] = useState(() => user?.boldChoicesUsage || null);
 
   useEffect(() => {
     if (!activeActor) return;
@@ -257,6 +268,10 @@ export default function Generate() {
       actorAge: current.actorAge || activeActor.ageRange || '',
     }));
   }, [activeActor]);
+
+  useEffect(() => {
+    setBoldUsage(user?.boldChoicesUsage || null);
+  }, [user]);
 
   const handleField = useCallback((e) => {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -278,9 +293,7 @@ export default function Generate() {
     try {
       const res = await fetch(`${API_BASE}/api/upload`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${user?.accessToken || user?.token}`,
-        },
+        ...withApiCredentials({}, user),
         body: fd,
       });
       const data = await res.json();
@@ -382,10 +395,11 @@ export default function Generate() {
 
       const res = await fetch(`${API_BASE}/api/bold-choices/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user?.accessToken || user?.token}`,
-        },
+        ...withApiCredentials({
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }, user),
         body: JSON.stringify(payload),
       });
 
@@ -394,6 +408,9 @@ export default function Generate() {
 
       // Store raw data and generation ID
       setGuideData(data.data);
+      if (data.boldChoicesUsage) {
+        setBoldUsage(data.boldChoicesUsage);
+      }
       if (data.generationId) setGenerationId(data.generationId);
       setResultMeta({ ...form, isPreview: false });
       setResultHtml(null);
@@ -412,10 +429,11 @@ export default function Generate() {
     try {
       const htmlRes = await fetch(`${API_BASE}/api/bold-choices/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user?.accessToken || user?.token}`,
-        },
+        ...withApiCredentials({
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }, user),
         body: JSON.stringify({
           ...form,
           sceneText,
@@ -500,6 +518,22 @@ export default function Generate() {
               </div>
             </div>
           )}
+
+          <div style={{
+            marginBottom: 22,
+            padding: '14px 16px',
+            borderRadius: 12,
+            background: 'rgba(255,255,255,0.035)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <div style={{ ...S.sideLabel, marginBottom: 8 }}>Access</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#F0EEF5', marginBottom: 4 }}>
+              {boldUsage?.unlimited ? 'Bold Choices Unlimited' : 'Bold Choices Access'}
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(240,238,245,0.45)', lineHeight: 1.6 }}>
+              {describeBoldUsage(boldUsage)}
+            </div>
+          </div>
 
           {/* Character */}
           <div style={S.sideSection}>

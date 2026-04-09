@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -51,6 +51,11 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const nextDestination = useMemo(
+    () => new URLSearchParams(location.search).get('next'),
+    [location.search]
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,6 +65,10 @@ export default function Register() {
     try {
       await register(email, password, name);
       toast.success("You're in. Let's get bold.");
+      if (nextDestination) {
+        navigate(nextDestination, { replace: true });
+        return;
+      }
       navigate('/generate');
     } catch (err) {
       toast.error(err.message);
@@ -103,7 +112,7 @@ export default function Register() {
         </button>
         <div style={S.footer}>
           Already have an account?{' '}
-          <Link to="/login" style={S.footerLink}>Sign in</Link>
+          <Link to={nextDestination ? `/login?next=${encodeURIComponent(nextDestination)}` : '/login'} style={S.footerLink}>Sign in</Link>
         </div>
       </form>
     </div>

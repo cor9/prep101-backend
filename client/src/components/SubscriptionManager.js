@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useStripe, useAuth } from '../contexts';
 import { CardElement, useElements } from '@stripe/react-stripe-js';
-import API_BASE from '../config/api';
 
 const CARD_ELEMENT_OPTIONS = {
   style: {
@@ -18,6 +17,43 @@ const CARD_ELEMENT_OPTIONS = {
   },
 };
 
+const formatProductAccess = (user) => {
+  const prep = user?.prep101Usage;
+  const reader = user?.reader101Usage;
+  const bold = user?.boldChoicesUsage;
+
+  return {
+    prep101: prep?.monthlyLimit == null
+      ? 'Unlimited'
+      : `${prep?.monthlyUsed ?? user?.guidesUsed ?? 0} / ${prep?.monthlyLimit ?? user?.guidesLimit ?? 0} used`,
+    reader101: reader?.unlimited
+      ? 'Unlimited'
+      : `${reader?.credits ?? user?.reader101Credits ?? 0} credits`,
+    boldChoices: bold?.unlimited
+      ? 'Unlimited'
+      : `${bold?.credits ?? user?.boldChoicesCredits ?? 0} credits`,
+  };
+};
+
+const formatPlanLabel = (plan) => {
+  switch (String(plan || '').toLowerCase()) {
+    case 'basic':
+    case 'starter':
+      return 'Starter';
+    case 'bundle':
+      return 'Bundle';
+    case 'reader101_monthly':
+      return 'Reader101 Monthly';
+    case 'boldchoices_monthly':
+      return 'Bold Choices Monthly';
+    case 'premium':
+      return 'Legacy Premium';
+    case 'free':
+    default:
+      return 'Free';
+  }
+};
+
 const SubscriptionManager = () => {
   const { stripe, prices, subscription, loading, createSubscription, cancelSubscription, reactivateSubscription, createCustomerPortalSession } = useStripe();
   const { user } = useAuth();
@@ -25,6 +61,7 @@ const SubscriptionManager = () => {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const productAccess = formatProductAccess(user);
 
   const elements = useElements();
 
@@ -163,18 +200,26 @@ const SubscriptionManager = () => {
       {subscription && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h3 className="text-xl font-semibold mb-4">Current Subscription</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
             <div>
               <p className="text-sm text-gray-600">Status</p>
               <p className="font-medium capitalize">{subscription.status}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Plan</p>
-              <p className="font-medium">{user?.subscription || 'Free'}</p>
+              <p className="font-medium">{formatPlanLabel(user?.subscription)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Guides Used</p>
-              <p className="font-medium">{user?.guidesUsed || 0} / {user?.guidesLimit || 1}</p>
+              <p className="text-sm text-gray-600">Prep101 Access</p>
+              <p className="font-medium">{productAccess.prep101}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Reader101 Access</p>
+              <p className="font-medium">{productAccess.reader101}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Bold Choices Access</p>
+              <p className="font-medium">{productAccess.boldChoices}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Next Billing</p>

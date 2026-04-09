@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import API_BASE from '../config/api';
+import { withApiCredentials } from '../utils/apiAuth';
 import '../App.css';
 
 const StripeSuccess = () => {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const [countdown, setCountdown] = useState(3);
-  const [syncMessage, setSyncMessage] = useState('Syncing your subscription...');
+  const [syncMessage, setSyncMessage] = useState('Syncing your purchase...');
 
   useEffect(() => {
     // Start countdown and redirect
@@ -27,8 +28,7 @@ const StripeSuccess = () => {
   }, [navigate]);
 
   useEffect(() => {
-    const token = user?.accessToken || user?.token || localStorage.getItem('prep101_token');
-    if (!token) {
+    if (!user) {
       setSyncMessage('Processing your purchase...');
       return;
     }
@@ -39,9 +39,7 @@ const StripeSuccess = () => {
       try {
         const response = await fetch(`${API_BASE}/api/stripe/sync-subscription`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          ...withApiCredentials({}, user),
         });
 
         const result = await response.json().catch(() => ({}));
@@ -55,7 +53,11 @@ const StripeSuccess = () => {
             console.warn('Could not refresh user after Stripe sync:', refreshError);
           }
           if (result.synced) {
-            setSyncMessage('Your subscription is active and linked to your account.');
+            if (result?.prep101TopUps?.backfilledCredits > 0) {
+              setSyncMessage(`Your purchase is linked to your account. ${result.prep101TopUps.backfilledCredits} Prep101 credit${result.prep101TopUps.backfilledCredits === 1 ? '' : 's'} added.`);
+            } else {
+              setSyncMessage('Your purchase is linked to your account.');
+            }
           } else {
             setSyncMessage('Purchase received. Finalizing account access...');
           }
@@ -95,8 +97,8 @@ const StripeSuccess = () => {
         </div>
         
         <div className="success-details">
-          <p>Your subscription has been updated and will be active shortly.</p>
-          <p>You'll be redirected to your dashboard where you can see your new plan limits.</p>
+          <p>Your purchase has been applied and will appear on your account shortly.</p>
+          <p>You'll be redirected to your dashboard where you can see your updated Prep101 access.</p>
         </div>
         
         <button 

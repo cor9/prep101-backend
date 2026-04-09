@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import Footer from '../components/Footer';
@@ -13,6 +13,11 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const nextDestination = useMemo(
+    () => new URLSearchParams(location.search).get('next'),
+    [location.search]
+  );
 
   const handleChange = (e) => {
     setFormData({
@@ -28,6 +33,10 @@ const Login = () => {
     try {
       await login(formData.email, formData.password);
       toast.success('Welcome back!');
+      if (nextDestination) {
+        window.location.replace(nextDestination);
+        return;
+      }
       navigate('/account');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed');

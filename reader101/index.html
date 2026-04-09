@@ -74,6 +74,53 @@
       letter-spacing: 0.04em;
       color: var(--mist);
     }
+    .account-status {
+      display: none;
+      margin: 1.25rem auto 0;
+      max-width: 760px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1rem;
+      text-align: left;
+    }
+    .account-status-title {
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(226,232,240,0.5);
+      margin-bottom: 0.85rem;
+    }
+    .account-status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 0.8rem;
+    }
+    .account-status-card {
+      border-radius: 14px;
+      padding: 0.9rem 1rem;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+    }
+    .account-status-card strong {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.45rem;
+    }
+    .account-status-card span {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.5;
+      color: var(--mist);
+    }
+    .account-status-card.prep strong { color: var(--amber); }
+    .account-status-card.reader strong { color: var(--teal); }
+    .account-status-card.bold strong { color: #fb7185; }
 
     /* ── HERO ─────────────────────────────────────────────────── */
     .hero {
@@ -349,6 +396,23 @@
         The reason your child's tape might not be landing
       </div>
       <div id="account-pill" class="account-pill">Connected to your Child Actor 101 account</div>
+      <div id="account-status" class="account-status">
+        <div class="account-status-title">Current account access</div>
+        <div class="account-status-grid">
+          <div class="account-status-card prep">
+            <strong>Prep101</strong>
+            <span id="prep-access-copy">Checking access...</span>
+          </div>
+          <div class="account-status-card reader">
+            <strong>Reader101</strong>
+            <span id="reader-access-copy">Checking access...</span>
+          </div>
+          <div class="account-status-card bold">
+            <strong>Bold Choices</strong>
+            <span id="bold-access-copy">Checking access...</span>
+          </div>
+        </div>
+      </div>
 
       <img src="reader101-logo.png" alt="Reader101" style="width:100%; max-width:480px; height:auto; object-fit:contain; margin-bottom:1.5rem;" />
 
@@ -667,12 +731,13 @@
 
 <script>
   (async function () {
-    var token = localStorage.getItem('ca101_token');
     var prepDashboard = 'https://prep101.site/dashboard?product=reader101';
     var prepOnboardingBase = 'https://prep101.site/onboarding?next=' + encodeURIComponent(prepDashboard);
-    var boldCallbackBase = 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate';
-    var prepCallbackBase = 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent('https://prep101.site/dashboard?product=prep101');
+    var prepSelectActorBase = 'https://prep101.site/select-actor?next=' + encodeURIComponent(prepDashboard);
+    var boldWorkspaceUrl = 'https://boldchoices.site/generate';
+    var prepWorkspaceUrl = 'https://prep101.site/dashboard?product=prep101';
     var verifyUrl = 'https://prep101-api.vercel.app/api/auth/verify';
+    var prepLoginUrl = 'https://prep101.site/login?next=' + encodeURIComponent('https://reader101.site/');
     var accountLink = document.getElementById('account-link');
     var primaryCta = document.getElementById('primary-cta');
     var prepLink = document.getElementById('prep-link');
@@ -680,41 +745,53 @@
     var footerPrepLink = document.getElementById('footer-prep-link');
     var footerBoldLink = document.getElementById('footer-bold-link');
     var accountPill = document.getElementById('account-pill');
+    var accountStatus = document.getElementById('account-status');
+    var prepAccessCopy = document.getElementById('prep-access-copy');
+    var readerAccessCopy = document.getElementById('reader-access-copy');
+    var boldAccessCopy = document.getElementById('bold-access-copy');
     var accountState = null;
 
-    function buildPrepAuthCallback(tokenValue, redirect) {
-      var url = new URL('https://prep101.site/auth-callback');
-      if (tokenValue) url.searchParams.set('token', tokenValue);
-      if (redirect) url.searchParams.set('redirect', redirect);
-      return url.toString();
-    }
-
-    function buildPrepOnboarding(tokenValue, next) {
-      var url = new URL('https://prep101.site/onboarding');
-      if (next) url.searchParams.set('next', next);
-      return buildPrepAuthCallback(tokenValue, url.toString());
-    }
-
-    if (token) {
-      try {
-        var verifyResponse = await fetch(verifyUrl, {
-          headers: {
-            Authorization: 'Bearer ' + token
-          }
-        });
-        var verifyData = await verifyResponse.json();
-        if (!verifyResponse.ok || !verifyData.valid || !verifyData.user) {
-          throw new Error('Invalid session');
-        }
-        accountState = verifyData.user;
-      } catch (error) {
-        localStorage.removeItem('ca101_token');
-        token = null;
+    function describePrepAccess(usage) {
+      if (!usage) return 'No shared account data yet';
+      if (usage.monthlyLimit == null) return 'Unlimited Prep101';
+      var pieces = [String(usage.monthlyRemaining || 0) + ' monthly left'];
+      if ((usage.topUpCredits || 0) > 0) {
+        pieces.push(String(usage.topUpCredits) + ' top-up ' + (usage.topUpCredits === 1 ? 'credit' : 'credits'));
       }
+      return pieces.join(' • ');
     }
 
-    if (token) {
+    function describeReaderAccess(usage) {
+      if (!usage) return 'No Reader101 access loaded';
+      if (usage.unlimited) return 'Unlimited Reader101';
+      if ((usage.credits || 0) > 0) {
+        return String(usage.credits) + ' Reader101 ' + (usage.credits === 1 ? 'credit' : 'credits');
+      }
+      return 'No Reader101 credits yet';
+    }
+
+    function describeBoldAccess(usage) {
+      if (!usage) return 'No Bold Choices access loaded';
+      if (usage.unlimited) return 'Unlimited Bold Choices';
+      if ((usage.credits || 0) > 0) {
+        return String(usage.credits) + ' Bold Choices ' + (usage.credits === 1 ? 'credit' : 'credits');
+      }
+      return 'Free monthly access only';
+    }
+
+    try {
+      var verifyResponse = await fetch(verifyUrl, {
+        credentials: 'include'
+      });
+      var verifyData = await verifyResponse.json();
+      if (verifyResponse.ok && verifyData.valid && verifyData.user) {
+        accountState = verifyData.user;
+      }
+    } catch (error) {}
+
+    if (accountState) {
       if (accountPill) accountPill.style.display = 'inline-flex';
+      if (accountStatus) accountStatus.style.display = 'block';
       if (accountPill && accountState && accountState.account && accountState.account.activeActor) {
         var actor = accountState.account.activeActor;
         accountPill.textContent =
@@ -722,30 +799,61 @@
           actor.actorName +
           (actor.ageRange ? ' (' + actor.ageRange + ')' : '');
       }
+      if (prepAccessCopy) {
+        prepAccessCopy.textContent = describePrepAccess(accountState && accountState.prep101Usage);
+      }
+      if (readerAccessCopy) {
+        readerAccessCopy.textContent = describeReaderAccess(accountState && accountState.reader101Usage);
+      }
+      if (boldAccessCopy) {
+        boldAccessCopy.textContent = describeBoldAccess(accountState && accountState.boldChoicesUsage);
+      }
 
       var prepDestination =
         accountState && accountState.account && accountState.account.onboardingRequired
-          ? buildPrepOnboarding(token, prepDashboard)
-          : prepDashboard;
+          ? prepOnboardingBase
+          : accountState && accountState.account && accountState.account.needsActorSelection
+            ? prepSelectActorBase
+            : prepDashboard;
 
       if (accountLink) {
         accountLink.textContent =
           accountState && accountState.account && accountState.account.onboardingRequired
             ? 'Finish Account Setup'
-            : 'Open My Child Actor 101 Account';
+            : accountState && accountState.account && accountState.account.needsActorSelection
+              ? 'Choose Active Actor'
+              : accountState && accountState.reader101Usage && accountState.reader101Usage.canGenerate
+                ? 'Open Reader101 in My Account'
+              : 'Open My Child Actor 101 Account';
         accountLink.href = prepDestination;
       }
-      if (primaryCta) primaryCta.href = prepDestination;
-      if (prepLink) prepLink.href = prepCallbackBase + '&token=' + encodeURIComponent(token);
-      if (boldLink) boldLink.href = boldCallbackBase + '&token=' + encodeURIComponent(token);
-      if (footerPrepLink) footerPrepLink.href = prepCallbackBase + '&token=' + encodeURIComponent(token);
-      if (footerBoldLink) footerBoldLink.href = boldCallbackBase + '&token=' + encodeURIComponent(token);
+      if (primaryCta) {
+        primaryCta.href = prepDestination;
+        primaryCta.textContent =
+          accountState && accountState.account && accountState.account.onboardingRequired
+            ? 'Finish Account Setup →'
+            : accountState && accountState.account && accountState.account.needsActorSelection
+              ? 'Choose Active Actor →'
+              : accountState && accountState.reader101Usage && accountState.reader101Usage.unlimited
+                ? 'Open Reader101 Unlimited Access →'
+              : accountState && accountState.reader101Usage && accountState.reader101Usage.credits > 0
+                  ? 'Open Reader101 Credit in My Account →'
+                  : 'Open Reader101 in My Account →';
+      }
+      if (prepLink) prepLink.href = prepWorkspaceUrl;
+      if (boldLink) boldLink.href = boldWorkspaceUrl;
+      if (footerPrepLink) footerPrepLink.href = prepWorkspaceUrl;
+      if (footerBoldLink) footerBoldLink.href = boldWorkspaceUrl;
     } else {
       if (accountLink) {
         accountLink.textContent = 'Sign In With Child Actor 101';
-        accountLink.href = 'https://prep101.site/auth-bridge?redirect=' + encodeURIComponent('https://reader101.site/auth-callback.html?redirect=' + encodeURIComponent(prepDashboard));
+        accountLink.href = prepLoginUrl;
       }
       if (primaryCta) primaryCta.href = accountLink ? accountLink.href : '#pricing';
+      if (prepLink) prepLink.href = prepWorkspaceUrl;
+      if (boldLink) boldLink.href = 'https://boldchoices.site/';
+      if (footerPrepLink) footerPrepLink.href = prepWorkspaceUrl;
+      if (footerBoldLink) footerBoldLink.href = 'https://boldchoices.site/';
     }
   })();
 </script>

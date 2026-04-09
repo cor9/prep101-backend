@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import FileUpload from "../components/FileUpload";
 import API_BASE from "../config/api";
+import { withApiCredentials } from "../utils/apiAuth";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Styles (all inline so this page is self-contained)
@@ -244,8 +245,7 @@ const BoldChoices = () => {
       return;
     }
 
-    const token = user?.accessToken || user?.token;
-    if (!token) {
+    if (!user) {
       toast.error("You must be logged in to generate a guide.");
       return;
     }
@@ -267,10 +267,11 @@ const BoldChoices = () => {
 
       const res = await fetch(`${API_BASE}/api/bold-choices/generate`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        ...withApiCredentials({
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }, user),
         body: JSON.stringify(payload),
       });
 

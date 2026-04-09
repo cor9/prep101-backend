@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuth } from './AuthContext';
 import API_BASE from '../config/api';
+import { withApiCredentials } from '../utils/apiAuth';
 
 const StripeContext = createContext();
 
@@ -59,11 +60,10 @@ export const StripeProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/stripe/subscription-status`, {
-        headers: {
-          'Authorization': `Bearer ${user.accessToken}`
-        }
-      });
+      const response = await fetch(
+        `${API_BASE}/api/stripe/subscription-status`,
+        withApiCredentials({}, user)
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -82,10 +82,10 @@ export const StripeProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_BASE}/api/stripe/create-subscription`, {
         method: 'POST',
-        headers: {
+        ...withApiCredentials({
+          headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.accessToken}`
-        },
+        }}, user),
         body: JSON.stringify({ priceId, paymentMethodId })
       });
 
@@ -110,9 +110,7 @@ export const StripeProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_BASE}/api/stripe/cancel-subscription`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${user.accessToken}`
-        }
+        ...withApiCredentials({}, user)
       });
 
       if (response.ok) {
@@ -136,9 +134,7 @@ export const StripeProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_BASE}/api/stripe/reactivate-subscription`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${user.accessToken}`
-        }
+        ...withApiCredentials({}, user)
       });
 
       if (response.ok) {
@@ -162,9 +158,7 @@ export const StripeProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_BASE}/api/stripe/create-customer-portal-session`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${user.accessToken}`
-        }
+        ...withApiCredentials({}, user)
       });
 
       if (response.ok) {

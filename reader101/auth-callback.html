@@ -25,19 +25,25 @@
 <body>
   <p>Opening your Child Actor 101 account…</p>
   <script>
-    (function () {
+    (async function () {
       var params = new URLSearchParams(window.location.search);
       var token = params.get('token');
       var redirect = params.get('redirect') || 'https://prep101.site/dashboard?product=reader101';
 
       if (token) {
-        localStorage.setItem('ca101_token', token);
-        window.location.replace(redirect || '/');
-        return;
+        try {
+          await fetch('https://prep101-api.vercel.app/api/auth/session', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ token: token })
+          });
+        } catch (_) {}
       }
 
-      var callbackUrl = 'https://reader101.site/auth-callback.html?redirect=' + encodeURIComponent(redirect);
-      window.location.replace('https://prep101.site/auth-bridge?redirect=' + encodeURIComponent(callbackUrl));
+      window.location.replace(redirect || '/');
     })();
   </script>
 </body>

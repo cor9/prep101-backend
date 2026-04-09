@@ -46,6 +46,7 @@ export default function Onboarding() {
   }, [role]);
 
   const isChild = role === 'parent';
+  const shouldAskAgeRange = role === 'parent';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -64,7 +65,7 @@ export default function Onboarding() {
         actors: [
           {
             actorName: actorName.trim(),
-            ageRange: ageRange.trim(),
+            ageRange: shouldAskAgeRange ? ageRange.trim() : '',
             isChild,
           },
         ],
@@ -175,21 +176,23 @@ export default function Onboarding() {
                   />
                 </label>
 
-                <label style={{ display: 'grid', gap: 8 }}>
-                  <span style={{ fontWeight: 700, color: '#0f172a' }}>Age range</span>
-                  <input
-                    value={ageRange}
-                    onChange={(event) => setAgeRange(event.target.value)}
-                    placeholder={isChild ? '10-12' : '18-24'}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      borderRadius: 12,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 15,
-                    }}
-                  />
-                </label>
+                {shouldAskAgeRange && (
+                  <label style={{ display: 'grid', gap: 8 }}>
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>Age range</span>
+                    <input
+                      value={ageRange}
+                      onChange={(event) => setAgeRange(event.target.value)}
+                      placeholder="10-12"
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: 12,
+                        border: '1px solid #cbd5e1',
+                        fontSize: 15,
+                      }}
+                    />
+                  </label>
+                )}
               </div>
 
               <div style={{

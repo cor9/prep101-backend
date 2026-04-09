@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from '../contexts/AuthContext';
 import {
   ACCOUNT_LABEL,
@@ -17,7 +17,9 @@ const ECOSYSTEM = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const { pathname } = useLocation();
-  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout, selectActor } = useAuth();
+  const [isSwitchingActor, setIsSwitchingActor] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -27,17 +29,33 @@ export default function Navbar() {
   }, [pathname]);
 
   const handleLogout = () => { logout(); };
-  const token = user?.accessToken || user?.token;
+  const actors = user?.account?.actors || [];
+  const activeActorId =
+    user?.account?.profile?.activeActorId ||
+    user?.account?.activeActor?.id ||
+    '';
 
   const getEcosystemHref = (item) => {
     if (!item.product) return item.href;
     if (item.product === 'boldchoices') {
-      return buildBoldChoicesUrl({ token, useBridge: Boolean(user) });
+      return buildBoldChoicesUrl({ redirect: user ? '/generate' : '/' });
     }
     if (item.product === 'reader101') {
-      return buildReader101Url({ token, useBridge: Boolean(user) });
+      return buildReader101Url();
     }
     return item.href;
+  };
+
+  const handleActorChange = async (event) => {
+    const nextActorId = event.target.value;
+    if (!nextActorId || nextActorId === activeActorId) return;
+
+    setIsSwitchingActor(true);
+    try {
+      await selectActor(nextActorId);
+    } finally {
+      setIsSwitchingActor(false);
+    }
   };
 
   return (
@@ -74,8 +92,46 @@ export default function Navbar() {
           <Link to="/pricing">Pricing</Link>
           {user ? (
             <>
-              <Link to="/dashboard">Dashboard</Link>
-              <Link to="/account" title={ACCOUNT_LABEL}>My Account</Link>
+              {actors.length > 0 && (
+                <>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                    Active Actor:
+                  </span>
+                  <select
+                    value={activeActorId}
+                    onChange={handleActorChange}
+                    disabled={isSwitchingActor}
+                    style={{
+                      borderRadius: 999,
+                      border: '1px solid rgba(120,120,130,0.2)',
+                      background: '#fff',
+                      padding: '6px 10px',
+                      fontWeight: 700,
+                      color: '#0f172a',
+                    }}
+                  >
+                    {actors.map((actor) => (
+                      <option key={actor.id} value={actor.id}>
+                        {actor.actorName}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/select-actor')}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#0f172a',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Add Actor
+                  </button>
+                </>
+              )}
+              <Link to="/dashboard" title={ACCOUNT_LABEL}>My Account</Link>
               <button onClick={handleLogout} className="nav__logout">Logout</button>
             </>
           ) : (

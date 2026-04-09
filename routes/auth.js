@@ -3,15 +3,50 @@ const { createClient } = require("@supabase/supabase-js");
 const auth = require("../middleware/auth");
 const User = require("../models/User");
 const {
+  addActorProfile,
   buildAccountContext,
   completeOnboarding,
   ensureProfile,
   selectActiveActor,
 } = require("../services/accountContextService");
+const {
+  buildBoldChoicesUsage,
+  buildPrep101Usage,
+  buildReader101Usage,
+} = require("../services/prep101EntitlementsService");
 
 const router = express.Router();
+const AUTH_COOKIE_NAME = "ca101_session";
+
+function getAuthCookieOptions() {
+  const isProduction =
+    process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  };
+}
+
+function setSessionCookie(res, token) {
+  if (!token) return;
+  res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
+}
+
+function clearSessionCookie(res) {
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    ...getAuthCookieOptions(),
+    maxAge: undefined,
+  });
+}
 
 function serializeUser(user, account = null) {
+  const prep101Usage = buildPrep101Usage(user);
+  const reader101Usage = buildReader101Usage(user);
+  const boldChoicesUsage = buildBoldChoicesUsage(user);
   if (!user) return null;
   return {
     id: user.id,
@@ -21,11 +56,20 @@ function serializeUser(user, account = null) {
     guidesUsed: typeof user.guidesUsed === "number" ? user.guidesUsed : 0,
     guidesLimit:
       typeof user.guidesLimit === "number" ? user.guidesLimit : user.guidesLimit ?? 1,
+    prep101TopUpCredits:
+      typeof user.prep101TopUpCredits === "number" ? user.prep101TopUpCredits : 0,
+    reader101Credits:
+      typeof user.reader101Credits === "number" ? user.reader101Credits : 0,
+    boldChoicesCredits:
+      typeof user.boldChoicesCredits === "number" ? user.boldChoicesCredits : 0,
     subscriptionStatus: user.subscriptionStatus || "active",
     currentPeriodStart: user.currentPeriodStart || null,
     currentPeriodEnd: user.currentPeriodEnd || null,
     betaAccessLevel: user.betaAccessLevel || "none",
     isBetaTester: Boolean(user.isBetaTester),
+    prep101Usage,
+    reader101Usage,
+    boldChoicesUsage,
     account,
   };
 }
@@ -115,6 +159,8 @@ router.post("/register", async (req, res) => {
             ensureProfile: true,
           });
 
+          setSessionCookie(res, data.session?.access_token);
+
           return res.status(201).json({
             message: "User registered successfully",
             token: data.session?.access_token,
@@ -135,6 +181,7 @@ router.post("/register", async (req, res) => {
       const newUser = await User.create({ name, email, password }); // Password hashed by model hook
       const jwt = require('jsonwebtoken');
       const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET || 'secret', { expiresIn: '24h' });
+      setSessionCookie(res, token);
 
       return res.status(201).json({
         message: 'User registered',
@@ -251,6 +298,8 @@ router.post("/login", async (req, res) => {
             console.warn("⚠️ Profile bootstrap skipped during login:", error.message);
           });
 
+          setSessionCookie(res, data.session.access_token);
+
           return res.json({
             message: "Login successful",
             token: data.session.access_token,
@@ -290,6 +339,7 @@ router.post("/login", async (req, res) => {
           { expiresIn: "24h" }
         );
         console.log("✅ Database login successful");
+        setSessionCookie(res, token);
         return res.json({
           message: "Login successful",
           token,
@@ -309,6 +359,29 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error("❌ Login error:", err.message, err.stack);
     return res.status(500).json({ message: "Login error", error: err.message });
+  }
+});
+
+router.post("/session", auth, async (req, res) => {
+  try {
+    setSessionCookie(res, req.authToken);
+    return res.json({
+      success: true,
+      user: await buildSerializedUser(req.user, { ensureProfile: true }),
+    });
+  } catch (error) {
+    console.error("Session exchange error:", error);
+    return res.status(500).json({ success: false, message: "Failed to create session" });
+  }
+});
+
+router.post("/logout", async (_req, res) => {
+  try {
+    clearSessionCookie(res);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Logout error:", error);
+    return res.status(500).json({ success: false, message: "Failed to log out" });
   }
 });
 
@@ -394,6 +467,20 @@ router.post("/select-actor", auth, async (req, res) => {
   } catch (error) {
     console.error("Select actor error:", error);
     return res.status(400).json({ message: error.message || "Failed to select actor" });
+  }
+});
+
+router.post("/add-actor", auth, async (req, res) => {
+  try {
+    const account = await addActorProfile(req.user, req.body || {});
+    return res.json({
+      success: true,
+      account,
+      user: serializeUser(req.user, account),
+    });
+  } catch (error) {
+    console.error("Add actor error:", error);
+    return res.status(400).json({ message: error.message || "Failed to add actor" });
   }
 });
 

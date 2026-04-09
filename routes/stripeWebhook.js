@@ -7,6 +7,16 @@ const {
   tables,
   normalizeUserRow,
 } = require("../lib/supabaseAdmin");
+const {
+  getBoldChoicesCredits,
+  getBoldChoicesCreditsFromPriceId,
+  getBoldChoicesGrantedSessionIds,
+  getPrep101GrantedSessionIds,
+  getPrep101TopUpCredits,
+  getReader101Credits,
+  getReader101CreditsFromPriceId,
+  getReader101GrantedSessionIds,
+} = require("../services/prep101EntitlementsService");
 
 const router = express.Router();
 
@@ -17,12 +27,22 @@ function normalizeEmail(email) {
 function inferPaidPlan(priceId) {
   const mapped = stripeService.getSubscriptionFromPriceId(priceId);
   if (mapped && mapped !== "free") return mapped;
-  return "premium";
+  return "free";
 }
 
-function inferGuidesLimit(subscriptionTier) {
+function inferGuidesLimit(priceId, subscriptionTier) {
+  if (priceId) {
+    return stripeService.getPrep101MonthlyLimitFromPriceId(priceId);
+  }
   if (subscriptionTier === "premium") return 999;
-  if (subscriptionTier === "basic") return 10;
+  if (subscriptionTier === "basic" || subscriptionTier === "starter") return 5;
+  if (subscriptionTier === "bundle") return 5;
+  if (
+    subscriptionTier === "reader101_monthly" ||
+    subscriptionTier === "boldchoices_monthly"
+  ) {
+    return 0;
+  }
   return stripeService.getGuidesLimitFromSubscription(subscriptionTier);
 }
 
@@ -237,8 +257,46 @@ async function handleCheckoutCompleted(session) {
     if (session.mode === "subscription") {
       const inferredPlan = inferPaidPlan(primaryPriceId);
       updates.subscription = inferredPlan;
-      updates.guidesLimit = inferGuidesLimit(inferredPlan);
+      updates.guidesLimit = inferGuidesLimit(primaryPriceId, inferredPlan);
       updates.stripePriceId = primaryPriceId;
+    } else {
+      const prepGrantedSessionIds = getPrep101GrantedSessionIds(userRef.row);
+      const readerGrantedSessionIds = getReader101GrantedSessionIds(userRef.row);
+      const boldGrantedSessionIds = getBoldChoicesGrantedSessionIds(userRef.row);
+      const prep101TopUpCredits = priceIds.reduce(
+        (total, priceId) =>
+          total + stripeService.getPrep101TopUpCreditsFromPriceId(priceId),
+        0
+      );
+      const reader101Credits = priceIds.reduce(
+        (total, priceId) => total + getReader101CreditsFromPriceId(priceId),
+        0
+      );
+      const boldChoicesCredits = priceIds.reduce(
+        (total, priceId) => total + getBoldChoicesCreditsFromPriceId(priceId),
+        0
+      );
+
+      if (prep101TopUpCredits > 0 && !prepGrantedSessionIds.includes(session.id)) {
+        updates.prep101TopUpCredits =
+          getPrep101TopUpCredits(userRef.row) + prep101TopUpCredits;
+        updates.prep101TopUpSessionIds = [...prepGrantedSessionIds, session.id];
+        updates.stripePriceId = primaryPriceId;
+      }
+
+      if (reader101Credits > 0 && !readerGrantedSessionIds.includes(session.id)) {
+        updates.reader101Credits =
+          getReader101Credits(userRef.row) + reader101Credits;
+        updates.reader101SessionIds = [...readerGrantedSessionIds, session.id];
+        updates.stripePriceId = primaryPriceId;
+      }
+
+      if (boldChoicesCredits > 0 && !boldGrantedSessionIds.includes(session.id)) {
+        updates.boldChoicesCredits =
+          getBoldChoicesCredits(userRef.row) + boldChoicesCredits;
+        updates.boldChoicesSessionIds = [...boldGrantedSessionIds, session.id];
+        updates.stripePriceId = primaryPriceId;
+      }
     }
 
     await updateWrappedUser(userRef, updates);
@@ -270,7 +328,7 @@ async function handleSubscriptionCreated(subscription) {
     });
 
     const subscriptionTier = inferPaidPlan(priceId);
-    const guidesLimit = inferGuidesLimit(subscriptionTier);
+    const guidesLimit = inferGuidesLimit(priceId, subscriptionTier);
 
     await updateWrappedUser(userRef, {
       customerId: subscription.customer,
@@ -317,7 +375,7 @@ async function handleSubscriptionUpdated(subscription) {
     });
 
     const subscriptionTier = inferPaidPlan(priceId);
-    const guidesLimit = inferGuidesLimit(subscriptionTier);
+    const guidesLimit = inferGuidesLimit(priceId, subscriptionTier);
 
     await updateWrappedUser(userRef, {
       customerId: subscription.customer,
@@ -359,7 +417,7 @@ async function handleSubscriptionDeleted(subscription) {
     await updateWrappedUser(userRef, {
       subscription: "free",
       subscriptionStatus: "canceled",
-      guidesLimit: 1,
+      guidesLimit: 0,
     });
 
     console.log(`❌ Subscription canceled for user ${userRef.row.email}`);

@@ -22,6 +22,7 @@ import BoldChoices from './pages/BoldChoices';
 import AuthBridge from './pages/AuthBridge';
 import AuthCallback from './pages/AuthCallback';
 import Onboarding from './pages/Onboarding';
+import SelectActor from './pages/SelectActor';
 import './App.css';
 
 
@@ -61,6 +62,13 @@ function ProtectedRoute({ children }) {
     location.pathname !== '/onboarding'
   ) {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  if (
+    user?.account?.needsActorSelection &&
+    location.pathname !== '/select-actor'
+  ) {
+    return <Navigate to="/select-actor" replace />;
   }
 
   console.log('🔒 ProtectedRoute - rendering protected content');
@@ -134,6 +142,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Onboarding />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/select-actor"
+                  element={
+                    <ProtectedRoute>
+                      <SelectActor />
                     </ProtectedRoute>
                   }
                 />

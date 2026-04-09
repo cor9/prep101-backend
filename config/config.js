@@ -21,7 +21,23 @@ const config = {
     publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     prices: {
-      basic: process.env.STRIPE_BASIC_PRICE_ID,
+      basic: process.env.STRIPE_STARTER_PRICE_ID || 'price_1SYK8iDALb4OhZMWTMqOgCV8',
+      starter: process.env.STRIPE_STARTER_PRICE_ID || 'price_1SYK8iDALb4OhZMWTMqOgCV8',
+      alacarte: process.env.STRIPE_ALACARTE_PRICE_ID || 'price_1SYKCHDALb4OhZMWBoTPIEww',
+      prep101ThreePack:
+        process.env.STRIPE_PREP101_THREE_PACK_PRICE_ID || 'price_1TKBjxDALb4OhZMWdBQ9pQIV',
+      reader101Addon:
+        process.env.STRIPE_READER_ADDON_PRICE_ID || 'price_1TIMbzDALb4OhZMWHPeyulaF',
+      reader101Single:
+        process.env.STRIPE_READER_SINGLE_PRICE_ID || 'price_1TIMgwDALb4OhZMWGUKxHADD',
+      reader101Monthly:
+        process.env.STRIPE_READER_MONTHLY_PRICE_ID || 'price_1TIMhqDALb4OhZMWBHuctc0O',
+      boldChoicesOneTime:
+        process.env.STRIPE_BOLD_CHOICES_ONE_TIME_PRICE_ID || 'price_1TIMmTDALb4OhZMWaxWUBUMA',
+      boldChoicesMonthly:
+        process.env.STRIPE_BOLD_CHOICES_MONTHLY_PRICE_ID || 'price_1TIMmkDALb4OhZMWIwvt40Oj',
+      bundle:
+        process.env.STRIPE_BUNDLE_PRICE_ID || 'price_1TINGJDALb4OhZMWIDYDMAvt',
       premium: process.env.STRIPE_PREMIUM_PRICE_ID
     }
   },

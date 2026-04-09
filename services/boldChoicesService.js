@@ -41,12 +41,18 @@ Instead, every suggestion must be:
 - physically or vocally playable
 - distinct enough to create a second usable take
 
-You are writing for actors and parents. The tone is:
+You are speaking directly to the actor. The tone is:
 - confident
 - clear
 - direct
 - slightly playful when appropriate
 - never academic or overly technical
+
+ABSOLUTE PRODUCT RULES:
+- Never address a parent, guardian, coach, or adult helper.
+- Never reframe choices as supervision or support advice for an adult.
+- If the actor is a child, simplify language only. Do not change point of view.
+- Every section should feel like direct notes the actor can play right now.
 
 Avoid long-winded explanations. Be sharp and purposeful.
 
@@ -230,6 +236,13 @@ function buildUserPrompt(data) {
   lines.push("CHARACTER INFORMATION:");
   if (data.characterName) lines.push(`Character Name: ${scrubWatermarks(data.characterName)}`);
   if (data.actorAge) lines.push(`Actor's Age: ${data.actorAge}`);
+  if (data.activeActorName) lines.push(`Active Actor: ${scrubWatermarks(data.activeActorName)}`);
+  lines.push(`Tone Mode: ${data.toneMode || "actor-first"}`);
+  lines.push(
+    data.activeActorIsChild
+      ? "Audience Note: The active actor is a child actor. Simplify language if needed, but still speak directly to the actor."
+      : "Audience Note: Speak directly to the actor with working-actor clarity."
+  );
   if (data.productionTitle) lines.push(`Production Title: ${scrubWatermarks(data.productionTitle)}`);
   if (data.productionType) lines.push(`Production Type: ${data.productionType}`);
   if (data.roleSize) lines.push(`Role Size: ${data.roleSize}`);

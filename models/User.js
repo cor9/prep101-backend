@@ -55,6 +55,30 @@ const User = sequelize.define('User', {
     type: DataTypes.INTEGER,
     defaultValue: 0 // Free users get 0 guides by default, must use promo codes
   },
+  prep101TopUpCredits: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  prep101TopUpSessionIds: {
+    type: DataTypes.JSONB,
+    defaultValue: []
+  },
+  reader101Credits: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  reader101SessionIds: {
+    type: DataTypes.JSONB,
+    defaultValue: []
+  },
+  boldChoicesCredits: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  boldChoicesSessionIds: {
+    type: DataTypes.JSONB,
+    defaultValue: []
+  },
   // Beta tester fields
   isBetaTester: {
     type: DataTypes.BOOLEAN,

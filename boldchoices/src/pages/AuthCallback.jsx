@@ -1,47 +1,55 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import API_BASE from '../config/api.js';
 
 /**
- * AuthCallback — receives token from prep101.site auth bridge.
- * URL: /auth-callback?token=JWT&redirect=/generate
+ * AuthCallback — legacy compatibility route for old tokenized ecosystem links.
  */
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const { loginWithToken } = useAuth();
+  const { loginWithToken, loading, user } = useAuth();
 
   useEffect(() => {
+    if (loading) return undefined;
+
     let active = true;
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     const redirect = params.get('redirect') || '/generate';
-    const retryCount = Number(params.get('retry') || '0');
 
     const run = async () => {
+      if (user) {
+        navigate(redirect, { replace: true });
+        return;
+      }
+
       if (token) {
         try {
           await loginWithToken(token);
           if (active) navigate(redirect, { replace: true });
         } catch (_) {
-          if (active) {
-            if (retryCount >= 1) {
-              navigate('/login', { replace: true });
-              return;
-            }
-
-            const callbackUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}&retry=${retryCount + 1}`;
-            window.location.href = `https://prep101.site/auth-bridge?redirect=${encodeURIComponent(callbackUrl)}`;
-          }
+          if (active) navigate(`/login?next=${encodeURIComponent(redirect)}`, { replace: true });
         }
       } else {
-        const callbackUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}&retry=${retryCount}`;
-        window.location.href = `https://prep101.site/auth-bridge?redirect=${encodeURIComponent(callbackUrl)}`;
+        try {
+          const verifyResponse = await fetch(`${API_BASE}/api/auth/verify`, {
+            credentials: 'include',
+          });
+          const verifyData = await verifyResponse.json();
+          if (verifyResponse.ok && verifyData.valid && verifyData.user) {
+            navigate(redirect, { replace: true });
+            return;
+          }
+        } catch (_) {}
+
+        if (active) navigate(`/login?next=${encodeURIComponent(redirect)}`, { replace: true });
       }
     };
 
     run();
     return () => { active = false; };
-  }, [loginWithToken, navigate]);
+  }, [loading, loginWithToken, navigate, user]);
 
   return (
     <div style={{

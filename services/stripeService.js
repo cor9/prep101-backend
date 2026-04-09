@@ -1,6 +1,27 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const User = require('../models/User');
 
+const STRIPE_PRICE_IDS = {
+  starter:
+    process.env.STRIPE_STARTER_PRICE_ID || "price_1SYK8iDALb4OhZMWTMqOgCV8",
+  alacarte:
+    process.env.STRIPE_ALACARTE_PRICE_ID || "price_1SYKCHDALb4OhZMWBoTPIEww",
+  prep101ThreePack:
+    process.env.STRIPE_PREP101_THREE_PACK_PRICE_ID ||
+    "price_1TKBjxDALb4OhZMWdBQ9pQIV",
+  reader101Monthly:
+    process.env.STRIPE_READER_MONTHLY_PRICE_ID || "price_1TIMhqDALb4OhZMWBHuctc0O",
+  reader101Addon:
+    process.env.STRIPE_READER_ADDON_PRICE_ID || "price_1TIMbzDALb4OhZMWHPeyulaF",
+  reader101Single:
+    process.env.STRIPE_READER_SINGLE_PRICE_ID || "price_1TIMgwDALb4OhZMWGUKxHADD",
+  boldChoicesMonthly:
+    process.env.STRIPE_BOLD_CHOICES_MONTHLY_PRICE_ID || "price_1TIMmkDALb4OhZMWIwvt40Oj",
+  boldChoicesOneTime:
+    process.env.STRIPE_BOLD_CHOICES_ONE_TIME_PRICE_ID || "price_1TIMmTDALb4OhZMWaxWUBUMA",
+  bundle: process.env.STRIPE_BUNDLE_PRICE_ID || "price_1TINGJDALb4OhZMWIDYDMAvt",
+};
+
 class StripeService {
   // Create a new Stripe customer
   async createCustomer(user) {
@@ -84,7 +105,7 @@ class StripeService {
       await user.update({
         subscriptionStatus: 'canceled',
         subscription: 'free',
-        guidesLimit: 1
+        guidesLimit: 0
       });
 
       return subscription;
@@ -195,32 +216,66 @@ class StripeService {
       price_basic: "basic",
       price_premium: "premium",
       [process.env.STRIPE_BASIC_PRICE_ID]: "basic",
-      [process.env.STRIPE_STARTER_PRICE_ID]: "basic",
+      [STRIPE_PRICE_IDS.starter]: "basic",
       [process.env.STRIPE_PREMIUM_PRICE_ID]: "premium",
-      [process.env.STRIPE_READER_MONTHLY_PRICE_ID]: "premium",
-      [process.env.STRIPE_READER_ADDON_PRICE_ID]: "premium",
-      [process.env.STRIPE_BOLD_CHOICES_MONTHLY_PRICE_ID]: "premium",
-      [process.env.STRIPE_BOLD_CHOICES_ADDON_PRICE_ID]: "premium",
-      [process.env.STRIPE_BUNDLE_PRICE_ID]: "premium",
+      [STRIPE_PRICE_IDS.reader101Monthly]: "reader101_monthly",
+      [STRIPE_PRICE_IDS.reader101Addon]: "free",
+      [STRIPE_PRICE_IDS.reader101Single]: "free",
+      [STRIPE_PRICE_IDS.boldChoicesMonthly]: "boldchoices_monthly",
+      [STRIPE_PRICE_IDS.boldChoicesOneTime]: "free",
+      [STRIPE_PRICE_IDS.bundle]: "bundle",
     };
 
     const mapped = priceMap[priceId];
     if (mapped) return mapped;
 
     console.warn(
-      `⚠️ Unmapped Stripe price ID ${priceId} - defaulting paid subscription to premium access`
+      `⚠️ Unmapped Stripe price ID ${priceId} - defaulting to free until mapped`
     );
-    return "premium";
+    return "free";
+  }
+
+  getPrep101TopUpCreditsFromPriceId(priceId) {
+    if (!priceId) return 0;
+
+    const creditMap = {
+      [STRIPE_PRICE_IDS.alacarte]: 1,
+      [STRIPE_PRICE_IDS.prep101ThreePack]: 3,
+    };
+
+    return creditMap[priceId] || 0;
+  }
+
+  getPrep101MonthlyLimitFromPriceId(priceId) {
+    if (!priceId) return this.getGuidesLimitFromSubscription("free");
+
+    if (priceId === STRIPE_PRICE_IDS.starter) return 5;
+    if (priceId === STRIPE_PRICE_IDS.bundle) return 5;
+    if (
+      priceId === STRIPE_PRICE_IDS.reader101Monthly ||
+      priceId === STRIPE_PRICE_IDS.boldChoicesMonthly
+    ) {
+      return 0;
+    }
+
+    return this.getGuidesLimitFromSubscription(
+      this.getSubscriptionFromPriceId(priceId)
+    );
   }
 
   // Helper method to get guides limit from subscription
   getGuidesLimitFromSubscription(subscription) {
     const limitMap = {
-      'free': 1,
-      'basic': 10,
+      'free': 0,
+      // "basic" is the legacy stored name for the current Starter plan.
+      'basic': 5,
+      'starter': 5,
+      'bundle': 5,
+      'reader101_monthly': 0,
+      'boldchoices_monthly': 0,
       'premium': 999
     };
-    return limitMap[subscription] || 1;
+    return limitMap[subscription] ?? 0;
   }
 
   // Verify webhook signature
