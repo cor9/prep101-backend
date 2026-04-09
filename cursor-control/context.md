@@ -77,7 +77,19 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Bold Choices now reads the shared `account` payload from `/api/auth/verify`, redirects unfinished accounts into the central Prep101 onboarding flow, and shows the current active actor in-product
 - Reader101's static site now verifies `ca101_token` against the backend before trusting it, shows the active actor when available, and changes its account CTA to "Finish Account Setup" when onboarding is still required
 - Prep101 onboarding now supports a `next` return target so other products can send users into one central setup flow and bring them back afterward
-- Current limitation: the new profile tables still need to be applied in Supabase before the richer shared account model can fully replace bridge-era fallbacks
+- The Supabase profile migration has now been applied; next work should assume `profiles` and `actor_profiles` exist unless production proves otherwise
+
+## Guide Library + Deploy Status (2026-04-08)
+- Generated `.netlify` link metadata was being tracked in the repo and was causing CLI deploys to target the wrong site/base; the fix now ignores `.netlify/` directories and removes tracked link files from git
+- The real Netlify production site IDs are now confirmed from CLI:
+  - `prep101.site` → `3a29b147-338a-4764-918f-a2e809f81f3e`
+  - `boldchoices.site` → `b96522d2-39bb-4020-9f52-3f26e583647b`
+  - `reader101.site` → `702352dd-18a3-4e28-bfa4-480c4499ab39`
+- `/api/guides` is no longer just a stub path; it now supports real list/get/html/pdf export behavior backed by Sequelize or Supabase fallback
+- The dashboard guide library now exposes open, HTML, and PDF actions instead of a mislabeled single download button
+- Bold Choices now persists full generated guides into the shared guide library so they can appear in the same account-facing guide list as Prep101 and Reader101
+- Auth now accepts query-string tokens for export/download routes, which unblocks saved-guide actions launched from the dashboard UI
+- Stripe success now refreshes the logged-in user after sync, and webhook reconciliation now inspects checkout session line items plus metadata/client-reference ids before linking the purchase
 
 ## Architecture Decision Needed
 - Migrate to intended Next.js + Airtable architecture?

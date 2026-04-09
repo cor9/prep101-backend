@@ -314,7 +314,12 @@ async function getSupabaseUserFromToken(token) {
 
 module.exports = async (req, res, next) => {
   try {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
+    const token =
+      req.header("Authorization")?.replace("Bearer ", "") ||
+      req.query?.token ||
+      req.query?.access_token ||
+      req.body?.token ||
+      req.body?.access_token;
     const clientIP = req.ip || req.connection.remoteAddress;
 
     if (!token) {

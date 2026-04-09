@@ -175,4 +175,6 @@ $RECYCLE.BIN/
 temp/
 tmp/
 .vercel
+.netlify/
+*/.netlify/
 .env*.local

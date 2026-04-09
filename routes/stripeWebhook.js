@@ -41,6 +41,26 @@ async function fetchCustomerEmail(customerId) {
   return null;
 }
 
+async function fetchSessionPriceIds(sessionId) {
+  if (!sessionId) return [];
+
+  try {
+    const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, {
+      limit: 10,
+      expand: ["data.price"],
+    });
+
+    return (lineItems.data || [])
+      .map((item) =>
+        typeof item.price === "string" ? item.price : item.price?.id || null
+      )
+      .filter(Boolean);
+  } catch (error) {
+    console.error("Error fetching checkout session line items:", error.message);
+    return [];
+  }
+}
+
 function wrapUser(row, source) {
   if (!row) return null;
   return { source, row };
@@ -78,6 +98,38 @@ async function findUserByField(field, value) {
   return null;
 }
 
+async function findUserById(id) {
+  if (!id) return null;
+
+  if (User) {
+    try {
+      const row = await User.findByPk(id);
+      if (row) return wrapUser(row, "sequelize");
+    } catch (error) {
+      console.error("Sequelize lookup failed for id:", error.message);
+    }
+  }
+
+  try {
+    const row = await runAdminQuery(async (client) => {
+      const { data, error } = await client
+        .from(tables.users)
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    });
+
+    if (row) return wrapUser(normalizeUserRow(row), "supabase");
+  } catch (error) {
+    console.error("Supabase lookup failed for id:", error.message);
+  }
+
+  return null;
+}
+
 async function updateWrappedUser(userRef, updates) {
   if (!userRef) return null;
 
@@ -102,8 +154,18 @@ async function updateWrappedUser(userRef, updates) {
   return wrapUser(normalizeUserRow(row), "supabase");
 }
 
-async function resolveUser({ customerId = null, subscriptionId = null, email = null }) {
+async function resolveUser({
+  userId = null,
+  customerId = null,
+  subscriptionId = null,
+  email = null,
+}) {
   const normalizedEmail = normalizeEmail(email);
+
+  if (userId) {
+    const byId = await findUserById(userId);
+    if (byId) return byId;
+  }
 
   if (customerId) {
     const byCustomer = await findUserByField("stripeCustomerId", customerId);
@@ -139,12 +201,15 @@ async function backfillStripeLink(userRef, { customerId = null, subscriptionId =
 
 async function handleCheckoutCompleted(session) {
   try {
+    const priceIds = await fetchSessionPriceIds(session.id);
+    const primaryPriceId = priceIds[0] || null;
     const email =
       normalizeEmail(session.customer_details?.email) ||
       normalizeEmail(session.customer_email) ||
       (await fetchCustomerEmail(session.customer));
 
     let userRef = await resolveUser({
+      userId: session.metadata?.userId || session.client_reference_id || null,
       customerId: session.customer,
       subscriptionId: session.subscription,
       email,
@@ -162,6 +227,7 @@ async function handleCheckoutCompleted(session) {
     userRef = await backfillStripeLink(userRef, {
       customerId: session.customer,
       subscriptionId: session.subscription,
+      priceId: primaryPriceId,
     });
 
     const updates = {
@@ -169,8 +235,10 @@ async function handleCheckoutCompleted(session) {
     };
 
     if (session.mode === "subscription") {
-      updates.subscription = "premium";
-      updates.guidesLimit = 999;
+      const inferredPlan = inferPaidPlan(primaryPriceId);
+      updates.subscription = inferredPlan;
+      updates.guidesLimit = inferGuidesLimit(inferredPlan);
+      updates.stripePriceId = primaryPriceId;
     }
 
     await updateWrappedUser(userRef, updates);

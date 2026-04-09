@@ -197,8 +197,15 @@ const GuideView = () => {
   };
 
   const handleDownloadPdf = () => {
-    // Use browser print dialog - user can select "Save as PDF"
-    handlePrintGuide();
+    const token = user?.accessToken || user?.token || localStorage.getItem("prep101_token");
+    const url = `${API_BASE}/api/guides/${id}/pdf${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDownloadHtml = () => {
+    const token = user?.accessToken || user?.token || localStorage.getItem("prep101_token");
+    const url = `${API_BASE}/api/guides/${id}/html${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   if (loading) {
@@ -289,6 +296,12 @@ const GuideView = () => {
                 ← Back to Account
               </button>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <button
+                  onClick={handleDownloadHtml}
+                  className="btn btnGhost"
+                >
+                  HTML Download
+                </button>
                 <button onClick={handlePrintGuide} className="btn btnGhost">
                   🖨️ Print Guide
                 </button>

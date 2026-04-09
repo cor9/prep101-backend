@@ -57,3 +57,8 @@
 **Issue:** Prep101 understood the new Child Actor 101 account context, but Bold Choices still treated auth as a bare login and Reader101 still trusted a token without verifying the shared account state.
 **Decision:** Extended the shared account model across products by making Bold Choices onboarding-aware, surfacing the active actor in Bold Choices, adding return-aware onboarding redirects, and teaching Reader101's static site to verify the account and route incomplete accounts into the central Prep101 onboarding flow.
 **Status:** Success
+
+## 2026-04-08
+**Issue:** Deploy tooling, guide exports, and Stripe account linkage were still split across old and new paths, which caused wrong-site Netlify deploys, broken saved-guide actions, and inconsistent account persistence for Bold Choices.
+**Decision:** Stopped tracking generated `.netlify` metadata, hardened auth to accept token-based download links, replaced the stub guides routes with real list/get/html/pdf endpoints, started persisting full Bold Choices guides into the shared guide library, and enriched Stripe checkout webhook reconciliation with session line-item/user-id resolution plus post-sync user refresh on the success screen.
+**Status:** Success

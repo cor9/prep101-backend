@@ -7,7 +7,7 @@ import '../App.css';
 
 const StripeSuccess = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [countdown, setCountdown] = useState(3);
   const [syncMessage, setSyncMessage] = useState('Syncing your subscription...');
 
@@ -49,6 +49,11 @@ const StripeSuccess = () => {
         if (cancelled) return;
 
         if (response.ok && result?.success) {
+          try {
+            await refreshUser();
+          } catch (refreshError) {
+            console.warn('Could not refresh user after Stripe sync:', refreshError);
+          }
           if (result.synced) {
             setSyncMessage('Your subscription is active and linked to your account.');
           } else {
@@ -69,7 +74,7 @@ const StripeSuccess = () => {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, refreshUser]);
 
   return (
     <div className="stripe-success-container">

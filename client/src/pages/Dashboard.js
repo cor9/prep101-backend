@@ -780,17 +780,40 @@ const Dashboard = () => {
                       }}>
                         {typeLabels[g.guideType] || g.guideType}
                       </span>
-                      <a
-                        href={`${API_BASE}${g.pdfUrl}${token ? `?token=${encodeURIComponent(token)}` : ''}`}
-                        download
-                        style={{
-                          fontSize: 12, fontWeight: 700, color: '#0f172a',
-                          background: 'var(--gold, #f59e0b)', borderRadius: 8,
-                          padding: '5px 12px', textDecoration: 'none', whiteSpace: 'nowrap',
-                        }}
-                      >
-                        ⬇ Download
-                      </a>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <a
+                          href={g.viewUrl || `/guide/${g.id}`}
+                          style={{
+                            fontSize: 12, fontWeight: 700, color: '#0f172a',
+                            background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
+                            padding: '5px 12px', textDecoration: 'none', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Open
+                        </a>
+                        <a
+                          href={`${API_BASE}${g.htmlUrl || `/api/guides/${g.id}/html`}${token ? `?token=${encodeURIComponent(token)}` : ''}`}
+                          download
+                          style={{
+                            fontSize: 12, fontWeight: 700, color: '#0f172a',
+                            background: '#e2e8f0', borderRadius: 8,
+                            padding: '5px 12px', textDecoration: 'none', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          HTML
+                        </a>
+                        <a
+                          href={`${API_BASE}${g.pdfUrl || `/api/guides/${g.id}/pdf`}${token ? `?token=${encodeURIComponent(token)}` : ''}`}
+                          download
+                          style={{
+                            fontSize: 12, fontWeight: 700, color: '#0f172a',
+                            background: 'var(--gold, #f59e0b)', borderRadius: 8,
+                            padding: '5px 12px', textDecoration: 'none', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          PDF
+                        </a>
+                      </div>
                     </div>
                   );
                 })}

@@ -1,10 +1,23 @@
 const express = require("express");
 const router = express.Router();
 const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const { generateBoldChoices } = require("../services/boldChoicesService");
 const { renderBoldChoicesTemplate } = require("../services/boldChoicesTemplate");
 const { checkAndIncrement } = require("../services/boldChoicesUsage");
 const auth = require("../middleware/auth");
+const {
+  runAdminQuery,
+  tables,
+  normalizeGuideRow,
+} = require("../lib/supabaseAdmin");
+
+let Guide = null;
+try {
+  Guide = require("../models/Guide");
+} catch (error) {
+  console.warn("[BoldChoices] Guide model unavailable:", error.message);
+}
 
 // ── In-memory generation store (ephemeral cache; persisted copy in DB below) ──
 const generationsCache = new Map();
@@ -36,6 +49,73 @@ async function logEvent(event, userId, meta = {}) {
     // Non-fatal — never block request flow for analytics
     console.warn("[Analytics] Failed to log event:", err.message);
   }
+}
+
+async function ensureGuideUser(user = {}) {
+  if (!user?.id || !user?.email) return false;
+
+  const existing = await runAdminQuery(async (client) => {
+    const { data, error } = await client
+      .from(tables.users)
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  }, null);
+
+  if (existing?.id) return true;
+
+  const upsertResult = await runAdminQuery(async (client) =>
+    client.from(tables.users).upsert(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name || user.email.split("@")[0],
+        password: "supabase_auth",
+        subscription: user.subscription || "free",
+        guidesUsed: typeof user.guidesUsed === "number" ? user.guidesUsed : 0,
+        guidesLimit:
+          typeof user.guidesLimit === "number" ? user.guidesLimit : 1,
+        stripeCustomerId: user.stripeCustomerId || null,
+        stripeSubscriptionId: user.stripeSubscriptionId || null,
+        stripePriceId: user.stripePriceId || null,
+        subscriptionStatus: user.subscriptionStatus || "active",
+      },
+      { onConflict: "id" }
+    )
+  );
+
+  return !upsertResult?.error;
+}
+
+async function persistGuideToLibrary(user, payload) {
+  if (Guide) {
+    return Guide.create(payload);
+  }
+
+  const ensured = await ensureGuideUser(user);
+  if (!ensured) {
+    throw new Error("Could not ensure user exists for guide persistence");
+  }
+
+  const record = {
+    id: randomUUID(),
+    ...payload,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const result = await runAdminQuery(async (client) =>
+    client.from(tables.guides).insert(record).select("*").single()
+  );
+
+  if (!result || result.error) {
+    throw new Error(result?.error?.message || "Failed to save Bold Choices guide");
+  }
+
+  return normalizeGuideRow(result.data);
 }
 
 // ── Schema guard ──────────────────────────────────────────────────────────────
@@ -260,6 +340,36 @@ router.post("/generate", auth, async (req, res) => {
     };
 
     const html = renderBoldChoicesTemplate(guideData, meta, !!preview);
+    let savedGuideId = null;
+    let savedGuideRecordId = null;
+
+    if (!preview) {
+      try {
+        const savedGuide = await persistGuideToLibrary(req.user, {
+          guideId: `bold_choices_${generationId}`,
+          userId,
+          characterName: characterName.trim(),
+          productionTitle: productionTitle || "Bold Choices",
+          productionType: productionType || "Performance Guide",
+          roleSize: roleSize || "Unknown",
+          genre: genre || "Performance Coaching",
+          storyline: storyline || "",
+          characterBreakdown: characterDescription || "",
+          callbackNotes: "",
+          focusArea: actualModifier || (actualSpinAgain ? "spin_again" : "bold_choices"),
+          sceneText: sceneText.trim(),
+          generatedHtml: html,
+          childGuideRequested: false,
+          childGuideCompleted: false,
+          guideType: "bold_choices",
+        });
+        const persisted = savedGuide?.dataValues || savedGuide;
+        savedGuideId = persisted?.guideId || null;
+        savedGuideRecordId = persisted?.id || null;
+      } catch (saveError) {
+        console.error("[BoldChoices] Failed to save guide to account:", saveError.message);
+      }
+    }
 
     console.log(`[BoldChoices] Done (${html.length} chars). modifier: ${modifier || "none"}`);
 
@@ -270,6 +380,9 @@ router.post("/generate", auth, async (req, res) => {
       meta,
       modifier,
       generationId,
+      savedGuideId,
+      savedGuideRecordId,
+      savedToAccount: Boolean(savedGuideRecordId),
     });
   } catch (err) {
     console.error("[BoldChoices] Generation error:", err.message);
