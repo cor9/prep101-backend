@@ -156,6 +156,7 @@ const Dashboard = () => {
   const [usageError, setUsageError] = useState(null);
 
   const { user } = useAuth();
+  const token = user?.accessToken || user?.token;
   const activeActor = user?.account?.activeActor;
   const onboardingRequired = Boolean(user?.account?.onboardingRequired);
   const needsActorSelection = Boolean(user?.account?.needsActorSelection);
@@ -676,7 +677,7 @@ const Dashboard = () => {
                 description: "Carry your account over and open Reader101 without signing in again.",
                 status: formatReaderAccess(usage?.reader101 || user?.reader101Usage || null),
                 action: () => {
-                  window.location.href = buildReader101Url();
+                  window.location.href = buildReader101Url({ token, useBridge: Boolean(user) });
                 },
                 cta: "Open Reader101",
               },
@@ -686,7 +687,7 @@ const Dashboard = () => {
                 description: "Jump straight into Bold Choices with the same Child Actor 101 identity.",
                 status: formatBoldAccess(usage?.boldChoices || user?.boldChoicesUsage || null),
                 action: () => {
-                  window.location.href = buildBoldChoicesUrl();
+                  window.location.href = buildBoldChoicesUrl({ token, useBridge: Boolean(user) });
                 },
                 cta: "Open Bold Choices",
               },

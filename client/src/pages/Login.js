@@ -5,6 +5,32 @@ import toast from 'react-hot-toast';
 import Footer from '../components/Footer';
 import '../styles/shared.css';
 
+const getLoginContext = (nextDestination) => {
+  const destination = String(nextDestination || '').toLowerCase();
+
+  if (destination.includes('reader101.site')) {
+    return {
+      badge: 'R',
+      title: 'Welcome Back',
+      subtitle: 'Sign in to your Child Actor 101 account for Reader101',
+    };
+  }
+
+  if (destination.includes('boldchoices.site')) {
+    return {
+      badge: 'B',
+      title: 'Welcome Back',
+      subtitle: 'Sign in to your Child Actor 101 account for Bold Choices',
+    };
+  }
+
+  return {
+    badge: 'P',
+    title: 'Welcome Back',
+    subtitle: 'Sign in to your Child Actor 101 account',
+  };
+};
+
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -17,6 +43,10 @@ const Login = () => {
   const nextDestination = useMemo(
     () => new URLSearchParams(location.search).get('next'),
     [location.search]
+  );
+  const loginContext = useMemo(
+    () => getLoginContext(nextDestination),
+    [nextDestination]
   );
 
   const handleChange = (e) => {
@@ -64,12 +94,12 @@ const Login = () => {
               margin: '0 auto 1rem',
               boxShadow: '0 4px 15px rgba(255,200,58,0.3)'
             }}>
-              P
+              {loginContext.badge}
             </div>
             <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
-              Welcome Back
+              {loginContext.title}
             </h2>
-            <p style={{ color: 'var(--gray-500)' }}>Sign in to your PREP101 account</p>
+            <p style={{ color: 'var(--gray-500)' }}>{loginContext.subtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -119,7 +149,7 @@ const Login = () => {
             </p>
             <p style={{ color: 'var(--gray-500)', marginBottom: '1rem' }}>
               Don't have an account?{' '}
-              <Link to="/register" style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: '600' }}>
+              <Link to={nextDestination ? `/register?next=${encodeURIComponent(nextDestination)}` : '/register'} style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: '600' }}>
                 Sign up here
               </Link>
             </p>

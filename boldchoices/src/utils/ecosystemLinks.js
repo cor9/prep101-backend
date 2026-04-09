@@ -10,31 +10,37 @@ function resolveProductUrl(root, redirect, fallback) {
   return `${root}${normalizedPath}`;
 }
 
-export function buildPrepAuthCallbackUrl(_token, redirect = `${PREP_ROOT}/dashboard`) {
-  return resolveProductUrl(PREP_ROOT, redirect, `${PREP_ROOT}/dashboard`);
+export function buildPrepAuthCallbackUrl(token, redirect = `${PREP_ROOT}/dashboard`) {
+  const url = new URL(`${PREP_ROOT}/auth-callback`);
+  if (token) url.searchParams.set('token', token);
+  if (redirect) url.searchParams.set('redirect', redirect);
+  return url.toString();
 }
 
 export function buildPrepOnboardingUrl({
-  token: _token,
+  token,
   next = 'https://boldchoices.site/generate',
 } = {}) {
   const onboarding = new URL(`${PREP_ROOT}/onboarding`);
   if (next) onboarding.searchParams.set('next', next);
-  return onboarding.toString();
+  return buildPrepAuthCallbackUrl(token, onboarding.toString());
 }
 
 export function buildPrepSelectActorUrl({
-  token: _token,
+  token,
   next = 'https://boldchoices.site/generate',
 } = {}) {
   const selectActor = new URL(`${PREP_ROOT}/select-actor`);
   if (next) selectActor.searchParams.set('next', next);
-  return selectActor.toString();
+  return buildPrepAuthCallbackUrl(token, selectActor.toString());
 }
 
 export function buildReader101Url({
-  token: _token,
+  token,
   redirect = `${READER_ROOT}/`,
 } = {}) {
-  return resolveProductUrl(READER_ROOT, redirect, `${READER_ROOT}/`);
+  const callback = new URL(`${READER_ROOT}/auth-callback.html`);
+  if (redirect) callback.searchParams.set('redirect', redirect);
+  if (token) callback.searchParams.set('token', token);
+  return token ? callback.toString() : resolveProductUrl(READER_ROOT, redirect, `${READER_ROOT}/`);
 }

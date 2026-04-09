@@ -731,13 +731,17 @@
 
 <script>
   (async function () {
+    var token = null;
+    try {
+      token = localStorage.getItem('ca101_token');
+    } catch (_) {}
     var prepDashboard = 'https://prep101.site/dashboard?product=reader101';
     var prepOnboardingBase = 'https://prep101.site/onboarding?next=' + encodeURIComponent(prepDashboard);
     var prepSelectActorBase = 'https://prep101.site/select-actor?next=' + encodeURIComponent(prepDashboard);
     var boldWorkspaceUrl = 'https://boldchoices.site/generate';
     var prepWorkspaceUrl = 'https://prep101.site/dashboard?product=prep101';
     var verifyUrl = 'https://prep101-api.vercel.app/api/auth/verify';
-    var prepLoginUrl = 'https://prep101.site/login?next=' + encodeURIComponent('https://reader101.site/');
+    var prepLoginUrl = 'https://prep101.site/auth-bridge?redirect=' + encodeURIComponent('https://reader101.site/auth-callback.html?redirect=' + encodeURIComponent('https://reader101.site/'));
     var accountLink = document.getElementById('account-link');
     var primaryCta = document.getElementById('primary-cta');
     var prepLink = document.getElementById('prep-link');
@@ -788,6 +792,26 @@
         accountState = verifyData.user;
       }
     } catch (error) {}
+
+    if (!accountState && token) {
+      try {
+        var tokenVerifyResponse = await fetch(verifyUrl, {
+          headers: {
+            Authorization: 'Bearer ' + token
+          }
+        });
+        var tokenVerifyData = await tokenVerifyResponse.json();
+        if (tokenVerifyResponse.ok && tokenVerifyData.valid && tokenVerifyData.user) {
+          accountState = tokenVerifyData.user;
+        } else {
+          localStorage.removeItem('ca101_token');
+          token = null;
+        }
+      } catch (error) {
+        localStorage.removeItem('ca101_token');
+        token = null;
+      }
+    }
 
     if (accountState) {
       if (accountPill) accountPill.style.display = 'inline-flex';
@@ -840,10 +864,10 @@
                   ? 'Open Reader101 Credit in My Account →'
                   : 'Open Reader101 in My Account →';
       }
-      if (prepLink) prepLink.href = prepWorkspaceUrl;
-      if (boldLink) boldLink.href = boldWorkspaceUrl;
-      if (footerPrepLink) footerPrepLink.href = prepWorkspaceUrl;
-      if (footerBoldLink) footerBoldLink.href = boldWorkspaceUrl;
+      if (prepLink) prepLink.href = token ? 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(prepWorkspaceUrl) + '&token=' + encodeURIComponent(token) : prepWorkspaceUrl;
+      if (boldLink) boldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;
+      if (footerPrepLink) footerPrepLink.href = token ? 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(prepWorkspaceUrl) + '&token=' + encodeURIComponent(token) : prepWorkspaceUrl;
+      if (footerBoldLink) footerBoldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;
     } else {
       if (accountLink) {
         accountLink.textContent = 'Sign In With Child Actor 101';

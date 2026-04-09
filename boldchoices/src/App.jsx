@@ -30,20 +30,22 @@ function ProtectedRoute({ children }) {
     return <Navigate to={`/login?next=${encodeURIComponent(redirect)}`} replace />;
   }
   if (user?.account?.onboardingRequired) {
+    const token = user?.accessToken || user?.token;
     const next = `https://boldchoices.site${location.pathname}${location.search || ''}`;
-    return <AccountSetupRedirect next={next} />;
+    return <AccountSetupRedirect token={token} next={next} />;
   }
   if (user?.account?.needsActorSelection) {
+    const token = user?.accessToken || user?.token;
     const next = `https://boldchoices.site${location.pathname}${location.search || ''}`;
-    return <ActorSelectionRedirect next={next} />;
+    return <ActorSelectionRedirect token={token} next={next} />;
   }
   return children;
 }
 
-function AccountSetupRedirect({ next }) {
+function AccountSetupRedirect({ token, next }) {
   useEffect(() => {
-    window.location.replace(buildPrepOnboardingUrl({ next }));
-  }, [next]);
+    window.location.replace(buildPrepOnboardingUrl({ token, next }));
+  }, [token, next]);
 
   return (
     <div style={{
@@ -56,10 +58,10 @@ function AccountSetupRedirect({ next }) {
   );
 }
 
-function ActorSelectionRedirect({ next }) {
+function ActorSelectionRedirect({ token, next }) {
   useEffect(() => {
-    window.location.replace(buildPrepSelectActorUrl({ next }));
-  }, [next]);
+    window.location.replace(buildPrepSelectActorUrl({ token, next }));
+  }, [token, next]);
 
   return (
     <div style={{

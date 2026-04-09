@@ -20,6 +20,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { user, logout, selectActor } = useAuth();
   const [isSwitchingActor, setIsSwitchingActor] = useState(false);
+  const token = user?.accessToken || user?.token;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -38,10 +39,10 @@ export default function Navbar() {
   const getEcosystemHref = (item) => {
     if (!item.product) return item.href;
     if (item.product === 'boldchoices') {
-      return buildBoldChoicesUrl({ redirect: user ? '/generate' : '/' });
+      return buildBoldChoicesUrl({ token, redirect: user ? '/generate' : '/', useBridge: Boolean(user) });
     }
     if (item.product === 'reader101') {
-      return buildReader101Url();
+      return buildReader101Url({ token, useBridge: Boolean(user) });
     }
     return item.href;
   };

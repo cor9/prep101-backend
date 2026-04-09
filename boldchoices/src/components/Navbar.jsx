@@ -17,19 +17,22 @@ export default function Navbar() {
   const [isSwitchingActor, setIsSwitchingActor] = useState(false);
 
   const isLanding = location.pathname === '/';
+  const token = user?.accessToken || user?.token;
   const activeActor = user?.account?.activeActor;
   const actors = user?.account?.actors || [];
   const needsOnboarding = Boolean(user?.account?.onboardingRequired);
   const needsActorSelection = Boolean(user?.account?.needsActorSelection);
   const prepAccountHref = needsOnboarding
     ? buildPrepOnboardingUrl({
+        token,
         next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
       })
     : needsActorSelection
       ? buildPrepSelectActorUrl({
+          token,
           next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
         })
-      : buildPrepAuthCallbackUrl(null, 'https://prep101.site/dashboard?product=bold_choices');
+      : buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=bold_choices');
 
   const handleLogout = () => {
     logout();
@@ -100,7 +103,7 @@ export default function Navbar() {
             Prep101
           </a>
           <a
-            href={buildReader101Url()}
+            href={buildReader101Url({ token })}
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link-ext nav-link-reader"
@@ -147,6 +150,7 @@ export default function Navbar() {
                 </select>
                 <a
                   href={buildPrepSelectActorUrl({
+                    token,
                     next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
                   })}
                   target="_blank"

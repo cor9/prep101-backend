@@ -2,10 +2,10 @@ import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 /**
- * AuthBridge — legacy Prep101 route that preserves old redirect links.
+ * AuthBridge — Prep101 route that hands a short-lived auth token to another ecosystem site.
  * URL: /auth-bridge?redirect=https://boldchoices.site/auth-callback
  *
- * If logged in: forwards directly to the destination.
+ * If logged in: appends ?token=JWT to the redirect URL.
  * If not logged in: sends user to /login and returns here after.
  */
 export default function AuthBridge() {
@@ -20,8 +20,10 @@ export default function AuthBridge() {
       return;
     }
 
-    if (user) {
-      window.location.href = redirect;
+    if (user?.accessToken || user?.token) {
+      const token = user.accessToken || user.token;
+      const sep = redirect.includes('?') ? '&' : '?';
+      window.location.href = `${redirect}${sep}token=${encodeURIComponent(token)}`;
     } else {
       // Not logged in — bounce to login, come back here after
       const returnUrl = encodeURIComponent(window.location.href);

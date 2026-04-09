@@ -5,6 +5,32 @@ import toast from 'react-hot-toast';
 import Footer from '../components/Footer';
 import '../styles/shared.css';
 
+const getRegisterContext = (nextDestination) => {
+  const destination = String(nextDestination || '').toLowerCase();
+
+  if (destination.includes('reader101.site')) {
+    return {
+      badge: 'R',
+      title: 'Join Reader101',
+      subtitle: 'Create your Child Actor 101 account to keep going in Reader101',
+    };
+  }
+
+  if (destination.includes('boldchoices.site')) {
+    return {
+      badge: 'B',
+      title: 'Join Bold Choices',
+      subtitle: 'Create your Child Actor 101 account to keep going in Bold Choices',
+    };
+  }
+
+  return {
+    badge: 'P',
+    title: 'Join Prep101',
+    subtitle: 'Create your Child Actor 101 account to get started',
+  };
+};
+
 const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -19,6 +45,10 @@ const Register = () => {
   const nextDestination = useMemo(
     () => new URLSearchParams(location.search).get('next'),
     [location.search]
+  );
+  const registerContext = useMemo(
+    () => getRegisterContext(nextDestination),
+    [nextDestination]
   );
 
   const handleChange = (e) => {
@@ -92,12 +122,12 @@ const Register = () => {
               margin: '0 auto 1rem',
               boxShadow: '0 4px 15px rgba(255,200,58,0.3)'
             }}>
-              P
+              {registerContext.badge}
             </div>
             <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--gray-700)', marginBottom: '0.5rem' }}>
-              Join PREP101
+              {registerContext.title}
             </h2>
-            <p style={{ color: 'var(--gray-500)' }}>Create your account to get started</p>
+            <p style={{ color: 'var(--gray-500)' }}>{registerContext.subtitle}</p>
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -173,7 +203,7 @@ const Register = () => {
           <div className="text-center mt-3">
             <p style={{ color: 'var(--gray-500)', marginBottom: '1rem' }}>
               Already have an account?{' '}
-              <Link to="/login" style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: '600' }}>
+              <Link to={nextDestination ? `/login?next=${encodeURIComponent(nextDestination)}` : '/login'} style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: '600' }}>
                 Sign in here
               </Link>
             </p>

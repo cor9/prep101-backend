@@ -41,6 +41,10 @@
             body: JSON.stringify({ token: token })
           });
         } catch (_) {}
+
+        try {
+          localStorage.setItem('ca101_token', token);
+        } catch (_) {}
       }
 
       window.location.replace(redirect || '/');
