@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import { buildPrepOnboardingUrl } from './utils/ecosystemLinks.js';
 import Landing from './pages/Landing.jsx';
 import Generate from './pages/Generate.jsx';
 import Login from './pages/Login.jsx';
@@ -28,7 +29,28 @@ function ProtectedRoute({ children }) {
     const redirect = `${location.pathname}${location.search || ''}`;
     return <Navigate to={`/auth-callback?redirect=${encodeURIComponent(redirect)}`} replace />;
   }
+  if (user?.account?.onboardingRequired) {
+    const token = user?.accessToken || user?.token;
+    const next = `https://boldchoices.site${location.pathname}${location.search || ''}`;
+    return <AccountSetupRedirect token={token} next={next} />;
+  }
   return children;
+}
+
+function AccountSetupRedirect({ token, next }) {
+  useEffect(() => {
+    window.location.replace(buildPrepOnboardingUrl({ token, next }));
+  }, [token, next]);
+
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'center', alignItems: 'center',
+      height: '100vh', background: '#0a0a0f', color: 'rgba(255,255,255,0.6)',
+      fontSize: 14, letterSpacing: '0.05em'
+    }}>
+      Opening your Child Actor 101 account setup...
+    </div>
+  );
 }
 
 export default function App() {

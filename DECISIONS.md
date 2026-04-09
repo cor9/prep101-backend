@@ -52,3 +52,8 @@
 **Issue:** Cross-product auth was still a fragile bridge between `prep101.site`, `reader101.site`, and `boldchoices.site`, with no shared identity/context layer for actor vs parent usage.
 **Decision:** Started Phase 2 of the Child Actor 101 account system by adding backend `profiles` / `actor_profiles` foundations, shared auth endpoints (`/api/auth/verify`, `/dashboard`, `/context`, `/onboarding`, `/select-actor`), a Supabase migration, and a first Prep101 onboarding flow that captures role plus active actor context.
 **Status:** In Progress
+
+## 2026-04-08
+**Issue:** Prep101 understood the new Child Actor 101 account context, but Bold Choices still treated auth as a bare login and Reader101 still trusted a token without verifying the shared account state.
+**Decision:** Extended the shared account model across products by making Bold Choices onboarding-aware, surfacing the active actor in Bold Choices, adding return-aware onboarding redirects, and teaching Reader101's static site to verify the account and route incomplete accounts into the central Prep101 onboarding flow.
+**Status:** Success

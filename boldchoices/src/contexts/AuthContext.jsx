@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import API_BASE from '../config/api.js';
 
 const AuthContext = createContext(null);
@@ -9,7 +9,22 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const hydrateUserFromToken = async (token) => {
+  const persistUser = useCallback((nextUser) => {
+    if (nextUser) {
+      localStorage.setItem('bc_user', JSON.stringify(nextUser));
+      if (nextUser.accessToken || nextUser.token) {
+        localStorage.setItem('ca101_token', nextUser.accessToken || nextUser.token);
+      }
+      setUser(nextUser);
+    } else {
+      localStorage.removeItem('bc_user');
+      localStorage.removeItem('ca101_token');
+      setUser(null);
+    }
+    return nextUser;
+  }, []);
+
+  const hydrateUserFromToken = useCallback(async (token) => {
     const res = await fetch(`${API_BASE}/api/auth/verify`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -30,7 +45,7 @@ export function AuthProvider({ children }) {
       accessToken: token,
       token,
     };
-  };
+  }, []);
 
   // Restore session from localStorage on mount
   useEffect(() => {
@@ -47,17 +62,16 @@ export function AuthProvider({ children }) {
         }
 
         const hydrated = await hydrateUserFromToken(storedToken);
-        setUser(hydrated);
-        localStorage.setItem('bc_user', JSON.stringify(hydrated));
+        persistUser(hydrated);
       } catch (_) {
-        localStorage.removeItem('bc_user');
+        persistUser(null);
       } finally {
         setLoading(false);
       }
     };
 
     restore();
-  }, []);
+  }, [hydrateUserFromToken, persistUser]);
 
   const login = async (email, password) => {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
@@ -73,8 +87,7 @@ export function AuthProvider({ children }) {
       accessToken: data.token,
       token: data.token,
     };
-    setUser(u);
-    localStorage.setItem('bc_user', JSON.stringify(u));
+    persistUser(u);
     return u;
   };
 
@@ -90,23 +103,20 @@ export function AuthProvider({ children }) {
     // Auto-login after register if token returned
     if (data.token) {
       const u = { ...data.user, accessToken: data.token, token: data.token };
-      setUser(u);
-      localStorage.setItem('bc_user', JSON.stringify(u));
+      persistUser(u);
       return u;
     }
     return data.user;
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('bc_user');
+    persistUser(null);
   };
 
   // Called by AuthCallback when receiving a token from prep101.site bridge
   const loginWithToken = async (token) => {
     const u = await hydrateUserFromToken(token);
-    setUser(u);
-    localStorage.setItem('bc_user', JSON.stringify(u));
+    persistUser(u);
     return u;
   };
 

@@ -74,6 +74,9 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Phase 2 has started in code: backend now has a new account-context service plus auth endpoints for `verify`, `dashboard`, `context`, `onboarding`, and `select-actor`
 - A new Supabase migration exists under `supabase/migrations/20260408_child_actor_101_identity.sql` for `profiles` and `actor_profiles`
 - Prep101 now has an initial `/onboarding` flow that captures role (`actor`, `parent`, `both`) and creates the first active actor context
+- Bold Choices now reads the shared `account` payload from `/api/auth/verify`, redirects unfinished accounts into the central Prep101 onboarding flow, and shows the current active actor in-product
+- Reader101's static site now verifies `ca101_token` against the backend before trusting it, shows the active actor when available, and changes its account CTA to "Finish Account Setup" when onboarding is still required
+- Prep101 onboarding now supports a `next` return target so other products can send users into one central setup flow and bring them back afterward
 - Current limitation: the new profile tables still need to be applied in Supabase before the richer shared account model can fully replace bridge-era fallbacks
 
 ## Architecture Decision Needed

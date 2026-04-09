@@ -15,6 +15,15 @@ export function buildPrepAuthCallbackUrl(token, redirect = `${PREP_ROOT}/dashboa
   return url.toString();
 }
 
+export function buildPrepOnboardingUrl({
+  token,
+  next = `${PREP_ROOT}/dashboard`,
+} = {}) {
+  const onboarding = new URL(`${PREP_ROOT}/onboarding`);
+  if (next) onboarding.searchParams.set('next', next);
+  return buildPrepAuthCallbackUrl(token, onboarding.toString());
+}
+
 export function buildBoldChoicesUrl({
   token,
   redirect = '/generate',

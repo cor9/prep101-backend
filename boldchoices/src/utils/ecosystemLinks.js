@@ -10,6 +10,15 @@ export function buildPrepAuthCallbackUrl(token, redirect = `${PREP_ROOT}/dashboa
   return url.toString();
 }
 
+export function buildPrepOnboardingUrl({
+  token,
+  next = 'https://boldchoices.site/generate',
+} = {}) {
+  const onboarding = new URL(`${PREP_ROOT}/onboarding`);
+  if (next) onboarding.searchParams.set('next', next);
+  return buildPrepAuthCallbackUrl(token, onboarding.toString());
+}
+
 export function buildReader101Url({
   token,
   redirect = `${READER_ROOT}/`,

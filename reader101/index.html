@@ -666,11 +666,13 @@
 </footer>
 
 <script>
-  (function () {
+  (async function () {
     var token = localStorage.getItem('ca101_token');
     var prepDashboard = 'https://prep101.site/dashboard?product=reader101';
+    var prepOnboardingBase = 'https://prep101.site/onboarding?next=' + encodeURIComponent(prepDashboard);
     var boldCallbackBase = 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate';
     var prepCallbackBase = 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent('https://prep101.site/dashboard?product=prep101');
+    var verifyUrl = 'https://prep101-api.vercel.app/api/auth/verify';
     var accountLink = document.getElementById('account-link');
     var primaryCta = document.getElementById('primary-cta');
     var prepLink = document.getElementById('prep-link');
@@ -678,14 +680,62 @@
     var footerPrepLink = document.getElementById('footer-prep-link');
     var footerBoldLink = document.getElementById('footer-bold-link');
     var accountPill = document.getElementById('account-pill');
+    var accountState = null;
+
+    function buildPrepAuthCallback(tokenValue, redirect) {
+      var url = new URL('https://prep101.site/auth-callback');
+      if (tokenValue) url.searchParams.set('token', tokenValue);
+      if (redirect) url.searchParams.set('redirect', redirect);
+      return url.toString();
+    }
+
+    function buildPrepOnboarding(tokenValue, next) {
+      var url = new URL('https://prep101.site/onboarding');
+      if (next) url.searchParams.set('next', next);
+      return buildPrepAuthCallback(tokenValue, url.toString());
+    }
+
+    if (token) {
+      try {
+        var verifyResponse = await fetch(verifyUrl, {
+          headers: {
+            Authorization: 'Bearer ' + token
+          }
+        });
+        var verifyData = await verifyResponse.json();
+        if (!verifyResponse.ok || !verifyData.valid || !verifyData.user) {
+          throw new Error('Invalid session');
+        }
+        accountState = verifyData.user;
+      } catch (error) {
+        localStorage.removeItem('ca101_token');
+        token = null;
+      }
+    }
 
     if (token) {
       if (accountPill) accountPill.style.display = 'inline-flex';
-      if (accountLink) {
-        accountLink.textContent = 'Open My Child Actor 101 Account';
-        accountLink.href = prepDashboard;
+      if (accountPill && accountState && accountState.account && accountState.account.activeActor) {
+        var actor = accountState.account.activeActor;
+        accountPill.textContent =
+          'Active Actor: ' +
+          actor.actorName +
+          (actor.ageRange ? ' (' + actor.ageRange + ')' : '');
       }
-      if (primaryCta) primaryCta.href = prepDashboard;
+
+      var prepDestination =
+        accountState && accountState.account && accountState.account.onboardingRequired
+          ? buildPrepOnboarding(token, prepDashboard)
+          : prepDashboard;
+
+      if (accountLink) {
+        accountLink.textContent =
+          accountState && accountState.account && accountState.account.onboardingRequired
+            ? 'Finish Account Setup'
+            : 'Open My Child Actor 101 Account';
+        accountLink.href = prepDestination;
+      }
+      if (primaryCta) primaryCta.href = prepDestination;
       if (prepLink) prepLink.href = prepCallbackBase + '&token=' + encodeURIComponent(token);
       if (boldLink) boldLink.href = boldCallbackBase + '&token=' + encodeURIComponent(token);
       if (footerPrepLink) footerPrepLink.href = prepCallbackBase + '&token=' + encodeURIComponent(token);

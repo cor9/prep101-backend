@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -219,7 +219,7 @@ const SLOGANS = [
 
 // ── COMPONENT ───────────────────────────────────────────────────────────────
 export default function Generate() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -248,6 +248,15 @@ export default function Generate() {
   const [uploadData, setUploadData] = useState(null);
   const [generationId, setGenerationId] = useState(null); // tracks current generation
   const resultRef = useRef(null);
+  const activeActor = user?.account?.activeActor;
+
+  useEffect(() => {
+    if (!activeActor) return;
+    setForm((current) => ({
+      ...current,
+      actorAge: current.actorAge || activeActor.ageRange || '',
+    }));
+  }, [activeActor]);
 
   const handleField = useCallback((e) => {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -471,6 +480,26 @@ export default function Generate() {
       <div className="gen-layout" style={S.layout}>
         {/* ── SIDEBAR ── */}
         <div className="gen-sidebar" style={S.sidebar}>
+
+          {activeActor && (
+            <div style={{
+              marginBottom: 22,
+              padding: '14px 16px',
+              borderRadius: 12,
+              background: 'rgba(255,255,255,0.035)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}>
+              <div style={{ ...S.sideLabel, marginBottom: 8 }}>Active Actor</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#F0EEF5', marginBottom: 4 }}>
+                {activeActor.actorName}
+              </div>
+              <div style={{ fontSize: 13, color: 'rgba(240,238,245,0.45)', lineHeight: 1.6 }}>
+                {activeActor.ageRange
+                  ? `Using ${activeActor.ageRange} as your current account context.`
+                  : 'Using your current Child Actor 101 account context for this guide.'}
+              </div>
+            </div>
+          )}
 
           {/* Character */}
           <div style={S.sideSection}>

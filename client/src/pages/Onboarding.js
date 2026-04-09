@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,6 +24,7 @@ const roleCards = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, completeOnboarding } = useAuth();
   const [role, setRole] = useState(user?.account?.profile?.role || 'parent');
   const [defaultView, setDefaultView] = useState(
@@ -36,6 +37,7 @@ export default function Onboarding() {
   const [ageRange, setAgeRange] = useState(user?.account?.activeActor?.ageRange || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const nextDestination = new URLSearchParams(location.search).get('next');
 
   const actorLabel = useMemo(() => {
     if (role === 'parent') return "Child actor's name";
@@ -67,6 +69,10 @@ export default function Onboarding() {
           },
         ],
       });
+      if (nextDestination) {
+        window.location.replace(nextDestination);
+        return;
+      }
       navigate('/dashboard', { replace: true });
     } catch (submitError) {
       setError(submitError.message || 'Could not save your account setup.');

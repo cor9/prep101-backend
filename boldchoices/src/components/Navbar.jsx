@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import {
   ACCOUNT_LABEL,
   buildPrepAuthCallbackUrl,
+  buildPrepOnboardingUrl,
   buildReader101Url,
 } from '../utils/ecosystemLinks.js';
 
@@ -15,6 +16,14 @@ export default function Navbar() {
 
   const isLanding = location.pathname === '/';
   const token = user?.accessToken || user?.token;
+  const activeActor = user?.account?.activeActor;
+  const needsOnboarding = Boolean(user?.account?.onboardingRequired);
+  const prepAccountHref = needsOnboarding
+    ? buildPrepOnboardingUrl({
+        token,
+        next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
+      })
+    : buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=prep101');
 
   const handleLogout = () => {
     logout();
@@ -64,7 +73,7 @@ export default function Navbar() {
         {/* Ecosystem links — always visible on landing */}
         <div className="nav-ext-links" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <a
-            href={token ? buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=prep101') : 'https://prep101.site'}
+            href={token ? prepAccountHref : 'https://prep101.site'}
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link-ext nav-link-prep"
@@ -96,7 +105,9 @@ export default function Navbar() {
         {user ? (
           <>
             <span style={{ fontSize: 13, color: 'rgba(240,238,245,0.35)' }}>
-              {user.email?.split('@')[0] || ACCOUNT_LABEL}
+              {activeActor?.actorName
+                ? `Active Actor: ${activeActor.actorName}${activeActor.ageRange ? ` (${activeActor.ageRange})` : ''}`
+                : user.email?.split('@')[0] || ACCOUNT_LABEL}
             </span>
             {location.pathname !== '/generate' && (
               <Link to="/generate">
