@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import API_BASE from '../config/api.js';
 
 /**
  * GuideResult
@@ -34,7 +35,19 @@ export default function GuideResult({
   const [savedChoices, setSavedChoices] = useState(new Set()); // track saved choice keys
 
   const isPro = user && (user.subscription === 'pro' || user.isPro);
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+  const getAuthToken = () => {
+    const directToken = user?.accessToken || user?.token;
+    if (directToken) return directToken;
+
+    try {
+      const stored = localStorage.getItem('bc_user');
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      return parsed?.accessToken || parsed?.token || null;
+    } catch (_) {
+      return null;
+    }
+  };
 
   // ── #9: Auto-scroll to result ─────────────────────────────────────────────
   useEffect(() => {
@@ -78,13 +91,19 @@ export default function GuideResult({
 
       const choiceKey = e.data.choice?.substring(0, 60) || 'unknown';
       const toastId = toast.loading('Saving choice...');
+      const token = getAuthToken();
+
+      if (!token) {
+        toast.error('Please sign in again to save choices.', { id: toastId });
+        return;
+      }
 
       try {
         const res = await fetch(`${API_BASE}/api/bold-choices/save`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${user?.accessToken || user?.token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             choice: e.data.choice,
@@ -111,11 +130,14 @@ export default function GuideResult({
   // ── Analytics helper ──────────────────────────────────────────────────────
   const trackEvent = async (event, extraMeta = {}) => {
     try {
+      const token = getAuthToken();
+      if (!token) return;
+
       await fetch(`${API_BASE}/api/bold-choices/analytics`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${user?.accessToken || user?.token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           event,
