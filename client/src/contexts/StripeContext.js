@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuth } from './AuthContext';
 import API_BASE from '../config/api';
@@ -38,7 +38,7 @@ export const StripeProvider = ({ children }) => {
   }, []);
 
   // Load subscription prices
-  const loadPrices = async () => {
+  const loadPrices = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE}/api/stripe/prices`);
       if (response.ok) {
@@ -49,10 +49,10 @@ export const StripeProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Failed to load prices:', error);
     }
-  };
+  }, []);
 
   // Load user's subscription status
-  const loadSubscriptionStatus = async () => {
+  const loadSubscriptionStatus = useCallback(async () => {
     if (!user) {
       setSubscription(null);
       setLoading(false);
@@ -75,7 +75,7 @@ export const StripeProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   // Create subscription
   const createSubscription = async (priceId, paymentMethodId) => {
@@ -180,7 +180,7 @@ export const StripeProvider = ({ children }) => {
   useEffect(() => {
     loadPrices();
     loadSubscriptionStatus();
-  }, [user]);
+  }, [loadPrices, loadSubscriptionStatus]);
 
   const value = {
     stripe,

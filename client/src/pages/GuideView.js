@@ -7,10 +7,6 @@ import { withApiCredentials } from "../utils/apiAuth";
 import "../styles/shared.css";
 import "../styles/guide.css";
 
-// Strip inline styles from generated HTML
-const stripInlineStyles = (html) =>
-  html.replace(/<style[\s\S]*?<\/style>/gi, "");
-
 // Normalize the worst inline styles from the model for better readability
 const normalizeGuide = (html) => {
   // strip embedded <style> blocks

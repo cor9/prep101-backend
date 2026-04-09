@@ -138,7 +138,7 @@ const AdminDashboard = () => {
       throw new Error(`API error: ${res.status}`);
     }
     return res.json();
-  }, []);
+  }, [user]);
 
   // Fetch dashboard overview
   const fetchDashboard = useCallback(async () => {

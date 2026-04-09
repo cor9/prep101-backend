@@ -154,7 +154,6 @@ const Dashboard = () => {
   const [usage, setUsage] = useState(null);
   const [usageLoading, setUsageLoading] = useState(true);
   const [usageError, setUsageError] = useState(null);
-  const [lastGuideUrl, setLastGuideUrl] = useState(null);
 
   const { user } = useAuth();
   const activeActor = user?.account?.activeActor;
@@ -318,7 +317,6 @@ const Dashboard = () => {
   const openHtmlInNewTab = (htmlString, customTitle) => {
     const blob = new Blob([htmlString], { type: "text/html" });
     const url = URL.createObjectURL(blob);
-    setLastGuideUrl(url);
     // If customTitle is provided, it's a string for the window name
     if (typeof customTitle === "string") {
       const w = window.open(url, customTitle, "noopener,noreferrer");
@@ -351,7 +349,6 @@ const Dashboard = () => {
     }
 
     setIsGenerating(true);
-    setLastGuideUrl(null);
 
     // Add timeout to prevent infinite hanging
     const controller = new AbortController();

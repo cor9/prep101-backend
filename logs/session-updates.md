@@ -48,6 +48,7 @@
 - Removed remaining localStorage auth use from Prep101 callback handling, Bold Choices save/generate/admin flows, and Reader101 account detection.
 - Switched active product navigation to direct shared-session URLs instead of tokenized bridge links for normal use.
 - Kept callback/bridge routes as compatibility shims so older tokenized links can still exchange a token and land correctly during rollout.
+- Cleaned the remaining frontend warning set by fixing stale React hook dependencies and removing unused state/helpers in the shared client, leaving only the older `import.meta` build warning.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`
