@@ -2,8 +2,38 @@ const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
 const auth = require("../middleware/auth");
 const User = require("../models/User");
+const {
+  buildAccountContext,
+  completeOnboarding,
+  ensureProfile,
+  selectActiveActor,
+} = require("../services/accountContextService");
 
 const router = express.Router();
+
+function serializeUser(user, account = null) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name || user.user_metadata?.name || user.email?.split("@")[0] || "User",
+    subscription: user.subscription || "free",
+    guidesUsed: typeof user.guidesUsed === "number" ? user.guidesUsed : 0,
+    guidesLimit:
+      typeof user.guidesLimit === "number" ? user.guidesLimit : user.guidesLimit ?? 1,
+    subscriptionStatus: user.subscriptionStatus || "active",
+    currentPeriodStart: user.currentPeriodStart || null,
+    currentPeriodEnd: user.currentPeriodEnd || null,
+    betaAccessLevel: user.betaAccessLevel || "none",
+    isBetaTester: Boolean(user.isBetaTester),
+    account,
+  };
+}
+
+async function buildSerializedUser(user, options = {}) {
+  const account = await buildAccountContext(user, options);
+  return serializeUser(user, account);
+}
 
 // POST /api/auth/register - User registration
 router.post("/register", async (req, res) => {
@@ -67,14 +97,28 @@ router.post("/register", async (req, res) => {
             }
           }
 
+          const hydratedUser = {
+            id: data.user.id,
+            email: data.user.email,
+            name,
+            subscription: "free",
+            guidesUsed: 0,
+            guidesLimit: 1,
+            subscriptionStatus: "active",
+          };
+
+          await ensureProfile(hydratedUser).catch((error) => {
+            console.warn("⚠️ Profile bootstrap skipped during register:", error.message);
+          });
+
+          const serializedUser = await buildSerializedUser(hydratedUser, {
+            ensureProfile: true,
+          });
+
           return res.status(201).json({
             message: "User registered successfully",
             token: data.session?.access_token,
-            user: {
-              id: data.user.id,
-              email: data.user.email,
-              name: name
-            }
+            user: serializedUser,
           });
         }
       } catch (sbError) {
@@ -95,7 +139,7 @@ router.post("/register", async (req, res) => {
       return res.status(201).json({
         message: 'User registered',
         token,
-        user: { id: newUser.id, name, email }
+        user: await buildSerializedUser(newUser, { ensureProfile: true }),
       });
     }
 
@@ -189,14 +233,28 @@ router.post("/login", async (req, res) => {
             }
           }
 
+          const hydratedUser = {
+            id: user?.id || data.user.id,
+            email: user?.email || data.user.email,
+            name: user?.name || data.user.user_metadata?.name || email.split("@")[0],
+            subscription: user?.subscription || "free",
+            guidesUsed: user?.guidesUsed || 0,
+            guidesLimit: user?.guidesLimit ?? 1,
+            subscriptionStatus: user?.subscriptionStatus || "active",
+            currentPeriodStart: user?.currentPeriodStart || null,
+            currentPeriodEnd: user?.currentPeriodEnd || null,
+            betaAccessLevel: user?.betaAccessLevel || "none",
+            isBetaTester: Boolean(user?.isBetaTester),
+          };
+
+          await ensureProfile(hydratedUser).catch((error) => {
+            console.warn("⚠️ Profile bootstrap skipped during login:", error.message);
+          });
+
           return res.json({
             message: "Login successful",
             token: data.session.access_token,
-            user: {
-              id: user?.id || data.user.id,
-              email: user?.email || data.user.email,
-              name: user?.name || data.user.user_metadata?.name || email.split("@")[0],
-            },
+            user: await buildSerializedUser(hydratedUser, { ensureProfile: true }),
           });
         } else {
           console.error("❌ Supabase login returned no user or session");
@@ -235,7 +293,7 @@ router.post("/login", async (req, res) => {
         return res.json({
           message: "Login successful",
           token,
-          user: { id: user.id, name: user.name, email: user.email },
+          user: await buildSerializedUser(user, { ensureProfile: true }),
         });
       } catch (dbError) {
         console.error("❌ Database login error:", dbError.message);
@@ -254,5 +312,89 @@ router.post("/login", async (req, res) => {
   }
 });
 
-module.exports = router;
+router.get("/verify", auth, async (req, res) => {
+  try {
+    return res.json({
+      valid: true,
+      user: await buildSerializedUser(req.user, { ensureProfile: true }),
+    });
+  } catch (error) {
+    console.error("Verify error:", error);
+    return res.status(500).json({ valid: false, message: "Verification failed" });
+  }
+});
 
+router.get("/dashboard", auth, async (req, res) => {
+  try {
+    const user = await buildSerializedUser(req.user, { ensureProfile: true });
+    return res.json({
+      success: true,
+      user,
+      account: user.account,
+      subscription: {
+        currentPlan: {
+          name: user.subscription,
+        },
+        status: user.subscriptionStatus,
+        renewsAt: user.currentPeriodEnd || null,
+      },
+    });
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    return res.status(500).json({ message: "Failed to load dashboard" });
+  }
+});
+
+router.get("/profile", auth, async (req, res) => {
+  try {
+    const user = await buildSerializedUser(req.user, { ensureProfile: true });
+    return res.json({
+      success: true,
+      user,
+      account: user.account,
+    });
+  } catch (error) {
+    console.error("Profile error:", error);
+    return res.status(500).json({ message: "Failed to load profile" });
+  }
+});
+
+router.get("/context", auth, async (req, res) => {
+  try {
+    const account = await buildAccountContext(req.user, { ensureProfile: true });
+    return res.json({ success: true, account });
+  } catch (error) {
+    console.error("Context error:", error);
+    return res.status(500).json({ message: "Failed to load account context" });
+  }
+});
+
+router.post("/onboarding", auth, async (req, res) => {
+  try {
+    const account = await completeOnboarding(req.user, req.body || {});
+    return res.json({
+      success: true,
+      account,
+      user: serializeUser(req.user, account),
+    });
+  } catch (error) {
+    console.error("Onboarding error:", error);
+    return res.status(400).json({ message: error.message || "Onboarding failed" });
+  }
+});
+
+router.post("/select-actor", auth, async (req, res) => {
+  try {
+    const account = await selectActiveActor(req.user, req.body?.actorId);
+    return res.json({
+      success: true,
+      account,
+      user: serializeUser(req.user, account),
+    });
+  } catch (error) {
+    console.error("Select actor error:", error);
+    return res.status(400).json({ message: error.message || "Failed to select actor" });
+  }
+});
+
+module.exports = router;

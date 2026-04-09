@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
@@ -21,6 +21,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import BoldChoices from './pages/BoldChoices';
 import AuthBridge from './pages/AuthBridge';
 import AuthCallback from './pages/AuthCallback';
+import Onboarding from './pages/Onboarding';
 import './App.css';
 
 
@@ -29,6 +30,7 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   console.log('🔒 ProtectedRoute - user:', user ? 'logged in' : 'not logged in');
   console.log('🔒 ProtectedRoute - loading:', loading);
@@ -52,6 +54,13 @@ function ProtectedRoute({ children }) {
   if (!user) {
     console.log('🔒 ProtectedRoute - redirecting to login');
     return <Navigate to="/login" />;
+  }
+
+  if (
+    user?.account?.onboardingRequired &&
+    location.pathname !== '/onboarding'
+  ) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   console.log('🔒 ProtectedRoute - rendering protected content');
@@ -120,6 +129,14 @@ function App() {
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/auth-callback" element={<AuthCallback />} />
+                <Route
+                  path="/onboarding"
+                  element={
+                    <ProtectedRoute>
+                      <Onboarding />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/bold-choices"
                   element={

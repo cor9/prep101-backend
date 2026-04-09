@@ -80,6 +80,8 @@ const Dashboard = () => {
 
   const { user } = useAuth();
   const token = user?.accessToken || user?.token || localStorage.getItem("prep101_token");
+  const activeActor = user?.account?.activeActor;
+  const onboardingRequired = Boolean(user?.account?.onboardingRequired);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -430,7 +432,40 @@ const Dashboard = () => {
             <p className="h2-hero">
               One dashboard for Prep101, Reader101, and Bold Choices.
             </p>
+            {activeActor && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 14,
+                padding: '8px 14px',
+                borderRadius: 999,
+                background: 'rgba(15,23,42,0.08)',
+                color: '#0f172a',
+                fontWeight: 700,
+              }}>
+                Active Actor: {activeActor.actorName}
+                {activeActor.ageRange ? ` (${activeActor.ageRange})` : ''}
+              </div>
+            )}
           </div>
+
+          {onboardingRequired && (
+            <div className="card-white" style={{ marginBottom: '1.5rem', border: '1px solid #f59e0b' }}>
+              <div style={{ fontWeight: 800, color: '#92400e', marginBottom: 6 }}>
+                Finish setting up your Child Actor 101 account
+              </div>
+              <div style={{ color: '#78350f', marginBottom: 12 }}>
+                Choose whether you are here as an actor, a parent, or both, then set your active actor context.
+              </div>
+              <button
+                className="btn btnPrimary"
+                onClick={() => (window.location.href = '/onboarding')}
+              >
+                Continue Setup
+              </button>
+            </div>
+          )}
 
           <div
             className="card-white"

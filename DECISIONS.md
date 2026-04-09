@@ -47,3 +47,8 @@
 **Issue:** Reader101 was still asking the model to write full HTML artifacts, which made section order, wording severity, and high-risk handling vulnerable to drift.
 **Decision:** Split Reader101 into a fixed-template architecture under `reader101/templates` and `reader101/system`, moved generation to structured JSON-only content, added template selection plus deterministic rendering, and kept the existing `generateReaderGuide()` service contract as a wrapper over the new builder.
 **Status:** Success
+
+## 2026-04-08
+**Issue:** Cross-product auth was still a fragile bridge between `prep101.site`, `reader101.site`, and `boldchoices.site`, with no shared identity/context layer for actor vs parent usage.
+**Decision:** Started Phase 2 of the Child Actor 101 account system by adding backend `profiles` / `actor_profiles` foundations, shared auth endpoints (`/api/auth/verify`, `/dashboard`, `/context`, `/onboarding`, `/select-actor`), a Supabase migration, and a first Prep101 onboarding flow that captures role plus active actor context.
+**Status:** In Progress

@@ -69,6 +69,13 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 - Claude now generates structured JSON content only, while template selection, normalization, and HTML rendering happen deterministically in code
 - High-risk scene handling still survives the refactor because the builder injects the required intimacy blocks, reader-role lock lines, and emotional-arc sections after normalization
 
+## Child Actor 101 Account Status (2026-04-08)
+- Phase 1 bridge is live: Prep101 can hand auth across to Bold Choices and Reader101, and the shared dashboard now presents as one Child Actor 101 account
+- Phase 2 has started in code: backend now has a new account-context service plus auth endpoints for `verify`, `dashboard`, `context`, `onboarding`, and `select-actor`
+- A new Supabase migration exists under `supabase/migrations/20260408_child_actor_101_identity.sql` for `profiles` and `actor_profiles`
+- Prep101 now has an initial `/onboarding` flow that captures role (`actor`, `parent`, `both`) and creates the first active actor context
+- Current limitation: the new profile tables still need to be applied in Supabase before the richer shared account model can fully replace bridge-era fallbacks
+
 ## Architecture Decision Needed
 - Migrate to intended Next.js + Airtable architecture?
 - Or update project rules to reflect current working implementation?

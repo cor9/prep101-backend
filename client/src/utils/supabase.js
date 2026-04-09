@@ -141,18 +141,20 @@ export const getCurrentUser = async () => {
     return { user: null, error: null };
   }
 
-  // First check if we have a stored user
+  // Use stored user only when it already includes account context; otherwise refresh from backend.
   if (storedUser) {
     try {
       const user = JSON.parse(storedUser);
-      return {
-        user: {
-          ...user,
-          accessToken: token,
-          token: token
-        },
-        error: null
-      };
+      if (user?.account) {
+        return {
+          user: {
+            ...user,
+            accessToken: token,
+            token: token
+          },
+          error: null
+        };
+      }
     } catch (e) {
       // Invalid stored user, try to verify with backend
     }
