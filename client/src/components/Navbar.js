@@ -98,7 +98,7 @@ export default function Navbar() {
               {actors.length > 0 && (
                 <>
                   <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
-                    Active Actor:
+                    Working as:
                   </span>
                   <select
                     value={activeActorId}

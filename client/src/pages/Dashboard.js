@@ -20,6 +20,7 @@ const PREP101_STRIPE_LINKS = {
   singleGuide: "https://buy.stripe.com/6oU3cv8Cb2jlbYN0tQ2wU3Z",
   threePack: "https://buy.stripe.com/7sYaEX4lV9LN3sh90m2wV0d",
 };
+const PREP101_MONTHLY_GUIDE_LIMIT = 5;
 
 // Simple progress bar
 const ProgressBar = ({ value, max }) => {
@@ -157,27 +158,28 @@ const nicePlan = (p) => {
 
 const DASHBOARD_CONTEXT = {
   all: {
-    eyebrow: "Shared Account Hub",
+    contextLabel: "Account Hub",
+    focusLine: "Choose a product below to get started.",
     title: `Your ${ACCOUNT_LABEL}`,
-    subtitle: "One account for Prep101, Reader101, and Bold Choices.",
+    subtitle: "Manage Prep101, Reader101, and Bold Choices in one place.",
   },
   prep101: {
-    eyebrow: "Prep101 Workspace",
-    title: `Prep101 inside ${ACCOUNT_LABEL}`,
-    subtitle:
-      "Upload sides, generate guides, and manage Prep101 credits from the same account.",
+    contextLabel: "Prep101",
+    focusLine: "Build a full audition guide from uploaded sides.",
+    title: `Your ${ACCOUNT_LABEL}`,
+    subtitle: "Manage Prep101, Reader101, and Bold Choices in one place.",
   },
   reader101: {
-    eyebrow: "Reader101 Workspace",
-    title: `Reader101 inside ${ACCOUNT_LABEL}`,
-    subtitle:
-      "Manage Reader101 access in your shared account hub, then jump back into Reader101 with the same actor context.",
+    contextLabel: "Reader101",
+    focusLine: "Continue your Reader101 work. You're logged in and ready to go.",
+    title: `Your ${ACCOUNT_LABEL}`,
+    subtitle: "Manage Prep101, Reader101, and Bold Choices in one place.",
   },
   bold_choices: {
-    eyebrow: "Bold Choices Workspace",
-    title: `Bold Choices inside ${ACCOUNT_LABEL}`,
-    subtitle:
-      "Jump into actor-first choice work with the same shared account and active actor.",
+    contextLabel: "Bold Choices",
+    focusLine: "Continue your actor-first choice work.",
+    title: `Your ${ACCOUNT_LABEL}`,
+    subtitle: "Manage Prep101, Reader101, and Bold Choices in one place.",
   },
 };
 
@@ -186,9 +188,12 @@ const getProductContext = (key) =>
 
 const formatPrepAccess = (usage) => {
   if (!usage) return "Checking access...";
-  if (usage.monthlyLimit == null) return "Unlimited Prep101";
+  return `${PREP101_MONTHLY_GUIDE_LIMIT} guides/month`;
+};
 
-  const pieces = [`${usage.monthlyRemaining ?? 0} monthly left`];
+const formatPrepDetails = (usage) => {
+  if (!usage) return "Add more anytime";
+  const pieces = ["Add more anytime"];
   if (Number(usage.topUpCredits || 0) > 0) {
     pieces.push(
       `${usage.topUpCredits} top-up ${
@@ -199,9 +204,15 @@ const formatPrepAccess = (usage) => {
   return pieces.join(" • ");
 };
 
+const formatPrepUsageCount = (usage) => {
+  const used = Math.max(0, Number(usage?.monthlyUsed ?? usage?.used ?? 0));
+  const displayUsed = Math.min(used, PREP101_MONTHLY_GUIDE_LIMIT);
+  return `${displayUsed} of ${PREP101_MONTHLY_GUIDE_LIMIT} guides used`;
+};
+
 const formatReaderAccess = (usage) => {
   if (!usage) return "Checking access...";
-  if (usage.unlimited) return "Unlimited Reader101";
+  if (usage.unlimited) return "Unlimited access";
   if (usage.credits > 0) {
     return `${usage.credits} Reader101 ${
       usage.credits === 1 ? "credit" : "credits"
@@ -212,13 +223,13 @@ const formatReaderAccess = (usage) => {
 
 const formatBoldAccess = (usage) => {
   if (!usage) return "Checking access...";
-  if (usage.unlimited) return "Unlimited Bold Choices";
+  if (usage.unlimited) return "Included with your plan";
   if (usage.credits > 0) {
     return `${usage.credits} Bold Choices ${
       usage.credits === 1 ? "credit" : "credits"
     }`;
   }
-  return "Free monthly access only";
+  return "Included access";
 };
 
 const Dashboard = () => {
@@ -361,14 +372,21 @@ const Dashboard = () => {
 
   const remaining = useMemo(() => {
     if (!usage) return 0;
-    if (typeof usage.remaining === "number") return Math.max(0, usage.remaining);
-    if (usage.limit == null) return Infinity; // unlimited
-    return Math.max(0, usage.limit - (usage.used || 0));
+    const prepUsage = usage.prep101 || {};
+    const monthlyUsed = Number(prepUsage.monthlyUsed ?? usage.used ?? 0);
+    const monthlyRemaining =
+      typeof prepUsage.monthlyRemaining === "number"
+        ? prepUsage.monthlyRemaining
+        : Math.max(0, PREP101_MONTHLY_GUIDE_LIMIT - monthlyUsed);
+    const topUpCredits = Number(prepUsage.topUpCredits ?? usage.topUpCredits ?? 0);
+    return (
+      Math.min(Math.max(0, monthlyRemaining), PREP101_MONTHLY_GUIDE_LIMIT) +
+      Math.max(0, topUpCredits)
+    );
   }, [usage]);
 
   const canGenerate = useMemo(() => {
     if (!usage) return false;
-    if (usage.limit == null) return true;
     return remaining > 0;
   }, [usage, remaining]);
   const isPrep101StarterPlan = useMemo(() => {
@@ -614,6 +632,16 @@ const Dashboard = () => {
       day: "numeric",
     })
     : null;
+  const prepUsage = usage?.prep101 || user?.prep101Usage || {};
+  const prepMonthlyUsed = Math.min(
+    Math.max(0, Number(prepUsage.monthlyUsed ?? usage?.used ?? 0)),
+    PREP101_MONTHLY_GUIDE_LIMIT
+  );
+  const prepTopUpCredits = Number(
+    prepUsage.topUpCredits ?? usage?.topUpCredits ?? 0
+  );
+  const showPrepOveragePrompt =
+    prepMonthlyUsed > 0 || prepMonthlyUsed >= PREP101_MONTHLY_GUIDE_LIMIT;
 
   return (
     <>
@@ -685,23 +713,34 @@ const Dashboard = () => {
                 marginBottom: 10,
               }}
             >
-              {dashboardContext.eyebrow}
+              Currently viewing: {dashboardContext.contextLabel}
             </div>
             <h1 className="h1-hero">{dashboardContext.title}</h1>
             <p className="h2-hero">{dashboardContext.subtitle}</p>
+            <p
+              style={{
+                color: "#cbd5e1",
+                fontSize: "1.05rem",
+                margin: "0.85rem auto 0",
+                maxWidth: 680,
+              }}
+            >
+              {dashboardContext.focusLine}
+            </p>
             {activeActor && (
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
                 marginTop: 14,
-                padding: '8px 14px',
+                padding: '10px 16px',
                 borderRadius: 999,
-                background: 'rgba(15,23,42,0.08)',
-                color: '#0f172a',
-                fontWeight: 700,
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                color: '#fff',
+                fontWeight: 900,
               }}>
-                Active Actor: {activeActor.actorName}
+                🎭 Working as: {activeActor.actorName}
                 {activeActor.ageRange ? ` (${activeActor.ageRange})` : ''}
               </div>
             )}
@@ -760,6 +799,7 @@ const Dashboard = () => {
                   color: "#f59e0b",
                   description: "Upload sides here when you want a full audition guide.",
                   status: formatPrepAccess(usage?.prep101 || user?.prep101Usage || null),
+                  secondaryStatus: formatPrepDetails(usage?.prep101 || user?.prep101Usage || null),
                   action: scrollToPrep101Builder,
                   cta: "Build a Prep101 Guide",
                 },
@@ -835,6 +875,51 @@ const Dashboard = () => {
                   >
                     {workspace.status}
                   </div>
+                  {workspace.secondaryStatus && (
+                    <div
+                      style={{
+                        color: "#475569",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        margin: "-6px 0 14px",
+                      }}
+                    >
+                      {workspace.secondaryStatus}
+                    </div>
+                  )}
+                  {workspace.label === "Prep101" && showPrepOveragePrompt && (
+                    <div
+                      style={{
+                        borderRadius: 14,
+                        background: "#fff7ed",
+                        border: "1px solid #fed7aa",
+                        color: "#9a3412",
+                        padding: "0.75rem",
+                        marginBottom: 14,
+                        fontSize: 13,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      <strong>{formatPrepUsageCount(prepUsage)}</strong>
+                      <button
+                        type="button"
+                        onClick={() => (window.location.href = PREP101_STRIPE_LINKS.threePack)}
+                        style={{
+                          display: "block",
+                          marginTop: 6,
+                          border: "none",
+                          background: "transparent",
+                          color: "#c2410c",
+                          fontWeight: 900,
+                          padding: 0,
+                          cursor: "pointer",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        Need more? Add 3 more
+                      </button>
+                    </div>
+                  )}
                   <button
                     onClick={workspace.action}
                     className="btn btnPrimary"
@@ -849,6 +934,21 @@ const Dashboard = () => {
                   </button>
                 </div>
               ))}
+            </div>
+            <div
+              style={{
+                marginTop: "1.25rem",
+                padding: "1rem 1.1rem",
+                borderRadius: 18,
+                background: "#0f172a",
+                color: "#e2e8f0",
+                fontWeight: 800,
+                textAlign: "center",
+                lineHeight: 1.6,
+              }}
+            >
+              Prep101 builds your performance. Reader101 supports your tape.
+              Bold Choices sharpens your choices.
             </div>
           </div>
 
@@ -875,7 +975,7 @@ const Dashboard = () => {
                   }}
                 >
                   <div style={{ fontWeight: 800, color: "#0f172a" }}>
-                    Plan: {nicePlan(usage?.plan || user?.subscription)}
+                    Your Plan: {nicePlan(usage?.plan || user?.subscription)}
                     {usageError && (
                       <span style={{ color: "#f59e0b", marginLeft: 8 }}>
                         (demo)
@@ -883,12 +983,10 @@ const Dashboard = () => {
                     )}
                   </div>
                   <div style={{ color: "#475569", fontWeight: 700 }}>
-                    {usage?.limit == null
-                      ? "Unlimited"
-                      : `${usage.used || 0} / ${usage.limit} used`}
+                    {prepMonthlyUsed} / {PREP101_MONTHLY_GUIDE_LIMIT} Prep101 used
                   </div>
                 </div>
-                {Number(usage?.topUpCredits || 0) > 0 && (
+                {prepTopUpCredits > 0 && (
                   <div
                     style={{
                       color: "#0f766e",
@@ -896,21 +994,20 @@ const Dashboard = () => {
                       marginBottom: 8,
                     }}
                   >
-                    {usage.topUpCredits} Prep101 top-up credit
-                    {usage.topUpCredits === 1 ? "" : "s"} remaining
+                    {prepTopUpCredits} Prep101 add-on credit
+                    {prepTopUpCredits === 1 ? "" : "s"} remaining
                   </div>
                 )}
-                {usage?.limit != null && (
-                  <>
-                    <ProgressBar value={usage.used || 0} max={usage.limit} />
-                    <div
-                      style={{ color: "#64748b", marginTop: 6, fontSize: 13 }}
-                    >
-                      {remaining} total remaining •{" "}
-                      {renewText ? `renews ${renewText}` : "monthly"}
-                    </div>
-                  </>
-                )}
+                <ProgressBar
+                  value={prepMonthlyUsed}
+                  max={PREP101_MONTHLY_GUIDE_LIMIT}
+                />
+                <div
+                  style={{ color: "#64748b", marginTop: 6, fontSize: 13 }}
+                >
+                  {remaining} Prep101 guide{remaining === 1 ? "" : "s"} available
+                  {renewText ? ` • monthly guides renew ${renewText}` : ""}
+                </div>
                 <div
                   style={{
                     display: "grid",
@@ -923,7 +1020,7 @@ const Dashboard = () => {
                     {
                       label: "Prep101",
                       tone: "#f59e0b",
-                      value: formatPrepAccess(usage?.prep101 || null),
+                      value: `${formatPrepAccess(usage?.prep101 || null)} • ${formatPrepDetails(usage?.prep101 || null)}`,
                     },
                     {
                       label: "Reader101",

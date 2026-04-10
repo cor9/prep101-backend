@@ -56,6 +56,10 @@
 - Added a cross-domain logout hop through `reader101/logout.html` so Reader101 clears its saved fallback token when users log out from Prep101 or Bold Choices.
 - Simplified the dashboard work path by replacing the unlabeled stack of cards with Start Here, Your Access, Prep101 Builder, and Saved Work sections.
 - Removed the Redeem Promo Code card from the customer dashboard so launch coupons can stay in Stripe checkout instead of distracting from the main product flow.
+- Removed misleading “Unlimited Prep101” and “Free monthly access only” customer copy from the dashboard and Reader101 page.
+- Reframed the shared account hero as `Your Child Actor 101 Account` with a `Currently viewing` context badge instead of product-inside-account headlines.
+- Added consistent product card language, a one-line ecosystem explanation, prominent `Working as` actor context, and a Prep101 overage prompt linking to the 3-pack add-on.
+- Normalized the dashboard access summary so Prep101 always displays as 5 guides/month plus add-on credits instead of surfacing legacy unlimited/999-guide values.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

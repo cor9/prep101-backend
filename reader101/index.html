@@ -802,17 +802,16 @@
 
     function describePrepAccess(usage) {
       if (!usage) return 'No shared account data yet';
-      if (usage.monthlyLimit == null) return 'Unlimited Prep101';
-      var pieces = [String(usage.monthlyRemaining || 0) + ' monthly left'];
+      var pieces = ['5 guides/month'];
       if ((usage.topUpCredits || 0) > 0) {
-        pieces.push(String(usage.topUpCredits) + ' top-up ' + (usage.topUpCredits === 1 ? 'credit' : 'credits'));
+        pieces.push(String(usage.topUpCredits) + ' add-on ' + (usage.topUpCredits === 1 ? 'credit' : 'credits'));
       }
       return pieces.join(' • ');
     }
 
     function describeReaderAccess(usage) {
       if (!usage) return 'No Reader101 access loaded';
-      if (usage.unlimited) return 'Unlimited Reader101';
+      if (usage.unlimited) return 'Unlimited access';
       if ((usage.credits || 0) > 0) {
         return String(usage.credits) + ' Reader101 ' + (usage.credits === 1 ? 'credit' : 'credits');
       }
@@ -821,11 +820,11 @@
 
     function describeBoldAccess(usage) {
       if (!usage) return 'No Bold Choices access loaded';
-      if (usage.unlimited) return 'Unlimited Bold Choices';
+      if (usage.unlimited) return 'Included with your plan';
       if ((usage.credits || 0) > 0) {
         return String(usage.credits) + ' Bold Choices ' + (usage.credits === 1 ? 'credit' : 'credits');
       }
-      return 'Free monthly access only';
+      return 'Included access';
     }
 
     try {
@@ -881,7 +880,7 @@
       if (accountPill && accountState && accountState.account && accountState.account.activeActor) {
         var actor = accountState.account.activeActor;
         accountPill.textContent =
-          'Active Actor: ' +
+          'Working as: ' +
           actor.actorName +
           (actor.ageRange ? ' (' + actor.ageRange + ')' : '');
       }

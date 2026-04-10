@@ -126,7 +126,7 @@ export default function Navbar() {
           <>
             {actors.length > 0 ? (
               <>
-                <span style={{ fontSize: 13, color: 'rgba(240,238,245,0.35)' }}>Active Actor:</span>
+                <span style={{ fontSize: 13, color: 'rgba(240,238,245,0.35)' }}>Working as:</span>
                 <select
                   value={activeActor?.id || ''}
                   onChange={handleActorChange}
