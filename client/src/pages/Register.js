@@ -13,14 +13,24 @@ const resolvePostAuthDestination = (nextDestination, user) => {
 
   try {
     const url = new URL(nextDestination, window.location.origin);
-    if (url.pathname !== '/auth-bridge') return nextDestination;
+    if (url.pathname === '/auth-bridge') {
+      const redirect = url.searchParams.get('redirect');
+      if (!redirect) return nextDestination;
 
-    const redirect = url.searchParams.get('redirect');
-    if (!redirect) return nextDestination;
+      const bridgeTarget = new URL(redirect);
+      bridgeTarget.searchParams.set('token', token);
+      return bridgeTarget.toString();
+    }
 
-    const bridgeTarget = new URL(redirect);
-    bridgeTarget.searchParams.set('token', token);
-    return bridgeTarget.toString();
+    if (
+      url.origin !== window.location.origin &&
+      /auth-callback(\.html)?$/i.test(url.pathname)
+    ) {
+      url.searchParams.set('token', token);
+      return url.toString();
+    }
+
+    return nextDestination;
   } catch (_) {
     return nextDestination;
   }

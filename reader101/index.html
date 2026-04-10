@@ -735,13 +735,24 @@
     try {
       token = localStorage.getItem('ca101_token');
     } catch (_) {}
+    var urlParams = new URLSearchParams(window.location.search);
+    var queryToken = urlParams.get('token');
+    if (queryToken) {
+      token = queryToken;
+      try {
+        localStorage.setItem('ca101_token', queryToken);
+      } catch (_) {}
+      urlParams.delete('token');
+      var cleanedUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '') + window.location.hash;
+      window.history.replaceState({}, '', cleanedUrl);
+    }
     var prepDashboard = 'https://prep101.site/dashboard?product=reader101';
     var prepOnboardingBase = 'https://prep101.site/onboarding?next=' + encodeURIComponent(prepDashboard);
     var prepSelectActorBase = 'https://prep101.site/select-actor?next=' + encodeURIComponent(prepDashboard);
     var boldWorkspaceUrl = 'https://boldchoices.site/generate';
     var prepWorkspaceUrl = 'https://prep101.site/dashboard?product=prep101';
     var verifyUrl = 'https://prep101-api.vercel.app/api/auth/verify';
-    var prepLoginUrl = 'https://prep101.site/auth-bridge?redirect=' + encodeURIComponent('https://reader101.site/auth-callback.html?redirect=' + encodeURIComponent('https://reader101.site/'));
+    var prepLoginUrl = 'https://prep101.site/login?next=' + encodeURIComponent('https://reader101.site/auth-callback.html?redirect=' + encodeURIComponent('https://reader101.site/'));
     var accountLink = document.getElementById('account-link');
     var primaryCta = document.getElementById('primary-cta');
     var prepLink = document.getElementById('prep-link');
@@ -792,6 +803,27 @@
         accountState = verifyData.user;
       }
     } catch (error) {}
+
+    if (!accountState && token) {
+      try {
+        await fetch('https://prep101-api.vercel.app/api/auth/session', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ token: token })
+        });
+
+        var refreshedVerifyResponse = await fetch(verifyUrl, {
+          credentials: 'include'
+        });
+        var refreshedVerifyData = await refreshedVerifyResponse.json();
+        if (refreshedVerifyResponse.ok && refreshedVerifyData.valid && refreshedVerifyData.user) {
+          accountState = refreshedVerifyData.user;
+        }
+      } catch (error) {}
+    }
 
     if (!accountState && token) {
       try {
