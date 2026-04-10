@@ -5,6 +5,27 @@ import toast from 'react-hot-toast';
 import Footer from '../components/Footer';
 import '../styles/shared.css';
 
+const resolvePostAuthDestination = (nextDestination, user) => {
+  if (!nextDestination) return null;
+
+  const token = user?.accessToken || user?.token;
+  if (!token) return nextDestination;
+
+  try {
+    const url = new URL(nextDestination, window.location.origin);
+    if (url.pathname !== '/auth-bridge') return nextDestination;
+
+    const redirect = url.searchParams.get('redirect');
+    if (!redirect) return nextDestination;
+
+    const bridgeTarget = new URL(redirect);
+    bridgeTarget.searchParams.set('token', token);
+    return bridgeTarget.toString();
+  } catch (_) {
+    return nextDestination;
+  }
+};
+
 const getLoginContext = (nextDestination) => {
   const destination = String(nextDestination || '').toLowerCase();
 
@@ -61,10 +82,10 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
+      const loggedInUser = await login(formData.email, formData.password);
       toast.success('Welcome back!');
       if (nextDestination) {
-        window.location.replace(nextDestination);
+        window.location.replace(resolvePostAuthDestination(nextDestination, loggedInUser));
         return;
       }
       navigate('/account');

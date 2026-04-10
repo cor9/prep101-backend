@@ -72,13 +72,15 @@ export const AuthProvider = ({ children }) => {
       console.log('✅ User logged in successfully');
       // Update user state with the logged-in user
       if (data?.user) {
-        persistUser({
+        const hydratedUser = {
           ...data.user,
           accessToken: data.session?.access_token,
           token: data.session?.access_token
-        });
+        };
+        persistUser(hydratedUser);
+        return hydratedUser;
       }
-      return data.user;
+      return data?.user || null;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -97,13 +99,15 @@ export const AuthProvider = ({ children }) => {
       console.log('✅ User registered successfully');
       // Update user state with the registered user
       if (data?.user) {
-        persistUser({
+        const hydratedUser = {
           ...data.user,
           accessToken: data.session?.access_token,
           token: data.session?.access_token
-        });
+        };
+        persistUser(hydratedUser);
+        return hydratedUser;
       }
-      return data.user;
+      return data?.user || null;
     } catch (error) {
       console.error('Registration error:', error);
       throw error;

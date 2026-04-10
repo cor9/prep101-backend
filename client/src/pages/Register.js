@@ -5,6 +5,27 @@ import toast from 'react-hot-toast';
 import Footer from '../components/Footer';
 import '../styles/shared.css';
 
+const resolvePostAuthDestination = (nextDestination, user) => {
+  if (!nextDestination) return null;
+
+  const token = user?.accessToken || user?.token;
+  if (!token) return nextDestination;
+
+  try {
+    const url = new URL(nextDestination, window.location.origin);
+    if (url.pathname !== '/auth-bridge') return nextDestination;
+
+    const redirect = url.searchParams.get('redirect');
+    if (!redirect) return nextDestination;
+
+    const bridgeTarget = new URL(redirect);
+    bridgeTarget.searchParams.set('token', token);
+    return bridgeTarget.toString();
+  } catch (_) {
+    return nextDestination;
+  }
+};
+
 const getRegisterContext = (nextDestination) => {
   const destination = String(nextDestination || '').toLowerCase();
 
@@ -79,10 +100,10 @@ const Register = () => {
     setLoading(true);
 
     try {
-     await register(formData.email, formData.password, formData.name);
+      const registeredUser = await register(formData.email, formData.password, formData.name);
       toast.success('Account created successfully!');
       if (nextDestination) {
-        window.location.replace(nextDestination);
+        window.location.replace(resolvePostAuthDestination(nextDestination, registeredUser));
         return;
       }
       navigate('/account');
