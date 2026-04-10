@@ -60,6 +60,7 @@
 - Reframed the shared account hero as `Your Child Actor 101 Account` with a `Currently viewing` context badge instead of product-inside-account headlines.
 - Added consistent product card language, a one-line ecosystem explanation, prominent `Working as` actor context, and a Prep101 overage prompt linking to the 3-pack add-on.
 - Normalized the dashboard access summary so Prep101 always displays as 5 guides/month plus add-on credits instead of surfacing legacy unlimited/999-guide values.
+- Replaced Reader101's ornate Playfair headline typography with cleaner Sora display type and softened the hero eyebrow pill so long sentence copy reads naturally.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

@@ -8,7 +8,7 @@
   <meta name="description" content="Reader101 gives parents the exact coaching they need to support — not hurt — their child's self-tape performance. Scene-specific. Behavior-based. Immediate." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --teal:     #14b8a6;
@@ -44,8 +44,8 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .nav-logo {
-      font-family: "Playfair Display", serif;
-      font-size: 1.25rem; font-weight: 900; color: var(--teal);
+      font-family: "Sora", "Inter", system-ui, sans-serif;
+      font-size: 1.25rem; font-weight: 800; color: var(--teal);
       text-decoration: none; letter-spacing: -0.02em;
     }
     .nav-logo span { color: var(--mist); }
@@ -149,8 +149,8 @@
       background: rgba(20,184,166,0.1);
       border: 1px solid rgba(20,184,166,0.25);
       border-radius: 999px; padding: 6px 16px;
-      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--teal); margin-bottom: 2rem;
+      font-size: 0.82rem; font-weight: 700; letter-spacing: 0.015em;
+      text-transform: none; color: var(--mist); margin-bottom: 2rem;
     }
     .eyebrow-dot {
       width: 6px; height: 6px; border-radius: 50%;
@@ -158,10 +158,10 @@
     }
     @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
     h1 {
-      font-family: "Playfair Display", serif;
+      font-family: "Sora", "Inter", system-ui, sans-serif;
       font-size: clamp(2.8rem, 6vw, 4.5rem);
-      font-weight: 900; line-height: 1.1;
-      letter-spacing: -0.02em; margin-bottom: 1.5rem;
+      font-weight: 800; line-height: 1.05;
+      letter-spacing: -0.045em; margin-bottom: 1.5rem;
     }
     h1 .accent { color: var(--teal); }
     h1 .muted { color: var(--dim); }
@@ -192,8 +192,8 @@
       display: flex; gap: 3rem; justify-content: center; flex-wrap: wrap;
     }
     .stat-num {
-      font-family: "Playfair Display", serif;
-      font-size: 2.2rem; font-weight: 900; color: var(--teal); line-height: 1; margin-bottom: 4px;
+      font-family: "Sora", "Inter", system-ui, sans-serif;
+      font-size: 2.2rem; font-weight: 800; color: var(--teal); line-height: 1; margin-bottom: 4px;
     }
     .stat-label { font-size: 0.75rem; color: rgba(226,232,240,0.4); text-transform: uppercase; letter-spacing: 0.1em; }
 
@@ -206,10 +206,11 @@
       text-align: center; margin-bottom: 1rem;
     }
     h2.section-title {
-      font-family: "Playfair Display", serif;
-      font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 900;
+      font-family: "Sora", "Inter", system-ui, sans-serif;
+      font-size: clamp(1.9rem, 4vw, 2.65rem); font-weight: 800;
       text-align: center; color: var(--mist);
-      margin-bottom: 3rem; line-height: 1.2;
+      margin-bottom: 3rem; line-height: 1.12;
+      letter-spacing: -0.035em;
     }
 
     /* ── PROBLEM SECTION ──────────────────────────────────────── */
@@ -220,9 +221,10 @@
       text-align: center; max-width: 680px; margin: 0 auto;
     }
     .problem-card h3 {
-      font-family: "Playfair Display", serif;
-      font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 900;
-      color: var(--mist); margin-bottom: 1rem; line-height: 1.2;
+      font-family: "Sora", "Inter", system-ui, sans-serif;
+      font-size: clamp(1.45rem, 3vw, 2.05rem); font-weight: 800;
+      color: var(--mist); margin-bottom: 1rem; line-height: 1.18;
+      letter-spacing: -0.03em;
     }
     .problem-card p { color: var(--dim); font-size: 1rem; line-height: 1.75; }
 
@@ -299,7 +301,7 @@
       white-space: nowrap;
     }
     .pricing-name { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); margin-bottom: 0.75rem; }
-    .pricing-price { font-family: "Playfair Display", serif; font-size: 2.8rem; font-weight: 900; color: var(--mist); line-height: 1; }
+    .pricing-price { font-family: "Sora", "Inter", system-ui, sans-serif; font-size: 2.8rem; font-weight: 800; color: var(--mist); line-height: 1; letter-spacing: -0.04em; }
     .pricing-per { font-size: 0.82rem; color: rgba(226,232,240,0.35); margin-bottom: 1.5rem; }
     .pricing-features { list-style: none; margin-bottom: 1.75rem; }
     .pricing-features li { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.88rem; color: var(--dim); margin-bottom: 0.6rem; line-height: 1.45; }
@@ -329,8 +331,8 @@
       color: #fff; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
       text-transform: uppercase; padding: 4px 18px; border-radius: 999px;
     }
-    .bundle-title { font-family: "Playfair Display", serif; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 900; color: var(--mist); margin-bottom: 0.5rem; }
-    .bundle-price { font-family: "Playfair Display", serif; font-size: 3rem; font-weight: 900; color: var(--teal); }
+    .bundle-title { font-family: "Sora", "Inter", system-ui, sans-serif; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; color: var(--mist); margin-bottom: 0.5rem; letter-spacing: -0.035em; }
+    .bundle-price { font-family: "Sora", "Inter", system-ui, sans-serif; font-size: 3rem; font-weight: 800; color: var(--teal); letter-spacing: -0.045em; }
     .bundle-desc { font-size: 0.95rem; color: var(--dim); max-width: 560px; margin: 1rem auto 1.75rem; line-height: 1.7; }
     .bundle-includes { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem; }
     .bundle-pill {
@@ -353,8 +355,8 @@
       text-align: center;
     }
     .footer-logo {
-      font-family: "Playfair Display", serif;
-      font-size: 1.5rem; font-weight: 900; color: var(--teal);
+      font-family: "Sora", "Inter", system-ui, sans-serif;
+      font-size: 1.5rem; font-weight: 800; color: var(--teal);
       margin-bottom: 0.75rem;
     }
     .footer-links { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem; }
