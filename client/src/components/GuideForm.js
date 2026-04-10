@@ -1,6 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const GuideForm = ({ onSubmit, hasFile }) => {
+const GUIDE_MODE_COPY = {
+  standard: {
+    title: 'Prep101 Actor Guide',
+    label: 'Prep101',
+    description: 'A performance guide for the actor: beats, choices, relationship, tone, and audition strategy.',
+    submit: 'Generate My Prep101 Guide',
+  },
+  reader_support: {
+    title: 'Reader101 Reader Guide',
+    label: 'Reader101',
+    description: 'A reader support guide for the person holding the sides: pacing, energy, listening, and how to support the tape.',
+    submit: 'Generate My Reader101 Guide',
+  },
+};
+
+const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard' }) => {
   const [formData, setFormData] = useState({
     characterName: '',
     productionTitle: '',
@@ -14,6 +29,14 @@ const GuideForm = ({ onSubmit, hasFile }) => {
     childGuideRequested: false,
     mode: 'standard'
   });
+  const selectedModeCopy = GUIDE_MODE_COPY[formData.mode] || GUIDE_MODE_COPY.standard;
+
+  useEffect(() => {
+    setFormData((current) => ({
+      ...current,
+      mode: defaultMode,
+    }));
+  }, [defaultMode]);
 
   const genreSuggestions = [
     'Single-camera comedy',
@@ -104,25 +127,47 @@ const GuideForm = ({ onSubmit, hasFile }) => {
           🎭 Character Information
         </h3>
 
-        {/* ADMIN/TESTING: GUIDE MODE SELECTOR */}
         <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
-            Guide Mode (Test Access)
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '800', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+            What are you creating?
           </label>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input type="radio" name="mode" value="standard" checked={formData.mode === 'standard'} onChange={handleChange} />
-              <span style={{ fontWeight: 500, color: '#0f172a' }}>Prep101 (Actor Guide)</span>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input type="radio" name="mode" value="reader_support" checked={formData.mode === 'reader_support'} onChange={handleChange} />
-              <span style={{ fontWeight: 500, color: '#0f172a' }}>Reader101 (Reader Guide)</span>
-            </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem' }}>
+            {Object.entries(GUIDE_MODE_COPY).map(([mode, copy]) => {
+              const selected = formData.mode === mode;
+              return (
+                <label
+                  key={mode}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.65rem',
+                    cursor: 'pointer',
+                    border: selected ? '2px solid #14b8a6' : '1px solid #e2e8f0',
+                    background: selected ? '#f0fdfa' : '#fff',
+                    borderRadius: '0.85rem',
+                    padding: '0.9rem',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="mode"
+                    value={mode}
+                    checked={selected}
+                    onChange={handleChange}
+                    style={{ marginTop: 4, accentColor: '#14b8a6' }}
+                  />
+                  <span>
+                    <span style={{ display: 'block', fontWeight: 800, color: '#0f172a', marginBottom: 3 }}>{copy.title}</span>
+                    <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.45 }}>{copy.description}</span>
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </div>
         <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-          Tell us about the role you're auditioning for. The more details you provide, 
-          the more personalized your guide will be.
+          Tell us about the role and project. The more details you provide,
+          the more useful your {selectedModeCopy.label} guide will be.
         </p>
 
         <div style={{ 
@@ -510,7 +555,7 @@ const GuideForm = ({ onSubmit, hasFile }) => {
           }
         }}
       >
-        {!hasFile ? 'Upload PDF First' : 'Generate My Audition Guide'}
+        {!hasFile ? 'Upload PDF First' : selectedModeCopy.submit}
       </button>
     </form>
   );

@@ -61,6 +61,8 @@
 - Added consistent product card language, a one-line ecosystem explanation, prominent `Working as` actor context, and a Prep101 overage prompt linking to the 3-pack add-on.
 - Normalized the dashboard access summary so Prep101 always displays as 5 guides/month plus add-on credits instead of surfacing legacy unlimited/999-guide values.
 - Replaced Reader101's ornate Playfair headline typography with cleaner Sora display type and softened the hero eyebrow pill so long sentence copy reads naturally.
+- Made Reader101 guide creation explicit: Reader101 CTAs now jump to the account guide builder, the dashboard Reader101 card says `Create a Reader101 Guide`, and the form defaults to Reader101 mode when opened from Reader101 context.
+- Replaced the hidden `Guide Mode (Test Access)` selector with a customer-facing `What are you creating?` choice between Prep101 Actor Guide and Reader101 Reader Guide.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

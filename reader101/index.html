@@ -425,7 +425,7 @@
       </p>
 
       <div class="cta-group">
-        <a id="primary-cta" class="btn-primary" href="https://prep101.site/dashboard?product=reader101">Manage Reader101 in My Account →</a>
+        <a id="primary-cta" class="btn-primary" href="https://prep101.site/dashboard?product=reader101#guide-builder">Create a Reader101 Guide →</a>
         <button class="btn-secondary" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
       </div>
 
@@ -748,7 +748,7 @@
       var cleanedUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '') + window.location.hash;
       window.history.replaceState({}, '', cleanedUrl);
     }
-    var prepDashboard = 'https://prep101.site/dashboard?product=reader101';
+    var prepDashboard = 'https://prep101.site/dashboard?product=reader101#guide-builder';
     var prepOnboardingBase = 'https://prep101.site/onboarding?next=' + encodeURIComponent(prepDashboard);
     var prepSelectActorBase = 'https://prep101.site/select-actor?next=' + encodeURIComponent(prepDashboard);
     var boldWorkspaceUrl = 'https://boldchoices.site/generate';
@@ -794,7 +794,7 @@
       }
       if (primaryCta) {
         primaryCta.href = prepDestination;
-        primaryCta.textContent = 'Manage Reader101 in My Account →';
+        primaryCta.textContent = 'Create a Reader101 Guide →';
       }
       if (prepLink) prepLink.href = buildPrepRedirectUrl(prepWorkspaceUrl);
       if (boldLink) boldLink.href = 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token);
@@ -922,10 +922,10 @@
             : accountState && accountState.account && accountState.account.needsActorSelection
               ? 'Choose Active Actor →'
               : accountState && accountState.reader101Usage && accountState.reader101Usage.unlimited
-                ? 'Manage Reader101 Unlimited in My Account →'
+                ? 'Create a Reader101 Guide →'
               : accountState && accountState.reader101Usage && accountState.reader101Usage.credits > 0
-                  ? 'Manage Reader101 Credit in My Account →'
-                  : 'Manage Reader101 in My Account →';
+                  ? 'Create a Reader101 Guide →'
+                  : 'Get Reader101 Access →';
       }
       if (prepLink) prepLink.href = token ? 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(prepWorkspaceUrl) + '&token=' + encodeURIComponent(token) : prepWorkspaceUrl;
       if (boldLink) boldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;

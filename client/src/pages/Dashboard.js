@@ -11,7 +11,6 @@ import Navbar from "../components/Navbar";
 import {
   ACCOUNT_LABEL,
   buildBoldChoicesUrl,
-  buildReader101Url,
 } from "../utils/ecosystemLinks";
 import { withApiCredentials } from "../utils/apiAuth";
 import "../styles/shared.css";
@@ -262,6 +261,13 @@ const Dashboard = () => {
     if (product === "reader101" || product === "bold_choices" || product === "prep101") {
       setGuideFilter(product);
     }
+    if (window.location.hash === "#guide-builder") {
+      window.setTimeout(() => {
+        document
+          .getElementById("guide-builder")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 250);
+    }
   }, []);
 
   // ====== GUIDES LIBRARY ======
@@ -402,11 +408,15 @@ const Dashboard = () => {
       ),
     [guideFilter]
   );
-  const scrollToPrep101Builder = () => {
-    setGuideFilter("prep101");
-    window.history.replaceState({}, "", "/dashboard?product=prep101");
+  const scrollToGuideBuilder = (product = "prep101") => {
+    setGuideFilter(product);
+    window.history.replaceState(
+      {},
+      "",
+      `/dashboard?product=${encodeURIComponent(product)}`
+    );
     document
-      .getElementById("prep101-builder")
+      .getElementById("guide-builder")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -642,6 +652,31 @@ const Dashboard = () => {
   );
   const showPrepOveragePrompt =
     prepMonthlyUsed > 0 || prepMonthlyUsed >= PREP101_MONTHLY_GUIDE_LIMIT;
+  const isReader101Context = guideFilter === "reader101";
+  const builderMode = isReader101Context ? "reader_support" : "standard";
+  const builderCopy = isReader101Context
+    ? {
+        eyebrow: "Reader101 Builder",
+        title: "Create a Reader101 guide",
+        description:
+          "Upload the sides, confirm the role details, and generate reader coaching for the person holding the lines.",
+        steps: [
+          ["1", "Upload sides", "Drop in the PDF for the self-tape scene."],
+          ["2", "Choose Reader101", "The form will create a reader support guide, not an actor guide."],
+          ["3", "Generate the guide", "Get pacing, energy, listening, and key-beat coaching for the reader."],
+        ],
+      }
+    : {
+        eyebrow: "Prep101 Builder",
+        title: "Build a full audition guide",
+        description:
+          "Start by uploading your sides. After the PDF is processed, we'll ask for the role details and generate the guide.",
+        steps: [
+          ["1", "Upload sides", "Drop in the PDF for the audition scene."],
+          ["2", "Confirm the role", "Tell us the character and production details."],
+          ["3", "Generate the guide", "Get a Prep101 guide saved to this account."],
+        ],
+      };
 
   return (
     <>
@@ -800,18 +835,18 @@ const Dashboard = () => {
                   description: "Upload sides here when you want a full audition guide.",
                   status: formatPrepAccess(usage?.prep101 || user?.prep101Usage || null),
                   secondaryStatus: formatPrepDetails(usage?.prep101 || user?.prep101Usage || null),
-                  action: scrollToPrep101Builder,
+                  action: () => scrollToGuideBuilder("prep101"),
                   cta: "Build a Prep101 Guide",
                 },
                 {
                   label: "Reader101",
                   color: "#14b8a6",
-                  description: "Jump back to Reader101 when you need reader notes and tape support.",
+                  description: "Create reader notes for the person holding the sides during the self-tape.",
                   status: formatReaderAccess(usage?.reader101 || user?.reader101Usage || null),
                   action: () => {
-                    window.location.href = buildReader101Url({ token, useBridge: Boolean(user) });
+                    scrollToGuideBuilder("reader101");
                   },
-                  cta: "Return to Reader101",
+                  cta: "Create a Reader101 Guide",
                 },
                 {
                   label: "Bold Choices",
@@ -1129,11 +1164,11 @@ const Dashboard = () => {
           </div>
 
           {/* Body */}
-          <div className="card-white" id="prep101-builder">
+          <div className="card-white" id="guide-builder">
             <SectionHeader
-              eyebrow="Prep101 Builder"
-              title="Build a full audition guide"
-              description="Start by uploading your sides. After the PDF is processed, we’ll ask for the role details and generate the guide."
+              eyebrow={builderCopy.eyebrow}
+              title={builderCopy.title}
+              description={builderCopy.description}
             />
             {!uploadData && (
               <div
@@ -1144,21 +1179,14 @@ const Dashboard = () => {
                   marginBottom: "1.25rem",
                 }}
               >
-                <StepHint
-                  number="1"
-                  title="Upload sides"
-                  description="Drop in the PDF for the audition scene."
-                />
-                <StepHint
-                  number="2"
-                  title="Confirm the role"
-                  description="Tell us the character and production details."
-                />
-                <StepHint
-                  number="3"
-                  title="Generate the guide"
-                  description="Get a Prep101 guide saved to this account."
-                />
+                {builderCopy.steps.map(([number, title, description]) => (
+                  <StepHint
+                    key={number}
+                    number={number}
+                    title={title}
+                    description={description}
+                  />
+                ))}
               </div>
             )}
             <div
@@ -1212,11 +1240,12 @@ const Dashboard = () => {
                       gap: "0.5rem",
                     }}
                   >
-                    🎭 Guide Details
+                    {isReader101Context ? "📖 Reader Guide Details" : "🎭 Guide Details"}
                   </h3>
                   <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>
-                    Fill in the details below to generate your personalized
-                    audition guide.
+                    {isReader101Context
+                      ? "Fill in the details below to generate scene-specific coaching for the reader."
+                      : "Fill in the details below to generate your personalized audition guide."}
                   </p>
 
                   <GuideForm
@@ -1224,6 +1253,7 @@ const Dashboard = () => {
                     hasFile={!!uploadData}
                     isSubmitting={isGenerating}
                     disabled={!canGenerate}
+                    defaultMode={builderMode}
                   />
                 </div>
               )}
