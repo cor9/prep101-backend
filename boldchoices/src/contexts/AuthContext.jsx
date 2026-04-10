@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import API_BASE from '../config/api.js';
 import { withApiCredentials } from '../utils/apiAuth.js';
+import { buildReaderLogoutUrl } from '../utils/ecosystemLinks.js';
 
 const AuthContext = createContext(null);
 
@@ -125,7 +126,7 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const logout = async () => {
+  const logout = async (options = {}) => {
     try {
       await fetch(`${API_BASE}/api/auth/logout`, {
         method: 'POST',
@@ -133,6 +134,13 @@ export function AuthProvider({ children }) {
       });
     } catch (_) {}
     persistUser(null);
+
+    if (typeof window !== 'undefined' && options.redirect !== false) {
+      const nextUrl =
+        options.nextUrl ||
+        `${window.location.origin}/`;
+      window.location.replace(buildReaderLogoutUrl(nextUrl));
+    }
   };
 
   // Called by AuthCallback when receiving a token from prep101.site bridge

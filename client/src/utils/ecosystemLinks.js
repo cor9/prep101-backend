@@ -65,3 +65,7 @@ export function buildReader101Url({
   if (useBridge) return buildPrepAuthBridgeUrl(callback.toString());
   return resolveProductUrl(READER_ROOT, redirect, `${READER_ROOT}/`);
 }
+
+export function buildReaderLogoutUrl(next = `${PREP_ROOT}/`) {
+  return `${READER_ROOT}/logout.html?next=${encodeURIComponent(next)}`;
+}

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { signIn, signUp, signOut, getCurrentUser } from '../utils/supabase';
 import API_BASE from '../config/api';
 import { withApiCredentials } from '../utils/apiAuth';
+import { buildReaderLogoutUrl } from '../utils/ecosystemLinks';
 
 const AuthContext = createContext();
 
@@ -114,7 +115,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async () => {
+  const logout = async (options = {}) => {
     console.log('AuthContext: logout called');
     try {
       const { error } = await signOut();
@@ -124,8 +125,15 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     }
-    setUser(null);
+    persistUser(null);
     console.log('✅ User logged out, state cleared');
+
+    if (typeof window !== 'undefined' && options.redirect !== false) {
+      const nextUrl =
+        options.nextUrl ||
+        `${window.location.origin}/`;
+      window.location.replace(buildReaderLogoutUrl(nextUrl));
+    }
   };
 
   const completeOnboarding = async (payload) => {

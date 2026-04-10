@@ -29,7 +29,9 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [pathname]);
 
-  const handleLogout = () => { logout(); };
+  const handleLogout = async () => {
+    await logout({ nextUrl: `${window.location.origin}/` });
+  };
   const actors = user?.account?.actors || [];
   const activeActorId =
     user?.account?.profile?.activeActorId ||

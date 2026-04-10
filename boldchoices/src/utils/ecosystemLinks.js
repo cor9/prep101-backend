@@ -44,3 +44,7 @@ export function buildReader101Url({
   if (token) callback.searchParams.set('token', token);
   return token ? callback.toString() : resolveProductUrl(READER_ROOT, redirect, `${READER_ROOT}/`);
 }
+
+export function buildReaderLogoutUrl(next = `${PREP_ROOT}/`) {
+  return `${READER_ROOT}/logout.html?next=${encodeURIComponent(next)}`;
+}

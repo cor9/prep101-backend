@@ -34,9 +34,8 @@ export default function Navbar() {
         })
       : buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=bold_choices');
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleLogout = async () => {
+    await logout({ nextUrl: `${window.location.origin}/` });
   };
 
   const handleActorChange = async (event) => {
