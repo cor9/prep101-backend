@@ -87,7 +87,7 @@ const DASHBOARD_CONTEXT = {
     eyebrow: "Reader101 Workspace",
     title: `Reader101 inside ${ACCOUNT_LABEL}`,
     subtitle:
-      "Open Reader101 with the same login and actor context, without dropping into a Prep101-first frame.",
+      "Manage Reader101 access in your shared account hub, then jump back into Reader101 with the same actor context.",
   },
   bold_choices: {
     eyebrow: "Bold Choices Workspace",
@@ -674,12 +674,12 @@ const Dashboard = () => {
               {
                 label: "Reader101",
                 color: "#14b8a6",
-                description: "Carry your account over and open Reader101 without signing in again.",
+                description: "You're in the shared account hub for Reader101. Jump back into Reader101 with the same actor context.",
                 status: formatReaderAccess(usage?.reader101 || user?.reader101Usage || null),
                 action: () => {
                   window.location.href = buildReader101Url({ token, useBridge: Boolean(user) });
                 },
-                cta: "Open Reader101",
+                cta: "Return to Reader101",
               },
               {
                 label: "Bold Choices",

@@ -383,7 +383,7 @@
       <a id="bold-link" href="https://boldchoices.site" target="_blank" rel="noopener">Bold Choices</a>
       <a href="https://childactor101.com" target="_blank" rel="noopener">ChildActor101</a>
       <a href="https://coaching.childactor101.com" target="_blank" rel="noopener">Coaching</a>
-      <a id="account-link" class="btn-nav" href="https://prep101.site/dashboard?product=reader101">Open Account</a>
+      <a id="account-link" class="btn-nav" href="https://prep101.site/dashboard?product=reader101">Open Account Hub</a>
     </div>
   </nav>
 
@@ -423,7 +423,7 @@
       </p>
 
       <div class="cta-group">
-        <a id="primary-cta" class="btn-primary" href="https://prep101.site/dashboard?product=reader101">Open Reader101 in My Account →</a>
+        <a id="primary-cta" class="btn-primary" href="https://prep101.site/dashboard?product=reader101">Manage Reader101 in My Account →</a>
         <button class="btn-secondary" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
       </div>
 
@@ -787,12 +787,12 @@
     function applyTokenFallbackState() {
       var prepDestination = buildPrepRedirectUrl(prepDashboard);
       if (accountLink) {
-        accountLink.textContent = 'Open My Child Actor 101 Account';
+        accountLink.textContent = 'Open Account Hub';
         accountLink.href = prepDestination;
       }
       if (primaryCta) {
         primaryCta.href = prepDestination;
-        primaryCta.textContent = 'Open Reader101 in My Account →';
+        primaryCta.textContent = 'Manage Reader101 in My Account →';
       }
       if (prepLink) prepLink.href = buildPrepRedirectUrl(prepWorkspaceUrl);
       if (boldLink) boldLink.href = 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token);
@@ -909,8 +909,8 @@
             : accountState && accountState.account && accountState.account.needsActorSelection
               ? 'Choose Active Actor'
               : accountState && accountState.reader101Usage && accountState.reader101Usage.canGenerate
-                ? 'Open Reader101 in My Account'
-              : 'Open My Child Actor 101 Account';
+                ? 'Open Account Hub'
+              : 'Open Account Hub';
         accountLink.href = prepDestination;
       }
       if (primaryCta) {
@@ -921,10 +921,10 @@
             : accountState && accountState.account && accountState.account.needsActorSelection
               ? 'Choose Active Actor →'
               : accountState && accountState.reader101Usage && accountState.reader101Usage.unlimited
-                ? 'Open Reader101 Unlimited Access →'
+                ? 'Manage Reader101 Unlimited in My Account →'
               : accountState && accountState.reader101Usage && accountState.reader101Usage.credits > 0
-                  ? 'Open Reader101 Credit in My Account →'
-                  : 'Open Reader101 in My Account →';
+                  ? 'Manage Reader101 Credit in My Account →'
+                  : 'Manage Reader101 in My Account →';
       }
       if (prepLink) prepLink.href = token ? 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(prepWorkspaceUrl) + '&token=' + encodeURIComponent(token) : prepWorkspaceUrl;
       if (boldLink) boldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;
