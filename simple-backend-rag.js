@@ -156,6 +156,8 @@ app.use((req, res, next) => {
     "https://prep101-api.vercel.app",
     "http://localhost:3000",
     "http://localhost:3001",
+    "https://reader101.site",
+    "https://www.reader101.site",
     "https://boldchoices.site",
     "https://www.boldchoices.site",
     ...envOrigins

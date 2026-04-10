@@ -51,6 +51,7 @@
 - Cleaned the remaining frontend warning set by fixing stale React hook dependencies and removing unused state/helpers in the shared client, leaving only the older `import.meta` build warning.
 - Restored bridge-based cross-product handoff for Reader101 and Bold Choices after the Reader101 login flow exposed a cross-domain session loop, and added Reader-aware login/register copy plus Reader token fallback so static Reader101 pages can hold account state after sign-in.
 - Fixed the remaining Reader101 login bounce by having Prep101 login/register use the freshly returned auth token to resolve `/auth-bridge` redirects immediately, instead of redirecting back into the bridge and forcing another session check.
+- Fixed a Reader101 fallback bug where the page was deleting its saved token whenever verification failed, which caused the CTA to flicker from “open account” back to “sign in”; also added `reader101.site` to the live API CORS allowlist in [simple-backend-rag.js](/Users/coreyralston/prep101-backend/simple-backend-rag.js).
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

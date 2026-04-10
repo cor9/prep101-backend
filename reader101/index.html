@@ -871,14 +871,8 @@
         var tokenVerifyData = await tokenVerifyResponse.json();
         if (tokenVerifyResponse.ok && tokenVerifyData.valid && tokenVerifyData.user) {
           accountState = tokenVerifyData.user;
-        } else {
-          localStorage.removeItem('ca101_token');
-          token = null;
         }
-      } catch (error) {
-        localStorage.removeItem('ca101_token');
-        token = null;
-      }
+      } catch (error) {}
     }
 
     if (accountState) {
