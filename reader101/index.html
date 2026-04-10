@@ -772,6 +772,34 @@
       return 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(destination) + '&token=' + encodeURIComponent(token);
     }
 
+    function applySignedOutState() {
+      if (accountLink) {
+        accountLink.textContent = 'Sign In With Child Actor 101';
+        accountLink.href = prepLoginUrl;
+      }
+      if (primaryCta) primaryCta.href = accountLink ? accountLink.href : '#pricing';
+      if (prepLink) prepLink.href = prepWorkspaceUrl;
+      if (boldLink) boldLink.href = 'https://boldchoices.site/';
+      if (footerPrepLink) footerPrepLink.href = prepWorkspaceUrl;
+      if (footerBoldLink) footerBoldLink.href = 'https://boldchoices.site/';
+    }
+
+    function applyTokenFallbackState() {
+      var prepDestination = buildPrepRedirectUrl(prepDashboard);
+      if (accountLink) {
+        accountLink.textContent = 'Open My Child Actor 101 Account';
+        accountLink.href = prepDestination;
+      }
+      if (primaryCta) {
+        primaryCta.href = prepDestination;
+        primaryCta.textContent = 'Open Reader101 in My Account →';
+      }
+      if (prepLink) prepLink.href = buildPrepRedirectUrl(prepWorkspaceUrl);
+      if (boldLink) boldLink.href = 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token);
+      if (footerPrepLink) footerPrepLink.href = buildPrepRedirectUrl(prepWorkspaceUrl);
+      if (footerBoldLink) footerBoldLink.href = 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token);
+    }
+
     function describePrepAccess(usage) {
       if (!usage) return 'No shared account data yet';
       if (usage.monthlyLimit == null) return 'Unlimited Prep101';
@@ -908,16 +936,10 @@
       if (boldLink) boldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;
       if (footerPrepLink) footerPrepLink.href = token ? 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(prepWorkspaceUrl) + '&token=' + encodeURIComponent(token) : prepWorkspaceUrl;
       if (footerBoldLink) footerBoldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;
+    } else if (token) {
+      applyTokenFallbackState();
     } else {
-      if (accountLink) {
-        accountLink.textContent = 'Sign In With Child Actor 101';
-        accountLink.href = prepLoginUrl;
-      }
-      if (primaryCta) primaryCta.href = accountLink ? accountLink.href : '#pricing';
-      if (prepLink) prepLink.href = prepWorkspaceUrl;
-      if (boldLink) boldLink.href = 'https://boldchoices.site/';
-      if (footerPrepLink) footerPrepLink.href = prepWorkspaceUrl;
-      if (footerBoldLink) footerBoldLink.href = 'https://boldchoices.site/';
+      applySignedOutState();
     }
   })();
 </script>
