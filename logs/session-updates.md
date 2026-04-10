@@ -52,6 +52,10 @@
 - Restored bridge-based cross-product handoff for Reader101 and Bold Choices after the Reader101 login flow exposed a cross-domain session loop, and added Reader-aware login/register copy plus Reader token fallback so static Reader101 pages can hold account state after sign-in.
 - Fixed the remaining Reader101 login bounce by having Prep101 login/register use the freshly returned auth token to resolve `/auth-bridge` redirects immediately, instead of redirecting back into the bridge and forcing another session check.
 - Fixed a Reader101 fallback bug where the page was deleting its saved token whenever verification failed, which caused the CTA to flicker from “open account” back to “sign in”; also added `reader101.site` to the live API CORS allowlist in [simple-backend-rag.js](/Users/coreyralston/prep101-backend/simple-backend-rag.js).
+- Clarified Reader101 account hub copy so the shared account page says “Return to Reader101” instead of making the handoff feel circular.
+- Added a cross-domain logout hop through `reader101/logout.html` so Reader101 clears its saved fallback token when users log out from Prep101 or Bold Choices.
+- Simplified the dashboard work path by replacing the unlabeled stack of cards with Start Here, Your Access, Prep101 Builder, and Saved Work sections.
+- Removed the Redeem Promo Code card from the customer dashboard so launch coupons can stay in Stripe checkout instead of distracting from the main product flow.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

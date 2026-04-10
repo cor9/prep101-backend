@@ -8,7 +8,6 @@ import Footer from "../components/Footer";
 
 import API_BASE from "../config/api";
 import Navbar from "../components/Navbar";
-import PromoCodeInput from "../components/PromoCodeInput";
 import {
   ACCOUNT_LABEL,
   buildBoldChoicesUrl,
@@ -45,6 +44,91 @@ const ProgressBar = ({ value, max }) => {
     </div>
   );
 };
+
+const SectionHeader = ({ eyebrow, title, description, align = "left" }) => (
+  <div
+    style={{
+      textAlign: align,
+      marginBottom: "1.25rem",
+    }}
+  >
+    {eyebrow && (
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 900,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "#8b5e3c",
+          marginBottom: 8,
+        }}
+      >
+        {eyebrow}
+      </div>
+    )}
+    <h2
+      style={{
+        color: "#0f172a",
+        fontSize: "clamp(1.35rem, 2.2vw, 2rem)",
+        lineHeight: 1.1,
+        margin: 0,
+      }}
+    >
+      {title}
+    </h2>
+    {description && (
+      <p
+        style={{
+          color: "#475569",
+          fontSize: "1rem",
+          lineHeight: 1.7,
+          margin: "0.65rem 0 0",
+        }}
+      >
+        {description}
+      </p>
+    )}
+  </div>
+);
+
+const StepHint = ({ number, title, description }) => (
+  <div
+    style={{
+      display: "flex",
+      gap: 12,
+      alignItems: "flex-start",
+      padding: "0.95rem",
+      borderRadius: 16,
+      background: "#f8fafc",
+      border: "1px solid #e2e8f0",
+    }}
+  >
+    <div
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: "50%",
+        background: "#0f172a",
+        color: "#fff",
+        display: "grid",
+        placeItems: "center",
+        fontWeight: 900,
+        flex: "0 0 auto",
+        fontSize: 13,
+      }}
+    >
+      {number}
+    </div>
+    <div>
+      <div style={{ color: "#0f172a", fontWeight: 800, marginBottom: 4 }}>
+        {title}
+      </div>
+      <div style={{ color: "#64748b", lineHeight: 1.5, fontSize: 14 }}>
+        {description}
+      </div>
+    </div>
+  </div>
+);
 
 const nicePlan = (p) => {
   switch ((p || "").toLowerCase()) {
@@ -300,6 +384,13 @@ const Dashboard = () => {
       ),
     [guideFilter]
   );
+  const scrollToPrep101Builder = () => {
+    setGuideFilter("prep101");
+    window.history.replaceState({}, "", "/dashboard?product=prep101");
+    document
+      .getElementById("prep101-builder")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   // ====== FILE UPLOAD ======
   const handleFileUpload = (data) => {
@@ -461,6 +552,7 @@ const Dashboard = () => {
       } catch (error) {
         console.warn("Could not refresh cached upload data after guide generation:", error);
       }
+      setRefreshKey((k) => k + 1);
 
       if (data?.prep101Usage) {
         setUsage((u) => ({
@@ -649,114 +741,124 @@ const Dashboard = () => {
             </div>
           )}
 
-          <div
-            className="card-white"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "1rem",
-              marginBottom: "1.5rem",
-            }}
-          >
-            {[
-              {
-                label: "Prep101",
-                color: "#f59e0b",
-                description: "Upload sides and build full audition guides here.",
-                status: formatPrepAccess(usage?.prep101 || user?.prep101Usage || null),
-                action: () => {
-                  setGuideFilter("prep101");
-                  window.history.replaceState({}, "", "/dashboard?product=prep101");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
+          <div className="card-white">
+            <SectionHeader
+              eyebrow="Start Here"
+              title="What would you like to work on?"
+              description={`Use this shared account hub to choose a product, confirm ${activeActor?.actorName || "the active actor"}, and keep your guides in one place.`}
+            />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+                gap: "1rem",
+              }}
+            >
+              {[
+                {
+                  label: "Prep101",
+                  color: "#f59e0b",
+                  description: "Upload sides here when you want a full audition guide.",
+                  status: formatPrepAccess(usage?.prep101 || user?.prep101Usage || null),
+                  action: scrollToPrep101Builder,
+                  cta: "Build a Prep101 Guide",
                 },
-                cta: "Open Prep101",
-              },
-              {
-                label: "Reader101",
-                color: "#14b8a6",
-                description: "You're in the shared account hub for Reader101. Jump back into Reader101 with the same actor context.",
-                status: formatReaderAccess(usage?.reader101 || user?.reader101Usage || null),
-                action: () => {
-                  window.location.href = buildReader101Url({ token, useBridge: Boolean(user) });
+                {
+                  label: "Reader101",
+                  color: "#14b8a6",
+                  description: "Jump back to Reader101 when you need reader notes and tape support.",
+                  status: formatReaderAccess(usage?.reader101 || user?.reader101Usage || null),
+                  action: () => {
+                    window.location.href = buildReader101Url({ token, useBridge: Boolean(user) });
+                  },
+                  cta: "Return to Reader101",
                 },
-                cta: "Return to Reader101",
-              },
-              {
-                label: "Bold Choices",
-                color: "#FF4D4D",
-                description: "Jump straight into Bold Choices with the same Child Actor 101 identity.",
-                status: formatBoldAccess(usage?.boldChoices || user?.boldChoicesUsage || null),
-                action: () => {
-                  window.location.href = buildBoldChoicesUrl({ token, useBridge: Boolean(user) });
+                {
+                  label: "Bold Choices",
+                  color: "#FF4D4D",
+                  description: "Open actor-first choice work for sharper, more specific decisions.",
+                  status: formatBoldAccess(usage?.boldChoices || user?.boldChoicesUsage || null),
+                  action: () => {
+                    window.location.href = buildBoldChoicesUrl({ token, useBridge: Boolean(user) });
+                  },
+                  cta: "Open Bold Choices",
                 },
-                cta: "Open Bold Choices",
-              },
-            ].map((workspace) => (
-              <div
-                key={workspace.label}
-                style={{
-                  border: `1px solid ${workspace.color}33`,
-                  borderRadius: 16,
-                  padding: "1rem",
-                  background: `${workspace.color}10`,
-                }}
-              >
+              ].map((workspace) => (
                 <div
+                  key={workspace.label}
                   style={{
-                    fontSize: 12,
-                    fontWeight: 800,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: workspace.color,
-                    marginBottom: 8,
+                    border: `1px solid ${workspace.color}33`,
+                    borderRadius: 18,
+                    padding: "1.1rem",
+                    background: `${workspace.color}10`,
+                    display: "flex",
+                    flexDirection: "column",
+                    minHeight: 220,
                   }}
                 >
-                  {workspace.label}
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 900,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: workspace.color,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {workspace.label}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 15,
+                      color: "#334155",
+                      lineHeight: 1.6,
+                      marginBottom: 12,
+                    }}
+                  >
+                    {workspace.description}
+                  </div>
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      borderRadius: 999,
+                      background: "#fff",
+                      color: "#0f172a",
+                      padding: "6px 10px",
+                      margin: "auto 0 14px",
+                      width: "fit-content",
+                    }}
+                  >
+                    {workspace.status}
+                  </div>
+                  <button
+                    onClick={workspace.action}
+                    className="btn btnPrimary"
+                    style={{
+                      width: "100%",
+                      background: workspace.color,
+                      border: "none",
+                      color: workspace.label === "Reader101" ? "#041311" : "#fff",
+                    }}
+                  >
+                    {workspace.cta}
+                  </button>
                 </div>
-                <div
-                  style={{
-                    fontSize: 14,
-                    color: "#334155",
-                    lineHeight: 1.6,
-                    marginBottom: 10,
-                  }}
-                >
-                  {workspace.description}
-                </div>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontSize: 12,
-                    fontWeight: 800,
-                    borderRadius: 999,
-                    background: "#fff",
-                    color: "#0f172a",
-                    padding: "6px 10px",
-                    marginBottom: 14,
-                  }}
-                >
-                  {workspace.status}
-                </div>
-                <button
-                  onClick={workspace.action}
-                  className="btn btnPrimary"
-                  style={{
-                    width: "100%",
-                    background: workspace.color,
-                    border: "none",
-                    color: workspace.label === "Reader101" ? "#041311" : "#fff",
-                  }}
-                >
-                  {workspace.cta}
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* Usage strip */}
           <div className="card-white">
+            <SectionHeader
+              eyebrow="Your Access"
+              title="What you can use right now"
+              description="This is your current access across all three tools, including monthly access and any remaining credits."
+            />
             {usageLoading ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <LoadingSpinner />
@@ -929,13 +1031,39 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* Promo Code Input */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <PromoCodeInput onRedeemSuccess={() => setRefreshKey((k) => k + 1)} />
-          </div>
-
           {/* Body */}
-          <div className="card-white">
+          <div className="card-white" id="prep101-builder">
+            <SectionHeader
+              eyebrow="Prep101 Builder"
+              title="Build a full audition guide"
+              description="Start by uploading your sides. After the PDF is processed, we’ll ask for the role details and generate the guide."
+            />
+            {!uploadData && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                  gap: 12,
+                  marginBottom: "1.25rem",
+                }}
+              >
+                <StepHint
+                  number="1"
+                  title="Upload sides"
+                  description="Drop in the PDF for the audition scene."
+                />
+                <StepHint
+                  number="2"
+                  title="Confirm the role"
+                  description="Tell us the character and production details."
+                />
+                <StepHint
+                  number="3"
+                  title="Generate the guide"
+                  description="Get a Prep101 guide saved to this account."
+                />
+              </div>
+            )}
             <div
               style={{
                 display: "flex",
@@ -1016,13 +1144,16 @@ const Dashboard = () => {
               )}
             </div>
           </div>
-        </div>
 
-        {/* ── GUIDE LIBRARY ─────────────────────────────────────── */}
-        <div className="card-white" style={{ marginTop: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>📂 Your Guides</h3>
-            <div style={{ display: 'flex', gap: 6 }}>
+          {/* ── GUIDE LIBRARY ─────────────────────────────────────── */}
+          <div className="card-white">
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <SectionHeader
+              eyebrow="Saved Work"
+              title="Your guides"
+              description="Open, download, or filter the guides saved to this account."
+            />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {['all', 'prep101', 'reader101', 'bold_choices'].map(f => (
                 <button
                   key={f}
@@ -1121,8 +1252,9 @@ const Dashboard = () => {
                 })}
             </div>
           )}
+          </div>
+          {/* ── END GUIDE LIBRARY ─────────────────────────────────── */}
         </div>
-        {/* ── END GUIDE LIBRARY ─────────────────────────────────── */}
 
         {/* Footer */}
         <Footer />
