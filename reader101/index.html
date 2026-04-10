@@ -765,6 +765,12 @@
     var readerAccessCopy = document.getElementById('reader-access-copy');
     var boldAccessCopy = document.getElementById('bold-access-copy');
     var accountState = null;
+    var hasSharedApiSession = false;
+
+    function buildPrepRedirectUrl(destination) {
+      if (!token || hasSharedApiSession) return destination;
+      return 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(destination) + '&token=' + encodeURIComponent(token);
+    }
 
     function describePrepAccess(usage) {
       if (!usage) return 'No shared account data yet';
@@ -801,6 +807,7 @@
       var verifyData = await verifyResponse.json();
       if (verifyResponse.ok && verifyData.valid && verifyData.user) {
         accountState = verifyData.user;
+        hasSharedApiSession = true;
       }
     } catch (error) {}
 
@@ -821,6 +828,7 @@
         var refreshedVerifyData = await refreshedVerifyResponse.json();
         if (refreshedVerifyResponse.ok && refreshedVerifyData.valid && refreshedVerifyData.user) {
           accountState = refreshedVerifyData.user;
+          hasSharedApiSession = true;
         }
       } catch (error) {}
     }
@@ -867,10 +875,10 @@
 
       var prepDestination =
         accountState && accountState.account && accountState.account.onboardingRequired
-          ? prepOnboardingBase
+          ? buildPrepRedirectUrl(prepOnboardingBase)
           : accountState && accountState.account && accountState.account.needsActorSelection
-            ? prepSelectActorBase
-            : prepDashboard;
+            ? buildPrepRedirectUrl(prepSelectActorBase)
+            : buildPrepRedirectUrl(prepDashboard);
 
       if (accountLink) {
         accountLink.textContent =
