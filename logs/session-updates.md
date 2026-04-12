@@ -74,6 +74,7 @@
 - Fixed Bold Choices and Reader101 unlimited entitlement checks so stored paid plans like `bundle`, `reader101_monthly`, and `boldchoices_monthly` still count as active access even when `stripePriceId` or `subscriptionStatus` is blank on the user row.
 - Fixed a Bold Choices auth-callback hang where the page could sit on `Signing you in...` forever if the initial session restore stalled; the callback now processes URL tokens immediately and the Bold Choices auth context now times out stalled session/verify requests instead of hanging indefinitely.
 - Fixed Stripe reconciliation for multi-product accounts by letting the backend track multiple active recurring Stripe price IDs in `stripePriceId`, deriving Reader101 and Bold Choices unlimited access from that full set instead of a single “best” subscription, and storing a legacy-safe `subscription` summary so sync no longer crashes against the old enum when plans like `reader101_monthly` are encountered.
+- Hardened Bold Choices billing lookup so generation now compares both the legacy Sequelize `Users` row and the Supabase `Users` row and prefers the richer paid-product record, which protects users from stale single-plan rows still showing only one Stripe price ID.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

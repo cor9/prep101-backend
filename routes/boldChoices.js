@@ -15,6 +15,7 @@ const {
 } = require("../lib/supabaseAdmin");
 const {
   buildBoldChoicesUsage,
+  getActiveStripePriceIds,
   getBoldChoicesConsumptionUpdate,
 } = require("../services/prep101EntitlementsService");
 
@@ -140,27 +141,48 @@ async function loadBillingUser(user) {
   const userId = user?.id;
   if (!userId) return user;
 
-  if (User) {
-    try {
-      const row = await User.findByPk(userId);
-      if (row) return row;
-    } catch (error) {
-      console.error("[BoldChoices] Failed to load billing user:", error.message);
-    }
-  }
+  const [sequelizeRow, supabaseRow] = await Promise.all([
+    (async () => {
+      if (!User) return null;
+      try {
+        return await User.findByPk(userId);
+      } catch (error) {
+        console.error("[BoldChoices] Failed to load Sequelize billing user:", error.message);
+        return null;
+      }
+    })(),
+    runAdminQuery(async (client) => {
+      const { data, error } = await client
+        .from(tables.users)
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
 
-  const row = await runAdminQuery(async (client) => {
-    const { data, error } = await client
-      .from(tables.users)
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
+      if (error) throw error;
+      return data;
+    }, null),
+  ]);
 
-    if (error) throw error;
-    return data;
-  }, null);
+  const normalizedSupabaseRow = supabaseRow ? normalizeUserRow(supabaseRow) : null;
+  const candidates = [sequelizeRow, normalizedSupabaseRow].filter(Boolean);
+  if (!candidates.length) return user;
 
-  return row ? normalizeUserRow(row) : user;
+  const scoreBillingRow = (row) => {
+    const usage = buildBoldChoicesUsage(row);
+    const priceIds = getActiveStripePriceIds(row);
+    const periodEnd = Date.parse(
+      row?.currentPeriodEnd || row?.current_period_end || row?.updatedAt || row?.updated_at || 0
+    ) || 0;
+
+    return (
+      (usage.unlimited ? 1000 : 0) +
+      (priceIds.length * 100) +
+      (String(row?.subscriptionStatus || row?.subscription_status || "").toLowerCase() === "active" ? 25 : 0) +
+      periodEnd / 1e11
+    );
+  };
+
+  return candidates.sort((left, right) => scoreBillingRow(right) - scoreBillingRow(left))[0];
 }
 
 async function persistBillingUserUpdates(user, updates) {
