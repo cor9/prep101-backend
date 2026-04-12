@@ -193,7 +193,10 @@ function normalize(value = "") {
 
 function normalizeCharacterLabel(value = "") {
   return String(value || "")
-    .replace(/\(CONT'?D\)/gi, "")
+    .replace(/\(CONT['’]?D\)/gi, "")
+    .replace(/\bCONT['’]?D\b/gi, "")
+    .replace(/\bSIDES\s+\d+\.?\b/gi, "")
+    .replace(/\bSIDES\b/gi, "")
     .replace(/[^A-Za-z0-9 .'\-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -229,10 +232,14 @@ function extractCharacterCues(sceneText = "") {
     if (!line || line.length > 40) continue;
     if (!/[A-Z]/.test(line) || /[a-z]/.test(line)) continue;
     if (/^(INT|EXT)[ .]/.test(line)) continue;
+    if (/\bSIDES\b/i.test(line)) continue;
+    if (/\bCONT['’]?D\b/i.test(line)) continue;
+    if (/\d+\.$/.test(line)) continue;
 
     const normalized = normalizeCharacterLabel(line);
     if (!normalized) continue;
     if (NON_CHARACTER_CUES.has(normalized.toUpperCase())) continue;
+    if (/\bSIDES\b/i.test(normalized)) continue;
 
     counts.set(normalized, (counts.get(normalized) || 0) + 1);
   }
