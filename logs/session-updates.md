@@ -71,6 +71,7 @@
 - Rewrote the Reader101 generation prompt around the actual product standard: Reader101 as an actor-protection system, not generic reader advice.
 - Added stronger structured validation so Reader101 now requires scene-specific quoted references, exactly 10 Reader Fundamentals bullets, at least 6 Key Beats, and tighter `Do This / Avoid This` and `Quick Reset` counts before accepting model output.
 - Updated the normalized Reader101 output so the guide footer now ends with `If any of these happen, the audition doesn't land. Full stop.` and the rendered guide preserves all 10 Reader Fundamentals rules instead of silently trimming them down.
+- Fixed Bold Choices and Reader101 unlimited entitlement checks so stored paid plans like `bundle`, `reader101_monthly`, and `boldchoices_monthly` still count as active access even when `stripePriceId` or `subscriptionStatus` is blank on the user row.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

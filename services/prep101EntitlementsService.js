@@ -20,8 +20,23 @@ const STRIPE_PRICE_IDS = {
 };
 
 function hasActiveSubscription(user) {
-  const status = String(user?.subscriptionStatus || "").toLowerCase();
-  return status === "active" || status === "trialing";
+  const status = String(
+    user?.subscriptionStatus ?? user?.subscription_status ?? ""
+  ).toLowerCase().trim();
+  const plan = String(getPrimaryPlanName(user) || "").toLowerCase().trim();
+
+  if (status === "canceled" || status === "unpaid") return false;
+  if (status === "active" || status === "trialing" || status === "past_due") {
+    return true;
+  }
+
+  return [
+    "starter",
+    "basic",
+    "bundle",
+    "reader101_monthly",
+    "boldchoices_monthly",
+  ].includes(plan);
 }
 
 function getActiveStripePriceId(user) {
@@ -148,11 +163,14 @@ function buildPrep101Usage(user) {
 
 function hasReader101Unlimited(user) {
   if (!hasActiveSubscription(user)) return false;
+  const plan = String(getPrimaryPlanName(user) || "").toLowerCase().trim();
   const priceId = getActiveStripePriceId(user);
   return Boolean(
-    priceId &&
-      (priceId === STRIPE_PRICE_IDS.reader101Monthly ||
-        priceId === STRIPE_PRICE_IDS.bundle)
+    plan === "reader101_monthly" ||
+      plan === "bundle" ||
+      (priceId &&
+        (priceId === STRIPE_PRICE_IDS.reader101Monthly ||
+          priceId === STRIPE_PRICE_IDS.bundle))
   );
 }
 
@@ -169,11 +187,14 @@ function buildReader101Usage(user) {
 
 function hasBoldChoicesUnlimited(user) {
   if (!hasActiveSubscription(user)) return false;
+  const plan = String(getPrimaryPlanName(user) || "").toLowerCase().trim();
   const priceId = getActiveStripePriceId(user);
   return Boolean(
-    priceId &&
-      (priceId === STRIPE_PRICE_IDS.boldChoicesMonthly ||
-        priceId === STRIPE_PRICE_IDS.bundle)
+    plan === "boldchoices_monthly" ||
+      plan === "bundle" ||
+      (priceId &&
+        (priceId === STRIPE_PRICE_IDS.boldChoicesMonthly ||
+          priceId === STRIPE_PRICE_IDS.bundle))
   );
 }
 
