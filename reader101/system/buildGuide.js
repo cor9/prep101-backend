@@ -52,7 +52,10 @@ function defaultToneLine(style) {
 }
 
 function buildFallbackContent(meta = {}) {
-  const role = normalizeLine(meta.characterName || "The actor");
+  const auditionRole = normalizeLine(meta.characterName || "the actor");
+  const readerRole = normalizeLine(
+    meta.readerCharacterName || meta.displayReaderCharacterName || "the scene partner"
+  );
   const title = normalizeLine(meta.productionTitle || "the project");
   const genre = normalizeLine(meta.genre || "the material");
   const highRisk = Boolean(meta.highRiskScene);
@@ -69,7 +72,7 @@ function buildFallbackContent(meta = {}) {
           "Flatten the stakes -> the turn never arrives when it needs to.",
           "Chase personality instead of behavior -> the tone drifts and the scene loses shape.",
         ],
-    why_it_matters: `${role} can only fight for something real if the reader gives the scene weight, pressure, and timing. In ${title}, the reader is not background noise. The reader is the thing the actor is responding to, pushing against, and revealing themselves around.`,
+    why_it_matters: `${auditionRole} can only fight for something real if the reader gives the scene weight, pressure, and timing through ${readerRole}. In ${title}, the reader is not background noise. The reader is the thing the actor is responding to, pushing against, and revealing themselves around.`,
     performance_engine: {
       drive_label: highRisk ? "Scene Risk" : "Scene Drive",
       drive_text: highRisk
@@ -144,7 +147,7 @@ function buildFallbackContent(meta = {}) {
       "Change the pressure, not the gimmick -> clean contrast beats over-performed differentiation every time.",
     ],
     reader_fundamentals: [
-      "Read the line that is happening now -> reading ahead makes you sound like a cue machine.",
+      `Read ${readerRole} with the line that is happening now -> reading ahead makes you sound like a cue machine.`,
       "Support silence instead of filling it -> many turns land in the beat before the next line.",
       "Keep energy through the end of the line -> dropping off early makes the actor pull back.",
     ],
@@ -169,11 +172,11 @@ function buildFallbackContent(meta = {}) {
       "Avoid pushing for effect -> result-playing kills specificity fast.",
     ],
     connection: [
-      `Stay available to ${role} in the silence -> that is usually where the actor decides whether to go deeper.`,
+      `Stay available to ${auditionRole} through ${readerRole} in the silence -> that is usually where the actor decides whether to go deeper.`,
       "Answer what the actor is actually doing, not what you expected on the page -> anticipation flattens discovery.",
       "Let the actor's turn change how you deliver the next cue -> fixed readings make the scene feel dead.",
     ],
-    anchor_line: `${role} can only go as deep as you let them.`,
+    anchor_line: `${auditionRole} can only go as deep as you let them through ${readerRole}.`,
     tone_reference_anchor: [
       defaultToneLine(meta.templateStyle),
       "Keep the scene grounded in behavior, not concept -> the writing already carries the tone.",
@@ -300,8 +303,9 @@ function normalizeContent(modelContent = {}, meta = {}) {
   }
 
   return {
-    title: `Reader Support Guide - ${normalizeLine(meta.characterName || "Reader101")}`,
+    title: `Reader Support Guide - ${normalizeLine(meta.readerCharacterName || meta.displayReaderCharacterName || "Reader101")}`,
     sub: [
+      normalizeLine(meta.characterName ? `for ${meta.characterName}` : ""),
       normalizeLine(meta.productionTitle),
       normalizeLine(meta.productionType),
       normalizeLine(meta.genre),

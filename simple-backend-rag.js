@@ -2808,6 +2808,16 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     const combinedSceneText = allUploadData
       .map((data) => data.sceneText)
       .join("\n\n--- NEW SCENE ---\n\n");
+    const combinedCharacterNames = [
+      ...new Set(
+        allUploadData
+          .flatMap((data) =>
+            Array.isArray(data.characterNames) ? data.characterNames : []
+          )
+          .map((name) => String(name || "").trim())
+          .filter(Boolean)
+      ),
+    ];
     const combinedWordCount = allUploadData.reduce(
       (total, data) => total + (data.wordCount || 0),
       0
@@ -2906,6 +2916,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       const readerGuideHtml = await generateReaderGuide({
         sceneText: combinedSceneText,
         characterName: characterName.trim(),
+        characterNames: combinedCharacterNames,
         actorAge: actorAge || "",
         productionTitle: productionTitle.trim(),
         productionType: productionType.trim(),

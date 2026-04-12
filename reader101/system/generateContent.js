@@ -126,7 +126,8 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
   const flags = Array.isArray(meta.flags) ? meta.flags : [];
 
   const metadataBlock = [
-    meta.characterName ? `ROLE: ${meta.characterName}` : "",
+    meta.characterName ? `AUDITION ROLE: ${meta.characterName}` : "",
+    meta.readerCharacterName ? `READER ROLE: ${meta.readerCharacterName}` : "",
     meta.actorAge ? `ACTOR AGE: ${meta.actorAge}` : "",
     meta.productionTitle ? `TITLE: ${meta.productionTitle}` : "",
     meta.productionType ? `FORMAT: ${meta.productionType}` : "",
@@ -166,6 +167,10 @@ Return ONLY valid JSON that matches this schema exactly:
 ${SCHEMA_TEXT}
 
 Global rules:
+- Coach the reader on how to read the READER ROLE opposite the AUDITION ROLE.
+- Never instruct the reader to "play" the audition character.
+- If READER ROLE is present, treat that as the reader's character assignment throughout.
+- Any character-specific vocal, physical, or behavioral note must refer to the READER ROLE, never the AUDITION ROLE.
 - Every list item must be one line.
 - Every list item must be a physical or vocal directive, never therapy language.
 - "what_will_go_wrong" must contain exactly 3 bullets and each bullet must include a failure plus consequence.

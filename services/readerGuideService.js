@@ -191,9 +191,96 @@ function normalize(value = "") {
   return String(value || "").toLowerCase();
 }
 
+function normalizeCharacterLabel(value = "") {
+  return String(value || "")
+    .replace(/\(CONT'?D\)/gi, "")
+    .replace(/[^A-Za-z0-9 .'\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function hasAny(text = "", needles = []) {
   const normalized = normalize(text);
   return needles.some((needle) => normalized.includes(needle));
+}
+
+const NON_CHARACTER_CUES = new Set([
+  "INT",
+  "EXT",
+  "INT.",
+  "EXT.",
+  "CUT TO",
+  "FADE IN",
+  "FADE OUT",
+  "DISSOLVE TO",
+  "ANGLE ON",
+  "CLOSE ON",
+  "CONTINUED",
+  "CONT D",
+  "CONT'D",
+]);
+
+function extractCharacterCues(sceneText = "") {
+  const lines = String(sceneText || "").split("\n");
+  const counts = new Map();
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.length > 40) continue;
+    if (!/[A-Z]/.test(line) || /[a-z]/.test(line)) continue;
+    if (/^(INT|EXT)[ .]/.test(line)) continue;
+
+    const normalized = normalizeCharacterLabel(line);
+    if (!normalized) continue;
+    if (NON_CHARACTER_CUES.has(normalized.toUpperCase())) continue;
+
+    counts.set(normalized, (counts.get(normalized) || 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name);
+}
+
+function inferReaderCharacterName({
+  auditionCharacterName = "",
+  sceneText = "",
+  characterNames = [],
+} = {}) {
+  const normalizedAudition = normalizeCharacterLabel(auditionCharacterName);
+  const candidates = [
+    ...characterNames.map(normalizeCharacterLabel),
+    ...extractCharacterCues(sceneText),
+  ].filter(Boolean);
+
+  const seen = new Set();
+  const uniqueCandidates = candidates.filter((name) => {
+    const key = normalize(name);
+    if (!key || seen.has(key) || key === normalize(normalizedAudition)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+
+  return uniqueCandidates[0] || "";
+}
+
+function resolveReaderRoleContext(data = {}) {
+  const auditionCharacterName = normalizeCharacterLabel(data.characterName || "");
+  const readerCharacterName =
+    normalizeCharacterLabel(data.readerCharacterName || "") ||
+    inferReaderCharacterName({
+      auditionCharacterName,
+      sceneText: data.sceneText || "",
+      characterNames: Array.isArray(data.characterNames) ? data.characterNames : [],
+    });
+
+  return {
+    auditionCharacterName,
+    readerCharacterName,
+    displayReaderCharacterName: readerCharacterName || "Scene Partner",
+  };
 }
 
 function detectFamilyContext(content = "", actorAge = null) {
@@ -336,11 +423,16 @@ function validateReaderGuideOutput(html = "", modeContext = {}) {
 }
 
 async function generateReaderGuide(data = {}) {
-  const modeContext = buildReaderModeContext(data);
+  const roleContext = resolveReaderRoleContext(data);
+  const modeContext = buildReaderModeContext({
+    ...data,
+    ...roleContext,
+  });
   const flags = buildFlags(modeContext);
 
   console.log("📖 [ReaderGuide] Generating structured Reader101 guide");
-  console.log("   Character:", data.characterName || "Unknown");
+  console.log("   Audition character:", roleContext.auditionCharacterName || "Unknown");
+  console.log("   Reader role:", roleContext.displayReaderCharacterName);
   console.log("   Production:", data.productionTitle || "Unknown");
   console.log("   Mode:", modeContext.mode);
   console.log("   Flags:", flags.join(", ") || "none");
@@ -348,6 +440,7 @@ async function generateReaderGuide(data = {}) {
   const result = await buildGuide(
     {
       ...data,
+      ...roleContext,
       ...modeContext,
       flags,
     },
@@ -372,6 +465,7 @@ async function generateReaderGuide(data = {}) {
 
 module.exports = {
   buildReaderModeContext,
+  resolveReaderRoleContext,
   generateReaderGuide,
   validateReaderGuideOutput,
 };
