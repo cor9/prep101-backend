@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const { DEFAULT_CLAUDE_MODEL } = require('./config/models');
 
 const app = express();
 app.use(cors({ origin: ['http://localhost:3000'] }));
@@ -209,7 +210,7 @@ You provide practical, actionable coaching that helps actors book jobs. Your adv
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
+        model: DEFAULT_CLAUDE_MODEL,
         max_tokens: 4000,
         system: systemPrompt,
         messages: [{

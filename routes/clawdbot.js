@@ -1,6 +1,7 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const router = express.Router();
+const { DEFAULT_CLAUDE_MODEL } = require('../config/models');
 
 // Middleware to validate API Key
 const validateApiKey = (req, res, next) => {
@@ -92,7 +93,7 @@ router.post('/generate', validateApiKey, async (req, res) => {
         'content-type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model: DEFAULT_CLAUDE_MODEL,
         max_tokens: 4000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }]
@@ -103,7 +104,7 @@ router.post('/generate', validateApiKey, async (req, res) => {
         const errorText = await response.text();
         console.error('❌ Anthropic API Error Details:');
         console.error(`   - Status: ${response.status} ${response.statusText}`);
-        console.error(`   - Model Used: claude-3-5-sonnet-20241022`);
+        console.error(`   - Model Used: ${DEFAULT_CLAUDE_MODEL}`);
         console.error(`   - Error Body: ${errorText}`);
 
         throw new Error(`Anthropic API failed: ${response.status} ${response.statusText} - ${errorText}`);

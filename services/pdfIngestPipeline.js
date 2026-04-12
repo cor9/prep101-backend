@@ -10,7 +10,7 @@ const {
   analyzeWatermarkInterference,
   isLikelyWatermarkLine,
 } = require("./textCleaner");
-const { DEFAULT_CLAUDE_MAX_TOKENS } = require("../config/models");
+const { DEFAULT_CLAUDE_MODEL, DEFAULT_CLAUDE_MAX_TOKENS } = require("../config/models");
 
 let extractWithAdobe = null;
 try {
@@ -323,7 +323,7 @@ async function callClaudeVisionPage(page, prompt) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-3-5-sonnet-20241022",
+      model: DEFAULT_CLAUDE_MODEL,
       max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
       messages: [
         {
