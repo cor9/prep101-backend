@@ -76,6 +76,7 @@
 - Fixed Stripe reconciliation for multi-product accounts by letting the backend track multiple active recurring Stripe price IDs in `stripePriceId`, deriving Reader101 and Bold Choices unlimited access from that full set instead of a single “best” subscription, and storing a legacy-safe `subscription` summary so sync no longer crashes against the old enum when plans like `reader101_monthly` are encountered.
 - Hardened Bold Choices billing lookup so generation now compares both the legacy Sequelize `Users` row and the Supabase `Users` row and prefers the richer paid-product record, which protects users from stale single-plan rows still showing only one Stripe price ID.
 - Fixed a production-wide model outage for guide generation by replacing the deprecated Anthropic model ID (`claude-3-5-sonnet-20241022`) with a live default (`claude-sonnet-4-20250514`) in the shared model config and in remaining hardcoded generation call sites (Bold Choices, Reader101 pipeline dependencies, PDF ingest vision path, and legacy guide routes).
+- Switched the shared default model to Claude 3.7 using the explicit snapshot ID (`claude-3-7-sonnet-20250219`) after verifying that the alias (`claude-3-7-sonnet-latest`) returned a 404 in production; updated both the shared model config and Bold Choices health fallback to keep diagnostics aligned.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`
