@@ -145,6 +145,10 @@ function renderHighRiskSection(data = {}) {
     return "";
   }
 
+  const sectionTitle = data.intimacyMode
+    ? "When the Scene Crosses Into Intimacy"
+    : "Handling High-Risk Material";
+
   const exactLines = [
     "This scene contains behavior that may cause reader discomfort. That discomfort must NOT affect delivery.",
     "Your job is not to make this comfortable. Your job is to make it playable.",
@@ -163,7 +167,7 @@ function renderHighRiskSection(data = {}) {
     <div class="section">
       <div class="sec-head sh-red">
         <span class="sec-num nl">⚠</span>
-        <span class="sec-title tl">When the Scene Crosses Into Intimacy</span>
+        <span class="sec-title tl">${sectionTitle}</span>
       </div>
       <div class="sec-body">
         ${renderList(bullets)}

@@ -26,16 +26,15 @@ const REQUIRED_SECTION_TITLES = [
 const HIGH_RISK_TRIGGERS = [
   "sex",
   "porn",
-  "touches",
   "orgasm",
   "horny",
-  "bed",
-  "watching",
-  "intimate",
-  "shame",
-  "shamed",
-  "ashamed",
-  "embarrassed",
+  "naked",
+  "sexual",
+  "make out",
+  "making out",
+  "arousal",
+  "straddle",
+  "thrust",
   "power imbalance",
   "older man",
   "older woman",
@@ -44,20 +43,94 @@ const HIGH_RISK_TRIGGERS = [
   "boss",
   "superior",
   "subordinate",
+  "inappropriate",
+  "crosses a boundary",
+  "boundary violation",
+  "grooming",
+  "coercive",
+  "pressures",
+  "forced to",
 ];
 
-const INTIMACY_TRIGGERS = [
+const EXPLICIT_INTIMACY_TRIGGERS = [
   "porn",
   "sex",
-  "touches",
-  "kissing",
   "horny",
-  "bed",
-  "watching",
   "naked",
   "orgasm",
   "arousal",
+  "make out",
+  "making out",
+  "moan",
+  "moaning",
+  "sexual",
+  "foreplay",
+  "straddle",
+  "thrust",
+];
+
+const AMBIGUOUS_INTIMACY_TRIGGERS = [
+  "touches",
+  "touching",
+  "kissing",
+  "kisses",
+  "kiss",
+  "bed",
+  "watching",
+  "intimate",
   "physical proximity",
+  "leans in",
+  "pulls in",
+];
+
+const ROMANTIC_CONTEXT_TRIGGERS = [
+  "boyfriend",
+  "girlfriend",
+  "date",
+  "dating",
+  "flirting",
+  "romantic",
+  "attraction",
+  "desire",
+  "crush",
+  "lover",
+  "hookup",
+];
+
+const FAMILY_RELATIONSHIP_TRIGGERS = [
+  "mom",
+  "mother",
+  "dad",
+  "daddy",
+  "father",
+  "daughter",
+  "son",
+  "child",
+  "kid",
+  "little girl",
+  "little boy",
+  "parent",
+];
+
+const FAMILY_COMFORT_TRIGGERS = [
+  "draws her into a hug",
+  "draws him into a hug",
+  "pulls her into a hug",
+  "pulls him into a hug",
+  "hugs her",
+  "hugs him",
+  "hugging her",
+  "hugging him",
+  "kissing her head",
+  "kissing his head",
+  "kisses her head",
+  "kisses his head",
+  "kissing her forehead",
+  "kissing his forehead",
+  "kisses her forehead",
+  "kisses his forehead",
+  "holds her",
+  "holds him",
 ];
 
 const INTIMACY_ESCALATION_TRIGGERS = [
@@ -123,8 +196,29 @@ function hasAny(text = "", needles = []) {
   return needles.some((needle) => normalized.includes(needle));
 }
 
-function detectIntimacy(content = "") {
-  return hasAny(content, INTIMACY_TRIGGERS);
+function detectFamilyContext(content = "", actorAge = null) {
+  return hasAny(content, FAMILY_RELATIONSHIP_TRIGGERS) || (!!actorAge && actorAge < 18);
+}
+
+function detectFamilyComfort(content = "", actorAge = null) {
+  return (
+    detectFamilyContext(content, actorAge) &&
+    hasAny(content, FAMILY_COMFORT_TRIGGERS) &&
+    !hasAny(content, EXPLICIT_INTIMACY_TRIGGERS)
+  );
+}
+
+function detectIntimacy(content = "", actorAge = null) {
+  const explicitIntimacy = hasAny(content, EXPLICIT_INTIMACY_TRIGGERS);
+  const ambiguousIntimacy = hasAny(content, AMBIGUOUS_INTIMACY_TRIGGERS);
+  const romanticContext = hasAny(content, ROMANTIC_CONTEXT_TRIGGERS);
+  const familyComfort = detectFamilyComfort(content, actorAge);
+
+  if (familyComfort) {
+    return false;
+  }
+
+  return explicitIntimacy || (ambiguousIntimacy && romanticContext);
 }
 
 function detectIntimacyArc(content = "") {
@@ -151,30 +245,33 @@ function buildReaderModeContext(data = {}) {
     .join("\n");
 
   const actorAge = Number.parseInt(data.actorAge, 10);
-  const intimacyMode = detectIntimacy(combinedContent);
+  const parsedActorAge = Number.isNaN(actorAge) ? null : actorAge;
+  const intimacyMode = detectIntimacy(combinedContent, parsedActorAge);
   const shameTransition =
     /shame|ashamed|embarrassed|exposed/i.test(combinedContent) ||
     detectIntimacyArc(combinedContent);
   const moralContradiction = hasAny(combinedContent, MORAL_CONTRADICTION_TRIGGERS);
   const powerImbalance = hasAny(combinedContent, POWER_IMBALANCE_TRIGGERS);
-  const highRiskSignal =
-    isHighRiskScene(combinedContent) ||
-    intimacyMode ||
-    shameTransition ||
-    moralContradiction ||
-    powerImbalance;
+  const explicitHighRiskSignal =
+    isHighRiskScene(combinedContent) || intimacyMode;
+  const compoundedBoundaryRisk =
+    powerImbalance &&
+    (explicitHighRiskSignal ||
+      hasAny(combinedContent, ROMANTIC_CONTEXT_TRIGGERS) ||
+      hasAny(combinedContent, AMBIGUOUS_INTIMACY_TRIGGERS));
+  const highRiskSignal = explicitHighRiskSignal || compoundedBoundaryRisk;
 
   return {
     mode: highRiskSignal ? "HIGH_RISK" : "STANDARD",
     highRiskScene: highRiskSignal,
     intimacyMode,
     intimacyArc: intimacyMode && detectIntimacyArc(combinedContent),
-    actorAge: Number.isNaN(actorAge) ? null : actorAge,
+    actorAge: parsedActorAge,
     parentContext:
-      /parent/i.test(combinedContent) || (!Number.isNaN(actorAge) && actorAge < 18),
+      /parent/i.test(combinedContent) || (!!parsedActorAge && parsedActorAge < 18),
     moralContradiction,
     powerImbalance,
-    shameTransition,
+    shameTransition: shameTransition && highRiskSignal,
     fosterStyleScene:
       /foster/i.test(combinedContent) &&
       (highRiskSignal || intimacyMode || shameTransition),
