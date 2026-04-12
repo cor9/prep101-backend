@@ -3182,7 +3182,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
               : childGuideRequested
                 ? "pending"
                 : "not_requested",
-          model: "claude-sonnet-4-20250514",
+          model: "claude-3-5-sonnet-20241022",
           ragEnabled: true,
           methodologyFiles: Object.keys(methodologyDatabase).length,
           contentQuality: "corey-ralston-methodology-enhanced",
@@ -3230,7 +3230,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
           productionType,
           scriptWordCount: combinedWordCount,
           guideLength: guideContent.length,
-          model: "claude-sonnet-4-20250514",
+          model: "claude-3-5-sonnet-20241022",
           ragEnabled: true,
           methodologyFiles: Object.keys(methodologyDatabase).length,
           contentQuality: "corey-ralston-methodology-enhanced",

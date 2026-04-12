@@ -1,5 +1,4 @@
-const DEFAULT_CLAUDE_MODEL =
-  process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022';
+const DEFAULT_CLAUDE_MODEL = "claude-3-5-sonnet-20241022";
 
 // Central place to control maximum output tokens for Claude
 // Can be overridden via CLAUDE_MAX_TOKENS if needed.
