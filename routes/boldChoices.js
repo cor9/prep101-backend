@@ -518,7 +518,7 @@ router.post("/generate", auth, async (req, res) => {
     console.error("[BoldChoices] Generation error:", err.message);
     return res.status(500).json({
       error: "Failed to generate Bold Choices guide",
-      detail: process.env.NODE_ENV === "development" ? err.message : undefined,
+      detail: err.message || "Unknown generation error",
     });
   }
 });
