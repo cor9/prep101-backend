@@ -332,9 +332,7 @@ function normalizeContent(modelContent = {}, meta = {}) {
       meta,
       fallback.what_will_go_wrong
     ),
-    what_will_go_wrong_footer: meta.highRiskScene
-      ? "If any of these happen, the actor loses the turn before it ever lands."
-      : "If any of these happen, the actor ends up carrying the whole scene alone.",
+    what_will_go_wrong_footer: "If any of these happen, the audition doesn't land. Full stop.",
     why_it_matters: normalizeLine(modelContent.why_it_matters || fallback.why_it_matters),
     performance_engine: normalizePerformanceEngine(
       modelContent.performance_engine,
@@ -347,7 +345,7 @@ function normalizeContent(modelContent = {}, meta = {}) {
       modelContent.reader_fundamentals,
       fallback.reader_fundamentals,
       "the actor feels the drop immediately.",
-      6
+      10
     ),
     key_beats: normalizeArraySection(
       modelContent.key_beats,

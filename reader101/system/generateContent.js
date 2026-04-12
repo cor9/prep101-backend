@@ -2,16 +2,36 @@ const fetch = require("node-fetch");
 const { DEFAULT_CLAUDE_MODEL, DEFAULT_CLAUDE_MAX_TOKENS } = require("../../config/models");
 const { scrubWatermarks } = require("../../services/textCleaner");
 
-const CONTENT_SYSTEM_PROMPT = `You generate structured Reader101 guide content.
+const CONTENT_SYSTEM_PROMPT = `You are Corey Ralston creating a Reader101 guide.
 
 Return ONLY valid JSON.
 Do not return markdown.
 Do not return HTML.
 Do not wrap the JSON in code fences.
 
-Your job is to produce scene-specific reader coaching, not actor coaching.
-Every bullet must be playable, specific, and written as one line.
-Use consequence language often. Use "->" when it helps sharpen cause and effect.
+Reader101 is not a general acting lesson.
+Reader101 is an actor protection system.
+Your job is to stop the reader from ruining THIS specific audition.
+
+You are not teaching performance theory.
+You are correcting real-time reader behavior so the actor can go deeper.
+
+Hard rules:
+- No generic writing.
+- No blog tone.
+- No abstract genre talk unless it directly sharpens this exact scene.
+- No vague filler like "this scene is emotional" or "the actor needs support."
+- Tie every section to the actual sides, quoted lines, and concrete moments.
+- If the guide could apply to another audition, it has failed.
+- Coach pacing, tone, timing, listening, restraint, presence, and reaction.
+- Do NOT coach the reader to build character psychology like an actor.
+- Do NOT drift into therapy language or academic analysis.
+- Use direct, grounded, occasionally sharp language when needed.
+- Use consequence-driven coaching throughout.
+- Emotional framing should come before instruction; consequences should follow instruction.
+
+Every bullet must be one line, playable, and immediately usable in a live self-tape.
+Use "->" when it sharpens cause and effect.
 Do not repeat the same note across sections.
 Do not sanitize high-risk material. Keep it grounded and professional.`;
 
@@ -74,7 +94,32 @@ function parseJsonResponse(text = "") {
   }
 }
 
-function validateStructuredContent(data = {}) {
+function collectStrings(value, bucket = []) {
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectStrings(item, bucket));
+    return bucket;
+  }
+
+  if (value && typeof value === "object") {
+    Object.values(value).forEach((item) => collectStrings(item, bucket));
+    return bucket;
+  }
+
+  if (typeof value === "string") {
+    bucket.push(value);
+  }
+
+  return bucket;
+}
+
+function countQuotedReferences(value) {
+  return collectStrings(value)
+    .map((item) => String(item || ""))
+    .filter((item) => /["“”][^"“”]{2,}["“”]|'[^'\n]{3,}'/.test(item))
+    .length;
+}
+
+function validateStructuredContent(data = {}, meta = {}) {
   const errors = [];
 
   if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -113,8 +158,46 @@ function validateStructuredContent(data = {}) {
     }
   }
 
+  if (Array.isArray(data.reader_fundamentals) && data.reader_fundamentals.length !== 10) {
+    errors.push('"reader_fundamentals" must contain exactly 10 scene-specific rules.');
+  }
+
+  if (Array.isArray(data.key_beats) && data.key_beats.length < 6) {
+    errors.push('"key_beats" must contain at least 6 scene-specific beats.');
+  }
+
+  if (Array.isArray(data.do) && (data.do.length < 4 || data.do.length > 6)) {
+    errors.push('"do" must contain 4 to 6 specific actions.');
+  }
+
+  if (Array.isArray(data.avoid) && (data.avoid.length < 4 || data.avoid.length > 6)) {
+    errors.push('"avoid" must contain 4 to 6 specific mistakes.');
+  }
+
+  if (Array.isArray(data.quick_reset) && (data.quick_reset.length < 3 || data.quick_reset.length > 4)) {
+    errors.push('"quick_reset" must contain 3 to 4 concise reset bullets.');
+  }
+
   if (!data.anchor_line || typeof data.anchor_line !== "string") {
     errors.push('"anchor_line" must be a string.');
+  }
+
+  if (!meta.fallbackMode) {
+    const quotedReferenceCount = countQuotedReferences([
+      data.what_will_go_wrong,
+      data.why_it_matters,
+      data.performance_engine,
+      data.scene_snapshot,
+      data.your_job,
+      data.key_beats,
+      data.connection,
+      data.tone_reference_anchor,
+      data.quick_reset,
+    ]);
+
+    if (quotedReferenceCount < 6) {
+      errors.push("At least 6 notes must anchor to real quoted lines or phrases from the sides.");
+    }
   }
 
   return errors;
@@ -175,14 +258,29 @@ Global rules:
 - If READER ROLE is present, treat that as the reader's character assignment throughout.
 - If READER ROLES lists more than one role, coach all counterpart roles and contrast them clearly.
 - Any character-specific vocal, physical, or behavioral note must refer to the READER ROLE, never the AUDITION ROLE.
+- The product is: how to not destroy THIS specific audition.
 - Every list item must be one line.
-- Every list item must be a physical or vocal directive, never therapy language.
-- "what_will_go_wrong" must contain exactly 3 bullets and each bullet must include a failure plus consequence.
-- "your_job" must open by correcting the wrong instinct before the right move.
-- "playing_multiple_characters" must contrast the reader roles clearly.
-- "reader_fundamentals" is where readers quietly ruin auditions.
-- "tone_reference_anchor" must start with consequence framing.
-- Prefer direct lines from the sides when readable.
+- Every list item must be a physical, vocal, timing, listening, or restraint directive.
+- Use plain, exact reader coaching. Not theory.
+- Every section must tie back to the actual dialogue, exact beats, and emotional mechanics of this script.
+- Quote real lines or short phrases from the sides naturally throughout the guide.
+- "what_will_go_wrong" must contain exactly 3 bullets and each bullet must identify a precise failure point plus consequence.
+- End "what_will_go_wrong" with the understanding that if these happen, the audition does not land.
+- "why_it_matters" must explain the actor's internal problem in plain truth, not genre summary.
+- "performance_engine.drive_*" is Push (Reader's Function): the resistance, pressure, or container the reader provides.
+- "performance_engine.fuel_*" is Pull (Actor's Need): what the actor is reaching for emotionally and how the reader either protects or destroys it.
+- "scene_snapshot" must stay tight and specific: setting, progression, turn, what changes.
+- "your_job" must be moment-based, quote actual lines, and correct the wrong instinct before the right move.
+- "playing_multiple_characters" must contrast the reader roles clearly, or if there is only one reader role, define the internal register shift inside that one role.
+- "reader_fundamentals" must contain exactly 10 practical, scene-relevant reader rules.
+- "key_beats" must contain at least 6 specific beats, and most should quote lines.
+- "rhythm" must cover how to read this scene: cadence, punctuation, interruptions, pauses, volume, containment, and energy shifts.
+- "do" and "avoid" must be concrete and scene-specific, never generic.
+- "connection" must explain where the actor depends on the reader and how the moment dies if the reader mishandles it.
+- "tone_reference_anchor" must start with consequence framing and then anchor the emotional texture to precise comps or scene truth, not generic genre explanation.
+- "quick_reset" must be 3 to 4 bullets max and should feel like live self-tape rescue notes.
+- Emotional framing should come before instruction. Consequences should follow instruction.
+- Prefer direct lines from the sides whenever readable.
 - If fallback mode is true, stay useful without pretending you saw clean lines.
 
 ${highRiskRules}
@@ -243,7 +341,7 @@ async function generateContent(meta = {}) {
       const prompt = buildContentPrompt(meta, validationFeedback);
       const rawText = await callAnthropic(prompt, apiKey);
       const parsed = parseJsonResponse(rawText);
-      const errors = validateStructuredContent(parsed);
+      const errors = validateStructuredContent(parsed, meta);
 
       if (errors.length) {
         lastError = new Error(errors.join(" "));

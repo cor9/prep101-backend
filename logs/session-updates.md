@@ -68,6 +68,9 @@
 - Fixed Reader101 role targeting so the guide now infers and coaches the counterpart reader role from the sides, instead of coaching the audition character. Reader101 generation now receives extracted scene character names, resolves the likely reader role, and tells the model to coach that role explicitly.
 - Expanded Reader101 counterpart-role targeting from a single inferred role to all non-audition roles found in the scene, so multi-role reader pages can coach `SHERIFF / DEPUTY MORALES` style coverage instead of only the first counterpart.
 - Fixed Reader101 role extraction so page headers like `ERICKA SIDES 1.` and continuation labels like `ERICKA (CONT’D)` no longer get treated as separate reader roles or produce bogus `scattered roles` guidance.
+- Rewrote the Reader101 generation prompt around the actual product standard: Reader101 as an actor-protection system, not generic reader advice.
+- Added stronger structured validation so Reader101 now requires scene-specific quoted references, exactly 10 Reader Fundamentals bullets, at least 6 Key Beats, and tighter `Do This / Avoid This` and `Quick Reset` counts before accepting model output.
+- Updated the normalized Reader101 output so the guide footer now ends with `If any of these happen, the audition doesn't land. Full stop.` and the rendered guide preserves all 10 Reader Fundamentals rules instead of silently trimming them down.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`
