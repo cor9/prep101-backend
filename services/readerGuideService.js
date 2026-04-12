@@ -242,7 +242,7 @@ function extractCharacterCues(sceneText = "") {
     .map(([name]) => name);
 }
 
-function inferReaderCharacterName({
+function inferReaderCharacterNames({
   auditionCharacterName = "",
   sceneText = "",
   characterNames = [],
@@ -263,23 +263,38 @@ function inferReaderCharacterName({
     return true;
   });
 
-  return uniqueCandidates[0] || "";
+  return uniqueCandidates;
+}
+
+function formatReaderRoleSummary(readerCharacterNames = []) {
+  const roles = (Array.isArray(readerCharacterNames) ? readerCharacterNames : [])
+    .map(normalizeCharacterLabel)
+    .filter(Boolean);
+
+  if (!roles.length) return "Scene Partner";
+  if (roles.length === 1) return roles[0];
+  if (roles.length === 2) return `${roles[0]} / ${roles[1]}`;
+  return `${roles[0]} + ${roles.length - 1} more roles`;
 }
 
 function resolveReaderRoleContext(data = {}) {
   const auditionCharacterName = normalizeCharacterLabel(data.characterName || "");
-  const readerCharacterName =
-    normalizeCharacterLabel(data.readerCharacterName || "") ||
-    inferReaderCharacterName({
-      auditionCharacterName,
-      sceneText: data.sceneText || "",
-      characterNames: Array.isArray(data.characterNames) ? data.characterNames : [],
-    });
+  const explicitReaderRole = normalizeCharacterLabel(data.readerCharacterName || "");
+  const inferredReaderCharacterNames = inferReaderCharacterNames({
+    auditionCharacterName,
+    sceneText: data.sceneText || "",
+    characterNames: Array.isArray(data.characterNames) ? data.characterNames : [],
+  });
+  const readerCharacterNames = explicitReaderRole
+    ? [explicitReaderRole, ...inferredReaderCharacterNames.filter((name) => normalize(name) !== normalize(explicitReaderRole))]
+    : inferredReaderCharacterNames;
+  const readerCharacterName = readerCharacterNames[0] || "";
 
   return {
     auditionCharacterName,
     readerCharacterName,
-    displayReaderCharacterName: readerCharacterName || "Scene Partner",
+    readerCharacterNames,
+    displayReaderCharacterName: formatReaderRoleSummary(readerCharacterNames),
   };
 }
 

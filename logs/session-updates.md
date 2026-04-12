@@ -66,6 +66,7 @@
 - Tightened Reader101 high-risk/intimacy classification so parent-child comfort scenes like hugs or kissing a child on the head no longer trigger the intimacy warning, and narrowed the trigger lists so generic words like `watching`, `bed`, or `shame` do not misclassify normal dramatic material.
 - Made the warning header defensive in the template layer so non-intimacy high-risk scenes can render under `Handling High-Risk Material` instead of always saying `When the Scene Crosses Into Intimacy`.
 - Fixed Reader101 role targeting so the guide now infers and coaches the counterpart reader role from the sides, instead of coaching the audition character. Reader101 generation now receives extracted scene character names, resolves the likely reader role, and tells the model to coach that role explicitly.
+- Expanded Reader101 counterpart-role targeting from a single inferred role to all non-audition roles found in the scene, so multi-role reader pages can coach `SHERIFF / DEPUTY MORALES` style coverage instead of only the first counterpart.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

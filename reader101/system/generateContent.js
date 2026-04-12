@@ -128,6 +128,9 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
   const metadataBlock = [
     meta.characterName ? `AUDITION ROLE: ${meta.characterName}` : "",
     meta.readerCharacterName ? `READER ROLE: ${meta.readerCharacterName}` : "",
+    Array.isArray(meta.readerCharacterNames) && meta.readerCharacterNames.length
+      ? `READER ROLES: ${meta.readerCharacterNames.join(", ")}`
+      : "",
     meta.actorAge ? `ACTOR AGE: ${meta.actorAge}` : "",
     meta.productionTitle ? `TITLE: ${meta.productionTitle}` : "",
     meta.productionType ? `FORMAT: ${meta.productionType}` : "",
@@ -170,6 +173,7 @@ Global rules:
 - Coach the reader on how to read the READER ROLE opposite the AUDITION ROLE.
 - Never instruct the reader to "play" the audition character.
 - If READER ROLE is present, treat that as the reader's character assignment throughout.
+- If READER ROLES lists more than one role, coach all counterpart roles and contrast them clearly.
 - Any character-specific vocal, physical, or behavioral note must refer to the READER ROLE, never the AUDITION ROLE.
 - Every list item must be one line.
 - Every list item must be a physical or vocal directive, never therapy language.
