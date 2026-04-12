@@ -263,6 +263,42 @@ class StripeService {
     );
   }
 
+  getLegacySubscriptionFromPriceIds(priceIds = []) {
+    const ids = Array.isArray(priceIds)
+      ? priceIds.filter(Boolean)
+      : String(priceIds || "")
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean);
+
+    if (!ids.length) return "free";
+    if (ids.includes(STRIPE_PRICE_IDS.starter) || ids.includes(STRIPE_PRICE_IDS.bundle)) {
+      return "basic";
+    }
+    if (
+      ids.includes(STRIPE_PRICE_IDS.reader101Monthly) ||
+      ids.includes(STRIPE_PRICE_IDS.boldChoicesMonthly)
+    ) {
+      return "premium";
+    }
+    return "free";
+  }
+
+  getPrep101MonthlyLimitFromPriceIds(priceIds = []) {
+    const ids = Array.isArray(priceIds)
+      ? priceIds.filter(Boolean)
+      : String(priceIds || "")
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean);
+
+    if (!ids.length) return this.getGuidesLimitFromSubscription("free");
+    if (ids.includes(STRIPE_PRICE_IDS.starter) || ids.includes(STRIPE_PRICE_IDS.bundle)) {
+      return 5;
+    }
+    return 0;
+  }
+
   // Helper method to get guides limit from subscription
   getGuidesLimitFromSubscription(subscription) {
     const limitMap = {

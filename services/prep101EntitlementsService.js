@@ -39,8 +39,23 @@ function hasActiveSubscription(user) {
   ].includes(plan);
 }
 
+function getActiveStripePriceIds(user) {
+  const raw = user?.stripePriceId ?? user?.stripe_price_id ?? null;
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+  }
+
+  return String(raw || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function getActiveStripePriceId(user) {
-  return user?.stripePriceId || user?.stripe_price_id || null;
+  return getActiveStripePriceIds(user)[0] || null;
 }
 
 function getPrimaryPlanName(user) {
@@ -164,13 +179,12 @@ function buildPrep101Usage(user) {
 function hasReader101Unlimited(user) {
   if (!hasActiveSubscription(user)) return false;
   const plan = String(getPrimaryPlanName(user) || "").toLowerCase().trim();
-  const priceId = getActiveStripePriceId(user);
+  const priceIds = getActiveStripePriceIds(user);
   return Boolean(
     plan === "reader101_monthly" ||
       plan === "bundle" ||
-      (priceId &&
-        (priceId === STRIPE_PRICE_IDS.reader101Monthly ||
-          priceId === STRIPE_PRICE_IDS.bundle))
+      priceIds.includes(STRIPE_PRICE_IDS.reader101Monthly) ||
+      priceIds.includes(STRIPE_PRICE_IDS.bundle)
   );
 }
 
@@ -188,13 +202,12 @@ function buildReader101Usage(user) {
 function hasBoldChoicesUnlimited(user) {
   if (!hasActiveSubscription(user)) return false;
   const plan = String(getPrimaryPlanName(user) || "").toLowerCase().trim();
-  const priceId = getActiveStripePriceId(user);
+  const priceIds = getActiveStripePriceIds(user);
   return Boolean(
     plan === "boldchoices_monthly" ||
       plan === "bundle" ||
-      (priceId &&
-        (priceId === STRIPE_PRICE_IDS.boldChoicesMonthly ||
-          priceId === STRIPE_PRICE_IDS.bundle))
+      priceIds.includes(STRIPE_PRICE_IDS.boldChoicesMonthly) ||
+      priceIds.includes(STRIPE_PRICE_IDS.bundle)
   );
 }
 
@@ -335,6 +348,7 @@ module.exports = {
   buildBoldChoicesUsage,
   buildPrep101Usage,
   buildReader101Usage,
+  getActiveStripePriceIds,
   getPrimaryPlanName,
   getBoldChoicesConsumptionUpdate,
   getBoldChoicesCredits,

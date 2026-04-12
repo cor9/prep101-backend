@@ -112,6 +112,21 @@ function selectBestSubscription(subscriptions) {
   })[0];
 }
 
+function getActiveSubscriptions(subscriptions) {
+  return (subscriptions || []).filter((subscription) =>
+    ["active", "trialing", "past_due"].includes(String(subscription?.status || "").toLowerCase())
+  );
+}
+
+function getSubscriptionPriceIds(subscriptions) {
+  return [...new Set(
+    (subscriptions || [])
+      .flatMap((subscription) => subscription.items?.data || [])
+      .map((item) => item?.price?.id)
+      .filter(Boolean)
+  )];
+}
+
 async function fetchSessionPriceIds(sessionId) {
   if (!sessionId) return [];
 
@@ -450,8 +465,11 @@ router.post('/sync-subscription', auth, async (req, res) => {
       expand: ['data.items.data.price'],
     });
 
-    const subscription = selectBestSubscription(subscriptions.data);
-    if (!subscription) {
+    const activeSubscriptions = getActiveSubscriptions(subscriptions.data);
+    const subscription = selectBestSubscription(activeSubscriptions.length ? activeSubscriptions : subscriptions.data);
+    const activePriceIds = getSubscriptionPriceIds(activeSubscriptions);
+
+    if (!subscription || !activePriceIds.length) {
       const updatedUser = await updateUserRecord(userRef, {
         customerId,
         stripeCustomerId: customerId,
@@ -494,21 +512,17 @@ router.post('/sync-subscription', auth, async (req, res) => {
       });
     }
 
-    const priceIds = (subscription.items?.data || [])
-      .map((item) => item?.price?.id)
-      .filter(Boolean);
+    const priceIds = activePriceIds;
     const primaryPriceId = priceIds[0] || null;
-    const inferredSubscription = primaryPriceId
-      ? stripeService.getSubscriptionFromPriceId(primaryPriceId)
-      : 'free';
-    const guidesLimit = stripeService.getPrep101MonthlyLimitFromPriceId(primaryPriceId);
+    const inferredSubscription = stripeService.getLegacySubscriptionFromPriceIds(priceIds);
+    const guidesLimit = stripeService.getPrep101MonthlyLimitFromPriceIds(priceIds);
 
     const updatedUser = await updateUserRecord(userRef, {
       customerId,
       stripeCustomerId: customerId,
       subscriptionId: subscription.id,
       stripeSubscriptionId: subscription.id,
-      stripePriceId: primaryPriceId,
+      stripePriceId: priceIds.join(','),
       subscription: inferredSubscription,
       subscriptionStatus: subscription.status,
       guidesLimit,

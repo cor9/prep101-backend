@@ -8,6 +8,7 @@ const {
   normalizeUserRow,
 } = require("../lib/supabaseAdmin");
 const {
+  getActiveStripePriceIds,
   getBoldChoicesCredits,
   getBoldChoicesCreditsFromPriceId,
   getBoldChoicesGrantedSessionIds,
@@ -44,6 +45,17 @@ function inferGuidesLimit(priceId, subscriptionTier) {
     return 0;
   }
   return stripeService.getGuidesLimitFromSubscription(subscriptionTier);
+}
+
+function mergeRecurringPriceIds(existingPriceIds = [], nextPriceId = null, remove = false) {
+  const merged = new Set((existingPriceIds || []).filter(Boolean));
+  if (!nextPriceId) return [...merged];
+  if (remove) {
+    merged.delete(nextPriceId);
+  } else {
+    merged.add(nextPriceId);
+  }
+  return [...merged];
 }
 
 async function fetchCustomerEmail(customerId) {
@@ -327,15 +339,19 @@ async function handleSubscriptionCreated(subscription) {
       priceId,
     });
 
-    const subscriptionTier = inferPaidPlan(priceId);
-    const guidesLimit = inferGuidesLimit(priceId, subscriptionTier);
+    const activePriceIds = mergeRecurringPriceIds(
+      getActiveStripePriceIds(userRef.row),
+      priceId
+    );
+    const subscriptionTier = stripeService.getLegacySubscriptionFromPriceIds(activePriceIds);
+    const guidesLimit = stripeService.getPrep101MonthlyLimitFromPriceIds(activePriceIds);
 
     await updateWrappedUser(userRef, {
       customerId: subscription.customer,
       stripeCustomerId: subscription.customer,
       subscriptionId: subscription.id,
       stripeSubscriptionId: subscription.id,
-      stripePriceId: priceId,
+      stripePriceId: activePriceIds.join(","),
       subscription: subscriptionTier,
       subscriptionStatus: subscription.status,
       guidesLimit,
@@ -374,15 +390,20 @@ async function handleSubscriptionUpdated(subscription) {
       priceId,
     });
 
-    const subscriptionTier = inferPaidPlan(priceId);
-    const guidesLimit = inferGuidesLimit(priceId, subscriptionTier);
+    const activePriceIds = mergeRecurringPriceIds(
+      getActiveStripePriceIds(userRef.row),
+      priceId,
+      String(subscription.status || "").toLowerCase() === "canceled"
+    );
+    const subscriptionTier = stripeService.getLegacySubscriptionFromPriceIds(activePriceIds);
+    const guidesLimit = stripeService.getPrep101MonthlyLimitFromPriceIds(activePriceIds);
 
     await updateWrappedUser(userRef, {
       customerId: subscription.customer,
       stripeCustomerId: subscription.customer,
       subscriptionId: subscription.id,
       stripeSubscriptionId: subscription.id,
-      stripePriceId: priceId,
+      stripePriceId: activePriceIds.join(","),
       subscriptionStatus: subscription.status,
       subscription: subscriptionTier,
       guidesLimit,
@@ -414,10 +435,18 @@ async function handleSubscriptionDeleted(subscription) {
       return;
     }
 
+    const priceId = subscription.items?.data?.[0]?.price?.id || null;
+    const activePriceIds = mergeRecurringPriceIds(
+      getActiveStripePriceIds(userRef.row),
+      priceId,
+      true
+    );
+
     await updateWrappedUser(userRef, {
-      subscription: "free",
-      subscriptionStatus: "canceled",
-      guidesLimit: 0,
+      subscription: stripeService.getLegacySubscriptionFromPriceIds(activePriceIds),
+      subscriptionStatus: activePriceIds.length ? "active" : "canceled",
+      guidesLimit: stripeService.getPrep101MonthlyLimitFromPriceIds(activePriceIds),
+      stripePriceId: activePriceIds.join(","),
     });
 
     console.log(`❌ Subscription canceled for user ${userRef.row.email}`);
