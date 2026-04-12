@@ -82,6 +82,7 @@
 - Added a shared Anthropic message client with automatic model fallback across known Sonnet/Haiku IDs; Prep101, Reader101, Bold Choices, and child-guide generation now retry on `model not found` instead of hard-failing.
 - Switched the primary model target to Sonnet 4.6 (`claude-sonnet-4-6`) and aligned the Bold Choices health fallback label to match.
 - Added a provider-level fallback for Prep101 guide generation: if Anthropic model attempts fail, Prep101 now falls back to OpenAI `gpt-5.2` automatically when `OPENAI_API_KEY` is configured.
+- Fixed Reader101 render validation drift where high-risk guides were rejected unless the header text was exactly `When the Scene Crosses Into Intimacy`; validation now accepts both that heading and `Handling High-Risk Material`.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

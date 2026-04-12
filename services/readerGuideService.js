@@ -421,8 +421,17 @@ function validateReaderGuideOutput(html = "", modeContext = {}) {
   }
 
   if (modeContext.highRiskScene) {
+    const hasHighRiskHeading =
+      content.includes("When the Scene Crosses Into Intimacy") ||
+      content.includes("Handling High-Risk Material");
+
+    if (!hasHighRiskHeading) {
+      errors.push(
+        "Missing required high-risk heading: expected either \"When the Scene Crosses Into Intimacy\" or \"Handling High-Risk Material\"."
+      );
+    }
+
     const requiredHighRiskLines = [
-      "When the Scene Crosses Into Intimacy",
       "Emotional Arc Mapping",
       "Reader does NOT simulate physical behavior.",
       "Reader provides emotional grounding only.",
