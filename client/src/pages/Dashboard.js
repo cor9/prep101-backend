@@ -562,8 +562,14 @@ const Dashboard = () => {
           }
         } else if (!res.ok) {
           // No guide content and request failed
+          const serverMessage =
+            data?.reason ||
+            data?.detail ||
+            data?.message ||
+            data?.debug?.tip ||
+            data?.error;
           throw new Error(
-            data?.error || `Failed to generate guide (HTTP ${res.status})`
+            serverMessage || `Failed to generate guide (HTTP ${res.status})`
           );
         } else {
           throw new Error("No guide content returned.");

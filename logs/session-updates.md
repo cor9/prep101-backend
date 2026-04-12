@@ -77,6 +77,11 @@
 - Hardened Bold Choices billing lookup so generation now compares both the legacy Sequelize `Users` row and the Supabase `Users` row and prefers the richer paid-product record, which protects users from stale single-plan rows still showing only one Stripe price ID.
 - Fixed a production-wide model outage for guide generation by replacing the deprecated Anthropic model ID (`claude-3-5-sonnet-20241022`) with a live default (`claude-sonnet-4-20250514`) in the shared model config and in remaining hardcoded generation call sites (Bold Choices, Reader101 pipeline dependencies, PDF ingest vision path, and legacy guide routes).
 - Switched the shared default model to Claude 3.7 using the explicit snapshot ID (`claude-3-7-sonnet-20250219`) after verifying that the alias (`claude-3-7-sonnet-latest`) returned a 404 in production; updated both the shared model config and Bold Choices health fallback to keep diagnostics aligned.
+- Added a model-aware output-token clamp so Claude 3.7 requests are automatically capped at 8192 tokens even if `CLAUDE_MAX_TOKENS` is set higher, preventing Anthropic request failures during guide generation.
+- Updated the dashboard generation error handling to surface backend `reason/detail/message` fields (instead of only a generic error string), so failures now show the real server cause directly in the UI.
+- Added a shared Anthropic message client with automatic model fallback across known Sonnet/Haiku IDs; Prep101, Reader101, Bold Choices, and child-guide generation now retry on `model not found` instead of hard-failing.
+- Switched the primary model target to Sonnet 4.6 (`claude-sonnet-4-6`) and aligned the Bold Choices health fallback label to match.
+- Added a provider-level fallback for Prep101 guide generation: if Anthropic model attempts fail, Prep101 now falls back to OpenAI `gpt-5.2` automatically when `OPENAI_API_KEY` is configured.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

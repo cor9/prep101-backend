@@ -1,5 +1,5 @@
-const fetch = require("node-fetch");
 const { DEFAULT_CLAUDE_MODEL, DEFAULT_CLAUDE_MAX_TOKENS } = require("../../config/models");
+const { sendAnthropicMessage } = require("../../services/anthropicClient");
 const { scrubWatermarks } = require("../../services/textCleaner");
 
 const CONTENT_SYSTEM_PROMPT = `You are Corey Ralston creating a Reader101 guide.
@@ -296,31 +296,24 @@ Return the JSON object now.`;
 }
 
 async function callAnthropic(prompt, apiKey) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: DEFAULT_CLAUDE_MODEL,
-      max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 3500),
-      system: CONTENT_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
-    }),
+  const { data: payload, model } = await sendAnthropicMessage({
+    apiKey,
+    preferredModel: DEFAULT_CLAUDE_MODEL,
+    maxTokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 3500),
+    system: CONTENT_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: prompt }],
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Anthropic ${response.status}: ${errorText}`);
-  }
-
-  const payload = await response.json();
   const text = payload?.content?.[0]?.text;
 
   if (!text) {
     throw new Error("Anthropic returned no text content.");
+  }
+
+  if (model !== DEFAULT_CLAUDE_MODEL) {
+    console.warn(
+      `[Reader101] Used fallback model ${model} (primary ${DEFAULT_CLAUDE_MODEL} unavailable)`
+    );
   }
 
   return text;

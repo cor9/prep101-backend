@@ -3,6 +3,7 @@ const {
   DEFAULT_CLAUDE_MODEL,
   DEFAULT_CLAUDE_MAX_TOKENS,
 } = require("../config/models");
+const { sendAnthropicMessage } = require("./anthropicClient");
 
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
 const { scrubWatermarks } = require("./textCleaner");
@@ -300,27 +301,20 @@ async function generateBoldChoices(data) {
   let messages = [{ role: "user", content: userPrompt }];
 
   async function callClaude(msgArray) {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: DEFAULT_CLAUDE_MODEL,
-        max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
-        system: BOLD_CHOICES_SYSTEM_PROMPT,
-        messages: msgArray,
-      }),
+    const { data: result, model } = await sendAnthropicMessage({
+      apiKey: ANTHROPIC_API_KEY,
+      preferredModel: DEFAULT_CLAUDE_MODEL,
+      maxTokens: DEFAULT_CLAUDE_MAX_TOKENS,
+      system: BOLD_CHOICES_SYSTEM_PROMPT,
+      messages: msgArray,
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Anthropic API error ${response.status}: ${errText}`);
+    if (model !== DEFAULT_CLAUDE_MODEL) {
+      console.warn(
+        `[BoldChoices] Used fallback model ${model} (primary ${DEFAULT_CLAUDE_MODEL} unavailable)`
+      );
     }
 
-    const result = await response.json();
     return result.content[0]?.text || "";
   }
 

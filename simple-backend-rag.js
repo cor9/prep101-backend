@@ -199,6 +199,7 @@ const {
   DEFAULT_CLAUDE_MODEL,
   DEFAULT_CLAUDE_MAX_TOKENS,
 } = require("./config/models");
+const { sendAnthropicMessage } = require("./services/anthropicClient");
 
 // Import new authentication and payment features (with error handling)
 let config,
@@ -1336,8 +1337,6 @@ async function extractTextBasic(pdfBuffer) {
 
 // RAG-Enhanced Guide Generation using your methodology files
 async function generateActingGuideWithRAG(data) {
-  const fetch = require("node-fetch");
-
   try {
     console.log("🧠 Step 1: RAG - Searching your methodology files...");
 
@@ -1436,21 +1435,20 @@ SCRIPT INTEGRITY:
 - Tone: warm, direct, industry-savvy; balance encouragement with honest craft notes. Avoid generic motivational fluff.
 `;
 
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
+        const {
+          data: result,
+          model: resolvedModel,
+          provider: resolvedProvider,
+        } = await sendAnthropicMessage({
+          apiKey: ANTHROPIC_API_KEY,
+          preferredModel: DEFAULT_CLAUDE_MODEL,
+          maxTokens: DEFAULT_CLAUDE_MAX_TOKENS,
+          openAIFallbackModel: "gpt-5.2",
           signal: controller.signal,
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-          },
-          body: JSON.stringify({
-            model: DEFAULT_CLAUDE_MODEL,
-            max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
-            messages: [
-              {
-                role: "user",
-                content: `${POLICY}
+          messages: [
+            {
+              role: "user",
+              content: `${POLICY}
 
 You are PREP101, Corey Ralston's elite acting coach persona. You have access to Corey's complete methodology and reference files (Gold Standard Examples, Character Archetype Comparables, Voice Examples). Use them to deliver a personalized coaching guide that feels like Corey wrote it.
 
@@ -1556,36 +1554,21 @@ ${data.sceneText}${fileTypeContext}
 - Let the CSS handle all styling - just use semantic HTML
 
 **OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be pure HTML that can be directly inserted into a web page. Make it worthy of the PREP101 brand and indistinguishable from Corey's personal coaching.`,
-              },
-            ],
-          }),
-          signal: controller.signal,
+            },
+          ],
         });
 
         clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(
-            `❌ RAG Guide Generation Error (Attempt ${attempt}) [model=${DEFAULT_CLAUDE_MODEL}]:`,
-            response.status,
-            response.statusText,
-            errorText
+        if (resolvedProvider === "openai") {
+          console.warn(
+            `[PREP101] Anthropic unavailable; used OpenAI fallback model ${resolvedModel}.`
           );
-
-          if (response.status === 504 && attempt < maxRetries) {
-            console.log(
-              `⏰ Gateway timeout, retrying in ${attempt * 2} seconds...`
-            );
-            await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
-            lastError = new Error(`Gateway timeout (Attempt ${attempt})`);
-            continue;
-          }
-
-          throw new Error(`Anthropic ${response.status}: ${errorText}`);
         }
-
-        const result = await response.json();
+        if (resolvedModel !== DEFAULT_CLAUDE_MODEL) {
+          console.warn(
+            `[PREP101] Used fallback model ${resolvedModel} (primary ${DEFAULT_CLAUDE_MODEL} unavailable)`
+          );
+        }
 
         if (result.content && result.content[0] && result.content[0].text) {
           console.log(`✅ RAG Guide generated using Corey's methodology!`);
@@ -2175,8 +2158,6 @@ function generateHTMLTemplate(colorTheme, characterName, productionTitle) {
 
 // Child's Guide Generation Function
 async function generateChildGuide(data) {
-  const fetch = require("node-fetch");
-
   try {
     console.log("🌟 Generating simplified Child's Guide...");
 
@@ -2217,21 +2198,15 @@ async function generateChildGuide(data) {
 
     try {
       // Generate child guide using the parent guide as reference
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const { data: result, model: resolvedModel } = await sendAnthropicMessage({
+        apiKey: ANTHROPIC_API_KEY,
+        preferredModel: DEFAULT_CLAUDE_MODEL,
+        maxTokens: DEFAULT_CLAUDE_MAX_TOKENS,
         signal: controller.signal,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: DEFAULT_CLAUDE_MODEL,
-          max_tokens: DEFAULT_CLAUDE_MAX_TOKENS,
-          messages: [
-            {
-              role: "user",
-              content: `You are Corey Ralston, a witty, experienced youth acting coach.
+        messages: [
+          {
+            role: "user",
+            content: `You are Corey Ralston, a witty, experienced youth acting coach.
 Your task is to create a simplified, fun, and empowering "Child's Guide" for young actors (ages 8-12), based on the parent-facing audition prep guide.
 
 ## Voice & Style
@@ -2329,24 +2304,17 @@ ${data.parentGuideContent.substring(0, 2000)}...
 ${childMethodologyContext}
 
 **OUTPUT FORMAT:** Output ONLY the raw HTML content without any markdown formatting, code blocks, or \`\`\`html wrappers. The response should be a complete HTML document with embedded CSS styling, fun colors, and perfect for young actors!`,
-            },
-          ],
-        }),
+          },
+        ],
       });
 
       clearTimeout(timeoutId); // Clear timeout if request completes
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(
-          "❌ Child Guide Generation Error:",
-          response.status,
-          errorText
+      if (resolvedModel !== DEFAULT_CLAUDE_MODEL) {
+        console.warn(
+          `[ChildGuide] Used fallback model ${resolvedModel} (primary ${DEFAULT_CLAUDE_MODEL} unavailable)`
         );
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
       }
-
-      const result = await response.json();
 
       if (result.content && result.content[0] && result.content[0].text) {
         console.log(`✅ Child's Guide generated successfully!`);

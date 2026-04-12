@@ -530,7 +530,7 @@ router.get("/health", (req, res) => {
   res.json({
     service: "bold-choices",
     status: "ok",
-    model: process.env.CLAUDE_MODEL || "claude-3-7-sonnet-20250219",
+    model: process.env.CLAUDE_MODEL || "claude-sonnet-4-6",
   });
 });
 
