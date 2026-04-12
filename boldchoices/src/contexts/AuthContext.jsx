@@ -35,8 +35,22 @@ export function AuthProvider({ children }) {
     return nextUser;
   }, [syncActiveActorCache]);
 
+  const fetchWithTimeout = useCallback(async (url, init = {}, timeoutMs = 12000) => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      return await fetch(url, {
+        ...init,
+        signal: controller.signal,
+      });
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }, []);
+
   const hydrateUserFromToken = useCallback(async (token) => {
-    const exchangeResponse = await fetch(`${API_BASE}/api/auth/session`, {
+    const exchangeResponse = await fetchWithTimeout(`${API_BASE}/api/auth/session`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -49,7 +63,10 @@ export function AuthProvider({ children }) {
       throw new Error('Session exchange failed');
     }
 
-    const verifyResponse = await fetch(`${API_BASE}/api/auth/verify`, withApiCredentials());
+    const verifyResponse = await fetchWithTimeout(
+      `${API_BASE}/api/auth/verify`,
+      withApiCredentials(),
+    );
     if (!verifyResponse.ok) {
       throw new Error('Session expired');
     }
@@ -60,13 +77,16 @@ export function AuthProvider({ children }) {
       accessToken: token,
       token,
     };
-  }, []);
+  }, [fetchWithTimeout]);
 
   // Restore session from localStorage on mount
   useEffect(() => {
     const restore = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/auth/verify`, withApiCredentials());
+        const res = await fetchWithTimeout(
+          `${API_BASE}/api/auth/verify`,
+          withApiCredentials(),
+        );
         if (!res.ok) {
           persistUser(null);
           return;
@@ -86,7 +106,7 @@ export function AuthProvider({ children }) {
     };
 
     restore();
-  }, [hydrateUserFromToken, persistUser]);
+  }, [fetchWithTimeout, persistUser]);
 
   const login = async (email, password) => {
     const res = await fetch(`${API_BASE}/api/auth/login`, {

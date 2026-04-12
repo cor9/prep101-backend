@@ -11,14 +11,16 @@ export default function AuthCallback() {
   const { loginWithToken, loading, user } = useAuth();
 
   useEffect(() => {
-    if (loading) return undefined;
-
     let active = true;
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     const redirect = params.get('redirect') || '/generate';
 
     const run = async () => {
+      if (!token && loading) {
+        return;
+      }
+
       if (user) {
         navigate(redirect, { replace: true });
         return;
