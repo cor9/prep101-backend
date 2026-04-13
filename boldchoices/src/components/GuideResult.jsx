@@ -264,7 +264,7 @@ export default function GuideResult({
             border: 'none',
             display: 'block',
           }}
-          sandbox="allow-same-origin allow-popups allow-scripts"
+          sandbox="allow-same-origin allow-popups allow-scripts allow-forms"
         />
       </div>
 

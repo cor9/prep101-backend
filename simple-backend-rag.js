@@ -1470,7 +1470,7 @@ SCRIPT INTEGRITY:
 - Use ONLY facts present in SCRIPT below. If key facts (title, studio, location, time period) are not in the script, write "Not stated in sides" rather than inventing.
 - Do NOT hallucinate project names, franchises, or studio info not explicitly in the script.
 - For sparse scripts: acknowledge limited information, focus on what IS present, and give MORE imaginative/empathetic coaching to compensate.
-- Never abort. If the script text is limited or partially corrupted, still generate the guide from the available signal plus title/genre/character context.
+- If script text is unreadable or missing, do NOT generate a prep guide.
 - NO EVIDENCE TAGS or inline citations—trust the reader knows you're referencing the script. Just COACH.
 - Tone: warm, direct, industry-savvy; balance encouragement with honest craft notes. Avoid generic motivational fluff.
 `;
@@ -1499,17 +1499,8 @@ ${methodologyContext}
 CHARACTER: ${data.characterName}
 PRODUCTION: ${data.productionTitle} (${data.productionType})
 
-${data.fallbackMode ? `
-⚠️ FALLBACK MODE ACTIVATED: The uploaded audition sides were unreadable or corrupted. 
-You must STILL generate a full Prep101 Coaching Guide using character archetypes, production genre, and tone. 
-Instead of line-by-line analysis, focus on:
-- Archetypal character behavior for this project type.
-- The "vibe" and rhythm of ${data.productionTitle}.
-- Universal beats and choices for this genre.
-Do NOT reference specific script text that is not actually present. Build the guide from your deep acting knowledge and the provided methodology.` : `
 SCRIPT:
 ${data.sceneText}${fileTypeContext}
-`}
 
 **VOICE & PERSONALITY**
 - Talk directly to the actor ("You're about to...", "Your job is...").
@@ -1529,20 +1520,28 @@ ${data.sceneText}${fileTypeContext}
    - **The Type (And How to Transcend It)** — Name the stereotype, then show how to make it three-dimensional
    - **Character Archetypes to Study** — List 3-5 SPECIFIC characters from TV/Film that match this vibe (e.g., "Ruth Langmore in Ozark for the toughness," "Ginny Miller for the mother-daughter tension"). Use the uploaded \`character_archetype_comparables.md\` for inspiration but providing SPECIFIC examples is mandatory.
 
-3. **UTA HAGEN'S 9 QUESTIONS** - Answer ALL NINE in first-person character voice. Be specific, grounded, imaginative. NO citations needed—just inhabit the character fully.
+3. **UTA HAGEN'S 9 QUESTIONS** - Answer ALL NINE in first-person character voice. For EACH answer, reference at least one specific line, stage direction, or scene location from the sides. If not grounded in the text, rewrite it.
 
-4. **SCENE-BY-SCENE BREAKDOWN** - For each scene:
+4. **SCENE-BY-SCENE BREAKDOWN** - For each scene (using actual scene headers/sluglines from the sides):
    - One-sentence emotional arc summary
    - Beat-by-beat breakdown: What I'm DOING / What I'm REALLY thinking (subtext) / Physical life
+   - Physical environment from stage directions
+   - At least one specific prop, physical action, or blocking detail
+   - Physical arc from scene open to scene close
    - Identify the scene's emotional climax and how to earn it
 
 5. **PHYSICALITY & MOVEMENT** - Translate psychology into body: posture, gestures, eye patterns, nervous habits, stillness vs movement. Include vocal life (pace, pitch, where they swallow emotion). Name 2-3 "signature moves" specific to THIS character. Self-tape framing notes.
 
-6. **SUBTEXT & EMOTIONAL LAYERS** - For EVERY key line: "Line text" = Surface meaning → Subtext (the real need underneath). Map the emotional journey through the scenes. Name one "Trap to Avoid" and one "Secret Weapon" for this character.
+6. **SUBTEXT & EMOTIONAL LAYERS** - Include a **Subtext Translation Table** with MINIMUM 6 verbatim lines from the sides:
+   - Column 1: exact line in quotes (as written)
+   - Column 2: what the character is actually communicating beneath the words
+   Then map the emotional journey and name one "Trap to Avoid" + one "Secret Weapon."
 
 7. **BOLD ACTING CHOICES** - The gold that books roles:
+   - Every card MUST reference a specific line/moment/beat from the sides and explain exactly how the choice changes playability.
    - **Trap vs Truth** table (Line | The Cliché Delivery | The Bold Choice)
    - 3-4 "Surprising Shifts to Try" (e.g., "What if they LAUGH here instead of cry?")
+   - **Two-Take Submission Strategy**: two clearly distinct approaches for the same scenes, differentiated by emotional priority.
    - Genre-specific strategy
    - "The Audition Trap" (what most actors will do wrong)
 
@@ -1554,7 +1553,14 @@ ${data.sceneText}${fileTypeContext}
    - **Memorization Strategy:** How to learn the *argument*, not just lines.
    - **Working with Reader:** Specific tips on how to react to the reader's tone.
 
-10. **ACTION PLAN** - Quick checklist: [ ] Week Before / [ ] Day Before / [ ] Day Of / [ ] After. Include emotional safety/decompression notes if material is heavy.
+10. **PRE-SUBMISSION CHECKLIST** - Include at minimum:
+   - Framing and eyeline direction
+   - Lighting requirements tied to emotional needs of the material
+   - Background and wardrobe notes
+   - Audio requirements
+   - Take labeling and file naming for two-take submissions
+   - At least one character-specific note (moment-before or button instruction)
+   Plus quick timeline checklist: [ ] Week Before / [ ] Day Before / [ ] Day Of / [ ] After.
 
 **END WITH:** A **FINAL PEP TALK** in Corey's voice—direct, warm, belief-filled. Make them feel ready to walk into that room and OWN it.
 
@@ -2933,6 +2939,14 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         repetitiveRatio: contentQuality.repetitiveRatio,
         repetitionRatio: contentQuality.repetitionRatio,
         reason: contentQuality.reason,
+      });
+
+      return res.status(422).json({
+        success: false,
+        error:
+          "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script.",
+        reason: contentQuality.reason || "script_unreadable",
+        scriptReadable: false,
       });
     }
 
