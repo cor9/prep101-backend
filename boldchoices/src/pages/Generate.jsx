@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import Navbar from '../components/Navbar.jsx';
@@ -230,7 +229,6 @@ const describeBoldUsage = (usage) => {
 // ── COMPONENT ───────────────────────────────────────────────────────────────
 export default function Generate() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
   // Form
@@ -252,12 +250,10 @@ export default function Generate() {
   const [sloganIdx, setSloganIdx] = useState(0);
   const [resultHtml, setResultHtml] = useState(null);
   const [resultMeta, setResultMeta] = useState(null);
-  const [guideData, setGuideData] = useState(null);
   const [blobUrl, setBlobUrl] = useState(null);
   const [uploadedFileName, setUploadedFileName] = useState(null);
   const [uploadData, setUploadData] = useState(null);
   const [generationId, setGenerationId] = useState(null); // tracks current generation
-  const resultRef = useRef(null);
   const activeActor = user?.account?.activeActor;
   const [boldUsage, setBoldUsage] = useState(() => user?.boldChoicesUsage || null);
 
@@ -299,7 +295,7 @@ export default function Generate() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
 
-      if (data.sceneText || data.preview) {
+      if (data.success || data.uploadId || data.sceneText || data.text) {
         const sceneText = data.sceneText || data.text || '';
         const uploadIds = data.uploadIds || (data.uploadId ? [data.uploadId] : []);
         const primaryUploadId = data.uploadId || uploadIds[0] || null;
@@ -334,11 +330,18 @@ export default function Generate() {
           scenePayloads,
         });
         setUploadedFileName(file.name);
-        setForm(f => ({ ...f, sceneText: '' })); // clear out any pasted text to avoid confusion
+        if (sceneText) {
+          setForm(f => ({ ...f, sceneText: '' })); // clear out any pasted text to avoid confusion
+        }
         if (sanitizedUploadMessage) {
           toast(sanitizedUploadMessage, { id: toastId, icon: '🧠', duration: 5000 });
-        } else {
+        } else if (sceneText.trim().length >= 20) {
           toast.success(`Extracted ${data.wordCount || '?'} words`, { id: toastId });
+        } else {
+          toast(
+            "PDF uploaded. Text extraction was limited, so we'll use fallback coaching mode.",
+            { id: toastId, icon: '⚠️', duration: 5000 }
+          );
         }
       } else {
         toast.error('Could not extract text — try pasting directly', { id: toastId });
@@ -360,7 +363,8 @@ export default function Generate() {
       return;
     }
     const sceneText = uploadData?.sceneText ? uploadData.sceneText.trim() : form.sceneText.trim();
-    if (!sceneText || sceneText.length < 20) {
+    const canUseFallbackMode = Boolean(uploadData?.fallbackMode && uploadData?.uploadId);
+    if ((!sceneText || sceneText.length < 20) && !canUseFallbackMode) {
       toast.error('Please enter scene text or upload your sides');
       return;
     }
@@ -381,51 +385,6 @@ export default function Generate() {
         : 'Generating your Bold Choices guide...'
     );
 
-    try {
-      const payload = {
-        ...form,
-        sceneText,
-        preview: false,
-        format: 'json',
-        fallbackMode: Boolean(uploadData?.fallbackMode),
-        warnings: uploadData?.warnings || [],
-        ...(modifier ? { modifier } : {}),
-        ...(isRetry ? { spinAgain: true, previousGenerationId: generationId } : {}),
-      };
-
-      const res = await fetch(`${API_BASE}/api/bold-choices/generate`, {
-        method: 'POST',
-        ...withApiCredentials({
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }, user),
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || `Error ${res.status}`);
-
-      // Store raw data and generation ID
-      setGuideData(data.data);
-      if (data.boldChoicesUsage) {
-        setBoldUsage(data.boldChoicesUsage);
-      }
-      if (data.generationId) setGenerationId(data.generationId);
-      setResultMeta({ ...form, isPreview: false });
-      setResultHtml(null);
-
-      toast.dismiss(toastId);
-    } catch (err) {
-      toast.error(err.message, { id: toastId });
-      setIsGenerating(false);
-      clearInterval(sloganTimer);
-      return;
-    } finally {
-      clearInterval(sloganTimer);
-    }
-
-    // Simpler: do a single call that returns HTML
     try {
       const htmlRes = await fetch(`${API_BASE}/api/bold-choices/generate`, {
         method: 'POST',
@@ -450,8 +409,11 @@ export default function Generate() {
       if (!htmlData.success) throw new Error(htmlData.error || 'Failed');
 
       setResultHtml(htmlData.html);
-      // Keep generationId from the first (JSON) call, not this second call
-      if (htmlData.generationId && !generationId) setGenerationId(htmlData.generationId);
+      if (htmlData.generationId) setGenerationId(htmlData.generationId);
+      if (htmlData.boldChoicesUsage) {
+        setBoldUsage(htmlData.boldChoicesUsage);
+      }
+      setResultMeta({ ...form, isPreview: false });
 
       // Create blob URL for open-in-tab
       if (blobUrl) URL.revokeObjectURL(blobUrl);
@@ -459,15 +421,23 @@ export default function Generate() {
       const url = URL.createObjectURL(blob);
       setBlobUrl(url);
 
+      if (!htmlData.savedToAccount) {
+        toast(
+          'Guide generated, but account save failed. Please refresh and try once more.',
+          { icon: '⚠️' }
+        );
+      }
       toast.success(
         modifier === 'wilder' ? 'Wilder choices ready — go take the risk.'
           : modifier === 'take2' ? 'Alternate Take 2 strategies ready.'
           : isRetry ? 'Fresh choices generated!'
           : 'Guide ready. Time to book.'
+        , { id: toastId }
       );
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message, { id: toastId });
     } finally {
+      clearInterval(sloganTimer);
       setIsGenerating(false);
     }
   }, [form, blobUrl, user, uploadData, generationId]);

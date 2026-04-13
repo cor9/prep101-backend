@@ -46,6 +46,7 @@ const GuideView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [emailSending, setEmailSending] = useState(false);
+  const authToken = user?.accessToken || user?.token;
 
   useEffect(() => {
     const fetchGuide = async () => {
@@ -193,12 +194,18 @@ const GuideView = () => {
   };
 
   const handleDownloadPdf = () => {
-    const url = `${API_BASE}/api/guides/${id}/pdf`;
+    const baseUrl = `${API_BASE}/api/guides/${id}/pdf`;
+    const url = authToken
+      ? `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}token=${encodeURIComponent(authToken)}`
+      : baseUrl;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleDownloadHtml = () => {
-    const url = `${API_BASE}/api/guides/${id}/html`;
+    const baseUrl = `${API_BASE}/api/guides/${id}/html`;
+    const url = authToken
+      ? `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}token=${encodeURIComponent(authToken)}`
+      : baseUrl;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 

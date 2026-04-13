@@ -263,12 +263,15 @@ router.post("/generate", auth, async (req, res) => {
       previousGenerationId = null, // enables spin-aware generation
       fallbackMode = false,
     } = req.body;
+    const normalizedSceneText =
+      typeof sceneText === "string" ? sceneText.trim() : "";
+    const allowFallbackWithoutSceneText = Boolean(fallbackMode);
 
     // ── Validation ──────────────────────────────────────────────────────────
     if (!characterName || typeof characterName !== "string" || !characterName.trim()) {
       return res.status(400).json({ error: "characterName is required" });
     }
-    if (!sceneText || typeof sceneText !== "string" || sceneText.trim().length < 20) {
+    if (!allowFallbackWithoutSceneText && normalizedSceneText.length < 20) {
       return res.status(400).json({
         error: "sceneText is required (minimum 20 characters)",
       });
@@ -371,7 +374,7 @@ router.post("/generate", auth, async (req, res) => {
     // ── Call Claude ──────────────────────────────────────────────────────────
     const inputData = {
       characterName: characterName.trim(),
-      sceneText: sceneText.trim(),
+      sceneText: normalizedSceneText,
       actorAge,
       productionTitle,
       productionType,
@@ -484,7 +487,7 @@ router.post("/generate", auth, async (req, res) => {
           characterBreakdown: characterDescription || "",
           callbackNotes: "",
           focusArea: actualModifier || (actualSpinAgain ? "spin_again" : "bold_choices"),
-          sceneText: sceneText.trim(),
+          sceneText: normalizedSceneText,
           generatedHtml: html,
           childGuideRequested: false,
           childGuideCompleted: false,

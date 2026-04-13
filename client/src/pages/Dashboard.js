@@ -419,6 +419,12 @@ const Dashboard = () => {
       .getElementById("guide-builder")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  const buildGuideDownloadUrl = (path) => {
+    const baseUrl = `${API_BASE}${path}`;
+    if (!token) return baseUrl;
+    const sep = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${sep}token=${encodeURIComponent(token)}`;
+  };
 
   // ====== FILE UPLOAD ======
   const handleFileUpload = (data) => {
@@ -1358,7 +1364,9 @@ const Dashboard = () => {
                           Open
                         </a>
                         <a
-                          href={`${API_BASE}${g.htmlUrl || `/api/guides/${g.id}/html`}`}
+                          href={buildGuideDownloadUrl(
+                            g.htmlUrl || `/api/guides/${g.id}/html`
+                          )}
                           download
                           style={{
                             fontSize: 12, fontWeight: 700, color: '#0f172a',
@@ -1369,7 +1377,9 @@ const Dashboard = () => {
                           HTML
                         </a>
                         <a
-                          href={`${API_BASE}${g.pdfUrl || `/api/guides/${g.id}/pdf`}`}
+                          href={buildGuideDownloadUrl(
+                            g.pdfUrl || `/api/guides/${g.id}/pdf`
+                          )}
                           download
                           style={{
                             fontSize: 12, fontWeight: 700, color: '#0f172a',
