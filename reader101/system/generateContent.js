@@ -385,15 +385,17 @@ Global rules:
 - Every list item must be one line.
 - Every list item must be a physical, vocal, timing, listening, or restraint directive.
 - Use plain, exact reader coaching. Not theory.
-- NO LINE REFERENCE, NO BULLET. Every single instruction in "your_job", "key_beats", "do", and "avoid" MUST explicitly quote a specific line of dialogue or physical stage direction from the sides before delivering the instruction.
+- The Citation Lock: Every bullet in "key_beats", "your_job", and "scene_snapshot" MUST open with a direct quote from the sides in quotation marks. No quote = no bullet. Generic scene descriptions are not permitted.
+- Consequence language must describe what specifically breaks in THIS scene if the direction is ignored — not a generic outcome label. "The emotional turn disappears", "the scene loses its pulse", or "the scene drifts off target" are NOT acceptable consequences. Name what specifically dies in this particular script.
+- If you cannot find a specific line in the sides to support a directive, flag it with "⚠ UNANCHORED" rather than generating generic guidance. An unanchored bullet is worse than no bullet.
 - "what_will_go_wrong" must contain exactly 3 bullets and each bullet must identify a precise failure point plus consequence.
 - End "what_will_go_wrong" with the understanding that if these happen, the audition does not land.
 - "why_it_matters" must explain the actor's internal problem in plain truth, not genre summary.
 - "performance_engine.drive_*" is Push (Reader's Function): the resistance, pressure, or container the reader provides.
 - "performance_engine.fuel_*" is Pull (Actor's Need): what the actor is reaching for emotionally and how the reader either protects or destroys it.
-- "scene_snapshot" must stay tight and specific: setting, progression, turn, what changes.
+- "scene_snapshot" must generate one row per scene. If there are three scenes in the sides, there are three rows. Writing about "the scene" as a unified thing is not permitted.
 - "your_job" must be moment-based. Quote the actual line first, then correct the wrong instinct, then provide the right move.
-- "playing_multiple_characters" must contrast the reader roles clearly, or if there is only one reader role, define the internal register shift inside that one role.
+- "playing_multiple_characters" must name each reader character explicitly and give at least one contrast line anchored to a specific moment in the sides. Do not use generic terms like "Character A vs Character B". Even if there is only one reader role, define the internal register shift inside that one role.
 - "reader_fundamentals" must contain exactly 10 practical, scene-relevant reader rules.
 - "key_beats" must contain at least 6 specific beats. Every single beat MUST quote a specific line from the sides. If you don't quote a line, the beat is invalid.
 - "rhythm" must cover how to read this scene: cadence, punctuation, interruptions, pauses, volume, containment, and energy shifts.
