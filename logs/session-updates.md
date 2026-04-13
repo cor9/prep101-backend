@@ -139,3 +139,19 @@
   - [reader101/system/buildGuide.js](/Users/coreyralston/prep101-backend/reader101/system/buildGuide.js)
   - [reader101/system/generateContent.js](/Users/coreyralston/prep101-backend/reader101/system/generateContent.js)
   - [services/boldChoicesService.js](/Users/coreyralston/prep101-backend/services/boldChoicesService.js)
+
+### Reader101 role/risk hotfix (Alice/Spies false-positive case)
+- Hardened reader-role extraction in [services/readerGuideService.js](/Users/coreyralston/prep101-backend/services/readerGuideService.js) so technical/script labels are never treated as reader characters (e.g. `SHOT`, `SECURITY CAM FOOTAGE`, `SURVEILLANCE FOOTAGE`, `MONTAGE`, `INSERT`, `POV`).
+- Added technical-cue filtering for both extractor-supplied character names and uppercase cue-line inference.
+- Fixed false high-risk routing for benign family context references like `walk in on them making out`:
+  - introduced a benign-family-romance guard
+  - excluded mild intimacy terms from automatic high-risk when clearly family-context only
+  - kept severe sexual/boundary terms as high-risk.
+- Tightened compounded boundary-risk logic so ambiguous cues alone no longer escalate without romantic context.
+- Stopped `Child-Focused` mode from being triggered by incidental scene-text words (`kid/child`) by using metadata-only signals (plus age <=13).
+- Reproduced against `/Users/coreyralston/Desktop/pdfss/ALICE (1).pdf` and verified corrected mode result:
+  - `displayReaderCharacterName: Scene Partner` (no invented `SHOT / SECURITY CAM FOOTAGE`)
+  - `mode: STANDARD`
+  - `highRiskScene: false`
+  - `genreMode: singlecam_comedy`
+  - `childFocused: false`

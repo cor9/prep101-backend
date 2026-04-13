@@ -59,6 +59,14 @@ const EXPLICIT_INTIMACY_TRIGGERS = [
   "thrust",
 ];
 
+const MILD_INTIMACY_TRIGGERS = [
+  "make out",
+  "making out",
+  "kiss",
+  "kissing",
+  "kisses",
+];
+
 const AMBIGUOUS_INTIMACY_TRIGGERS = [
   "naked",
   "touches",
@@ -122,6 +130,16 @@ const FAMILY_COMFORT_TRIGGERS = [
   "kisses his forehead",
   "holds her",
   "holds him",
+];
+
+const BENIGN_FAMILY_ROMANCE_TRIGGERS = [
+  "mom and dad",
+  "mother and father",
+  "our parents",
+  "your parents",
+  "their parents",
+  "my parents",
+  "walk in on them making out",
 ];
 
 const INTIMACY_ESCALATION_TRIGGERS = [
@@ -216,9 +234,53 @@ const NON_CHARACTER_CUES = new Set([
   "THE END",
   "END",
   "SCENE",
+  "SHOT",
+  "SECURITY CAM FOOTAGE",
+  "SURVEILLANCE FOOTAGE",
+  "ARCHIVAL FOOTAGE",
+  "PHONE FOOTAGE",
+  "CAMERA FOOTAGE",
+  "CCTV FOOTAGE",
+  "INSERT",
+  "MONTAGE",
+  "POV",
+  "ANGLE",
+  "WIDE SHOT",
+  "CLOSE SHOT",
   "AUDIENCE LAUGHTER",
   "BIG AUDIENCE LAUGHTER",
 ]);
+
+const TECHNICAL_CUE_TOKENS = [
+  "shot",
+  "footage",
+  "camera",
+  "cam",
+  "surveillance",
+  "cctv",
+  "archival",
+  "b-roll",
+  "montage",
+  "insert",
+  "angle",
+  "pov",
+];
+
+function isLikelyTechnicalCue(label = "") {
+  const normalized = normalizeCharacterLabel(label);
+  if (!normalized) return false;
+
+  const upper = normalized.toUpperCase();
+  if (NON_CHARACTER_CUES.has(upper)) return true;
+  if (/^OPTION\s+\d+$/i.test(normalized)) return true;
+
+  const lower = normalize(normalized);
+  const tokenHits = TECHNICAL_CUE_TOKENS.filter((token) => lower.includes(token)).length;
+  if (tokenHits >= 2) return true;
+  if (/\b(shot|footage|camera|surveillance)\b/i.test(normalized)) return true;
+
+  return false;
+}
 
 function extractCharacterCues(sceneText = "") {
   const lines = String(sceneText || "").split("\n");
@@ -240,6 +302,7 @@ function extractCharacterCues(sceneText = "") {
     const normalized = normalizeCharacterLabel(line);
     if (!normalized) continue;
     if (NON_CHARACTER_CUES.has(normalized.toUpperCase())) continue;
+    if (isLikelyTechnicalCue(normalized)) continue;
     if (/\bSIDES\b/i.test(normalized)) continue;
     if (normalized.split(" ").length > 4) continue;
 
@@ -271,6 +334,9 @@ function inferReaderCharacterNames({
   const uniqueCandidates = candidates.filter((name) => {
     const key = normalize(name);
     if (!key || seen.has(key) || key === normalize(normalizedAudition)) {
+      return false;
+    }
+    if (isLikelyTechnicalCue(name)) {
       return false;
     }
     seen.add(key);
@@ -324,17 +390,36 @@ function detectFamilyComfort(content = "", actorAge = null) {
   );
 }
 
+function detectBenignFamilyRomance(content = "", actorAge = null) {
+  const hasMildIntimacy = hasAny(content, MILD_INTIMACY_TRIGGERS);
+  if (!hasMildIntimacy) return false;
+
+  const familyContext = detectFamilyContext(content, actorAge);
+  if (!familyContext) return false;
+
+  return hasAny(content, BENIGN_FAMILY_ROMANCE_TRIGGERS);
+}
+
 function detectIntimacy(content = "", actorAge = null) {
-  const explicitIntimacy = hasAny(content, EXPLICIT_INTIMACY_TRIGGERS);
+  const severeExplicitIntimacy = hasAny(
+    content,
+    EXPLICIT_INTIMACY_TRIGGERS.filter((trigger) => !MILD_INTIMACY_TRIGGERS.includes(trigger))
+  );
+  const mildExplicitIntimacy = hasAny(content, MILD_INTIMACY_TRIGGERS);
   const ambiguousIntimacy = hasAny(content, AMBIGUOUS_INTIMACY_TRIGGERS);
   const romanticContext = hasAny(content, ROMANTIC_CONTEXT_TRIGGERS);
   const familyComfort = detectFamilyComfort(content, actorAge);
+  const benignFamilyRomance = detectBenignFamilyRomance(content, actorAge);
 
-  if (familyComfort) {
+  if (familyComfort || benignFamilyRomance) {
     return false;
   }
 
-  return explicitIntimacy || (ambiguousIntimacy && romanticContext);
+  if (severeExplicitIntimacy) {
+    return true;
+  }
+
+  return (mildExplicitIntimacy || ambiguousIntimacy) && romanticContext;
 }
 
 function detectIntimacyArc(content = "") {
@@ -429,15 +514,16 @@ function detectChildFocused(data = {}, combinedContent = "", parsedActorAge = nu
     return true;
   }
 
+  // Use metadata signals only. Scene text can mention "kid/child" incidentally
+  // and should not force child-focused mode for teen or adult roles.
   const full = normalize(
-    `${data.genre || ""}\n${data.productionType || ""}\n${data.productionTitle || ""}\n${data.storyline || ""}\n${combinedContent || ""}`
+    `${data.genre || ""}\n${data.productionType || ""}\n${data.productionTitle || ""}\n${data.storyline || ""}`
   );
 
   return [
     "disney",
     "nickelodeon",
     "kids",
-    "family",
     "child",
     "tween",
     "middle school",
@@ -465,16 +551,34 @@ function buildReaderModeContext(data = {}) {
     detectIntimacyArc(combinedContent);
   const moralContradiction = hasAny(combinedContent, MORAL_CONTRADICTION_TRIGGERS);
   const powerImbalance = hasAny(combinedContent, POWER_IMBALANCE_TRIGGERS);
+  const benignFamilyRomance = detectBenignFamilyRomance(
+    combinedContent,
+    parsedActorAge
+  );
   const explicitHighRiskSignal =
-    isHighRiskScene(combinedContent) || intimacyMode;
+    (benignFamilyRomance
+      ? hasAny(
+        combinedContent,
+        HIGH_RISK_TRIGGERS.filter(
+          (trigger) => !MILD_INTIMACY_TRIGGERS.includes(trigger)
+        )
+      )
+      : isHighRiskScene(combinedContent)) || intimacyMode;
   const compoundedBoundaryRisk =
     powerImbalance &&
     (explicitHighRiskSignal ||
       hasAny(combinedContent, ROMANTIC_CONTEXT_TRIGGERS) ||
-      hasAny(combinedContent, AMBIGUOUS_INTIMACY_TRIGGERS));
-  const highRiskSignal = explicitHighRiskSignal || compoundedBoundaryRisk;
-  const comedyMode = detectComedyMode(data, combinedContent);
+      (hasAny(combinedContent, AMBIGUOUS_INTIMACY_TRIGGERS) &&
+        hasAny(combinedContent, ROMANTIC_CONTEXT_TRIGGERS)));
   const genreMode = detectGenreMode(data, combinedContent);
+  const comedyMode = detectComedyMode(data, combinedContent);
+  const comedySafetyBypass =
+    (genreMode === "multicam" || genreMode === "singlecam_comedy") &&
+    !explicitHighRiskSignal &&
+    !hasAny(combinedContent, HIGH_RISK_TRIGGERS);
+  const highRiskSignal = comedySafetyBypass
+    ? false
+    : explicitHighRiskSignal || compoundedBoundaryRisk;
   const childFocused = detectChildFocused(data, combinedContent, parsedActorAge);
 
   return {
