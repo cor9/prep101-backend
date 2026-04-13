@@ -187,6 +187,16 @@ function validateStructuredContent(data = {}, meta = {}) {
   }
 
   if (!meta.fallbackMode) {
+    const keyBeatsQuoteCount = countQuotedReferences(data.key_beats);
+    if (keyBeatsQuoteCount < 4) {
+      errors.push("Your 'key_beats' section must contain at least 4 bullets that explicitly quote lines of dialogue or stage directions using quotation marks.");
+    }
+
+    const doAvoidJobQuoteCount = countQuotedReferences([data.your_job, data.do, data.avoid]);
+    if (doAvoidJobQuoteCount < 4) {
+      errors.push("Your 'your_job', 'do', and 'avoid' sections must explicitly quote lines of dialogue using quotation marks before giving an instruction.");
+    }
+
     const quotedReferenceCount = countQuotedReferences([
       data.what_will_go_wrong,
       data.why_it_matters,
@@ -197,10 +207,12 @@ function validateStructuredContent(data = {}, meta = {}) {
       data.connection,
       data.tone_reference_anchor,
       data.quick_reset,
+      data.do,
+      data.avoid,
     ]);
 
-    if (quotedReferenceCount < 6) {
-      errors.push("At least 6 notes must anchor to real quoted lines or phrases from the sides.");
+    if (quotedReferenceCount < 12) {
+      errors.push("You failed the NO LINE REFERENCE, NO BULLET rule. You must use quotation marks to anchor at least 12 specific instructions to the exact text in the sides.");
     }
   }
 
@@ -373,25 +385,23 @@ Global rules:
 - Every list item must be one line.
 - Every list item must be a physical, vocal, timing, listening, or restraint directive.
 - Use plain, exact reader coaching. Not theory.
-- Every section must tie back to the actual dialogue, exact beats, and emotional mechanics of this script.
-- Quote real lines or short phrases from the sides naturally throughout the guide.
+- NO LINE REFERENCE, NO BULLET. Every single instruction in "your_job", "key_beats", "do", and "avoid" MUST explicitly quote a specific line of dialogue or physical stage direction from the sides before delivering the instruction.
 - "what_will_go_wrong" must contain exactly 3 bullets and each bullet must identify a precise failure point plus consequence.
 - End "what_will_go_wrong" with the understanding that if these happen, the audition does not land.
 - "why_it_matters" must explain the actor's internal problem in plain truth, not genre summary.
 - "performance_engine.drive_*" is Push (Reader's Function): the resistance, pressure, or container the reader provides.
 - "performance_engine.fuel_*" is Pull (Actor's Need): what the actor is reaching for emotionally and how the reader either protects or destroys it.
 - "scene_snapshot" must stay tight and specific: setting, progression, turn, what changes.
-- "your_job" must be moment-based, quote actual lines, and correct the wrong instinct before the right move.
+- "your_job" must be moment-based. Quote the actual line first, then correct the wrong instinct, then provide the right move.
 - "playing_multiple_characters" must contrast the reader roles clearly, or if there is only one reader role, define the internal register shift inside that one role.
 - "reader_fundamentals" must contain exactly 10 practical, scene-relevant reader rules.
-- "key_beats" must contain at least 6 specific beats, and most should quote lines.
+- "key_beats" must contain at least 6 specific beats. Every single beat MUST quote a specific line from the sides. If you don't quote a line, the beat is invalid.
 - "rhythm" must cover how to read this scene: cadence, punctuation, interruptions, pauses, volume, containment, and energy shifts.
-- "do" and "avoid" must be concrete and scene-specific, never generic.
+- "do" and "avoid" must be concrete and scene-specific. Quote the line or the moment first. Never use generic theory.
 - "connection" must explain where the actor depends on the reader and how the moment dies if the reader mishandles it.
 - "tone_reference_anchor" must start with consequence framing and then anchor the emotional texture to precise comps or scene truth, not generic genre explanation.
 - "quick_reset" must be 3 to 4 bullets max and should feel like live self-tape rescue notes.
 - Emotional framing should come before instruction. Consequences should follow instruction.
-- Prefer direct lines from the sides whenever readable.
 - If fallback mode is true, stay useful without pretending you saw clean lines.
 
 ${highRiskRules}
