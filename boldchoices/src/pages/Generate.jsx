@@ -297,6 +297,12 @@ export default function Generate() {
 
       if (data.success || data.uploadId || data.sceneText || data.text) {
         const sceneText = data.sceneText || data.text || '';
+        const derivedWordCount =
+          typeof data.wordCount === 'number'
+            ? data.wordCount
+            : sceneText.trim()
+              ? sceneText.trim().split(/\s+/).filter(Boolean).length
+              : 0;
         const uploadIds = data.uploadIds || (data.uploadId ? [data.uploadId] : []);
         const primaryUploadId = data.uploadId || uploadIds[0] || null;
         const scenePayloads =
@@ -323,6 +329,7 @@ export default function Generate() {
 
         setUploadData({
           ...data,
+          wordCount: derivedWordCount,
           uploadMessage: sanitizedUploadMessage,
           warnings: sanitizeWarnings(data.warnings),
           sceneText,
@@ -336,7 +343,12 @@ export default function Generate() {
         if (sanitizedUploadMessage) {
           toast(sanitizedUploadMessage, { id: toastId, icon: '🧠', duration: 5000 });
         } else if (sceneText.trim().length >= 20) {
-          toast.success(`Extracted ${data.wordCount || '?'} words`, { id: toastId });
+          toast.success(`Extracted ${derivedWordCount} words`, { id: toastId });
+        } else if (derivedWordCount === 0) {
+          toast.error(
+            "PDF uploaded, but no readable script text was extracted. Paste the sides text directly for a line-accurate guide.",
+            { id: toastId, duration: 6500 }
+          );
         } else {
           toast(
             "PDF uploaded. Text extraction was limited, so we'll use fallback coaching mode.",
@@ -656,7 +668,7 @@ export default function Generate() {
 
             {uploadedFileName ? (
               <div style={{ marginTop: 14, padding: 14, background: 'rgba(0, 212, 200, 0.1)', borderRadius: 8, border: '1px solid rgba(0, 212, 200, 0.3)', color: '#00D4C8', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>✅ Extracted <strong>{uploadData?.wordCount || '?'}</strong> words</div>
+                <div>✅ Extracted <strong>{uploadData?.wordCount ?? 0}</strong> words</div>
                 <button type="button" onClick={() => { setUploadedFileName(null); setUploadData(null); }} style={{ background: 'transparent', border: 'none', color: '#00D4C8', textDecoration: 'underline', cursor: 'pointer', fontSize: 12, padding: 0 }}>Remove</button>
               </div>
             ) : (

@@ -3749,12 +3749,15 @@ app.get("/api/health", (req, res) => {
     apiKey: ANTHROPIC_API_KEY ? "configured" : "missing",
     anthropicKeyLen: ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.length : 0,
     uploadsCount: Object.keys(uploads).length,
-    adobeExtract:
-      process.env.ADOBE_PDF_EXTRACT_ENABLED === "true" ? "enabled" : "disabled",
-    adobeImportError,
+    adobeExtractMode:
+      process.env.ADOBE_PDF_EXTRACT_ENABLED === "false"
+        ? "disabled"
+        : process.env.ADOBE_PDF_EXTRACT_ENABLED === "true"
+          ? "forced-enabled"
+          : "auto",
     minExtractWords: 50,
     extraction: {
-      adobeEnabled: process.env.ADOBE_PDF_EXTRACT_ENABLED === "true",
+      adobeEnabled: process.env.ADOBE_PDF_EXTRACT_ENABLED !== "false",
       adobeForceEnabled: process.env.ADOBE_FORCE_ENABLE === "true",
       minExtractWords: 50,
       lineSpecificWordThreshold: 100,

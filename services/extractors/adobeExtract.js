@@ -21,7 +21,16 @@ try {
   // Just for bundling
 }
 
-const ADOBE_ENABLED = process.env.ADOBE_PDF_EXTRACT_ENABLED === 'true';
+const adobeCredentialsPath =
+  process.env.ADOBE_PDF_CREDENTIALS_PATH || "./pdfservices-api-credentials.json";
+const hasAdobeEnvCredentials = Boolean(
+  process.env.ADOBE_CLIENT_ID && process.env.ADOBE_CLIENT_SECRET
+);
+const hasAdobeFileCredentials = fs.existsSync(adobeCredentialsPath);
+const ADOBE_ENABLED =
+  process.env.ADOBE_PDF_EXTRACT_ENABLED === "false"
+    ? false
+    : hasAdobeEnvCredentials || hasAdobeFileCredentials;
 const TOP_BOTTOM_BAND = 0.02; // Reduced from 0.08 to be more inclusive of dialogue near margins
 
 function getCredentials() {
