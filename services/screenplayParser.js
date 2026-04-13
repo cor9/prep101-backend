@@ -93,6 +93,77 @@ function isValidCharacter(name) {
   return !NON_CHARACTER_PATTERNS.some(p => upper.includes(p));
 }
 
+function detectBeats(text) {
+  if (!text) return 0;
+  return (text.match(/\(beat\)|\.\.\./gi) || []).length;
+}
+
+function detectInterruptions(text) {
+  if (!text) return 0;
+  return (text.match(/—|-{2,}/g) || []).length;
+}
+
+function getLineLengthType(dialogueBlocks) {
+  const lengths = dialogueBlocks.map(b => b.text.split(' ').length);
+  if (!lengths.length) return 'mixed';
+  const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+  if (avg < 6) return 'short';
+  if (avg > 15) return 'long';
+  return 'mixed';
+}
+
+function detectPace(dialogueBlocks) {
+  let interruptions = 0;
+  let ellipses = 0;
+
+  dialogueBlocks.forEach(b => {
+    interruptions += detectInterruptions(b.text);
+    ellipses += (b.text.match(/\.\.\./g) || []).length;
+  });
+
+  if (interruptions > 5) return 'fast';
+  if (ellipses > 5) return 'hesitant';
+
+  return 'natural';
+}
+
+function detectTone(dialogueBlocks) {
+  const shortLines = dialogueBlocks.filter(b => b.text.split(' ').length < 6).length;
+  const interruptions = dialogueBlocks.reduce((sum, b) => sum + detectInterruptions(b.text), 0);
+
+  if (shortLines > 10 && interruptions > 5) {
+    return 'multicam';
+  }
+
+  return 'singlecam';
+}
+
+function buildStructure(dialogueBlocks, stageDirections) {
+  let totalBeats = 0;
+  let totalInterruptions = 0;
+  
+  dialogueBlocks.forEach(b => {
+    totalBeats += detectBeats(b.text);
+    if (b.parenthetical) totalBeats += detectBeats(b.parenthetical);
+    totalInterruptions += detectInterruptions(b.text);
+  });
+  
+  stageDirections.forEach(b => {
+    totalBeats += detectBeats(b.content);
+    totalInterruptions += detectInterruptions(b.content);
+  });
+
+  return {
+    dialogue_blocks: dialogueBlocks,
+    beats: [],
+    interruptions: [],
+    pace: detectPace(dialogueBlocks),
+    tone_bias: detectTone(dialogueBlocks),
+    beat_count: totalBeats,
+    interruption_count: totalInterruptions
+  };
+}
+
 function parseScreenplayText(rawText, options = {}) {
   const { actorCharacter = "" } = options;
 
@@ -236,13 +307,18 @@ function parseScreenplayText(rawText, options = {}) {
     c => c.toUpperCase() !== actor
   );
 
+  const structure = buildStructure(dialogueBlocks, stageDirections);
+
   return {
+    actor: actor,
     actorCharacter,
+    reader_characters: readerRoles,
     characters: activeCharacters,
     readerRoles,
     sceneHeadings,
     dialogueBlocks,
-    stageDirections
+    stageDirections,
+    structure
   };
 }
 
@@ -253,5 +329,10 @@ module.exports = {
   isDialogue,
   isSceneHeading,
   cleanCharacterName,
-  isValidCharacter
+  isValidCharacter,
+  detectBeats,
+  detectInterruptions,
+  detectPace,
+  detectTone,
+  buildStructure
 };
