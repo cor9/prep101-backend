@@ -38,18 +38,33 @@ function buildCharacterNames(text = "") {
 }
 
 function cleanPipelineText(text = "") {
-  return scrubWatermarks(
-    String(text || "")
-      .replace(/B\d{3,}[A-Z0-9-]*/gi, "")
-      .replace(/[A-Z]?[A-Z0-9]{5,}[-_][A-Z0-9-]*/g, "")
-      .replace(/[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}.*/g, "")
-      .replace(/\b\d{1,2}:\d{2}\s?(AM|PM)\b/gi, "")
-      .replace(/\n{2,}/g, "\n")
+  const raw = String(text || "");
+  const conservative = raw
+    .replace(/B\d{3,}[A-Z0-9-]*/gi, "")
+    .replace(/[A-Z]?[A-Z0-9]{5,}[-_][A-Z0-9-]*/g, "")
+    .replace(/[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}.*/g, "")
+    .replace(/\b\d{1,2}:\d{2}\s?(AM|PM)\b/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  const aggressive = scrubWatermarks(
+    conservative
       .split("\n")
       .filter((line) => line.trim().length > 3)
       .filter((line) => !/^[A-Z0-9\-]+$/.test(line.trim()))
       .join("\n")
   );
+
+  const conservativeCleaned = scrubWatermarks(conservative);
+  const aggressiveWords = getWordCount(aggressive);
+  const conservativeWords = getWordCount(conservativeCleaned);
+
+  // If aggressive filters wiped out too much, keep the conservative version.
+  if (aggressiveWords < 20 && conservativeWords >= 20) {
+    return conservativeCleaned;
+  }
+
+  return aggressive;
 }
 
 function getMetadataLineRatio(text = "") {
