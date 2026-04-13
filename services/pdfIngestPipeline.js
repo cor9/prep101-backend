@@ -435,6 +435,26 @@ If text is partially obscured, reconstruct it naturally.`;
 }
 
 function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
+  // Be permissive when the text layer already looks script-like, even if
+  // watermark heuristics are noisy. This avoids false fallback mode.
+  if (
+    textStage &&
+    textStage.wordCount >= 60 &&
+    (textStage.characterNames || []).length >= 1
+  ) {
+    return {
+      text: textStage.text,
+      source: "text",
+      confidence: buildConfidence(textStage.wordCount, "text", false),
+      warnings: [],
+      characterNames: textStage.characterNames,
+      wordCount: textStage.wordCount,
+      limited: false,
+      uploadMessage: null,
+      diagnostics: { textStage, ocrStage, visionStage },
+    };
+  }
+
   if (textStage.quality === "good") {
     return {
       text: textStage.text,
