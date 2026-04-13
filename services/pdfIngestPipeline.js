@@ -21,6 +21,9 @@ try {
 
 const IMAGE_BASED_READING_MESSAGE =
   "This file's formatting is interfering with text extraction. We're switching to image-based reading to recover the script.";
+const IMAGE_BASED_RECOVERY_SUCCESS_MESSAGE =
+  "Image-based reading recovered usable script text.";
+const MIN_IMAGE_RECOVERY_WORDS = 80;
 
 function getWordCount(text = "") {
   return (String(text).match(/\b[\w']+\b/g) || []).length;
@@ -721,31 +724,35 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
     };
   }
 
-  if (ocrStage && ocrStage.quality === "good") {
+  if (
+    ocrStage &&
+    ocrStage.quality === "good" &&
+    (ocrStage.wordCount || 0) >= MIN_IMAGE_RECOVERY_WORDS
+  ) {
     return {
       text: ocrStage.text,
       source: "ocr",
       confidence: buildConfidence(ocrStage.wordCount, "ocr", false),
-      warnings: [IMAGE_BASED_READING_MESSAGE],
+      warnings: [IMAGE_BASED_RECOVERY_SUCCESS_MESSAGE],
       characterNames: ocrStage.characterNames,
       wordCount: ocrStage.wordCount,
       limited: false,
-      uploadMessage: IMAGE_BASED_READING_MESSAGE,
+      uploadMessage: IMAGE_BASED_RECOVERY_SUCCESS_MESSAGE,
       diagnostics: { textStage, ocrStage, visionStage },
     };
   }
 
-  if (visionStage && visionStage.wordCount > 0) {
+  if (visionStage && (visionStage.wordCount || 0) >= MIN_IMAGE_RECOVERY_WORDS) {
     const limited = visionStage.wordCount < 50;
     return {
       text: visionStage.text,
       source: "vision",
       confidence: buildConfidence(visionStage.wordCount, "vision", limited),
-      warnings: [IMAGE_BASED_READING_MESSAGE],
+      warnings: [IMAGE_BASED_RECOVERY_SUCCESS_MESSAGE],
       characterNames: visionStage.characterNames,
       wordCount: visionStage.wordCount,
       limited,
-      uploadMessage: IMAGE_BASED_READING_MESSAGE,
+      uploadMessage: IMAGE_BASED_RECOVERY_SUCCESS_MESSAGE,
       diagnostics: { textStage, ocrStage, visionStage },
     };
   }
@@ -759,11 +766,11 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
     text: bestStage?.text || "",
     source: bestStage?.source || "vision",
     confidence: "low",
-    warnings: [IMAGE_BASED_READING_MESSAGE],
+    warnings: [],
     characterNames: bestStage?.characterNames || [],
     wordCount: bestStage?.wordCount || 0,
     limited: true,
-    uploadMessage: IMAGE_BASED_READING_MESSAGE,
+    uploadMessage: null,
     diagnostics: { textStage, ocrStage, visionStage },
   };
 }
@@ -806,7 +813,39 @@ async function ingestPdf(pdfBuffer, options = {}) {
     };
   }
 
+  // Avoid local PDF rasterization on Vercel serverless; prefer managed extractors there.
+  const allowLocalRaster =
+    options.allowLocalRaster !== false && !process.env.VERCEL;
+
   const imagePipelinePromise = (async () => {
+    if (!allowLocalRaster) {
+      return resolvePipelineResult({
+        textStage,
+        ocrStage: {
+          source: "ocr",
+          stage: "ocr",
+          text: "",
+          rawText: "",
+          wordCount: 0,
+          quality: "needs_escalation",
+          failures: ["localRasterDisabledOnVercel"],
+          characterNames: [],
+          pageResults: [],
+        },
+        visionStage: {
+          source: "vision",
+          stage: "vision",
+          text: "",
+          rawText: "",
+          wordCount: 0,
+          quality: "needs_escalation",
+          failures: ["localRasterDisabledOnVercel"],
+          characterNames: [],
+          pageResults: [],
+        },
+      });
+    }
+
     const rendered = await convertPdfToImages(pdfBuffer, options);
     try {
       const ocrStage = await extractOcrStage(rendered.pages);
@@ -842,11 +881,11 @@ async function ingestPdf(pdfBuffer, options = {}) {
     text: bestBaseStage?.text || textStage.text || "",
     source: bestBaseStage?.source || (textStage.wordCount > 0 ? "text" : "document"),
     confidence: "low",
-    warnings: [IMAGE_BASED_READING_MESSAGE],
+    warnings: [],
     characterNames: bestBaseStage?.characterNames || textStage.characterNames || [],
     wordCount: bestBaseStage?.wordCount || textStage.wordCount || 0,
     limited: true,
-    uploadMessage: IMAGE_BASED_READING_MESSAGE,
+    uploadMessage: null,
     diagnostics: {
       textStage,
       claudeDocumentStage,
@@ -854,6 +893,7 @@ async function ingestPdf(pdfBuffer, options = {}) {
       documentStage,
       timeoutMs,
       timeoutFallback: true,
+      allowLocalRaster,
     },
   };
 

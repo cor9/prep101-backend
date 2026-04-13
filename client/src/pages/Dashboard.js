@@ -448,6 +448,12 @@ const Dashboard = () => {
       console.warn("Could not cache upload data for recovery:", error);
     }
     const extractedWords = Number(data?.wordCount || 0);
+    if (data?.scriptReadable === false) {
+      toast.error(
+        "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
+      );
+      return;
+    }
     if (extractedWords === 0) {
       toast.error(
         "PDF uploaded, but no readable script text was extracted. Re-upload or paste sides text for best results."
@@ -485,6 +491,12 @@ const Dashboard = () => {
   const handleGenerateGuide = async (formData) => {
     if (!uploadData?.uploadId && !uploadData?.uploadIds) {
       toast.error("Please upload your sides (PDF) before generating.");
+      return;
+    }
+    if (uploadData?.scriptReadable === false) {
+      toast.error(
+        "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
+      );
       return;
     }
     if (!canGenerate) {

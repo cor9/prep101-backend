@@ -2539,6 +2539,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     const pipelineResult = await ingestPdf(req.file.buffer, {
       maxPages: 6,
       maxPipelineMs: 35000,
+      allowLocalRaster: !process.env.VERCEL,
     });
     const cleanedText = pipelineResult.text || "";
     const quality = assessQuality(cleanedText);
@@ -2602,6 +2603,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       fileType,
       quality: quality.quality,
       fallbackMode,
+      scriptReadable: !fallbackMode && wordCount >= 80,
       source: extractionMethod,
       confidence:
         pipelineResult.confidence || (quality.usable ? "high" : "low"),
