@@ -2811,19 +2811,46 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     // Check if any upload is in fallback mode
     const isFallbackGeneration = allUploadData.some(d => d.fallbackMode === true);
 
-    const combinedSceneText = allUploadData
+    let combinedSceneText = allUploadData
       .map((data) => data.sceneText)
       .join("\n\n--- NEW SCENE ---\n\n");
-    const combinedCharacterNames = [
-      ...new Set(
-        allUploadData
-          .flatMap((data) =>
-            Array.isArray(data.characterNames) ? data.characterNames : []
-          )
-          .map((name) => String(name || "").trim())
-          .filter(Boolean)
-      ),
-    ];
+
+    const { repairScreenplayText } = require("./services/screenplayRepair");
+    const { parseScreenplayText } = require("./services/screenplayParser");
+
+    // STEP 1 — repair
+    combinedSceneText = repairScreenplayText(combinedSceneText);
+
+    // STEP 2 — parse
+    const parsedScreenplay = parseScreenplayText(combinedSceneText, {
+      actorCharacter: characterName ? characterName.trim() : null
+    });
+
+    // STEP 3 — sanitize roles (CRITICAL)
+    const FORBIDDEN_READER_ROLES = new Set([
+      "SHOT",
+      "INSERT",
+      "SECURITY CAM FOOTAGE",
+      "CUT TO",
+      "FLASHBACK",
+      "ANGLE ON"
+    ]);
+
+    function scoreCharacterLikelihood(name) {
+      let score = 0;
+      if (name.length <= 20) score += 1;
+      if (/^[A-Z\s]+$/.test(name)) score += 1;
+      if (!name.includes("SHOT")) score += 1;
+      if (!name.includes("FOOTAGE")) score += 1;
+      return score;
+    }
+
+    const sanitizedReaderRoles = parsedScreenplay.readerRoles.filter(role => {
+      if (FORBIDDEN_READER_ROLES.has(role.trim().toUpperCase())) return false;
+      return scoreCharacterLikelihood(role) >= 3;
+    });
+
+    const combinedCharacterNames = sanitizedReaderRoles;
     const combinedWordCount = allUploadData.reduce(
       (total, data) => total + (data.wordCount || 0),
       0
