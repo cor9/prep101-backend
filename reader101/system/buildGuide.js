@@ -2,6 +2,7 @@ const path = require("path");
 const { generateContent } = require("./generateContent");
 const { selectTemplate } = require("./selectTemplate");
 const { renderTemplate } = require("./renderTemplate");
+const { retrieveMethodologyContext } = require("../../services/methodologyRetrieval");
 
 function normalizeLine(value = "") {
   return String(value || "")
@@ -491,6 +492,45 @@ async function buildGuide(meta = {}, options = {}) {
   const templateStyle = selectTemplate(meta);
   const templatePath = path.join(process.cwd(), "reader101", "templates", `${templateStyle}.html`);
   const generateContentFn = options.generateContentFn || generateContent;
+  let methodologyContext = "";
+  let retrievalSignals = null;
+
+  try {
+    const retrieval = retrieveMethodologyContext(
+      {
+        product: "reader101",
+        script: meta.sceneText || "",
+        characterName: meta.characterName || "",
+        productionTitle: meta.productionTitle || "",
+        productionType: meta.productionType || "",
+        genre: meta.genre || "",
+        genreMode: meta.genreMode || "",
+        storyline: meta.storyline || "",
+      },
+      {
+        topK: 6,
+      }
+    );
+
+    retrievalSignals = {
+      primaryArchetype: retrieval.primaryArchetype || "",
+      secondaryArchetype: retrieval.secondaryArchetype || "",
+      hagen: retrieval.hagen || {},
+    };
+
+    methodologyContext = (retrieval.selectedChunks || [])
+      .map(
+        (chunk) =>
+          `- [${chunk.filename} | score ${Number(chunk.score || 0).toFixed(3)}] ${String(
+            chunk.text || ""
+          ).trim()}`
+      )
+      .join("\n\n");
+  } catch (error) {
+    retrievalSignals = null;
+    methodologyContext = "";
+    console.warn("[Reader101] Methodology retrieval failed, continuing without retrieval context:", error.message);
+  }
 
   let rawContent = {};
   let contentSource = "model";
@@ -499,6 +539,8 @@ async function buildGuide(meta = {}, options = {}) {
     rawContent = await generateContentFn({
       ...meta,
       templateStyle,
+      methodologyContext,
+      retrievalSignals,
     });
   } catch (error) {
     contentSource = "fallback";

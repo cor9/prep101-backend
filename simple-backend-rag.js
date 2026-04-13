@@ -200,6 +200,7 @@ const {
   DEFAULT_CLAUDE_MAX_TOKENS,
 } = require("./config/models");
 const { sendAnthropicMessage } = require("./services/anthropicClient");
+const { retrieveMethodologyContext } = require("./services/methodologyRetrieval");
 
 // Import new authentication and payment features (with error handling)
 let config,
@@ -1085,79 +1086,72 @@ function extractKeywords(filename, content) {
   return keywords;
 }
 
-// Intelligent RAG search through methodology files
-function searchMethodology(characterName, productionType, sceneContext) {
-  console.log(
-    `🔍 RAG Search: ${characterName} | ${productionType} | Context: ${sceneContext.substring(
-      0,
-      100
-    )}...`
-  );
+// Intelligent RAG search through methodology files (weighted chunk retrieval)
+function searchMethodology(input = {}, productionType = "", sceneContext = "") {
+  const context =
+    typeof input === "string"
+      ? {
+          characterName: input,
+          productionType: productionType || "",
+          sceneText: sceneContext || "",
+        }
+      : { ...input };
 
-  const searchTerms = [
-    characterName.toLowerCase(),
-    productionType.toLowerCase(),
-    "character development",
-    "scene analysis",
-    "uta hagen",
-    "acting guide",
-  ];
+  const product = context.product || "prep101";
 
-  // Add production-type specific terms
-  if (productionType.toLowerCase().includes("comedy")) {
-    searchTerms.push("comedy", "timing", "humor");
-  }
-  if (productionType.toLowerCase().includes("drama")) {
-    searchTerms.push("drama", "emotion", "truth");
-  }
-
-  const relevantFiles = [];
-
-  // Score each methodology file based on relevance
-  Object.values(methodologyDatabase).forEach((file) => {
-    let relevanceScore = 0;
-    const fileContent = file.content.toLowerCase();
-    const fileKeywords = file.keywords;
-
-    // Score based on keywords
-    searchTerms.forEach((term) => {
-      if (fileKeywords.includes(term)) relevanceScore += 3;
-      if (fileContent.includes(term)) relevanceScore += 1;
-    });
-
-    // Boost example guides
-    if (file.type === "example-guide") relevanceScore += 5;
-
-    // Boost Uta Hagen methodology
-    if (file.type === "uta-hagen") relevanceScore += 4;
-
-    // Boost character development for all requests
-    if (file.type === "character-development") relevanceScore += 3;
-    if (file.type === "core-methodology") relevanceScore += 8;
-
-    if (relevanceScore > 0) {
-      relevantFiles.push({
-        ...file,
-        relevanceScore: relevanceScore,
-      });
+  const retrieval = retrieveMethodologyContext(
+    {
+      product,
+      characterName: context.characterName || "",
+      productionType: context.productionType || "",
+      productionTitle: context.productionTitle || "",
+      genre: context.genre || "",
+      genreMode: context.genreMode || "",
+      storyline: context.storyline || "",
+      script: context.sceneText || context.sceneContext || "",
+      methodologyHints:
+        context.methodologyHints ||
+        [
+          "behavior over emotion",
+          "tactics over feelings",
+          "specificity over volume",
+          "sincerity over performance",
+          "objective",
+          "obstacle",
+          "how do i get it",
+        ],
+    },
+    {
+      topK: context.topK || 8,
     }
-  });
+  );
 
-  // Sort by relevance and return top results
-  const topResults = relevantFiles
-    .sort((a, b) => b.relevanceScore - a.relevanceScore)
-    .slice(0, 6); // Top 6 most relevant files
+  const relevantChunks = retrieval.selectedChunks.map((chunk) => ({
+    ...chunk,
+    relevanceScore: chunk.score,
+    content: chunk.text,
+  }));
 
   console.log(
-    `🎯 RAG Results: Found ${topResults.length} relevant methodology files`
+    `🎯 RAG Results (${product}): ${relevantChunks.length} chunks selected (of ${retrieval.availableChunks})`
   );
-  topResults.forEach((file) => {
+  console.log(
+    `   🧠 Archetype: ${retrieval.primaryArchetype || "general"}${retrieval.secondaryArchetype ? ` / ${retrieval.secondaryArchetype}` : ""
+    }`
+  );
+  console.log(
+    `   🎬 Hagen focus: want=${(retrieval.hagen?.want || []).length}, obstacle=${(retrieval.hagen?.obstacle || []).length}, tactics=${(retrieval.hagen?.tactics || []).length}`
+  );
+  relevantChunks.slice(0, 5).forEach((chunk) => {
     console.log(
-      `   📄 ${file.filename} (score: ${file.relevanceScore}, type: ${file.type})`
+      `   📄 ${chunk.filename}#${String(chunk.id).split("#")[1] || "1"} (score: ${chunk.relevanceScore.toFixed(3)}, type: ${chunk.fileType})`
     );
   });
 
-  return topResults;
+  return {
+    ...retrieval,
+    relevantChunks,
+  };
 }
 
 // PDF extraction using Adobe PDF Services
@@ -1355,11 +1349,17 @@ async function generateActingGuideWithRAG(data) {
     console.log("🧠 Step 1: RAG - Searching your methodology files...");
 
     // Search your methodology files for relevant content
-    const relevantMethodology = searchMethodology(
-      data.characterName,
-      data.productionType,
-      data.sceneText
-    );
+    const retrieval = searchMethodology({
+      product: "prep101",
+      characterName: data.characterName,
+      productionType: data.productionType,
+      productionTitle: data.productionTitle,
+      genre: data.genre,
+      storyline: data.storyline,
+      sceneText: data.sceneText,
+      topK: 8,
+    });
+    const relevantMethodology = retrieval.relevantChunks || [];
 
     // Build context from your methodology files (limit to ~120k chars to allow archetype file + examples)
     let methodologyContext = "";
@@ -1368,22 +1368,38 @@ async function generateActingGuideWithRAG(data) {
 
     if (relevantMethodology.length > 0) {
       const contextParts = [];
-      for (const file of relevantMethodology) {
-        const fileContext = `=== COREY RALSTON METHODOLOGY: ${file.filename} (Relevance: ${file.relevanceScore}) ===\n${file.content}\n\n`;
-        if (currentChars + fileContext.length <= MAX_METHODOLOGY_CHARS) {
-          contextParts.push(fileContext);
-          currentChars += fileContext.length;
+      for (const chunk of relevantMethodology) {
+        const chunkContext = `=== COREY RALSTON METHODOLOGY CHUNK: ${chunk.filename} (score: ${chunk.relevanceScore.toFixed(
+          3
+        )}, type: ${chunk.fileType}) ===\n${chunk.content}\n\n`;
+        if (currentChars + chunkContext.length <= MAX_METHODOLOGY_CHARS) {
+          contextParts.push(chunkContext);
+          currentChars += chunkContext.length;
         } else {
           console.log(
-            `⚠️ Skipping ${file.filename} to keep context under ${MAX_METHODOLOGY_CHARS} chars`
+            `⚠️ Skipping chunk from ${chunk.filename} to keep context under ${MAX_METHODOLOGY_CHARS} chars`
           );
         }
       }
       methodologyContext = contextParts.join("");
     }
 
+    if (retrieval.hagen) {
+      const hagenBlock = `=== HAGEN CONTEXT (AUTO-EXTRACTED) ===
+WHO: ${retrieval.hagen.who || "Not clear from sides"}
+WHERE: ${retrieval.hagen.where || "Not clear from sides"}
+WHEN: ${retrieval.hagen.when || "Not clear from sides"}
+RELATIONSHIPS: ${(retrieval.hagen.relationships || []).join(", ") || "Not clear from sides"}
+WANT: ${(retrieval.hagen.want || []).join(" | ") || "Not clear from sides"}
+OBSTACLE: ${(retrieval.hagen.obstacle || []).join(" | ") || "Not clear from sides"}
+TACTICS: ${(retrieval.hagen.tactics || []).join(" | ") || "Not clear from sides"}
+
+`;
+      methodologyContext = `${hagenBlock}${methodologyContext}`;
+    }
+
     console.log(
-      `🎭 Step 2: Generating guide using ${relevantMethodology.length} methodology files...`
+      `🎭 Step 2: Generating guide using ${relevantMethodology.length} methodology chunks...`
     );
     console.log(
       `📊 Total methodology context: ${methodologyContext.length} characters`
@@ -1590,7 +1606,7 @@ ${data.sceneText}${fileTypeContext}
             `📊 Guide length: ${result.content[0].text.length} characters`
           );
           console.log(
-            `🎯 Methodology files used: ${relevantMethodology.length}`
+            `🎯 Methodology chunks used: ${relevantMethodology.length}`
           );
           return result.content[0].text;
         } else {
@@ -2176,25 +2192,33 @@ async function generateChildGuide(data) {
     console.log("🌟 Generating simplified Child's Guide...");
 
     // Search methodology for child-friendly examples
-    const childMethodology = searchMethodology(
-      data.characterName,
-      data.productionType,
-      data.sceneText
-    );
+    const childRetrieval = searchMethodology({
+      product: "prep101",
+      characterName: data.characterName,
+      productionType: data.productionType,
+      productionTitle: data.productionTitle,
+      genre: data.genre,
+      storyline: data.storyline,
+      sceneText: data.sceneText,
+      topK: 6,
+    });
+    const childMethodology = childRetrieval.relevantChunks || [];
 
     // Build context from child-friendly methodology
     let childMethodologyContext = "";
     if (childMethodology.length > 0) {
       childMethodologyContext = childMethodology
         .map(
-          (file) =>
-            `=== CHILD-FRIENDLY METHODOLOGY: ${file.filename} ===\n${file.content}\n\n`
+          (chunk) =>
+            `=== CHILD-FRIENDLY METHODOLOGY: ${chunk.filename} (score: ${chunk.relevanceScore.toFixed(
+              3
+            )}) ===\n${chunk.content}\n\n`
         )
         .join("");
     }
 
     console.log(
-      `🎭 Generating child guide using ${childMethodology.length} methodology files...`
+      `🎭 Generating child guide using ${childMethodology.length} methodology chunks...`
     );
 
     // Determine color theme based on content
@@ -2994,6 +3018,8 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       characterName: characterName.trim(),
       productionTitle: productionTitle.trim(),
       productionType: productionType.trim(),
+      genre: (genre || "").trim(),
+      storyline: (storyline || "").trim(),
       extractionMethod: allUploadData[0].extractionMethod,
       hasFullScript: hasFullScript,
       fallbackMode: shouldForcePrepFallback,

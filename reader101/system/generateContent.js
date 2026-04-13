@@ -209,6 +209,8 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
   const flags = Array.isArray(meta.flags) ? meta.flags : [];
   const genreMode = String(meta.genreMode || "drama").toLowerCase();
   const childFocused = Boolean(meta.childFocused);
+  const methodologyContext = String(meta.methodologyContext || "").trim();
+  const retrievalSignals = meta.retrievalSignals || {};
 
   const metadataBlock = [
     meta.characterName ? `AUDITION ROLE: ${meta.characterName}` : "",
@@ -238,6 +240,20 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
 - Do not invent exact dialogue or fake line-specific beats.`
     : `READABLE SIDES:
 ${clipText(cleanedSceneText || "[No readable sides provided]")}`;
+
+  const methodologyBlock = methodologyContext
+    ? `RANKED METHODOLOGY MEMORY (READER101 FILTERED):
+${clipText(methodologyContext, 18000)}
+
+RETRIEVAL SIGNALS:
+- Primary Archetype: ${retrievalSignals.primaryArchetype || "general"}
+- Secondary Archetype: ${retrievalSignals.secondaryArchetype || "none"}
+- Hagen Want: ${Array.isArray(retrievalSignals.hagen?.want) ? retrievalSignals.hagen.want.join(" | ") || "not clear" : "not clear"}
+- Hagen Obstacle: ${Array.isArray(retrievalSignals.hagen?.obstacle) ? retrievalSignals.hagen.obstacle.join(" | ") || "not clear" : "not clear"}
+- Hagen Tactics: ${Array.isArray(retrievalSignals.hagen?.tactics) ? retrievalSignals.hagen.tactics.join(" | ") || "not clear" : "not clear"}
+`
+    : `RANKED METHODOLOGY MEMORY:
+- No retrieval chunks available. Stay script-faithful and role-locked.`;
 
   const highRiskRules = flags.includes("high_risk")
     ? `HIGH-RISK RULES:
@@ -405,6 +421,7 @@ METADATA:
 ${metadataBlock}
 
 ${sceneBlock}
+${methodologyBlock}
 
 ${validationFeedback ? `REVISION FEEDBACK:\n${validationFeedback}\n` : ""}
 

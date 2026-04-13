@@ -96,3 +96,46 @@
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`
 - `supabase/migrations/20260408_prep101_top_up_sessions.sql`
 - `supabase/migrations/20260409_reader_bold_entitlements.sql`
+
+## 2026-04-12
+
+### RAG scoring architecture upgrade (blood-and-math schema)
+- Added a new chunk-based retrieval engine at [services/methodologyRetrieval.js](/Users/coreyralston/prep101-backend/services/methodologyRetrieval.js) using the weighted production formula:
+  - Script relevance (0.25)
+  - Behavioral specificity (0.25)
+  - Objective clarity (0.15)
+  - Tactic strength (0.15)
+  - Archetype alignment (0.10)
+  - Genre alignment (0.05)
+  - Role priority (0.05)
+- Added production boosts and penalties aligned to methodology:
+  - boosts for action-language, Hagen WANT/OBSTACLE/HOW match, archetype tag match, and physicality
+  - penalties for emotion-only phrasing, generic acting language, low-tactic chunks, and cross-role contamination.
+- Added automatic Hagen context extraction before retrieval:
+  - `who`, `where`, `when`, `relationships`, `circumstances`, `want`, `obstacle`, `tactics`
+  - retrieval now prioritizes pursuit-under-resistance signals over generic coaching text.
+- Added archetype detection (primary + secondary) and archetype-weighted chunk ranking.
+- Added role-specific filter behavior in retrieval:
+  - Reader101 bias toward timing/contrast/restraint chunks, penalty for actor-psychology drift.
+  - Bold Choices bias toward camera-readable physical behavior, penalty for essay-style analysis chunks.
+
+### Live integration across products
+- Replaced Prep101’s old file-level `searchMethodology` scorer with the new weighted chunk retrieval engine while keeping a compatibility wrapper in [simple-backend-rag.js](/Users/coreyralston/prep101-backend/simple-backend-rag.js).
+- Prep101 guide prompts now inject:
+  - top-ranked methodology chunks
+  - extracted Hagen context block
+  - retrieval logs showing selected chunks and archetype signals.
+- Child guide generation now uses the same chunk-scored retrieval context instead of legacy file-level matching.
+- Reader101 guide build now retrieves ranked methodology chunks and passes:
+  - filtered retrieval memory text
+  - archetype + Hagen signals
+  into prompt construction for stronger script-grounded reader coaching.
+- Bold Choices prompt generation now injects ranked methodology memory + Hagen/archetype retrieval signals before generation.
+
+### Verification
+- Ran syntax checks successfully for all changed files:
+  - [services/methodologyRetrieval.js](/Users/coreyralston/prep101-backend/services/methodologyRetrieval.js)
+  - [simple-backend-rag.js](/Users/coreyralston/prep101-backend/simple-backend-rag.js)
+  - [reader101/system/buildGuide.js](/Users/coreyralston/prep101-backend/reader101/system/buildGuide.js)
+  - [reader101/system/generateContent.js](/Users/coreyralston/prep101-backend/reader101/system/generateContent.js)
+  - [services/boldChoicesService.js](/Users/coreyralston/prep101-backend/services/boldChoicesService.js)

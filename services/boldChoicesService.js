@@ -4,6 +4,7 @@ const {
   DEFAULT_CLAUDE_MAX_TOKENS,
 } = require("../config/models");
 const { sendAnthropicMessage } = require("./anthropicClient");
+const { retrieveMethodologyContext } = require("./methodologyRetrieval");
 
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
 const { scrubWatermarks } = require("./textCleaner");
@@ -233,6 +234,45 @@ The goal is: casting sees two completely different actors using the same lines`;
 
 function buildUserPrompt(data) {
   const lines = [];
+  let methodologyBlock = "";
+
+  try {
+    const retrieval = retrieveMethodologyContext(
+      {
+        product: "boldchoices",
+        script: data.sceneText || "",
+        characterName: data.characterName || "",
+        productionTitle: data.productionTitle || "",
+        productionType: data.productionType || "",
+        genre: data.genre || "",
+        storyline: data.storyline || "",
+      },
+      { topK: 6 }
+    );
+
+    const chunkText = (retrieval.selectedChunks || [])
+      .map(
+        (chunk) =>
+          `- [${chunk.filename} | score ${Number(chunk.score || 0).toFixed(3)}] ${String(
+            chunk.text || ""
+          ).trim()}`
+      )
+      .join("\n\n");
+
+    methodologyBlock = `\nRANKED METHODOLOGY MEMORY (BOLD CHOICES FILTERED):
+${chunkText || "- No retrieval chunks available"}
+
+RETRIEVAL SIGNALS:
+- Primary Archetype: ${retrieval.primaryArchetype || "general"}
+- Secondary Archetype: ${retrieval.secondaryArchetype || "none"}
+- Hagen Want: ${(retrieval.hagen?.want || []).join(" | ") || "not clear"}
+- Hagen Obstacle: ${(retrieval.hagen?.obstacle || []).join(" | ") || "not clear"}
+- Hagen Tactics: ${(retrieval.hagen?.tactics || []).join(" | ") || "not clear"}
+`;
+  } catch (error) {
+    methodologyBlock =
+      "\nRANKED METHODOLOGY MEMORY:\n- Retrieval unavailable. Use behavior-first, camera-readable choices only.\n";
+  }
 
   lines.push("CHARACTER INFORMATION:");
   if (data.characterName) lines.push(`Character Name: ${scrubWatermarks(data.characterName)}`);
@@ -264,6 +304,8 @@ function buildUserPrompt(data) {
     lines.push("- Do NOT reference specific lines or scenes since we couldn't read them.");
     lines.push("- Every section (pov, choices, moments, etc.) must still be complete and feel surgical.");
   }
+
+  lines.push(methodologyBlock);
 
   // ── Modifier suffix ────────────────────────────────────────────────────────
   if (data.spinAgain) {
