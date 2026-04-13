@@ -247,6 +247,98 @@ async function extractTextStage(pdfBuffer) {
   };
 }
 
+async function extractClaudeDocumentStage(pdfBuffer) {
+  const apiKey = (process.env.ANTHROPIC_API_KEY || "").trim();
+  if (!apiKey) {
+    return {
+      stage: "document",
+      source: "document",
+      provider: "claude-document",
+      skipped: true,
+      text: "",
+      rawText: "",
+      wordCount: 0,
+      quality: "needs_escalation",
+      failures: ["anthropicKeyMissing"],
+      characterNames: [],
+    };
+  }
+
+  const prompt = `Extract only the usable audition script text from this PDF.
+
+INCLUDE:
+- Character names
+- Dialogue
+- Scene headings
+- Essential stage directions
+
+IGNORE:
+- Watermarks
+- Dates/timestamps
+- IDs/codes
+- Repeated headers/footers
+
+Return plain text only. No commentary.`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: DEFAULT_CLAUDE_MODEL,
+        max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 4096),
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "document",
+                source: {
+                  type: "base64",
+                  media_type: "application/pdf",
+                  data: pdfBuffer.toString("base64"),
+                },
+              },
+              { type: "text", text: prompt },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Claude document failed: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    const rawText =
+      json?.content?.map((part) => part?.text || "").join("\n") || "";
+
+    return {
+      source: "document",
+      provider: "claude-document",
+      ...evaluateExtraction("document", rawText, { minWordCount: 50 }),
+    };
+  } catch (_error) {
+    return {
+      stage: "document",
+      source: "document",
+      provider: "claude-document",
+      text: "",
+      rawText: "",
+      wordCount: 0,
+      quality: "needs_escalation",
+      failures: ["documentExtractionFailed"],
+      characterNames: [],
+    };
+  }
+}
+
 async function extractOcrStage(pages) {
   let Tesseract = null;
   try {
@@ -537,15 +629,47 @@ async function ingestPdf(pdfBuffer, options = {}) {
     return resolvePipelineResult({ textStage, ocrStage: null, visionStage: null });
   }
 
+  // If text extraction is weak, try direct PDF document extraction via Claude
+  // before image conversion (which can fail on some serverless runtimes).
+  const documentStage = await extractClaudeDocumentStage(pdfBuffer);
+  if (documentStage && documentStage.quality === "good") {
+    return {
+      text: documentStage.text,
+      source: "document",
+      confidence: buildConfidence(documentStage.wordCount, "document", false),
+      warnings: [],
+      characterNames: documentStage.characterNames || [],
+      wordCount: documentStage.wordCount || 0,
+      limited: false,
+      uploadMessage: null,
+      diagnostics: {
+        textStage,
+        documentStage,
+        ocrStage: null,
+        visionStage: null,
+      },
+    };
+  }
+
   const rendered = await convertPdfToImages(pdfBuffer, options);
   try {
     const ocrStage = await extractOcrStage(rendered.pages);
     if (ocrStage.quality === "good") {
-      return resolvePipelineResult({ textStage, ocrStage, visionStage: null });
+      return resolvePipelineResult({
+        textStage,
+        ocrStage,
+        visionStage: null,
+        documentStage,
+      });
     }
 
     const visionStage = await extractVisionStage(rendered.pages, ocrStage.pageResults);
-    return resolvePipelineResult({ textStage, ocrStage, visionStage });
+    const resolved = resolvePipelineResult({ textStage, ocrStage, visionStage });
+    resolved.diagnostics = {
+      ...(resolved.diagnostics || {}),
+      documentStage,
+    };
+    return resolved;
   } finally {
     rendered.cleanup();
   }
