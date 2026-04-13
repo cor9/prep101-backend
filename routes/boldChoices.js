@@ -81,30 +81,30 @@ async function ensureGuideUser(user = {}) {
 
   if (existing?.id) return true;
 
-  const upsertResult = await runAdminQuery(async (client) =>
+  // Keep this conservative so schema drift in Users table doesn't block guide saves.
+  let upsertResult = await runAdminQuery(async (client) =>
     client.from(tables.users).upsert(
       {
         id: user.id,
         email: user.email,
         name: user.name || user.email.split("@")[0],
-        password: "supabase_auth",
-        subscription: user.subscription || "free",
-        guidesUsed: typeof user.guidesUsed === "number" ? user.guidesUsed : 0,
-        guidesLimit:
-          typeof user.guidesLimit === "number" ? user.guidesLimit : 1,
-        stripeCustomerId: user.stripeCustomerId || null,
-        stripeSubscriptionId: user.stripeSubscriptionId || null,
-        stripePriceId: user.stripePriceId || null,
-        subscriptionStatus: user.subscriptionStatus || "active",
-        boldChoicesCredits:
-          typeof user.boldChoicesCredits === "number" ? user.boldChoicesCredits : 0,
-        boldChoicesSessionIds: Array.isArray(user.boldChoicesSessionIds)
-          ? user.boldChoicesSessionIds
-          : [],
       },
       { onConflict: "id" }
     )
   );
+
+  if (upsertResult?.error) {
+    // Legacy compatibility fallback: try upsert without name if constrained.
+    upsertResult = await runAdminQuery(async (client) =>
+      client.from(tables.users).upsert(
+        {
+          id: user.id,
+          email: user.email,
+        },
+        { onConflict: "id" }
+      )
+    );
+  }
 
   return !upsertResult?.error;
 }
@@ -475,7 +475,7 @@ router.post("/generate", auth, async (req, res) => {
 
     if (!preview) {
       try {
-        const savedGuide = await persistGuideToLibrary(req.user, {
+        const savedGuide = await persistGuideToLibrary(billingUser || req.user, {
           guideId: `bold_choices_${generationId}`,
           userId,
           characterName: characterName.trim(),
