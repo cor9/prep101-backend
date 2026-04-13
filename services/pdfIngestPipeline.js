@@ -631,11 +631,11 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
     text: bestStage?.text || "",
     source: bestStage?.source || "vision",
     confidence: "low",
-    warnings: [],
+    warnings: [IMAGE_BASED_READING_MESSAGE],
     characterNames: bestStage?.characterNames || [],
     wordCount: bestStage?.wordCount || 0,
     limited: true,
-    uploadMessage: null,
+    uploadMessage: IMAGE_BASED_READING_MESSAGE,
     diagnostics: { textStage, ocrStage, visionStage },
   };
 }
@@ -694,16 +694,20 @@ async function ingestPdf(pdfBuffer, options = {}) {
   })();
 
   const timeoutMs = options.maxPipelineMs || 18000;
+  const bestBaseStage =
+    [documentStage, textStage]
+      .filter(Boolean)
+      .sort((a, b) => (b?.wordCount || 0) - (a?.wordCount || 0))[0] || textStage;
   const timeoutResult = {
-    text: textStage.text || "",
-    source: textStage.wordCount > 0 ? "text" : "document",
+    text: bestBaseStage?.text || textStage.text || "",
+    source: bestBaseStage?.source || (textStage.wordCount > 0 ? "text" : "document"),
     confidence: "low",
     warnings: [IMAGE_BASED_READING_MESSAGE],
-    characterNames: textStage.characterNames || [],
-    wordCount: textStage.wordCount || 0,
+    characterNames: bestBaseStage?.characterNames || textStage.characterNames || [],
+    wordCount: bestBaseStage?.wordCount || textStage.wordCount || 0,
     limited: true,
     uploadMessage: IMAGE_BASED_READING_MESSAGE,
-    diagnostics: { textStage, documentStage, timeoutMs },
+    diagnostics: { textStage, documentStage, timeoutMs, timeoutFallback: true },
   };
 
   return Promise.race([

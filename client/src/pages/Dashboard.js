@@ -447,9 +447,18 @@ const Dashboard = () => {
     } catch (error) {
       console.warn("Could not cache upload data for recovery:", error);
     }
-    if (!data.uploadMessage) {
-      toast.success("PDF processed — ready to generate!");
+    const extractedWords = Number(data?.wordCount || 0);
+    if (extractedWords === 0) {
+      toast.error(
+        "PDF uploaded, but no readable script text was extracted. Re-upload or paste sides text for best results."
+      );
+      return;
     }
+    if (data.uploadMessage) {
+      toast(data.uploadMessage, { icon: "🧠", duration: 5000 });
+      return;
+    }
+    toast.success(`PDF processed — extracted ${extractedWords} words.`);
   };
 
   // Open HTML in a new tab (Blob URL). Optionally reuse a pre-opened window.
