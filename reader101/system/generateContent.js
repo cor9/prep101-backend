@@ -336,6 +336,17 @@ Do NOT:
 - analyze ${ACTOR_ROLE} as if the reader is performing them
 
 You are ONLY coaching the reader on how to support ${ACTOR_ROLE}.
+
+INTERNAL TRANSLATION RULE (MANDATORY):
+Before outputting any instruction, convert ALL actor insight into reader responsibility.
+If you think: "${ACTOR_ROLE} needs resistance to play this scene"
+It MUST be rewritten as: "If you soften here, ${ACTOR_ROLE} loses the resistance they need."
+If you think: "${ACTOR_ROLE} should play this angry"
+It MUST be rewritten as: "Do not pacify the scene; your coldness gives ${ACTOR_ROLE} the necessary wall to hit."
+
+Prep101 asks: "What should the actor do?"
+Reader101 asks: "What must the reader NOT mess up?"
+Everything you write must answer the second question.
 `;
 
   const userPrompt = `Generate structured Reader101 content for the fixed HTML template system.
