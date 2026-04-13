@@ -590,6 +590,60 @@ router.post("/save", auth, async (req, res) => {
 });
 
 /**
+ * GET /api/bold-choices/saved
+ * Returns saved playbook choices for the authenticated user.
+ */
+router.get("/saved", auth, async (req, res) => {
+  try {
+    const userId = req.userId || (req.user && req.user.id);
+    if (!userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      return res.status(503).json({ error: "Storage is not configured" });
+    }
+
+    const endpoint =
+      `${SUPABASE_URL}/rest/v1/boldchoices_saved` +
+      `?select=id,choice_text,character_name,show,generation_id,created_at` +
+      `&user_id=eq.${encodeURIComponent(String(userId))}` +
+      `&order=created_at.desc` +
+      `&limit=200`;
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to fetch saved choices (${response.status}): ${errorText}`
+      );
+    }
+
+    const rows = await response.json();
+    const items = (Array.isArray(rows) ? rows : []).map((row) => ({
+      id: row.id,
+      choice: row.choice_text || "",
+      character: row.character_name || "",
+      show: row.show || "",
+      generationId: row.generation_id || null,
+      createdAt: row.created_at || null,
+    }));
+
+    return res.json({ success: true, items });
+  } catch (err) {
+    console.error("[BoldChoices] Saved list error:", err.message);
+    return res.status(500).json({ error: "Failed to fetch saved choices" });
+  }
+});
+
+/**
  * POST /api/bold-choices/analytics
  * Client-side event tracking (upgrade_clicked, etc.)
  */

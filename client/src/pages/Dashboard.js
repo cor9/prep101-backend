@@ -274,6 +274,8 @@ const Dashboard = () => {
   const [guides, setGuides] = useState([]);
   const [guidesLoading, setGuidesLoading] = useState(false);
   const [guideFilter, setGuideFilter] = useState('all');
+  const [playbookItems, setPlaybookItems] = useState([]);
+  const [playbookLoading, setPlaybookLoading] = useState(false);
 
   // ====== USAGE FETCH ======
   useEffect(() => {
@@ -374,6 +376,17 @@ const Dashboard = () => {
       .then(data => setGuides(data.guides || []))
       .catch(() => {})
       .finally(() => setGuidesLoading(false));
+  }, [user, refreshKey]);
+
+  // Fetch Bold Choices playbook saves
+  useEffect(() => {
+    if (!user) return;
+    setPlaybookLoading(true);
+    fetch(`${API_BASE}/api/bold-choices/saved`, withApiCredentials({}, user))
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((data) => setPlaybookItems(Array.isArray(data.items) ? data.items : []))
+      .catch(() => setPlaybookItems([]))
+      .finally(() => setPlaybookLoading(false));
   }, [user, refreshKey]);
 
   const remaining = useMemo(() => {
@@ -1397,6 +1410,72 @@ const Dashboard = () => {
           )}
           </div>
           {/* ── END GUIDE LIBRARY ─────────────────────────────────── */}
+
+          {/* ── PLAYBOOK ───────────────────────────────────────────── */}
+          <div className="card-white">
+            <SectionHeader
+              eyebrow="Bold Choices"
+              title="Your playbook"
+              description="Saved choice snippets from the ⭐ Add to Playbook button."
+            />
+
+            {playbookLoading ? (
+              <p style={{ color: "#94a3b8", fontSize: 13 }}>Loading…</p>
+            ) : playbookItems.length === 0 ? (
+              <p style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "1.5rem 0" }}>
+                No saved choices yet. Save one from a Bold Choices guide.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {playbookItems.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 12,
+                      background: "#fff",
+                      padding: "12px 14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 8,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                        Playbook Choice
+                      </div>
+                      <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                        {item.createdAt
+                          ? new Date(item.createdAt).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : ""}
+                      </div>
+                    </div>
+
+                    {(item.character || item.show) && (
+                      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>
+                        {[item.character, item.show].filter(Boolean).join(" — ")}
+                      </div>
+                    )}
+
+                    <div style={{ fontSize: 14, color: "#0f172a", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                      {item.choice}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* ── END PLAYBOOK ───────────────────────────────────────── */}
         </div>
 
         {/* Footer */}
