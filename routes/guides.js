@@ -3,15 +3,6 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const {
-  ServicePrincipalCredentials,
-  PDFServices,
-  MimeType,
-  HTMLToPDFJob,
-  HTMLToPDFResult,
-  PageLayout,
-  HTMLToPDFParams,
-} = require("@adobe/pdfservices-node-sdk");
-const {
   runAdminQuery,
   tables,
   normalizeGuideRow,
@@ -147,6 +138,25 @@ async function fetchGuideForUser(id, userId) {
 }
 
 async function renderPdfBuffer(guide) {
+  let adobeSdk = null;
+  try {
+    adobeSdk = require("@adobe/pdfservices-node-sdk");
+  } catch (error) {
+    throw new Error(
+      "PDF export is temporarily unavailable: Adobe PDF SDK is not installed in this runtime"
+    );
+  }
+
+  const {
+    ServicePrincipalCredentials,
+    PDFServices,
+    MimeType,
+    HTMLToPDFJob,
+    HTMLToPDFResult,
+    PageLayout,
+    HTMLToPDFParams,
+  } = adobeSdk;
+
   const credentialsPath = path.join(process.cwd(), "pdfservices-api-credentials.json");
   if (!fs.existsSync(credentialsPath)) {
     throw new Error("Adobe PDF credentials file is missing");

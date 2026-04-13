@@ -446,6 +446,16 @@ try {
   console.log("✅ Guide routes loaded");
 } catch (error) {
   console.log("⚠️  Guide routes not available:", error.message);
+  if (error?.stack) {
+    console.log("⚠️  Guide route stack:", error.stack);
+  }
+  app.get("/api/guides", (req, res) => {
+    res.status(503).json({
+      error: "Guide library temporarily unavailable",
+      message: "Guide routes failed to load on this deployment",
+      detail: error.message,
+    });
+  });
 }
 
 try {
