@@ -4,6 +4,10 @@ const { scrubWatermarks } = require("../../services/textCleaner");
 
 const CONTENT_SYSTEM_PROMPT = `You are Corey Ralston creating a Reader101 guide.
 
+Reader101 Rule:
+You are not coaching the actor. You are coaching the reader.
+If any part of your response describes how the actor should perform, it is wrong.
+
 Return ONLY valid JSON.
 Do not return markdown.
 Do not return HTML.
@@ -318,7 +322,23 @@ Apply the active mode as the behavior override before tone/style choices.`;
 
 Never invert this order.`;
 
-  return `Generate structured Reader101 content for the fixed HTML template system.
+  const ACTOR_ROLE = meta.characterName ? meta.characterName.trim() : "the actor";
+  const guardrail = `
+ACTOR ROLE: ${ACTOR_ROLE}
+
+You are generating a Reader101 guide.
+
+The reader is NOT playing the actor role.
+
+Do NOT:
+- give direction for ${ACTOR_ROLE}'s performance
+- describe how ${ACTOR_ROLE} should act
+- analyze ${ACTOR_ROLE} as if the reader is performing them
+
+You are ONLY coaching the reader on how to support ${ACTOR_ROLE}.
+`;
+
+  const userPrompt = `Generate structured Reader101 content for the fixed HTML template system.
 
 Return ONLY valid JSON that matches this schema exactly:
 ${SCHEMA_TEXT}
@@ -432,6 +452,21 @@ ${methodologyBlock}
 ${validationFeedback ? `REVISION FEEDBACK:\n${validationFeedback}\n` : ""}
 
 Return the JSON object now.`;
+
+  return guardrail + "\n\n" + userPrompt;
+}
+
+function invalidReaderOutput(output, actorRole) {
+  if (!output || !actorRole) return false;
+  const lower = String(output).toLowerCase();
+  const role = String(actorRole).toLowerCase().trim();
+
+  return (
+    lower.includes(`play ${role}`) ||
+    lower.includes(`${role} should`) ||
+    lower.includes(`for ${role}'s performance`) ||
+    lower.includes(`the actor playing ${role}`)
+  );
 }
 
 async function callAnthropic(prompt, apiKey) {
@@ -474,6 +509,11 @@ async function generateContent(meta = {}) {
       const rawText = await callAnthropic(prompt, apiKey);
       const parsed = parseJsonResponse(rawText);
       const errors = validateStructuredContent(parsed, meta);
+
+      const ACTOR_ROLE = meta.characterName ? meta.characterName.trim() : "";
+      if (ACTOR_ROLE && invalidReaderOutput(rawText, ACTOR_ROLE)) {
+        errors.push("You incorrectly gave actor coaching. Fix it. You are ONLY coaching the reader.");
+      }
 
       if (errors.length) {
         lastError = new Error(errors.join(" "));
