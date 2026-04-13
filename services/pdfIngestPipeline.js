@@ -293,55 +293,80 @@ IGNORE:
 
 Return plain text only. No commentary.`;
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: DEFAULT_CLAUDE_MODEL,
-        max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 4096),
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "document",
-                source: {
-                  type: "base64",
-                  media_type: "application/pdf",
-                  data: pdfBuffer.toString("base64"),
+  const requestedModel =
+    process.env.ANTHROPIC_DOCUMENT_MODEL ||
+    process.env.CLAUDE_DOCUMENT_MODEL ||
+    DEFAULT_CLAUDE_MODEL;
+  const fallbackModels = [
+    requestedModel,
+    "claude-3-5-sonnet-latest",
+    "claude-3-5-sonnet-20241022",
+  ].filter(Boolean);
+  const modelsToTry = [...new Set(fallbackModels)];
+  let lastError = "unknown_document_error";
+
+  for (const model of modelsToTry) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 8192),
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                {
+                  type: "document",
+                  source: {
+                    type: "base64",
+                    media_type: "application/pdf",
+                    data: pdfBuffer.toString("base64"),
+                  },
                 },
-              },
-              { type: "text", text: prompt },
-            ],
-          },
-        ],
-      }),
-    });
-    clearTimeout(timeout);
+              ],
+            },
+          ],
+        }),
+      });
+      clearTimeout(timeout);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude document failed: ${response.status} ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        lastError = `model=${model} status=${response.status} ${errorText}`;
+        continue;
+      }
+
+      const json = await response.json();
+      const rawText =
+        json?.content?.map((part) => part?.text || "").join("\n") || "";
+      const evaluated = evaluateExtraction("document", rawText, {
+        minWordCount: 50,
+      });
+      if (evaluated.wordCount > 0) {
+        return {
+          source: "document",
+          provider: `claude-document:${model}`,
+          ...evaluated,
+        };
+      }
+
+      lastError = `model=${model} returned_empty_document_text`;
+    } catch (error) {
+      lastError = `model=${model} ${error.message || "request_failed"}`;
     }
+  }
 
-    const json = await response.json();
-    const rawText =
-      json?.content?.map((part) => part?.text || "").join("\n") || "";
-
-    return {
-      source: "document",
-      provider: "claude-document",
-      ...evaluateExtraction("document", rawText, { minWordCount: 50 }),
-    };
-  } catch (_error) {
+  {
     return {
       stage: "document",
       source: "document",
@@ -350,7 +375,7 @@ Return plain text only. No commentary.`;
       rawText: "",
       wordCount: 0,
       quality: "needs_escalation",
-      failures: ["documentExtractionFailed"],
+      failures: [`documentExtractionFailed:${lastError}`],
       characterNames: [],
     };
   }
