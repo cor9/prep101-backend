@@ -2,65 +2,22 @@
  * screenplayParser.js
  *
  * Drop-in parser for screenplay-style PDF extracted text.
- * Designed to:
- * 1. Identify real speaking characters
- * 2. Reclassify editorial labels like SHOT / INSERT / SECURITY CAM FOOTAGE as stage directions
- * 3. Produce structured scene data for Prep101 / Reader101 / Bold Choices
+ * Fixed character detection logic to strictly require dialogue.
  */
 
-const DEFAULT_NON_CHARACTER_LABELS = new Set([
+const NON_CHARACTER_PATTERNS = [
   "SHOT",
-  "SHOTS",
+  "ANGLE",
   "INSERT",
-  "INSERTS",
   "CUT TO",
-  "CUT TO:",
-  "DISSOLVE TO",
-  "FADE IN",
-  "FADE OUT",
-  "ANGLE ON",
-  "ANGLES ON",
-  "WIDE",
-  "WIDE SHOT",
-  "CLOSE ON",
-  "CLOSE-UP",
-  "CLOSE UP",
-  "POV",
-  "O.S.",
-  "O.S",
-  "OFF SCREEN",
-  "OFF-SCREEN",
-  "V.O.",
-  "V.O",
-  "VOICE OVER",
-  "VOICE-OVER",
+  "FADE",
+  "CAMERA",
+  "FOOTAGE",
   "MONTAGE",
-  "SERIES OF SHOTS",
-  "SECURITY CAM FOOTAGE",
-  "SURVEILLANCE FOOTAGE",
-  "CAM FOOTAGE",
-  "PHONE VIDEO",
-  "VIDEO FOOTAGE",
-  "ARCHIVAL FOOTAGE",
-  "HOME VIDEO",
-  "FLASHBACK",
-  "FLASHBACK TO",
-  "INTERCUT",
-  "INTERCUT WITH",
-  "CONTINUOUS",
-  "LATER",
-  "MOMENTS LATER",
-  "SAME",
-  "END",
-  "START"
-]);
-
-const DEFAULT_SCENE_HEADING_PREFIXES = [
-  "INT.",
-  "EXT.",
-  "INT/EXT.",
-  "INT./EXT.",
-  "EXT./INT."
+  "WIDE",
+  "CLOSE ON",
+  "POV",
+  "INTERCUT"
 ];
 
 function normalizeText(rawText) {
@@ -69,40 +26,15 @@ function normalizeText(rawText) {
   return rawText
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
-    // Fix common PDF junk / OCR issues
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
     .replace(/[–—]/g, "-")
     .replace(/\u00A0/g, " ")
-    // Remove common breakdown services footer junk lines later, but normalize first
     .replace(/\t/g, " ")
-    // Collapse weird repeated spaces
     .replace(/[ ]{2,}/g, " ")
-    // Remove lines that are just page numbers / broken counters
     .split("\n")
     .map((line) => line.trimEnd())
     .join("\n");
-}
-
-function isSceneHeading(line) {
-  const trimmed = line.trim();
-  return DEFAULT_SCENE_HEADING_PREFIXES.some((prefix) =>
-    trimmed.startsWith(prefix)
-  );
-}
-
-function isLikelyParenthetical(line) {
-  const trimmed = line.trim();
-  return /^\(.+\)$/.test(trimmed);
-}
-
-function cleanSpeakerLabel(line) {
-  return line
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/\(CONT'D\)|\(CONTD\)|\(CONT’D\)/gi, "")
-    .replace(/:+$/, "")
-    .trim();
 }
 
 function upperRatio(str) {
@@ -113,126 +45,88 @@ function upperRatio(str) {
   return uppers / letters.length;
 }
 
-function isMostlyUppercase(line) {
+function isAllCaps(line) {
   return upperRatio(line) >= 0.85;
 }
 
-function looksLikeEditorialLabel(line, nonCharacterLabels) {
-  const cleaned = cleanSpeakerLabel(line).toUpperCase();
-
-  if (nonCharacterLabels.has(cleaned)) return true;
-
-  // Common colon-based editorial labels
-  if (
-    cleaned.endsWith(":") &&
-    nonCharacterLabels.has(cleaned.slice(0, -1).trim())
-  ) {
-    return true;
-  }
-
-  // If it contains obvious editorial phrases
-  const editorialFragments = [
-    "SHOT",
-    "FOOTAGE",
-    "INSERT",
-    "ANGLE ON",
-    "CUT TO",
-    "FLASHBACK",
-    "MONTAGE",
-    "INTERCUT",
-    "CLOSE ON",
-    "WIDE",
-    "POV"
-  ];
-
-  return editorialFragments.some((frag) => cleaned.includes(frag));
+function isSceneHeading(line) {
+  return /^(INT\.|EXT\.|INT\/EXT\.|INT\.\/EXT\.|CUT TO|FADE IN|FADE OUT)/i.test(line);
 }
 
-function looksLikeSpeakerLabel(line, nonCharacterLabels) {
-  const trimmed = line.trim();
-  if (!trimmed) return false;
-  if (trimmed.length > 40) return false;
-  if (isSceneHeading(trimmed)) return false;
-  if (isLikelyParenthetical(trimmed)) return false;
-  if (looksLikeEditorialLabel(trimmed, nonCharacterLabels)) return false;
-
-  const cleaned = cleanSpeakerLabel(trimmed);
-
-  // Typical screenplay speaker lines are mostly uppercase
-  if (!isMostlyUppercase(cleaned)) return false;
-
-  // Avoid lines that are obviously descriptive/action
-  if (/[.!?]/.test(cleaned)) return false;
-
-  // Avoid isolated page/footer fragments
-  if (/^SIDES BY /i.test(cleaned)) return false;
-  if (/^OPTION \d+/i.test(cleaned)) return false;
-  if (/^\d+\/\d+$/.test(cleaned)) return false;
-  if (/^\d+\.$/.test(cleaned)) return false;
-
-  // Usually 1-4 tokens
-  const words = cleaned.split(/\s+/);
-  if (words.length > 5) return false;
-
-  return true;
-}
-
-function isGarbageLine(line) {
-  const trimmed = line.trim();
-  if (!trimmed) return false;
+function isDialogue(line) {
+  if (!line) return false;
 
   return (
-    /^Sides by Breakdown Services/i.test(trimmed) ||
-    /^Actors Access/i.test(trimmed) ||
-    /^\d+\.$/.test(trimmed) ||
-    /^\d+\/\d+$/.test(trimmed) ||
-    /^option \d+/i.test(trimmed) ||
-    /^sc \d+ of \d+/i.test(trimmed) ||
-    /^START$/i.test(trimmed) ||
-    /^END$/i.test(trimmed)
+    !isAllCaps(line) &&
+    !line.startsWith('(') &&
+    !isSceneHeading(line)
   );
 }
 
-function isDialogueContentLine(line, nonCharacterLabels) {
-  const trimmed = line.trim();
-  if (!trimmed) return false;
-  if (isSceneHeading(trimmed)) return false;
-  if (looksLikeSpeakerLabel(trimmed, nonCharacterLabels)) return false;
-  if (looksLikeEditorialLabel(trimmed, nonCharacterLabels)) return false;
-  if (isGarbageLine(trimmed)) return false;
+function findNextDialogueLine(lines, startIndex) {
+  for (let i = startIndex; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (line.startsWith('(')) continue; // skip parentheticals
+    return line;
+  }
+  return null;
+}
 
-  return true;
+function isCharacterCue(line, lines, nextIndex) {
+  if (!isAllCaps(line)) return false;
+  const nextLine = findNextDialogueLine(lines, nextIndex);
+  if (!nextLine) return false;
+  return isDialogue(nextLine);
+}
+
+function cleanCharacterName(name) {
+  return name
+    .replace(/\(.*?\)/g, '')   // remove (O.S.), (V.O.)
+    .replace(/CONT'?D/gi, '')
+    .replace(/CONT’D/gi, '')
+    .trim();
+}
+
+function isValidCharacter(name) {
+  const upper = name.toUpperCase();
+  return !NON_CHARACTER_PATTERNS.some(p => upper.includes(p));
 }
 
 function parseScreenplayText(rawText, options = {}) {
-  const {
-    actorCharacter = null,
-    nonCharacterLabels = DEFAULT_NON_CHARACTER_LABELS
-  } = options;
+  const { actorCharacter = "" } = options;
 
   const text = normalizeText(rawText);
-  const lines = text.split("\n");
+  const rawLines = text.split("\n");
+  
+  // Strip garbage lines entirely
+  const lines = rawLines.map(l => l.trim()).filter(line => {
+    if (/^Sides by Breakdown Services/i.test(line)) return false;
+    if (/^Actors Access/i.test(line)) return false;
+    if (/^\d+\.$/.test(line)) return false;
+    if (/^\d+\/\d+$/.test(line)) return false;
+    if (/^option \d+/i.test(line)) return false;
+    if (/^sc \d+ of \d+/i.test(line)) return false;
+    if (/^START$/i.test(line)) return false;
+    if (/^END$/i.test(line)) return false;
+    return true;
+  });
 
-  const sceneHeadings = [];
-  const stageDirections = [];
-  const dialogueBlocks = [];
   const characters = new Set();
-  const nonCharacterLabelsFound = new Set();
+  const dialogueBlocks = [];
+  const stageDirections = [];
+  const sceneHeadings = [];
+  
+  const characterDialogueCounts = new Map();
 
   let currentScene = null;
   let i = 0;
 
   while (i < lines.length) {
-    const rawLine = lines[i] || "";
-    const line = rawLine.trim();
+    const line = lines[i];
 
     if (!line) {
-      i += 1;
-      continue;
-    }
-
-    if (isGarbageLine(line)) {
-      i += 1;
+      i++;
       continue;
     }
 
@@ -242,141 +136,81 @@ function parseScreenplayText(rawText, options = {}) {
         scene: line,
         lineIndex: i
       });
-      i += 1;
+      i++;
       continue;
     }
 
-    // Reclassify fake "speaker" labels as stage directions
-    if (looksLikeEditorialLabel(line, nonCharacterLabels)) {
-      nonCharacterLabelsFound.add(cleanSpeakerLabel(line).toUpperCase());
+    // Is it a speaking character?
+    if (isCharacterCue(line, lines, i + 1)) {
+      const name = cleanCharacterName(line);
 
-      const editorialBlock = [line];
-      let j = i + 1;
+      if (isValidCharacter(name) && name.length > 0 && name.length <= 40) {
+        characters.add(name);
+        
+        let parenthetical = null;
+        const contentLines = [];
+        let j = i + 1;
 
-      while (j < lines.length) {
-        const next = (lines[j] || "").trim();
-        if (!next) {
-          j += 1;
-          break;
-        }
-        if (
-          isSceneHeading(next) ||
-          looksLikeSpeakerLabel(next, nonCharacterLabels) ||
-          looksLikeEditorialLabel(next, nonCharacterLabels)
-        ) {
-          break;
-        }
-        if (isGarbageLine(next)) {
-          j += 1;
-          continue;
-        }
-        editorialBlock.push(next);
-        j += 1;
-      }
-
-      stageDirections.push({
-        type: "editorial",
-        scene: currentScene,
-        content: editorialBlock.join(" "),
-        lineIndex: i
-      });
-
-      i = j;
-      continue;
-    }
-
-    // Real dialogue speaker
-    if (looksLikeSpeakerLabel(line, nonCharacterLabels)) {
-      const speaker = cleanSpeakerLabel(line);
-      characters.add(speaker);
-
-      let parenthetical = null;
-      const contentLines = [];
-      let j = i + 1;
-
-      // Optional immediate parenthetical
-      if (j < lines.length && isLikelyParenthetical((lines[j] || "").trim())) {
-        parenthetical = (lines[j] || "").trim();
-        j += 1;
-      }
-
-      while (j < lines.length) {
-        const next = (lines[j] || "").trim();
-
-        if (!next) {
-          if (contentLines.length > 0) {
-            j += 1;
+        // Skip to find the dialogue block
+        while (j < lines.length) {
+          const next = lines[j];
+          if (!next) {
+            j++;
+            continue;
+          }
+          
+          if (isSceneHeading(next) || isCharacterCue(next, lines, j + 1)) {
             break;
           }
-          j += 1;
-          continue;
+          
+          if (next.startsWith('(') && contentLines.length === 0 && !parenthetical) {
+            parenthetical = next;
+            j++;
+            continue;
+          }
+
+          if (isDialogue(next) || next.startsWith('(')) {
+            contentLines.push(next);
+            j++;
+            continue;
+          }
+
+          break; // Action/stage direction interrupts
         }
 
-        if (isGarbageLine(next)) {
-          j += 1;
-          continue;
+        const dialogueText = contentLines.join(" ").trim();
+        if (dialogueText.length > 0) {
+          dialogueBlocks.push({
+            type: "dialogue",
+            scene: currentScene,
+            speaker: name,
+            parenthetical,
+            text: dialogueText,
+            lineIndex: i
+          });
+          
+          characterDialogueCounts.set(name, (characterDialogueCounts.get(name) || 0) + 1);
         }
 
-        if (
-          isSceneHeading(next) ||
-          looksLikeSpeakerLabel(next, nonCharacterLabels) ||
-          looksLikeEditorialLabel(next, nonCharacterLabels)
-        ) {
-          break;
-        }
-
-        // Parenthetical mid-dialogue
-        if (isLikelyParenthetical(next) && contentLines.length === 0 && !parenthetical) {
-          parenthetical = next;
-          j += 1;
-          continue;
-        }
-
-        if (isDialogueContentLine(next, nonCharacterLabels)) {
-          contentLines.push(next);
-          j += 1;
-          continue;
-        }
-
-        break;
-      }
-
-      dialogueBlocks.push({
-        type: "dialogue",
-        scene: currentScene,
-        speaker,
-        parenthetical,
-        text: contentLines.join(" ").trim(),
-        lineIndex: i
-      });
-
-      i = j;
-      continue;
-    }
-
-    // Everything else = stage direction / action
-    const actionBlock = [line];
-    let j = i + 1;
-
-    while (j < lines.length) {
-      const next = (lines[j] || "").trim();
-      if (!next) {
-        j += 1;
-        break;
-      }
-      if (
-        isSceneHeading(next) ||
-        looksLikeSpeakerLabel(next, nonCharacterLabels) ||
-        looksLikeEditorialLabel(next, nonCharacterLabels)
-      ) {
-        break;
-      }
-      if (isGarbageLine(next)) {
-        j += 1;
+        i = j;
         continue;
       }
+    }
+
+    // Treat as stage direction / action
+    const actionBlock = [line];
+    let j = i + 1;
+    while (j < lines.length) {
+      const next = lines[j];
+      if (!next) {
+        j++;
+        break;
+      }
+      if (isSceneHeading(next) || isCharacterCue(next, lines, j + 1)) {
+        break;
+      }
       actionBlock.push(next);
-      j += 1;
+      j++;
     }
 
     stageDirections.push({
@@ -389,28 +223,35 @@ function parseScreenplayText(rawText, options = {}) {
     i = j;
   }
 
-  // Filter out actor character from reader roles
-  const allCharacters = Array.from(characters);
-  const readerRoles = actorCharacter
-    ? allCharacters.filter(
-        (name) => name.toUpperCase() !== actorCharacter.trim().toUpperCase()
-      )
-    : allCharacters;
+  // Remove anything that never actually speaks
+  const activeCharacters = [];
+  for (const name of characters) {
+    if (characterDialogueCounts.get(name) > 0) {
+      activeCharacters.push(name);
+    }
+  }
+
+  const actor = actorCharacter ? actorCharacter.toUpperCase().trim() : "";
+  const readerRoles = activeCharacters.filter(
+    c => c.toUpperCase() !== actor
+  );
 
   return {
     actorCharacter,
-    characters: allCharacters,
+    characters: activeCharacters,
     readerRoles,
     sceneHeadings,
     dialogueBlocks,
-    stageDirections,
-    nonCharacterLabelsFound: Array.from(nonCharacterLabelsFound)
+    stageDirections
   };
 }
 
 module.exports = {
   parseScreenplayText,
   normalizeText,
-  looksLikeSpeakerLabel,
-  looksLikeEditorialLabel
+  isCharacterCue,
+  isDialogue,
+  isSceneHeading,
+  cleanCharacterName,
+  isValidCharacter
 };
