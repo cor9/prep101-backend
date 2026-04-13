@@ -41,7 +41,7 @@ function normalizeArraySection(items, fallbackItems, fallbackConsequence, maxIte
 function defaultToneLine(style) {
   switch (style) {
     case "multicam":
-      return "If you play this like a sketch, it falls apart immediately -> grounded cues keep the comedy alive.";
+      return "If you signal jokes or flatten contrast, the scene dies immediately -> grounded timing is the whole engine.";
     case "prestige":
       return "If you play this like melodrama, it falls apart immediately -> restraint is what makes the scene land.";
     case "dark":
@@ -326,6 +326,25 @@ function normalizeWhatWillGoWrong(sourceItems, meta, fallbackItems) {
 function normalizeContent(modelContent = {}, meta = {}) {
   const fallback = buildFallbackContent(meta);
   const toneFallback = fallback.tone_reference_anchor;
+  const consequenceLanguage = meta.comedyMode
+    ? {
+        readerFundamentals: "the scene dies immediately.",
+        keyBeats: "the moment collapses.",
+        rhythm: "the joke disappears.",
+        do: "the actor gets cleaner support.",
+        avoid: "casting checks out.",
+        connection: "the scene collapses.",
+        quickReset: "the read gets back on track immediately.",
+      }
+    : {
+        readerFundamentals: "the actor feels the drop immediately.",
+        keyBeats: "the emotional turn disappears.",
+        rhythm: "the scene loses its pulse.",
+        do: "the actor gets cleaner support.",
+        avoid: "the scene drifts off target.",
+        connection: "the actor pulls back instead of opening up.",
+        quickReset: "the read gets back on track immediately.",
+      };
   const yourJobSource = Array.isArray(modelContent.your_job) && modelContent.your_job.length
     ? modelContent.your_job
     : fallback.your_job;
@@ -378,6 +397,8 @@ function normalizeContent(modelContent = {}, meta = {}) {
       normalizeLine(meta.genre),
       normalizeLine(meta.productionType),
       meta.comedyMode ? "Comedy Mode" : "",
+      meta.genreMode ? `Genre Mode: ${normalizeLine(meta.genreMode)}` : "",
+      meta.childFocused ? "Child-Focused" : "",
       meta.highRiskScene ? "High-Risk Scene" : "",
       meta.templateStyle ? `Template: ${meta.templateStyle}` : "",
     ].filter(Boolean),
@@ -404,37 +425,37 @@ function normalizeContent(modelContent = {}, meta = {}) {
     reader_fundamentals: normalizeArraySection(
       modelContent.reader_fundamentals,
       fallback.reader_fundamentals,
-      "the actor feels the drop immediately.",
+      consequenceLanguage.readerFundamentals,
       10
     ),
     key_beats: normalizeArraySection(
       modelContent.key_beats,
       fallback.key_beats,
-      "the emotional turn disappears.",
+      consequenceLanguage.keyBeats,
       8
     ),
     rhythm: normalizeArraySection(
       modelContent.rhythm,
       fallback.rhythm,
-      "the scene loses its pulse.",
+      consequenceLanguage.rhythm,
       8
     ),
     do: normalizeArraySection(
       modelContent.do,
       fallback.do,
-      "the actor gets cleaner support.",
+      consequenceLanguage.do,
       5
     ),
     avoid: normalizeArraySection(
       modelContent.avoid,
       fallback.avoid,
-      "the scene drifts off target.",
+      consequenceLanguage.avoid,
       5
     ),
     connection: normalizeArraySection(
       modelContent.connection,
       fallback.connection,
-      "the actor pulls back instead of opening up.",
+      consequenceLanguage.connection,
       6
     ),
     anchor_line: normalizeLine(
@@ -444,7 +465,7 @@ function normalizeContent(modelContent = {}, meta = {}) {
     quick_reset: normalizeArraySection(
       modelContent.quick_reset,
       fallback.quick_reset,
-      "the read gets back on track immediately.",
+      consequenceLanguage.quickReset,
       4
     ),
     intimacy_section: meta.highRiskScene

@@ -1036,6 +1036,8 @@ function loadMethodologyFiles() {
 
 function determineFileType(filename) {
   const name = filename.toLowerCase();
+  if (name === "methodology.md" || name.includes("core_methodology"))
+    return "core-methodology";
   if (name.includes("character")) return "character-development";
   if (name.includes("scene")) return "scene-work";
   if (name.includes("comedy")) return "comedy";
@@ -1049,6 +1051,17 @@ function determineFileType(filename) {
 function extractKeywords(filename, content) {
   const keywords = [];
   const name = filename.toLowerCase();
+
+  if (name === "methodology.md" || name.includes("core_methodology")) {
+    keywords.push(
+      "core methodology",
+      "acting methodology",
+      "prep101",
+      "reader101",
+      "bold choices",
+      "coaching voice"
+    );
+  }
 
   // Add filename-based keywords
   if (name.includes("character"))
@@ -1120,6 +1133,7 @@ function searchMethodology(characterName, productionType, sceneContext) {
 
     // Boost character development for all requests
     if (file.type === "character-development") relevanceScore += 3;
+    if (file.type === "core-methodology") relevanceScore += 8;
 
     if (relevanceScore > 0) {
       relevantFiles.push({

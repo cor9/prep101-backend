@@ -85,6 +85,12 @@
 - Fixed Reader101 render validation drift where high-risk guides were rejected unless the header text was exactly `When the Scene Crosses Into Intimacy`; validation now accepts both that heading and `Handling High-Risk Material`.
 - Tightened Reader101 role extraction and risk classification for comedic child sides: dropped pagination/noise cues like `MORE` and `SCENE`, ignore one-off wrapped uppercase fragments like `CAKE.`, and stopped treating generic non-sexual `naked` mentions as automatic intimacy/high-risk.
 - Added explicit Reader101 comedy-mode enforcement for multi-cam/sitcom scripts (including audience-laughter cues): prompts now prioritize reversals/contrast/timing, ban invented character roles, and require extraction-first script grounding before coaching.
+- Applied a strict drop-in multicam correction block in Reader101 generation prompts (comedy engine, timing law, no joke signaling, anti-hallucination, and mandatory consequence language), and strengthened normalized comedy consequence wording (e.g., `scene dies`, `joke disappears`, `casting checks out`).
+- Added a Reader101 role firewall + mode architecture in prompt generation:
+  - explicit `Reader101 vs Prep101` role lock
+  - mandatory priority stack (`script reality -> genre mode -> reader function -> tone/style`)
+  - genre-mode system (`drama`, `multicam`, `singlecam_comedy`, `thriller_horror`, `teen_drama`) plus child-focused guardrails.
+- Imported `/Users/coreyralston/Library/Mobile Documents/com~apple~CloudDocs/methodology.md` into repo RAG memory at `methodology/methodology.md` and boosted retrieval ranking by classifying it as `core-methodology` in Prep101 search scoring.
 
 ### Database migrations added this round
 - `supabase/migrations/20260408_prep101_top_up_credits.sql`

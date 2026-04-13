@@ -207,6 +207,8 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
   const cleanedSceneText = scrubWatermarks(meta.sceneText || "").trim();
   const sceneWordCount = countMeaningfulWords(cleanedSceneText);
   const flags = Array.isArray(meta.flags) ? meta.flags : [];
+  const genreMode = String(meta.genreMode || "drama").toLowerCase();
+  const childFocused = Boolean(meta.childFocused);
 
   const metadataBlock = [
     meta.characterName ? `AUDITION ROLE: ${meta.characterName}` : "",
@@ -219,6 +221,8 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
     meta.productionType ? `FORMAT: ${meta.productionType}` : "",
     meta.genre ? `GENRE: ${meta.genre}` : "",
     meta.storyline ? `STORYLINE: ${meta.storyline}` : "",
+    meta.genreMode ? `GENRE MODE: ${meta.genreMode}` : "",
+    `CHILD FOCUSED: ${childFocused ? "true" : "false"}`,
     meta.templateStyle ? `TEMPLATE STYLE: ${meta.templateStyle}` : "",
     flags.length ? `FLAGS: ${flags.join(", ")}` : "",
     `FALLBACK MODE: ${meta.fallbackMode ? "true" : "false"}`,
@@ -247,6 +251,53 @@ ${clipText(cleanedSceneText || "[No readable sides provided]")}`;
     : `HIGH-RISK RULES:
 - If the scene is not high-risk, return empty arrays for "intimacy_section" and "emotional_arc_mapping".`;
 
+  const roleLockBlock = `ROLE LOCK — READER101 VS PREP101:
+- You are operating in Reader101 mode, not Prep101.
+- Prep101 builds the performance. Reader101 protects it.
+- Reader101 does not generate performance; it removes obstacles to performance.
+- DO NOT analyze character psychology in depth.
+- DO NOT provide actor-focused technique.
+- DO NOT explain internal motivations beyond what is playable for the reader.
+- DO focus on timing, delivery, interaction, and reader restraint.
+- If output starts resembling actor coaching, STOP and redirect to reader behavior.`;
+
+  const genreModeBlock = `GENRE MODE SYSTEM:
+Active mode: ${genreMode}
+
+DRAMA MODE (default):
+- Slower pacing, silence/load-bearing beats, reader as container.
+
+MULTI-CAM MODE (strict):
+- Fast pacing, reversals, reader as grounded contrast.
+- No joke signaling, no cushioning, no early reactions.
+
+SINGLE-CAM COMEDY:
+- Natural pace with subtle reversals.
+- Reader can be slightly more reactive than multi-cam, still no joke signaling.
+
+THRILLER / HORROR:
+- Reader is pressure source.
+- Tension over warmth, loaded silence, no emotional cushioning.
+
+TEEN DRAMA:
+- Reader can mirror emotionally in a controlled way.
+- Keep stakes large but avoid melodrama.
+
+CHILD-FOCUSED CONTENT:
+- Protect the performance without patronizing language.
+- Do not artificially slow pacing.
+- Treat the actor as capable and specific.
+
+Apply the active mode as the behavior override before tone/style choices.`;
+
+  const priorityStack = `PRIORITY ORDER (MANDATORY):
+1) SCRIPT REALITY (what actually happens)
+2) GENRE MODE RULES
+3) READER FUNCTION
+4) TONE / STYLE
+
+Never invert this order.`;
+
   return `Generate structured Reader101 content for the fixed HTML template system.
 
 Return ONLY valid JSON that matches this schema exactly:
@@ -259,7 +310,7 @@ Global rules:
   - If a role is unclear, reference it exactly as written in the script.
 - EXTRACTION-FIRST RULE:
   - Before writing coaching, internally extract the real speaking roles and beat sequence from the sides.
-  - If speaker roles are unclear, stay literal and avoid role invention.
+  - If speaker roles are unclear, do not invent structure; stay literal and use exact script labeling only.
 - Coach the reader on how to read the READER ROLE opposite the AUDITION ROLE.
 - Never instruct the reader to "play" the audition character.
 - If READER ROLE is present, treat that as the reader's character assignment throughout.
@@ -291,15 +342,63 @@ Global rules:
 - If fallback mode is true, stay useful without pretending you saw clean lines.
 
 ${highRiskRules}
+${roleLockBlock}
+${genreModeBlock}
+${priorityStack}
 
-${flags.includes("comedy_mode")
-    ? `COMEDY MODE (MULTI-CAM ENFORCEMENT):
-- This is fast-switch comedic structure, not slow emotional-arc drama.
-- Prioritize reversals, contrast, timing, and grounded reactions over psychological interpretation.
-- Reader must NOT set up jokes, cushion reversals, or signal punchlines.
-- Reader must stay grounded and one beat behind while the actor swings between extremes.
-- Do NOT force "shame/exposure/containment" framing unless the script explicitly supports it.
-- Use script moments like pivots, hard turns, and contradiction as the main coaching spine.`
+${genreMode === "multicam"
+    ? `FORMAT OVERRIDE — MULTI-CAMERA SITCOM (STRICT MODE):
+If this is multi-camera/sitcom/audience-laughter material, these rules override defaults:
+
+1) COMEDY ENGINE DEFINITION (NON-NEGOTIABLE)
+- Structure is escalation -> reversal -> escalation -> reversal.
+- Do NOT reframe this as slow emotional arc analysis.
+- Comedy comes from contrast + timing + commitment.
+
+2) READER FUNCTION (CORRECTED)
+- Reader is NOT indifferent, cold, or a wall.
+- Reader is engaged, present, and one beat behind.
+- Stay grounded while the actor escalates.
+- If the reader is a parent/caregiver role, they care but cannot keep up.
+
+3) TIMING LAW (CRITICAL)
+- Every turn must land on the reader before response.
+- Do NOT react early, anticipate, or cushion.
+- If reader gets there first, the joke disappears and the scene collapses.
+
+4) ENERGY CONTRAST RULE
+- Do NOT match actor energy.
+- Actor escalates; reader stays grounded.
+- If energy matches, contrast disappears and comedy dies.
+
+5) NO JOKE SIGNALING RULE
+- Never smile through lines, soften into punchlines, or indicate "this is funny."
+- If you signal the joke, you kill the joke.
+
+6) PACING RULE (MULTI-CAM SPECIFIC)
+- Keep exchanges quick with minimal dead air.
+- Do NOT add thoughtful pauses unless text demands it.
+- Speed supports comedy; slowing down kills it.
+
+7) SCRIPT REALITY ENFORCEMENT (ANTI-HALLUCINATION)
+- ONLY use character names explicitly in the sides.
+- NEVER invent roles, labels, or placeholders.
+- NEVER reinterpret character structure.
+
+8) COMEDY-SAFE INTERPRETATION RULE
+- Do NOT impose shame arcs, trauma framing, or extra psychological depth not supported by the script.
+- Prioritize: what is happening, how fast it changes, and how reader timing supports turns.
+
+9) CONSEQUENCE LANGUAGE (MANDATORY STYLE)
+- Use hard-stakes language: "the scene dies", "the joke disappears", "the moment collapses", "casting checks out."
+- Avoid soft phrasing.
+
+10) CORE REFRAME
+- The reader is the normal world.
+- The actor is the disruption.
+
+11) ONE-LINE TRUTH
+- Reinforce this idea directly: "The reader stays real so the actor can be funny."`
     : ""}
 
 METADATA:

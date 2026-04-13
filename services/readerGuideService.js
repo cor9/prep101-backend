@@ -374,6 +374,77 @@ function detectComedyMode(data = {}, combinedContent = "") {
   return multicamSignals.some((signal) => full.includes(signal));
 }
 
+function detectGenreMode(data = {}, combinedContent = "") {
+  const genre = normalize(data.genre || "");
+  const productionType = normalize(data.productionType || "");
+  const title = normalize(data.productionTitle || "");
+  const storyline = normalize(data.storyline || "");
+  const full = [genre, productionType, title, storyline, normalize(combinedContent)]
+    .filter(Boolean)
+    .join(" ");
+
+  if (
+    [
+      "multi-camera",
+      "multi camera",
+      "multi-cam",
+      "multicam",
+      "sitcom",
+      "audience laughter",
+    ].some((token) => full.includes(token))
+  ) {
+    return "multicam";
+  }
+
+  if (
+    full.includes("single-cam comedy") ||
+    full.includes("single cam comedy") ||
+    (full.includes("single-cam") && full.includes("comedy")) ||
+    (full.includes("single cam") && full.includes("comedy"))
+  ) {
+    return "singlecam_comedy";
+  }
+
+  if (
+    ["thriller", "horror", "suspense", "psychological thriller"].some((token) =>
+      full.includes(token)
+    )
+  ) {
+    return "thriller_horror";
+  }
+
+  if (
+    ["teen drama", "young adult drama", "ya drama", "coming of age drama"].some(
+      (token) => full.includes(token)
+    )
+  ) {
+    return "teen_drama";
+  }
+
+  return "drama";
+}
+
+function detectChildFocused(data = {}, combinedContent = "", parsedActorAge = null) {
+  if (Number.isInteger(parsedActorAge) && parsedActorAge <= 13) {
+    return true;
+  }
+
+  const full = normalize(
+    `${data.genre || ""}\n${data.productionType || ""}\n${data.productionTitle || ""}\n${data.storyline || ""}\n${combinedContent || ""}`
+  );
+
+  return [
+    "disney",
+    "nickelodeon",
+    "kids",
+    "family",
+    "child",
+    "tween",
+    "middle school",
+    "elementary",
+  ].some((token) => full.includes(token));
+}
+
 function buildReaderModeContext(data = {}) {
   const combinedContent = [
     data.sceneText || "",
@@ -403,11 +474,15 @@ function buildReaderModeContext(data = {}) {
       hasAny(combinedContent, AMBIGUOUS_INTIMACY_TRIGGERS));
   const highRiskSignal = explicitHighRiskSignal || compoundedBoundaryRisk;
   const comedyMode = detectComedyMode(data, combinedContent);
+  const genreMode = detectGenreMode(data, combinedContent);
+  const childFocused = detectChildFocused(data, combinedContent, parsedActorAge);
 
   return {
     mode: highRiskSignal ? "HIGH_RISK" : "STANDARD",
     highRiskScene: highRiskSignal,
     comedyMode,
+    genreMode,
+    childFocused,
     intimacyMode,
     intimacyArc: intimacyMode && detectIntimacyArc(combinedContent),
     actorAge: parsedActorAge,
@@ -427,6 +502,8 @@ function buildFlags(modeContext = {}) {
 
   if (modeContext.highRiskScene) flags.push("high_risk");
   if (modeContext.comedyMode) flags.push("comedy_mode");
+  if (modeContext.genreMode) flags.push(`genre_${modeContext.genreMode}`);
+  if (modeContext.childFocused) flags.push("child_focused");
   if (modeContext.intimacyMode) flags.push("intimacy");
   if (modeContext.parentContext) flags.push("parent_context");
   if (modeContext.moralContradiction) flags.push("moral_contradiction");
