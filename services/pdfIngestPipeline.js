@@ -381,6 +381,109 @@ Return plain text only. No commentary.`;
   }
 }
 
+async function extractGeminiDocumentStage(pdfBuffer) {
+  const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      stage: "document",
+      source: "document",
+      provider: "gemini-document",
+      skipped: true,
+      text: "",
+      rawText: "",
+      wordCount: 0,
+      quality: "needs_escalation",
+      failures: ["geminiKeyMissing"],
+      characterNames: [],
+    };
+  }
+
+  const prompt = `Extract only the usable audition script text from this PDF.
+
+INCLUDE:
+- Character names
+- Dialogue
+- Scene headings
+- Essential stage directions
+
+IGNORE:
+- Watermarks
+- Dates/timestamps
+- IDs/codes
+- Repeated headers/footers
+
+Return plain text only. No commentary.`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: "application/pdf",
+                    data: pdfBuffer.toString("base64"),
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 4096,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        stage: "document",
+        source: "document",
+        provider: "gemini-document",
+        text: "",
+        rawText: "",
+        wordCount: 0,
+        quality: "needs_escalation",
+        failures: [`geminiDocumentFailed:${response.status}:${errorText}`],
+        characterNames: [],
+      };
+    }
+
+    const json = await response.json();
+    const rawText =
+      json?.candidates?.[0]?.content?.parts
+        ?.map((part) => part?.text || "")
+        .join("\n") || "";
+
+    return {
+      source: "document",
+      provider: "gemini-document",
+      ...evaluateExtraction("document", rawText, { minWordCount: 50 }),
+    };
+  } catch (error) {
+    return {
+      stage: "document",
+      source: "document",
+      provider: "gemini-document",
+      text: "",
+      rawText: "",
+      wordCount: 0,
+      quality: "needs_escalation",
+      failures: [`geminiDocumentFailed:${error.message || "request_failed"}`],
+      characterNames: [],
+    };
+  }
+}
+
 async function extractOcrStage(pages) {
   let Tesseract = null;
   try {
@@ -673,7 +776,15 @@ async function ingestPdf(pdfBuffer, options = {}) {
 
   // If text extraction is weak, try direct PDF document extraction via Claude
   // before image conversion (which can fail on some serverless runtimes).
-  const documentStage = await extractClaudeDocumentStage(pdfBuffer);
+  const [claudeDocumentStage, geminiDocumentStage] = await Promise.all([
+    extractClaudeDocumentStage(pdfBuffer),
+    extractGeminiDocumentStage(pdfBuffer),
+  ]);
+  const documentCandidates = [claudeDocumentStage, geminiDocumentStage].filter(Boolean);
+  const documentStage =
+    documentCandidates
+      .slice()
+      .sort((a, b) => (b?.wordCount || 0) - (a?.wordCount || 0))[0] || null;
   if (documentStage && documentStage.quality === "good") {
     return {
       text: documentStage.text,
@@ -686,6 +797,8 @@ async function ingestPdf(pdfBuffer, options = {}) {
       uploadMessage: null,
       diagnostics: {
         textStage,
+        claudeDocumentStage,
+        geminiDocumentStage,
         documentStage,
         ocrStage: null,
         visionStage: null,
@@ -710,6 +823,8 @@ async function ingestPdf(pdfBuffer, options = {}) {
       const resolved = resolvePipelineResult({ textStage, ocrStage, visionStage });
       resolved.diagnostics = {
         ...(resolved.diagnostics || {}),
+        claudeDocumentStage,
+        geminiDocumentStage,
         documentStage,
       };
       return resolved;
@@ -720,7 +835,7 @@ async function ingestPdf(pdfBuffer, options = {}) {
 
   const timeoutMs = options.maxPipelineMs || 18000;
   const bestBaseStage =
-    [documentStage, textStage]
+    [documentStage, geminiDocumentStage, claudeDocumentStage, textStage]
       .filter(Boolean)
       .sort((a, b) => (b?.wordCount || 0) - (a?.wordCount || 0))[0] || textStage;
   const timeoutResult = {
@@ -732,7 +847,14 @@ async function ingestPdf(pdfBuffer, options = {}) {
     wordCount: bestBaseStage?.wordCount || textStage.wordCount || 0,
     limited: true,
     uploadMessage: IMAGE_BASED_READING_MESSAGE,
-    diagnostics: { textStage, documentStage, timeoutMs, timeoutFallback: true },
+    diagnostics: {
+      textStage,
+      claudeDocumentStage,
+      geminiDocumentStage,
+      documentStage,
+      timeoutMs,
+      timeoutFallback: true,
+    },
   };
 
   return Promise.race([
