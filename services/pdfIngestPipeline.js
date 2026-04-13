@@ -95,11 +95,16 @@ function getEntropyRatio(text = "") {
 function evaluateExtraction(stage, rawText, { minWordCount }) {
   const cleanedText = cleanPipelineText(rawText);
   const wordCount = getWordCount(cleanedText);
+  const characterNames = buildCharacterNames(cleanedText);
   const repeatedTokenRatio = getRepeatedTokenRatio(rawText);
   const metadataLineRatio = getMetadataLineRatio(rawText);
   const entropyRatio = getEntropyRatio(cleanedText);
   const watermarkInterference = analyzeWatermarkInterference(rawText);
   const qualityAssessment = assessQuality(cleanedText);
+  const hasScriptSignals =
+    characterNames.length >= 2 ||
+    /\b(INT|EXT)\./i.test(cleanedText) ||
+    /^[A-Z][A-Z\s]{1,24}:/m.test(cleanedText);
 
   const failures = [];
   if (wordCount < minWordCount) failures.push(`wordCount<${minWordCount}`);
@@ -111,7 +116,15 @@ function evaluateExtraction(stage, rawText, { minWordCount }) {
   if (entropyRatio < 0.35) failures.push("lowEntropy");
   if (qualityAssessment.quality === "repetitive") failures.push("repetitive");
 
-  const quality = failures.length ? "needs_escalation" : "good";
+  // If we extracted enough usable script-like text, don't over-penalize watermark/noise heuristics.
+  const looksUsableScript =
+    wordCount >= 80 &&
+    qualityAssessment.usable &&
+    hasScriptSignals &&
+    !watermarkInterference.shouldEscalateToOCR;
+
+  const quality =
+    looksUsableScript || !failures.length ? "good" : "needs_escalation";
   return {
     stage,
     rawText,
@@ -123,7 +136,7 @@ function evaluateExtraction(stage, rawText, { minWordCount }) {
     metadataLineRatio,
     entropyRatio,
     watermarkInterference,
-    characterNames: buildCharacterNames(cleanedText),
+    characterNames,
   };
 }
 
