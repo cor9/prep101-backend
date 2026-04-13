@@ -2520,7 +2520,10 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     }
 
     console.log(`[UPLOAD] Extracting text from ${req.file.originalname}`);
-    const pipelineResult = await ingestPdf(req.file.buffer, { maxPages: 20 });
+    const pipelineResult = await ingestPdf(req.file.buffer, {
+      maxPages: 8,
+      maxPipelineMs: 18000,
+    });
     const cleanedText = pipelineResult.text || "";
     const quality = assessQuality(cleanedText);
     const wordCount = pipelineResult.wordCount || quality.wordCount || getMeaningfulWordCount(cleanedText);

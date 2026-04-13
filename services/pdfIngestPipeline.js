@@ -109,17 +109,30 @@ function getEntropyRatio(text = "") {
 
 function evaluateExtraction(stage, rawText, { minWordCount }) {
   const cleanedText = cleanPipelineText(rawText);
-  const wordCount = getWordCount(cleanedText);
-  const characterNames = buildCharacterNames(cleanedText);
+  const rawWordCount = getWordCount(rawText);
+  let finalText = cleanedText;
+  let wordCount = getWordCount(cleanedText);
+  let characterNames = buildCharacterNames(cleanedText);
+
+  // Safety valve: if cleaning stripped too much but raw text is substantial,
+  // keep a lightly normalized raw version instead of returning near-empty text.
+  if (wordCount < 20 && rawWordCount >= 80) {
+    finalText = String(rawText || "")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    wordCount = getWordCount(finalText);
+    characterNames = buildCharacterNames(finalText);
+  }
   const repeatedTokenRatio = getRepeatedTokenRatio(rawText);
   const metadataLineRatio = getMetadataLineRatio(rawText);
-  const entropyRatio = getEntropyRatio(cleanedText);
+  const entropyRatio = getEntropyRatio(finalText);
   const watermarkInterference = analyzeWatermarkInterference(rawText);
-  const qualityAssessment = assessQuality(cleanedText);
+  const qualityAssessment = assessQuality(finalText);
   const hasScriptSignals =
     characterNames.length >= 2 ||
-    /\b(INT|EXT)\./i.test(cleanedText) ||
-    /^[A-Z][A-Z\s]{1,24}:/m.test(cleanedText);
+    /\b(INT|EXT)\./i.test(finalText) ||
+    /^[A-Z][A-Z\s]{1,24}:/m.test(finalText);
 
   const failures = [];
   if (wordCount < minWordCount) failures.push(`wordCount<${minWordCount}`);
@@ -143,7 +156,7 @@ function evaluateExtraction(stage, rawText, { minWordCount }) {
   return {
     stage,
     rawText,
-    text: cleanedText,
+    text: finalText,
     wordCount,
     quality,
     failures,
@@ -281,6 +294,8 @@ IGNORE:
 Return plain text only. No commentary.`;
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -288,6 +303,7 @@ Return plain text only. No commentary.`;
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: DEFAULT_CLAUDE_MODEL,
         max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 4096),
@@ -309,6 +325,7 @@ Return plain text only. No commentary.`;
         ],
       }),
     });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -651,28 +668,48 @@ async function ingestPdf(pdfBuffer, options = {}) {
     };
   }
 
-  const rendered = await convertPdfToImages(pdfBuffer, options);
-  try {
-    const ocrStage = await extractOcrStage(rendered.pages);
-    if (ocrStage.quality === "good") {
-      return resolvePipelineResult({
-        textStage,
-        ocrStage,
-        visionStage: null,
-        documentStage,
-      });
-    }
+  const imagePipelinePromise = (async () => {
+    const rendered = await convertPdfToImages(pdfBuffer, options);
+    try {
+      const ocrStage = await extractOcrStage(rendered.pages);
+      if (ocrStage.quality === "good") {
+        return resolvePipelineResult({
+          textStage,
+          ocrStage,
+          visionStage: null,
+          documentStage,
+        });
+      }
 
-    const visionStage = await extractVisionStage(rendered.pages, ocrStage.pageResults);
-    const resolved = resolvePipelineResult({ textStage, ocrStage, visionStage });
-    resolved.diagnostics = {
-      ...(resolved.diagnostics || {}),
-      documentStage,
-    };
-    return resolved;
-  } finally {
-    rendered.cleanup();
-  }
+      const visionStage = await extractVisionStage(rendered.pages, ocrStage.pageResults);
+      const resolved = resolvePipelineResult({ textStage, ocrStage, visionStage });
+      resolved.diagnostics = {
+        ...(resolved.diagnostics || {}),
+        documentStage,
+      };
+      return resolved;
+    } finally {
+      rendered.cleanup();
+    }
+  })();
+
+  const timeoutMs = options.maxPipelineMs || 18000;
+  const timeoutResult = {
+    text: textStage.text || "",
+    source: textStage.wordCount > 0 ? "text" : "document",
+    confidence: "low",
+    warnings: [IMAGE_BASED_READING_MESSAGE],
+    characterNames: textStage.characterNames || [],
+    wordCount: textStage.wordCount || 0,
+    limited: true,
+    uploadMessage: IMAGE_BASED_READING_MESSAGE,
+    diagnostics: { textStage, documentStage, timeoutMs },
+  };
+
+  return Promise.race([
+    imagePipelinePromise,
+    new Promise((resolve) => setTimeout(() => resolve(timeoutResult), timeoutMs)),
+  ]);
 }
 
 module.exports = {
