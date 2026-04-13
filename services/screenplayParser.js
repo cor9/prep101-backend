@@ -55,19 +55,33 @@ function isSceneHeading(line) {
 
 function isDialogue(line) {
   if (!line) return false;
+  if (isSceneHeading(line)) return false;
+  if (isAllCaps(line)) return false;
 
-  return (
-    !isAllCaps(line) &&
-    !line.startsWith('(') &&
-    !isSceneHeading(line)
-  );
+  // If it starts with parentheses but ONLY has parentheses, it's not a normal dialogue line (it's pure parenthetical).
+  // But if it has text after the closing parenthesis, like "(sighs) Yes.", it IS dialogue!
+  if (line.startsWith('(')) {
+    const afterParenMatch = line.match(/\)(.+)$/);
+    if (!afterParenMatch || !afterParenMatch[1].trim()) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function findNextDialogueLine(lines, startIndex) {
   for (let i = startIndex; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    if (line.startsWith('(')) continue; // skip parentheticals
+    
+    // skip PURE parentheticals
+    if (line.startsWith('(')) {
+      const afterParenMatch = line.match(/\)(.+)$/);
+      if (!afterParenMatch || !afterParenMatch[1].trim()) {
+        continue;
+      }
+    }
     return line;
   }
   return null;

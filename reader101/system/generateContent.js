@@ -229,6 +229,10 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
     flags.length ? `FLAGS: ${flags.join(", ")}` : "",
     `FALLBACK MODE: ${meta.fallbackMode ? "true" : "false"}`,
     `MEANINGFUL WORDS: ${sceneWordCount}`,
+    meta.structure ? `STRUCTURAL TONE BIAS: ${meta.structure.tone_bias}` : "",
+    meta.structure ? `PULSE AND PACE: ${meta.structure.pace}` : "",
+    meta.structure ? `SCENE BEATS: ${meta.structure.beat_count}` : "",
+    meta.structure ? `INTERRUPTIONS: ${meta.structure.interruption_count}` : ""
   ]
     .filter(Boolean)
     .join("\n");
@@ -328,8 +332,10 @@ Global rules:
   - Before writing coaching, internally extract the real speaking roles and beat sequence from the sides.
   - If speaker roles are unclear, do not invent structure; stay literal and use exact script labeling only.
 - Coach the reader on how to read the READER ROLE opposite the AUDITION ROLE.
-- Never instruct the reader to "play" the audition character.
+- Never instruct the reader to "play" or read lines for the AUDITION ROLE under ANY circumstances.
+- The reader's job is solely to support the actor who is playing the AUDITION ROLE.
 - If READER ROLE is present, treat that as the reader's character assignment throughout.
+- If READER ROLES is empty or missing, actively infer the scene partner(s) from the dialogue text. The reader plays EVERY speaking role EXCEPT the AUDITION ROLE.
 - If READER ROLES lists more than one role, coach all counterpart roles and contrast them clearly.
 - Any character-specific vocal, physical, or behavioral note must refer to the READER ROLE, never the AUDITION ROLE.
 - The product is: how to not destroy THIS specific audition.

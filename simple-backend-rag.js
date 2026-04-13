@@ -2950,6 +2950,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         sceneText: combinedSceneText,
         characterName: characterName.trim(),
         characterNames: combinedCharacterNames,
+        structure: parsedScreenplay.structure,
         actorAge: actorAge || "",
         productionTitle: productionTitle.trim(),
         productionType: productionType.trim(),
