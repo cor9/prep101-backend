@@ -28,21 +28,12 @@ const HIGH_RISK_TRIGGERS = [
   "porn",
   "orgasm",
   "horny",
-  "naked",
   "sexual",
   "make out",
   "making out",
   "arousal",
   "straddle",
   "thrust",
-  "power imbalance",
-  "older man",
-  "older woman",
-  "teacher",
-  "coach",
-  "boss",
-  "superior",
-  "subordinate",
   "inappropriate",
   "crosses a boundary",
   "boundary violation",
@@ -56,7 +47,6 @@ const EXPLICIT_INTIMACY_TRIGGERS = [
   "porn",
   "sex",
   "horny",
-  "naked",
   "orgasm",
   "arousal",
   "make out",
@@ -70,6 +60,7 @@ const EXPLICIT_INTIMACY_TRIGGERS = [
 ];
 
 const AMBIGUOUS_INTIMACY_TRIGGERS = [
+  "naked",
   "touches",
   "touching",
   "kissing",
@@ -221,30 +212,46 @@ const NON_CHARACTER_CUES = new Set([
   "CONTINUED",
   "CONT D",
   "CONT'D",
+  "MORE",
+  "THE END",
+  "END",
+  "SCENE",
+  "AUDIENCE LAUGHTER",
+  "BIG AUDIENCE LAUGHTER",
 ]);
 
 function extractCharacterCues(sceneText = "") {
   const lines = String(sceneText || "").split("\n");
   const counts = new Map();
 
-  for (const rawLine of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
     const line = rawLine.trim();
     if (!line || line.length > 40) continue;
     if (!/[A-Z]/.test(line) || /[a-z]/.test(line)) continue;
+    if (/^[\[(].*[\])]\s*$/.test(line)) continue;
     if (/^(INT|EXT)[ .]/.test(line)) continue;
     if (/\bSIDES\b/i.test(line)) continue;
     if (/\bCONT['’]?D\b/i.test(line)) continue;
     if (/\d+\.$/.test(line)) continue;
+    if (/\.$/.test(line) && !/\(CONT['’]?D\)/i.test(line)) continue;
+    if (/[:!?]$/.test(line)) continue;
 
     const normalized = normalizeCharacterLabel(line);
     if (!normalized) continue;
     if (NON_CHARACTER_CUES.has(normalized.toUpperCase())) continue;
     if (/\bSIDES\b/i.test(normalized)) continue;
+    if (normalized.split(" ").length > 4) continue;
 
     counts.set(normalized, (counts.get(normalized) || 0) + 1);
   }
 
   return [...counts.entries()]
+    .filter(([name, count]) => {
+      // Keep strong candidates; drop one-off noise like "(MORE)" wrappers.
+      if (count > 1) return true;
+      return name.split(" ").length > 1;
+    })
     .sort((a, b) => b[1] - a[1])
     .map(([name]) => name);
 }
@@ -341,6 +348,32 @@ function isHighRiskScene(content = "") {
   return hasAny(content, HIGH_RISK_TRIGGERS);
 }
 
+function detectComedyMode(data = {}, combinedContent = "") {
+  const genre = normalize(data.genre || "");
+  const productionType = normalize(data.productionType || "");
+  const title = normalize(data.productionTitle || "");
+  const storyline = normalize(data.storyline || "");
+  const full = [genre, productionType, title, storyline, normalize(combinedContent)]
+    .filter(Boolean)
+    .join(" ");
+
+  const multicamSignals = [
+    "multi-camera",
+    "multi camera",
+    "multi-cam",
+    "multicam",
+    "sitcom",
+    "comedy",
+    "audience laughter",
+    "big audience laughter",
+    "disney",
+    "nickelodeon",
+    "tween",
+  ];
+
+  return multicamSignals.some((signal) => full.includes(signal));
+}
+
 function buildReaderModeContext(data = {}) {
   const combinedContent = [
     data.sceneText || "",
@@ -369,10 +402,12 @@ function buildReaderModeContext(data = {}) {
       hasAny(combinedContent, ROMANTIC_CONTEXT_TRIGGERS) ||
       hasAny(combinedContent, AMBIGUOUS_INTIMACY_TRIGGERS));
   const highRiskSignal = explicitHighRiskSignal || compoundedBoundaryRisk;
+  const comedyMode = detectComedyMode(data, combinedContent);
 
   return {
     mode: highRiskSignal ? "HIGH_RISK" : "STANDARD",
     highRiskScene: highRiskSignal,
+    comedyMode,
     intimacyMode,
     intimacyArc: intimacyMode && detectIntimacyArc(combinedContent),
     actorAge: parsedActorAge,
@@ -391,6 +426,7 @@ function buildFlags(modeContext = {}) {
   const flags = [];
 
   if (modeContext.highRiskScene) flags.push("high_risk");
+  if (modeContext.comedyMode) flags.push("comedy_mode");
   if (modeContext.intimacyMode) flags.push("intimacy");
   if (modeContext.parentContext) flags.push("parent_context");
   if (modeContext.moralContradiction) flags.push("moral_contradiction");

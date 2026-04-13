@@ -253,6 +253,13 @@ Return ONLY valid JSON that matches this schema exactly:
 ${SCHEMA_TEXT}
 
 Global rules:
+- SCRIPT-FAITHFUL CHARACTER RULE:
+  - Use only character names that explicitly appear in the provided sides/metadata.
+  - Do NOT infer, rename, relabel, or invent placeholder roles.
+  - If a role is unclear, reference it exactly as written in the script.
+- EXTRACTION-FIRST RULE:
+  - Before writing coaching, internally extract the real speaking roles and beat sequence from the sides.
+  - If speaker roles are unclear, stay literal and avoid role invention.
 - Coach the reader on how to read the READER ROLE opposite the AUDITION ROLE.
 - Never instruct the reader to "play" the audition character.
 - If READER ROLE is present, treat that as the reader's character assignment throughout.
@@ -284,6 +291,16 @@ Global rules:
 - If fallback mode is true, stay useful without pretending you saw clean lines.
 
 ${highRiskRules}
+
+${flags.includes("comedy_mode")
+    ? `COMEDY MODE (MULTI-CAM ENFORCEMENT):
+- This is fast-switch comedic structure, not slow emotional-arc drama.
+- Prioritize reversals, contrast, timing, and grounded reactions over psychological interpretation.
+- Reader must NOT set up jokes, cushion reversals, or signal punchlines.
+- Reader must stay grounded and one beat behind while the actor swings between extremes.
+- Do NOT force "shame/exposure/containment" framing unless the script explicitly supports it.
+- Use script moments like pivots, hard turns, and contradiction as the main coaching spine.`
+    : ""}
 
 METADATA:
 ${metadataBlock}
