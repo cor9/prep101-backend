@@ -531,6 +531,7 @@ const Dashboard = () => {
 
   // ====== GENERATE GUIDE ======
   const handleGenerateGuide = async (formData) => {
+    let payload = null;
     const modeForRequest = formData?.mode || (isReader101Context ? "reader_support" : "standard");
     setActiveGenerationMode(modeForRequest);
     const shouldUseTwoCallPdfEndpoint =
@@ -561,6 +562,68 @@ const Dashboard = () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout
 
+    const buildMultipartPayload = () => {
+      const multipart = new FormData();
+      multipart.append("file", uploadedFile);
+      Object.entries(formData || {}).forEach(([key, value]) => {
+        if (value == null) return;
+        multipart.append(key, String(value));
+      });
+      return multipart;
+    };
+
+    const parseAndHandleGuideResponse = async (response) => {
+      const ct = response.headers.get("content-type") || "";
+      let parsedData;
+
+      if (ct.includes("application/json")) {
+        parsedData = await response.json();
+        console.log("🎭 Guide generation response:", parsedData);
+
+        if (parsedData?.guideContent) {
+          openHtmlInNewTab(parsedData.guideContent);
+
+          if (parsedData.savedToDatabase === false) {
+            toast(
+              "Guide created but not saved to your account. Please log in to save guides.",
+              { icon: "⚠️" }
+            );
+          }
+
+          if (parsedData.childGuideMessage) {
+            toast(parsedData.childGuideMessage, { icon: "🌟" });
+          } else if (parsedData.childGuideQueued) {
+            toast(
+              "Child guide is being generated in the background and will appear on your dashboard shortly.",
+              { icon: "🌟" }
+            );
+          }
+          return parsedData;
+        }
+
+        if (!response.ok) {
+          const serverMessage =
+            parsedData?.reason ||
+            parsedData?.detail ||
+            parsedData?.message ||
+            parsedData?.debug?.tip ||
+            parsedData?.error;
+          throw new Error(
+            serverMessage || `Failed to generate guide (HTTP ${response.status})`
+          );
+        }
+
+        throw new Error("No guide content returned.");
+      }
+
+      const html = await response.text();
+      if (!html || html.length < 50) {
+        throw new Error("Empty guide response.");
+      }
+      openHtmlInNewTab(html);
+      return parsedData;
+    };
+
     try {
       const normalizedUploadIds = (
         uploadData.uploadIds || [uploadData.uploadId]
@@ -588,7 +651,7 @@ const Dashboard = () => {
             }
           : {});
 
-      const payload = {
+      payload = {
         uploadId: uploadData.uploadId || normalizedUploadIds[0],
         uploadIds: normalizedUploadIds,
         scenePayloads: normalizedScenePayloads,
@@ -625,12 +688,7 @@ const Dashboard = () => {
         }
       };
       if (shouldUseTwoCallPdfEndpoint) {
-        const multipart = new FormData();
-        multipart.append("file", uploadedFile);
-        Object.entries(formData || {}).forEach(([key, value]) => {
-          if (value == null) return;
-          multipart.append(key, String(value));
-        });
+        const multipart = buildMultipartPayload();
         const multipartHeaders = token ? { Authorization: `Bearer ${token}` } : {};
         const primaryInit = {
           method: "POST",
@@ -680,54 +738,7 @@ const Dashboard = () => {
       }
 
       clearTimeout(timeoutId);
-
-      const ct = res.headers.get("content-type") || "";
-      let data;
-
-      if (ct.includes("application/json")) {
-        data = await res.json();
-        console.log("🎭 Guide generation response:", data);
-
-        // If we have guide content, show it even if auth failed (401)
-        if (data?.guideContent) {
-          // Show the guide regardless of success status
-          openHtmlInNewTab(data.guideContent);
-
-          // Warn user if guide wasn't saved
-          if (data.savedToDatabase === false) {
-            toast(
-              "Guide created but not saved to your account. Please log in to save guides.",
-              { icon: "⚠️" }
-            );
-          }
-
-          if (data.childGuideMessage) {
-            toast(data.childGuideMessage, { icon: "🌟" });
-          } else if (data.childGuideQueued) {
-            toast(
-              "Child guide is being generated in the background and will appear on your dashboard shortly.",
-              { icon: "🌟" }
-            );
-          }
-        } else if (!res.ok) {
-          // No guide content and request failed
-          const serverMessage =
-            data?.reason ||
-            data?.detail ||
-            data?.message ||
-            data?.debug?.tip ||
-            data?.error;
-          throw new Error(
-            serverMessage || `Failed to generate guide (HTTP ${res.status})`
-          );
-        } else {
-          throw new Error("No guide content returned.");
-        }
-      } else {
-        const html = await res.text();
-        if (!html || html.length < 50) throw new Error("Empty guide response.");
-        openHtmlInNewTab(html);
-      }
+      const data = await parseAndHandleGuideResponse(res);
 
       const successCopy =
         modeForRequest === "reader_support"
@@ -778,6 +789,42 @@ const Dashboard = () => {
         }));
       }
     } catch (err) {
+      if (/Empty guide response/i.test(String(err?.message || ""))) {
+        try {
+          const directApiBase = "https://prep101-api.vercel.app";
+          let recoveryResponse;
+
+          if (shouldUseTwoCallPdfEndpoint) {
+            recoveryResponse = await fetch(
+              `${directApiBase}/api/guides/generate-from-pdf`,
+              {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: buildMultipartPayload(),
+                mode: "cors",
+                credentials: "omit",
+              }
+            );
+          } else {
+            recoveryResponse = await fetch(`${directApiBase}/api/guides/generate`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify(payload),
+              mode: "cors",
+              credentials: "omit",
+            });
+          }
+
+          await parseAndHandleGuideResponse(recoveryResponse);
+          toast.success("Guide recovered and opened.");
+          return;
+        } catch (recoveryError) {
+          console.error("Guide recovery attempt failed:", recoveryError);
+        }
+      }
       console.error("Guide generation error:", err);
 
       if (err.name === "AbortError") {
