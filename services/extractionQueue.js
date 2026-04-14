@@ -3,9 +3,12 @@ const IORedis = require("ioredis");
 const { processPdfExtractionJob } = require("./pdfExtractionJobProcessor");
 
 const QUEUE_NAME = "pdf-extraction-jobs";
+const useRedisQueue = Boolean(process.env.REDIS_URL);
 let queueSingleton = null;
 let queueEventsSingleton = null;
 let workerSingleton = null;
+const inMemoryJobs = new Map();
+let inMemoryJobCounter = 0;
 
 function getRedisConnection() {
   const redisUrl = process.env.REDIS_URL;
@@ -19,6 +22,7 @@ function getRedisConnection() {
 }
 
 function getQueue() {
+  if (!useRedisQueue) return null;
   if (queueSingleton) return queueSingleton;
   const connection = getRedisConnection();
   queueSingleton = new Queue(QUEUE_NAME, { connection });
@@ -26,6 +30,7 @@ function getQueue() {
 }
 
 function getQueueEvents() {
+  if (!useRedisQueue) return null;
   if (queueEventsSingleton) return queueEventsSingleton;
   const connection = getRedisConnection();
   queueEventsSingleton = new QueueEvents(QUEUE_NAME, { connection });
@@ -33,6 +38,7 @@ function getQueueEvents() {
 }
 
 function startExtractionWorker() {
+  if (!useRedisQueue) return null;
   if (workerSingleton) return workerSingleton;
   const connection = getRedisConnection();
 
@@ -57,6 +63,52 @@ function startExtractionWorker() {
 }
 
 async function enqueueExtractionJob(payload = {}) {
+  if (!useRedisQueue) {
+    const id = String(++inMemoryJobCounter);
+    const now = Date.now();
+    const record = {
+      id,
+      state: "waiting",
+      progress: 0,
+      data: payload,
+      result: null,
+      failedReason: null,
+      timestamp: now,
+      processedOn: null,
+      finishedOn: null,
+    };
+    inMemoryJobs.set(id, record);
+
+    setImmediate(async () => {
+      const active = inMemoryJobs.get(id);
+      if (!active) return;
+      active.state = "active";
+      active.progress = 10;
+      active.processedOn = Date.now();
+      inMemoryJobs.set(id, active);
+      try {
+        const result = await processPdfExtractionJob(payload);
+        inMemoryJobs.set(id, {
+          ...active,
+          state: "completed",
+          progress: 100,
+          result,
+          finishedOn: Date.now(),
+        });
+      } catch (error) {
+        inMemoryJobs.set(id, {
+          ...active,
+          state: "failed",
+          progress: 100,
+          failedReason: error.message,
+          finishedOn: Date.now(),
+        });
+      }
+    });
+
+    return { id };
+  }
+
   const queue = getQueue();
   const job = await queue.add("extract-pdf", payload, {
     attempts: 2,
@@ -68,6 +120,22 @@ async function enqueueExtractionJob(payload = {}) {
 }
 
 async function getExtractionJob(jobId) {
+  if (!useRedisQueue) {
+    const job = inMemoryJobs.get(String(jobId));
+    if (!job) return null;
+    return {
+      id: String(job.id),
+      state: job.state,
+      progress: job.progress || 0,
+      data: job.data,
+      result: job.state === "completed" ? job.result : null,
+      failedReason: job.state === "failed" ? job.failedReason : null,
+      timestamp: job.timestamp,
+      processedOn: job.processedOn || null,
+      finishedOn: job.finishedOn || null,
+    };
+  }
+
   const queue = getQueue();
   const job = await queue.getJob(jobId);
   if (!job) return null;
