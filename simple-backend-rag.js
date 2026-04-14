@@ -204,6 +204,7 @@ const { sendAnthropicMessage } = require("./services/anthropicClient");
 const { retrieveMethodologyContext } = require("./services/methodologyRetrieval");
 let enqueueExtractionJob = null;
 let getExtractionJob = null;
+let processPdfExtractionJob = null;
 
 try {
   const extractionQueue = require("./services/extractionQueue");
@@ -211,6 +212,12 @@ try {
   getExtractionJob = extractionQueue.getExtractionJob;
 } catch (error) {
   console.log("⚠️  Extraction queue unavailable:", error.message);
+}
+
+try {
+  ({ processPdfExtractionJob } = require("./services/pdfExtractionJobProcessor"));
+} catch (error) {
+  console.log("⚠️  Extraction processor unavailable:", error.message);
 }
 
 // Import new authentication and payment features (with error handling)
@@ -2542,6 +2549,14 @@ app.options("/api/extraction/jobs", (req, res) => {
 
 app.get("/api/extraction/jobs/:jobId", async (req, res) => {
   try {
+    if (!process.env.REDIS_URL) {
+      return res.status(409).json({
+        success: false,
+        error: "Polling mode requires REDIS_URL-backed queue.",
+        hint: "Without REDIS_URL, use POST /api/extraction/jobs and read the immediate completed result.",
+      });
+    }
+
     if (!getExtractionJob) {
       return res.status(503).json({
         error: "Extraction queue is not configured.",
@@ -2570,15 +2585,32 @@ app.get("/api/extraction/jobs/:jobId", async (req, res) => {
 
 app.post("/api/extraction/jobs", upload.single("file"), async (req, res) => {
   try {
-    if (!enqueueExtractionJob) {
+    if (!enqueueExtractionJob && !processPdfExtractionJob) {
       return res.status(503).json({
         error: "Extraction queue is not configured.",
-        hint: "Set REDIS_URL and start extraction worker process.",
+        hint: "Set REDIS_URL and start extraction worker process, or enable processor module.",
       });
     }
 
     if (!req.file || req.file.mimetype !== "application/pdf") {
       return res.status(400).json({ error: "Please upload a PDF file." });
+    }
+
+    if (!process.env.REDIS_URL && processPdfExtractionJob) {
+      const result = await processPdfExtractionJob({
+        filename: req.file.originalname,
+        pdfBase64: req.file.buffer.toString("base64"),
+        userId: req.userId || req.user?.id || null,
+        createdAt: new Date().toISOString(),
+      });
+      return res.status(200).json({
+        success: true,
+        mode: "immediate",
+        state: "completed",
+        message:
+          "REDIS_URL is not configured, so extraction was processed immediately in-request.",
+        result,
+      });
     }
 
     const job = await enqueueExtractionJob({
