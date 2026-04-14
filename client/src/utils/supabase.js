@@ -14,10 +14,31 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 })
 
-const looksLikeHtml = (response) =>
+const looksLikeHtmlContentType = (response) =>
   String(response?.headers?.get('content-type') || '')
     .toLowerCase()
     .includes('text/html');
+
+const looksLikeHtmlBody = (text = '') => {
+  const snippet = String(text || '').trim().slice(0, 32).toLowerCase();
+  return (
+    snippet.startsWith('<!doctype') ||
+    snippet.startsWith('<html') ||
+    snippet.startsWith('<head') ||
+    snippet.startsWith('<body')
+  );
+};
+
+const responseLooksLikeHtml = async (response) => {
+  if (!response) return false;
+  if (looksLikeHtmlContentType(response)) return true;
+  try {
+    const bodyPreview = await response.clone().text();
+    return looksLikeHtmlBody(bodyPreview);
+  } catch (_) {
+    return false;
+  }
+};
 
 async function authFetch(path, init = {}) {
   const primaryBase = API_BASE || '';
@@ -30,7 +51,7 @@ async function authFetch(path, init = {}) {
   try {
     const primaryResponse = await run(primaryUrl);
     // If proxy returned HTML (usually SPA fallback), retry direct API.
-    if (canFallback && looksLikeHtml(primaryResponse)) {
+    if (canFallback && await responseLooksLikeHtml(primaryResponse)) {
       return run(fallbackUrl);
     }
     return primaryResponse;
@@ -39,6 +60,18 @@ async function authFetch(path, init = {}) {
       return run(fallbackUrl);
     }
     throw error;
+  }
+}
+
+async function parseJsonResponse(response, fallbackMessage = 'Request failed') {
+  const raw = await response.text();
+  try {
+    return JSON.parse(raw || '{}');
+  } catch (error) {
+    if (looksLikeHtmlBody(raw)) {
+      throw new Error('Unexpected HTML response from auth service. Please retry.');
+    }
+    throw new Error(fallbackMessage);
   }
 }
 
@@ -64,7 +97,7 @@ export const signUp = async (email, password, name) => {
       })
     });
 
-    const result = await response.json();
+    const result = await parseJsonResponse(response, 'Registration failed');
     console.log('🔍 Backend response:', result);
 
     if (!response.ok) {
@@ -105,7 +138,7 @@ export const signIn = async (email, password) => {
       body: JSON.stringify({ email, password })
     });
 
-    const result = await response.json();
+    const result = await parseJsonResponse(response, 'Login failed');
     console.log('🔍 Backend login response:', result);
 
     if (!response.ok) {
@@ -154,7 +187,7 @@ export const getCurrentUser = async () => {
       return { user: null, error: null };
     }
 
-    const result = await response.json();
+    const result = await parseJsonResponse(response, 'Verification failed');
     if (result.valid && result.user) {
       return {
         user: result.user,
