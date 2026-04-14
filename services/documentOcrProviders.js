@@ -93,44 +93,84 @@ async function extractWithMistralOcr(purifiedPages = []) {
   }
 
   const url = process.env.MISTRAL_OCR_URL || "https://api.mistral.ai/v1/ocr";
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-2512";
-  const form = new FormData();
-  form.append("model", model);
-  form.append("response_format", "json");
+  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
+  const blocks = [];
+  const raws = [];
 
-  purifiedPages.forEach((page, index) => {
-    form.append(`file_${index + 1}`, page.imageBuffer, {
-      filename: `page-${page.page || index + 1}.png`,
-      contentType: "image/png",
+  for (const page of purifiedPages) {
+    const body = {
+      model,
+      document: {
+        type: "image_url",
+        image_url: `data:image/png;base64,${page.imageBuffer.toString("base64")}`,
+      },
+      include_image_base64: false,
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      timeout: 120000,
     });
-  });
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      ...form.getHeaders(),
-    },
-    body: form,
-    timeout: 120000,
-  });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Mistral OCR failed (${response.status}): ${err}`);
+    }
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Mistral OCR failed (${response.status}): ${body}`);
+    const payload = await response.json();
+    raws.push(payload);
+    const parsedBlocks = normalizeMistralPayload(payload);
+
+    if (parsedBlocks.length) {
+      parsedBlocks.forEach((block, index) => {
+        blocks.push({
+          ...block,
+          page: block.page || page.page || 1,
+          pageWidth: block.pageWidth || page.width || 0,
+          pageHeight: block.pageHeight || page.height || 0,
+          bbox: block.bbox || { x: 120, y: 100 + index * 22, width: 600, height: 18 },
+        });
+      });
+      continue;
+    }
+
+    const fallbackText =
+      payload?.pages?.map((p) => p?.markdown || p?.text || "").join("\n") ||
+      payload?.text ||
+      "";
+    const lines = String(fallbackText)
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    lines.forEach((line, index) => {
+      blocks.push(
+        asStructuredBlock({
+          text: line,
+          x: 120,
+          y: 100 + index * 22,
+          width: Math.max(60, line.length * 8),
+          height: 18,
+          page: page.page || 1,
+          pageWidth: page.width || 1000,
+          pageHeight: page.height || 1400,
+        })
+      );
+    });
   }
-
-  const payload = await response.json();
-  const blocks = normalizeMistralPayload(payload);
 
   if (!blocks.length) {
     throw new Error("Mistral OCR returned no text blocks.");
   }
 
   return {
-    provider: "mistral-ocr-2512",
+    provider: model,
     blocks,
-    raw: payload,
+    raw: { pages: raws },
   };
 }
 
