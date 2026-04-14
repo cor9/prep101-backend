@@ -78,6 +78,7 @@ const FileUpload = ({ onUpload }) => {
 
         onUpload({
           ...data,
+          localFile: file,
           uploadMessage: sanitizedUploadMessage,
           warnings: sanitizeWarnings(data.warnings),
           filename: data.filename || data.originalName || file.name,

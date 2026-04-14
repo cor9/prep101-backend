@@ -241,6 +241,7 @@ const Dashboard = () => {
       return null;
     }
   });
+  const [uploadedFile, setUploadedFile] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -441,14 +442,19 @@ const Dashboard = () => {
 
   // ====== FILE UPLOAD ======
   const handleFileUpload = (data) => {
-    setUploadData(data);
+    const { localFile, ...serializableData } = data || {};
+    setUploadedFile(localFile || null);
+    setUploadData(serializableData);
     try {
-      sessionStorage.setItem("prep101_upload_data", JSON.stringify(data));
+      sessionStorage.setItem(
+        "prep101_upload_data",
+        JSON.stringify(serializableData)
+      );
     } catch (error) {
       console.warn("Could not cache upload data for recovery:", error);
     }
-    const extractedWords = Number(data?.wordCount || 0);
-    if (data?.scriptReadable === false) {
+    const extractedWords = Number(serializableData?.wordCount || 0);
+    if (serializableData?.scriptReadable === false) {
       toast.error(
         "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
       );
@@ -460,8 +466,8 @@ const Dashboard = () => {
       );
       return;
     }
-    if (data.uploadMessage) {
-      toast(data.uploadMessage, { icon: "🧠", duration: 5000 });
+    if (serializableData.uploadMessage) {
+      toast(serializableData.uploadMessage, { icon: "🧠", duration: 5000 });
       return;
     }
     toast.success(`PDF processed — extracted ${extractedWords} words.`);
@@ -515,10 +521,6 @@ const Dashboard = () => {
     const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout
 
     try {
-      const headers = {
-        "Content-Type": "application/json",
-      };
-
       const normalizedUploadIds = (
         uploadData.uploadIds || [uploadData.uploadId]
       ).filter(Boolean);
@@ -559,16 +561,36 @@ const Dashboard = () => {
         source: uploadData.source || uploadData.extractionMethod || "text",
         ...formData,
       };
+      const shouldUseTwoCallPdfEndpoint =
+        !isReader101Context && Boolean(uploadedFile);
 
       console.log("🚀 Starting guide generation for:", formData.characterName);
       toast.loading("Generating your guide... this may take about 3-6 minutes.");
-
-      const res = await fetch(`${API_BASE}/api/guides/generate`, {
-        method: "POST",
-        ...withApiCredentials({ headers }, user),
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
+      let res;
+      if (shouldUseTwoCallPdfEndpoint) {
+        const multipart = new FormData();
+        multipart.append("file", uploadedFile);
+        Object.entries(formData || {}).forEach(([key, value]) => {
+          if (value == null) return;
+          multipart.append(key, String(value));
+        });
+        res = await fetch(`${API_BASE}/api/guides/generate-from-pdf`, {
+          method: "POST",
+          ...withApiCredentials({}, user),
+          body: multipart,
+          signal: controller.signal,
+        });
+      } else {
+        const headers = {
+          "Content-Type": "application/json",
+        };
+        res = await fetch(`${API_BASE}/api/guides/generate`, {
+          method: "POST",
+          ...withApiCredentials({ headers }, user),
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      }
 
       clearTimeout(timeoutId);
 
