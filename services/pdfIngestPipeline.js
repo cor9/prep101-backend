@@ -3,6 +3,7 @@ const os = require("os");
 const path = require("path");
 const fetch = require("node-fetch");
 const pdfParse = require("pdf-parse");
+const FormData = require("form-data");
 
 const {
   scrubWatermarks,
@@ -487,6 +488,164 @@ Return plain text only. No commentary.`;
   }
 }
 
+function extractOpenAIResponseText(payload = {}) {
+  if (typeof payload.output_text === "string" && payload.output_text.trim()) {
+    return payload.output_text.trim();
+  }
+
+  if (Array.isArray(payload.output)) {
+    const chunks = [];
+    for (const item of payload.output) {
+      if (!item || !Array.isArray(item.content)) continue;
+      for (const part of item.content) {
+        if (typeof part?.text === "string" && part.text.trim()) {
+          chunks.push(part.text.trim());
+        }
+      }
+    }
+    if (chunks.length) return chunks.join("\n\n");
+  }
+
+  return "";
+}
+
+async function uploadPdfToOpenAI(pdfBuffer, apiKey) {
+  const form = new FormData();
+  form.append("purpose", "assistants");
+  form.append("file", pdfBuffer, {
+    filename: "upload.pdf",
+    contentType: "application/pdf",
+  });
+
+  const response = await fetch("https://api.openai.com/v1/files", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      ...form.getHeaders(),
+    },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`openaiFileUploadFailed:${response.status}:${err}`);
+  }
+
+  const payload = await response.json();
+  return payload?.id;
+}
+
+async function deleteOpenAIFile(fileId, apiKey) {
+  if (!fileId) return;
+  try {
+    await fetch(`https://api.openai.com/v1/files/${fileId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  } catch (_error) {
+    // no-op
+  }
+}
+
+async function extractOpenAIDocumentStage(pdfBuffer) {
+  const apiKey = (process.env.OPENAI_API_KEY || "").trim();
+  if (!apiKey) {
+    return {
+      stage: "document",
+      source: "document",
+      provider: "openai-document",
+      skipped: true,
+      text: "",
+      rawText: "",
+      wordCount: 0,
+      quality: "needs_escalation",
+      failures: ["openaiKeyMissing"],
+      characterNames: [],
+    };
+  }
+
+  const model = process.env.OPENAI_DOCUMENT_MODEL || "gpt-4.1";
+  const prompt = `Extract only the usable audition script text from this PDF.
+
+INCLUDE:
+- Character names
+- Dialogue
+- Scene headings
+- Essential stage directions
+
+IGNORE:
+- Watermarks
+- Dates/timestamps
+- IDs/codes
+- Repeated headers/footers
+
+Return plain text only. No commentary.`;
+
+  let fileId = null;
+  try {
+    fileId = await uploadPdfToOpenAI(pdfBuffer, apiKey);
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        max_output_tokens: 8192,
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: prompt },
+              { type: "input_file", file_id: fileId },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      return {
+        stage: "document",
+        source: "document",
+        provider: "openai-document",
+        text: "",
+        rawText: "",
+        wordCount: 0,
+        quality: "needs_escalation",
+        failures: [`openaiDocumentFailed:${response.status}:${err}`],
+        characterNames: [],
+      };
+    }
+
+    const payload = await response.json();
+    const rawText = extractOpenAIResponseText(payload);
+
+    return {
+      source: "document",
+      provider: `openai-document:${model}`,
+      ...evaluateExtraction("document", rawText, { minWordCount: 50 }),
+    };
+  } catch (error) {
+    return {
+      stage: "document",
+      source: "document",
+      provider: "openai-document",
+      text: "",
+      rawText: "",
+      wordCount: 0,
+      quality: "needs_escalation",
+      failures: [`openaiDocumentFailed:${error.message || "request_failed"}`],
+      characterNames: [],
+    };
+  } finally {
+    await deleteOpenAIFile(fileId, apiKey);
+  }
+}
+
 async function extractOcrStage(pages) {
   let Tesseract = null;
   try {
@@ -783,11 +942,16 @@ async function ingestPdf(pdfBuffer, options = {}) {
 
   // If text extraction is weak, try direct PDF document extraction via Claude
   // before image conversion (which can fail on some serverless runtimes).
-  const [claudeDocumentStage, geminiDocumentStage] = await Promise.all([
+  const [claudeDocumentStage, geminiDocumentStage, openaiDocumentStage] = await Promise.all([
     extractClaudeDocumentStage(pdfBuffer),
     extractGeminiDocumentStage(pdfBuffer),
+    extractOpenAIDocumentStage(pdfBuffer),
   ]);
-  const documentCandidates = [claudeDocumentStage, geminiDocumentStage].filter(Boolean);
+  const documentCandidates = [
+    claudeDocumentStage,
+    geminiDocumentStage,
+    openaiDocumentStage,
+  ].filter(Boolean);
   const documentStage =
     documentCandidates
       .slice()
@@ -806,6 +970,7 @@ async function ingestPdf(pdfBuffer, options = {}) {
         textStage,
         claudeDocumentStage,
         geminiDocumentStage,
+        openaiDocumentStage,
         documentStage,
         ocrStage: null,
         visionStage: null,
@@ -874,7 +1039,13 @@ async function ingestPdf(pdfBuffer, options = {}) {
 
   const timeoutMs = options.maxPipelineMs || 18000;
   const bestBaseStage =
-    [documentStage, geminiDocumentStage, claudeDocumentStage, textStage]
+    [
+      documentStage,
+      openaiDocumentStage,
+      geminiDocumentStage,
+      claudeDocumentStage,
+      textStage,
+    ]
       .filter(Boolean)
       .sort((a, b) => (b?.wordCount || 0) - (a?.wordCount || 0))[0] || textStage;
   const timeoutResult = {
@@ -890,6 +1061,7 @@ async function ingestPdf(pdfBuffer, options = {}) {
       textStage,
       claudeDocumentStage,
       geminiDocumentStage,
+      openaiDocumentStage,
       documentStage,
       timeoutMs,
       timeoutFallback: true,
