@@ -69,7 +69,7 @@ const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard' }) => {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     
     // Validate required fields
     const required = ['characterName', 'actorAge', 'productionTitle', 'productionType', 'roleSize', 'genre'];
@@ -112,7 +112,7 @@ const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard' }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Character Information */}
       <div>
         <h3 style={{ 
@@ -525,7 +525,8 @@ const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard' }) => {
       )}
 
       <button
-        type="submit"
+        type="button"
+        onClick={handleSubmit}
         disabled={!isFormValid}
         style={{
           width: '100%',
@@ -557,7 +558,7 @@ const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard' }) => {
       >
         {!hasFile ? 'Upload PDF First' : selectedModeCopy.submit}
       </button>
-    </form>
+    </div>
   );
 };
 
