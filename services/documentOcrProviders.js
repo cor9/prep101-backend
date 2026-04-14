@@ -232,9 +232,15 @@ async function extractStructuredOcr(purifiedPages = []) {
       llama.fallbackReason = mistralError.message;
       return llama;
     } catch (llamaError) {
-      const openai = await extractWithOpenAiVision(purifiedPages);
-      openai.fallbackReason = `${mistralError.message} | ${llamaError.message}`;
-      return openai;
+      try {
+        const openai = await extractWithOpenAiVision(purifiedPages);
+        openai.fallbackReason = `${mistralError.message} | ${llamaError.message}`;
+        return openai;
+      } catch (openaiError) {
+        throw new Error(
+          `Mistral failed: ${mistralError.message} || Llama failed: ${llamaError.message} || OpenAI failed: ${openaiError.message}`
+        );
+      }
     }
   }
 }
