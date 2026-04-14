@@ -152,24 +152,14 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Manual CORS middleware for maximum compatibility
+// NOTE: We reflect request origin to prevent intermittent browser CORS failures
+// on cross-site authenticated multipart requests.
 app.use((req, res, next) => {
-  const envOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
-  const allowedOrigins = [
-    "https://prep101.site",
-    "https://www.prep101.site",
-    "https://prep101-api.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "https://reader101.site",
-    "https://www.reader101.site",
-    "https://boldchoices.site",
-    "https://www.boldchoices.site",
-    ...envOrigins
-  ];
   const origin = req.headers.origin;
 
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
   }
 
   // Allow credentials for cookies/auth
