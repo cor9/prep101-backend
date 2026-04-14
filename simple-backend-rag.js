@@ -2898,7 +2898,7 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
         productionType: productionType.trim(),
         scriptWordCount: twoCall.screenplayWordCount,
         guideLength: twoCall.htmlGuide.length,
-        extractionMethod: "claude_two_call",
+        extractionMethod: twoCall.extractionMethod || "claude_two_call",
         extractionModel: twoCall.extractionModel,
         guideModel: twoCall.guideModel,
         persistenceMethod,
