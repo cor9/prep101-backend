@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import API_BASE from '../config/api';
 import { withApiCredentials } from '../utils/apiAuth';
 
+const DIRECT_API_BASE = 'https://prep101-api.vercel.app';
+
 const isLegacyFallbackMessage = (value = '') =>
   /limited script text detected|upload clearer sides for line-specific detail/i.test(
     String(value || '')
@@ -13,6 +15,24 @@ const sanitizeWarnings = (warnings = []) =>
   (Array.isArray(warnings) ? warnings : []).filter(
     (warning) => !isLegacyFallbackMessage(warning)
   );
+
+const parseResponseSafely = async (response) => {
+  const raw = await response.text();
+  if (!raw || !raw.trim()) {
+    return { ok: false, data: { error: `Empty response body (HTTP ${response.status})` } };
+  }
+  try {
+    return { ok: true, data: JSON.parse(raw) };
+  } catch (_error) {
+    return {
+      ok: false,
+      data: {
+        error: `Non-JSON response from upload service (HTTP ${response.status})`,
+        raw: raw.slice(0, 180),
+      },
+    };
+  }
+};
 
 const FileUpload = ({ onUpload, onUploadStart, onUploadEnd }) => {
   const [uploading, setUploading] = useState(false);
@@ -41,17 +61,39 @@ const FileUpload = ({ onUpload, onUploadStart, onUploadEnd }) => {
     let uploadSucceeded = false;
 
     try {
-      const response = await fetch(`${API_BASE}/api/upload`, {
+      const uploadUrl = `${API_BASE}/api/upload`;
+      const fallbackUrl = `${DIRECT_API_BASE}/api/upload`;
+      const canFallback = uploadUrl !== fallbackUrl;
+
+      const requestInit = {
         method: 'POST',
         ...withApiCredentials(),
         body: formData,
-      });
+      };
 
-      const data = await response.json();
+      let response = await fetch(uploadUrl, requestInit);
+      let parsed = await parseResponseSafely(response);
+
+      if (!parsed.ok && canFallback) {
+        response = await fetch(fallbackUrl, {
+          method: 'POST',
+          body: formData,
+          credentials: 'omit',
+          mode: 'cors',
+        });
+        parsed = await parseResponseSafely(response);
+      }
+
+      const data = parsed.data || {};
 
       if (!response.ok) {
         console.log('❌ Backend Error Detail:', data);
-        throw new Error(data.error || data.message || 'Upload failed');
+        throw new Error(data.error || data.message || `Upload failed (HTTP ${response.status})`);
+      }
+
+      if (!parsed.ok) {
+        console.log('❌ Upload Parse Error Detail:', data);
+        throw new Error(data.error || 'Upload failed to return valid JSON');
       }
 
       if (data.success) {
