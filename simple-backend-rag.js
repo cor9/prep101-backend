@@ -107,6 +107,8 @@ app.get("/api/diagnostics", async (req, res) => {
       health: "✅ Available",
       test: "✅ Available",
       guidesGenerate: "✅ Available (POST /api/guides/generate)",
+      guidesGenerateFromPdf:
+        "✅ Available (POST /api/guides/generate-from-pdf)",
       diagnostics: "✅ Available (GET /api/diagnostics)",
     },
   });
@@ -122,6 +124,7 @@ app.get("/", (req, res) => {
       health: "/health",
       apiHealth: "/api/health",
       upload: "/api/upload",
+      guidesGenerateFromPdf: "/api/guides/generate-from-pdf",
       extractionJobs: "/api/extraction/jobs",
       guides: "/api/guides",
       auth: "/api/auth",
@@ -202,6 +205,9 @@ const {
 } = require("./config/models");
 const { sendAnthropicMessage } = require("./services/anthropicClient");
 const { retrieveMethodologyContext } = require("./services/methodologyRetrieval");
+const {
+  generateGuideFromPdfTwoCall,
+} = require("./services/claudePdfGuidePipeline");
 let enqueueExtractionJob = null;
 let getExtractionJob = null;
 let processPdfExtractionJob = null;
@@ -2744,6 +2750,166 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       success: false, 
       error: "Extraction process failed: " + error.message,
       debug: error.message 
+    });
+  }
+});
+
+// Claude Two-Call PDF -> Guide endpoint
+app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file || req.file.mimetype !== "application/pdf") {
+      return res.status(400).json({ error: "Please upload a PDF file." });
+    }
+
+    const {
+      characterName,
+      actorAge,
+      productionTitle,
+      productionType,
+      roleSize,
+      genre,
+      storyline,
+      characterBreakdown,
+      callbackNotes,
+      focusArea,
+    } = req.body;
+
+    if (!characterName || !productionTitle || !productionType) {
+      return res.status(400).json({
+        error: "Missing required fields: characterName, productionTitle, productionType",
+      });
+    }
+
+    const currentUser = await loadBillingUser(
+      req.user || (User && req.userId ? await User.findByPk(req.userId) : null)
+    );
+
+    if (!currentUser) {
+      return res.status(401).json({
+        success: false,
+        error: "Authentication required to save guide",
+      });
+    }
+
+    const prep101Usage = buildPrep101Usage(currentUser);
+    const isAdminUser =
+      currentUser.betaAccessLevel === "admin" ||
+      currentUser.subscription === "admin";
+    const hasPrep101Access = isAdminUser || prep101Usage.canGenerate;
+
+    if (!hasPrep101Access) {
+      return res.status(403).json({
+        success: false,
+        error:
+          "You've used your monthly Prep101 guides and have no top-up credits remaining.",
+        prep101Usage,
+      });
+    }
+
+    const apiKey = (process.env.ANTHROPIC_API_KEY || "").trim();
+    if (!apiKey) {
+      return res.status(503).json({
+        success: false,
+        error: "ANTHROPIC_API_KEY is not configured.",
+      });
+    }
+
+    const twoCall = await generateGuideFromPdfTwoCall({
+      pdfBuffer: req.file.buffer,
+      characterName: characterName.trim(),
+      productionTitle: productionTitle.trim(),
+      productionType: productionType.trim(),
+      genre: (genre || "").trim(),
+      actorAge: actorAge || "",
+      characterBreakdown: characterBreakdown || "",
+      callbackNotes: callbackNotes || "",
+      apiKey,
+    });
+
+    const GuideModel = Guide || require("./models/Guide");
+    const generatedGuideId = `claude_pdf_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
+    const baseGuidePayload = {
+      guideId: generatedGuideId,
+      userId: currentUser.id,
+      characterName: characterName.trim(),
+      productionTitle: productionTitle.trim(),
+      productionType: productionType.trim(),
+      roleSize: roleSize || "Supporting",
+      genre: genre || "Drama",
+      storyline: storyline || "",
+      characterBreakdown: characterBreakdown || "",
+      callbackNotes: callbackNotes || "",
+      focusArea: focusArea || "",
+      sceneText: twoCall.screenplayText,
+      generatedHtml: twoCall.htmlGuide,
+      childGuideRequested: false,
+      childGuideCompleted: false,
+      guideType: "prep101",
+    };
+
+    let persistedGuide = null;
+    let persistenceMethod = "sequelize";
+
+    if (GuideModel) {
+      persistedGuide = await GuideModel.create(baseGuidePayload);
+    } else {
+      persistenceMethod = "supabase";
+      const { randomUUID } = require("crypto");
+      baseGuidePayload.id = randomUUID();
+      const userEnsured = await ensureSupabaseUser(currentUser);
+      if (!userEnsured) {
+        throw new Error("Supabase Users table is not configured for guide saving");
+      }
+      persistedGuide = await supabaseInsertGuide(baseGuidePayload, {
+        user: currentUser,
+      });
+      if (!persistedGuide) {
+        throw new Error("Guide model unavailable and Supabase fallback failed");
+      }
+    }
+
+    let updatedBillingUser = currentUser;
+    const consumption = getPrep101ConsumptionUpdate(currentUser);
+    if (!consumption.allowed) {
+      throw new Error("Prep101 credits were exhausted before the guide could be saved.");
+    }
+    if (Object.keys(consumption.updates).length > 0) {
+      updatedBillingUser = await persistBillingUserUpdates(
+        currentUser,
+        consumption.updates
+      );
+    }
+
+    return res.json({
+      success: true,
+      guideId: persistedGuide.guideId,
+      guideContent: twoCall.htmlGuide,
+      screenplayText: twoCall.screenplayText,
+      generatedAt: new Date(),
+      savedToDatabase: true,
+      prep101Usage: buildPrep101Usage(updatedBillingUser),
+      prep101CreditSource: consumption.source,
+      metadata: {
+        characterName: characterName.trim(),
+        productionTitle: productionTitle.trim(),
+        productionType: productionType.trim(),
+        scriptWordCount: twoCall.screenplayWordCount,
+        guideLength: twoCall.htmlGuide.length,
+        extractionMethod: "claude_two_call",
+        extractionModel: twoCall.extractionModel,
+        guideModel: twoCall.guideModel,
+        persistenceMethod,
+        filename: req.file.originalname,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Two-call PDF guide generation failed:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate guide from PDF.",
     });
   }
 });
