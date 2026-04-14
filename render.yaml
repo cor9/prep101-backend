@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: prep101-pdf-purifier
+    env: docker
+    rootDir: python_worker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8001

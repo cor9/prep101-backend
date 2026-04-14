@@ -36,6 +36,25 @@ The worker pipeline:
 
 See [python worker README](/Users/coreyralston/prep101-backend/python_worker/README.md).
 
+### Render Deployment (recommended)
+
+This repo now includes [render.yaml](/Users/coreyralston/prep101-backend/render.yaml) and [Dockerfile](/Users/coreyralston/prep101-backend/python_worker/Dockerfile).
+
+In Render:
+
+1. New -> Blueprint
+2. Select this repo/branch
+3. Apply blueprint (creates `prep101-pdf-purifier`)
+4. Copy service URL (example: `https://prep101-pdf-purifier.onrender.com`)
+
+Then in Vercel set:
+
+```bash
+vercel env add PDF_PURIFIER_URL production
+```
+
+Value should be your Render URL.
+
 ## Required Environment Variables
 
 - `REDIS_URL`

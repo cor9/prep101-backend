@@ -227,15 +227,114 @@ async function extractStructuredOcr(purifiedPages = []) {
   try {
     return await extractWithMistralOcr(purifiedPages);
   } catch (mistralError) {
-    const llama = await extractWithLlamaParse(purifiedPages);
-    llama.fallbackReason = mistralError.message;
-    return llama;
+    try {
+      const llama = await extractWithLlamaParse(purifiedPages);
+      llama.fallbackReason = mistralError.message;
+      return llama;
+    } catch (llamaError) {
+      const openai = await extractWithOpenAiVision(purifiedPages);
+      openai.fallbackReason = `${mistralError.message} | ${llamaError.message}`;
+      return openai;
+    }
   }
+}
+
+async function extractWithOpenAiVision(purifiedPages = []) {
+  const apiKey = (process.env.OPENAI_API_KEY || "").trim();
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured.");
+  }
+  if (!purifiedPages.length) {
+    throw new Error("No purified pages provided for OpenAI vision OCR.");
+  }
+
+  const model = process.env.OPENAI_OCR_MODEL || "gpt-4.1-mini";
+  const blocks = [];
+
+  for (const page of purifiedPages) {
+    const prompt = `Extract only screenplay text from this audition sides image.
+Ignore watermarks and crossed out lines.
+Return one JSON object with shape:
+{"lines":[{"text":"..."}]}
+No markdown.`;
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        max_output_tokens: 4096,
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: prompt },
+              {
+                type: "input_image",
+                image_url: `data:image/png;base64,${page.imageBuffer.toString("base64")}`,
+              },
+            ],
+          },
+        ],
+      }),
+      timeout: 120000,
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`OpenAI vision OCR failed (${response.status}): ${body}`);
+    }
+
+    const payload = await response.json();
+    const text =
+      payload?.output_text ||
+      payload?.output?.flatMap((o) => o?.content || []).map((c) => c?.text || "").join("\n") ||
+      "";
+    const clean = String(text || "").replace(/```json|```/g, "").trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(clean);
+    } catch (_error) {
+      parsed = { lines: clean.split("\n").map((line) => ({ text: line.trim() })).filter((l) => l.text) };
+    }
+
+    const lines = Array.isArray(parsed?.lines) ? parsed.lines : [];
+    lines.forEach((line, index) => {
+      const value = String(line?.text || "").trim();
+      if (!value) return;
+      blocks.push(
+        asStructuredBlock({
+          text: value,
+          x: 120,
+          y: 100 + index * 22,
+          width: Math.max(60, value.length * 8),
+          height: 18,
+          page: page.page || 1,
+          pageWidth: page.width || 1000,
+          pageHeight: page.height || 1400,
+        })
+      );
+    });
+  }
+
+  if (!blocks.length) {
+    throw new Error("OpenAI vision OCR returned no text blocks.");
+  }
+
+  return {
+    provider: `openai-vision:${model}`,
+    blocks,
+    raw: { note: "OpenAI vision fallback; bbox values are inferred." },
+  };
 }
 
 module.exports = {
   LLAMA_PARSE_INSTRUCTION,
   extractWithMistralOcr,
   extractWithLlamaParse,
+  extractWithOpenAiVision,
   extractStructuredOcr,
 };
