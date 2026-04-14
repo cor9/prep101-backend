@@ -88,7 +88,7 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     setLoading(true);
 
     try {
@@ -103,6 +103,12 @@ const Login = () => {
       toast.error(error.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSubmit(e);
     }
   };
 
@@ -133,7 +139,7 @@ const Login = () => {
             <p style={{ color: 'var(--gray-500)' }}>{loginContext.subtitle}</p>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className="form-group">
               <label className="form-label">
                 Email Address
@@ -143,6 +149,7 @@ const Login = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
+                onKeyDown={handleKeyDown}
                 className="form-input"
                 required
               />
@@ -157,20 +164,22 @@ const Login = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
+                onKeyDown={handleKeyDown}
                 className="form-input"
                 required
               />
             </div>
 
             <button
-              type="submit"
+              type="button"
               disabled={loading}
+              onClick={handleSubmit}
               className="btn btnPrimary"
               style={{ marginTop: '0.5rem' }}
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </button>
-          </form>
+          </div>
 
           <div className="text-center mt-3">
             <p style={{ color: 'var(--gray-500)', marginBottom: '0.5rem' }}>
