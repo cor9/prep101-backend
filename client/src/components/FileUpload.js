@@ -14,7 +14,7 @@ const sanitizeWarnings = (warnings = []) =>
     (warning) => !isLegacyFallbackMessage(warning)
   );
 
-const FileUpload = ({ onUpload }) => {
+const FileUpload = ({ onUpload, onUploadStart, onUploadEnd }) => {
   const [uploading, setUploading] = useState(false);
 
   const onDrop = useCallback(async (acceptedFiles) => {
@@ -31,9 +31,14 @@ const FileUpload = ({ onUpload }) => {
       return;
     }
 
+    if (typeof onUploadStart === "function") {
+      onUploadStart(file);
+    }
+
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
+    let uploadSucceeded = false;
 
     try {
       const response = await fetch(`${API_BASE}/api/upload`, {
@@ -90,6 +95,7 @@ const FileUpload = ({ onUpload }) => {
         if (sanitizedUploadMessage) {
           toast(sanitizedUploadMessage, { icon: '🧠', duration: 5000 });
         }
+        uploadSucceeded = true;
       } else {
         throw new Error(data.error || data.message || 'Upload failed');
       }
@@ -98,8 +104,11 @@ const FileUpload = ({ onUpload }) => {
       toast.error(error.message || 'Failed to upload file. Please try again.');
     } finally {
       setUploading(false);
+      if (typeof onUploadEnd === "function") {
+        onUploadEnd(uploadSucceeded);
+      }
     }
-  }, [onUpload]);
+  }, [onUpload, onUploadStart, onUploadEnd]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

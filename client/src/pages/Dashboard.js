@@ -235,13 +235,18 @@ const Dashboard = () => {
   const [uploadData, setUploadData] = useState(() => {
     try {
       const saved = sessionStorage.getItem("prep101_upload_data");
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      const words = Number(parsed?.wordCount || 0);
+      const readable = parsed?.scriptReadable !== false && words > 0;
+      return readable ? parsed : null;
     } catch (error) {
       console.warn("Could not restore cached upload data:", error);
       return null;
     }
   });
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -441,19 +446,40 @@ const Dashboard = () => {
   };
 
   // ====== FILE UPLOAD ======
+  const handleUploadStart = (file) => {
+    setIsUploadingPdf(true);
+    setUploadedFile(file || null);
+    setUploadData(null);
+    try {
+      sessionStorage.removeItem("prep101_upload_data");
+    } catch (error) {
+      console.warn("Could not clear cached upload data:", error);
+    }
+  };
+
+  const handleUploadEnd = () => {
+    setIsUploadingPdf(false);
+  };
+
   const handleFileUpload = (data) => {
     const { localFile, ...serializableData } = data || {};
     setUploadedFile(localFile || null);
     setUploadData(serializableData);
+    const extractedWords = Number(serializableData?.wordCount || 0);
+    const uploadIsUsable =
+      serializableData?.scriptReadable !== false && extractedWords > 0;
     try {
-      sessionStorage.setItem(
-        "prep101_upload_data",
-        JSON.stringify(serializableData)
-      );
+      if (uploadIsUsable) {
+        sessionStorage.setItem(
+          "prep101_upload_data",
+          JSON.stringify(serializableData)
+        );
+      } else {
+        sessionStorage.removeItem("prep101_upload_data");
+      }
     } catch (error) {
       console.warn("Could not cache upload data for recovery:", error);
     }
-    const extractedWords = Number(serializableData?.wordCount || 0);
     if (serializableData?.scriptReadable === false) {
       toast.error(
         "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
@@ -705,6 +731,13 @@ const Dashboard = () => {
       toast.dismiss(); // Dismiss any loading toasts
     }
   };
+
+  const extractedWords = Number(uploadData?.wordCount || 0);
+  const uploadIsUsable =
+    Boolean(uploadData) &&
+    uploadData?.scriptReadable !== false &&
+    extractedWords > 0;
+  const uploadHasFailed = Boolean(uploadData) && !uploadIsUsable;
 
   // ====== RENDER ======
   const renewText = usage?.renewsAt
@@ -1267,9 +1300,13 @@ const Dashboard = () => {
                 gap: "1.1rem",
               }}
             >
-              <FileUpload onUpload={handleFileUpload} />
+              <FileUpload
+                onUpload={handleFileUpload}
+                onUploadStart={handleUploadStart}
+                onUploadEnd={handleUploadEnd}
+              />
 
-              {uploadData && (
+              {uploadIsUsable && (
                 <div
                   style={{
                     padding: 16,
@@ -1292,13 +1329,40 @@ const Dashboard = () => {
                   </div>
                   <div style={{ fontSize: "0.875rem" }}>
                     {uploadData.uploadIds
-                      ? `${uploadData.uploadIds.length} file(s) ready for guide generation`
-                      : "File ready for guide generation"}
+                      ? `${uploadData.uploadIds.length} file(s) ready for guide generation • ${extractedWords} words extracted`
+                      : `File ready for guide generation • ${extractedWords} words extracted`}
                   </div>
                 </div>
               )}
 
-              {uploadData && (
+              {uploadHasFailed && (
+                <div
+                  style={{
+                    padding: 16,
+                    background: "#fef2f2",
+                    borderRadius: 12,
+                    border: "1px solid #fca5a5",
+                    color: "#991b1b",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    <span>⚠️</span>
+                    <strong>PDF uploaded, but script extraction failed.</strong>
+                  </div>
+                  <div style={{ fontSize: "0.875rem" }}>
+                    {`Extracted ${extractedWords} words. Re-upload a clearer PDF or paste the sides text directly.`}
+                  </div>
+                </div>
+              )}
+
+              {uploadIsUsable && (
                 <div>
                   <h3
                     style={{
@@ -1321,7 +1385,7 @@ const Dashboard = () => {
 
                   <GuideForm
                     onSubmit={handleGenerateGuide}
-                    hasFile={!!uploadData}
+                    hasFile={uploadIsUsable}
                     isSubmitting={isGenerating}
                     disabled={!canGenerate}
                     defaultMode={builderMode}
@@ -1329,7 +1393,7 @@ const Dashboard = () => {
                 </div>
               )}
 
-              {!uploadData && (
+              {!uploadData && !isUploadingPdf && (
                 <div
                   style={{
                     textAlign: "center",
