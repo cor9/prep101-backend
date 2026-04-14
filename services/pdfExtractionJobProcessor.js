@@ -40,7 +40,34 @@ async function processPdfExtractionJob(jobPayload = {}) {
       maxPages: Number(process.env.PDF_PURIFIER_MAX_PAGES || 12),
     });
 
-    const ocr = await extractStructuredOcr(purified.pages);
+    const ocrPurified = await extractStructuredOcr(purified.pages);
+    const purifiedText = (ocrPurified.blocks || []).map((b) => b.text || "").join("\n");
+    const hasImagePlaceholderNoise = /!\[img-\d+\.jpeg\]/i.test(purifiedText);
+    const purifiedWordCount = (purifiedText.match(/\b[\w']+\b/g) || []).length;
+    const shouldTryRaw =
+      hasImagePlaceholderNoise ||
+      purifiedWordCount < 80 ||
+      /^(\d+\s+[\d.,-]+\s*)+$/m.test(purifiedText);
+
+    let ocr = ocrPurified;
+    if (shouldTryRaw) {
+      const rawPages = purified.pages.map((page) => ({
+        ...page,
+        imageBuffer: page.rawImageBuffer || page.imageBuffer,
+      }));
+      const ocrRaw = await extractStructuredOcr(rawPages);
+      const rawText = (ocrRaw.blocks || []).map((b) => b.text || "").join("\n");
+      const rawWordCount = (rawText.match(/\b[\w']+\b/g) || []).length;
+      if (rawWordCount > purifiedWordCount) {
+        ocr = {
+          ...ocrRaw,
+          fallbackReason: ocrPurified.provider
+            ? `Switched from purified OCR provider ${ocrPurified.provider} due to low-quality text.`
+            : "Switched from purified OCR path due to low-quality text.",
+        };
+      }
+    }
+
     const mapped = mapOcrBlocksToScreenplay(ocr.blocks);
 
     return {

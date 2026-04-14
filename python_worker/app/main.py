@@ -14,6 +14,7 @@ class PurifiedPage(BaseModel):
     width: int
     height: int
     image_base64: str
+    raw_image_base64: str
 
 
 class PurifyResponse(BaseModel):
@@ -85,9 +86,16 @@ async def purify_pdf(
         bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         purified = _purify_page(bgr)
         png_b64 = _encode_png(purified)
+        raw_png_b64 = _encode_png(bgr)
         h, w = purified.shape[:2]
         pages.append(
-            PurifiedPage(page=idx, width=int(w), height=int(h), image_base64=png_b64)
+            PurifiedPage(
+                page=idx,
+                width=int(w),
+                height=int(h),
+                image_base64=png_b64,
+                raw_image_base64=raw_png_b64,
+            )
         )
 
     if not pages:

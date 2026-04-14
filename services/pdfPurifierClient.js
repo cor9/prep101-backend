@@ -3,6 +3,7 @@ const FormData = require("form-data");
 
 function decodePageBase64(page = {}) {
   const imageBase64 = page.image_base64 || page.imageBase64 || "";
+  const rawImageBase64 = page.raw_image_base64 || page.rawImageBase64 || "";
   if (!imageBase64) {
     throw new Error("Purifier response missing page image_base64.");
   }
@@ -11,6 +12,7 @@ function decodePageBase64(page = {}) {
     width: page.width,
     height: page.height,
     imageBuffer: Buffer.from(imageBase64, "base64"),
+    rawImageBuffer: rawImageBase64 ? Buffer.from(rawImageBase64, "base64") : null,
   };
 }
 
