@@ -574,9 +574,12 @@ const Dashboard = () => {
           if (value == null) return;
           multipart.append(key, String(value));
         });
+        const multipartHeaders = token
+          ? { Authorization: `Bearer ${token}` }
+          : {};
         res = await fetch(`${API_BASE}/api/guides/generate-from-pdf`, {
           method: "POST",
-          ...withApiCredentials({}, user),
+          ...withApiCredentials({ headers: multipartHeaders }, user),
           body: multipart,
           signal: controller.signal,
         });
