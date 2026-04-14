@@ -732,11 +732,15 @@ const Dashboard = () => {
     }
   };
 
+  const isReader101Context = guideFilter === "reader101";
   const extractedWords = Number(uploadData?.wordCount || 0);
   const uploadIsUsable =
     Boolean(uploadData) &&
     uploadData?.scriptReadable !== false &&
     extractedWords > 0;
+  const uploadCanProceedViaDirectPdf =
+    Boolean(uploadData) && !isReader101Context && Boolean(uploadedFile);
+  const canShowGuideDetails = uploadIsUsable || uploadCanProceedViaDirectPdf;
   const uploadHasFailed = Boolean(uploadData) && !uploadIsUsable;
 
   // ====== RENDER ======
@@ -756,7 +760,6 @@ const Dashboard = () => {
   );
   const showPrepOveragePrompt =
     prepMonthlyUsed > 0 || prepMonthlyUsed >= PREP101_MONTHLY_GUIDE_LIMIT;
-  const isReader101Context = guideFilter === "reader101";
   const builderMode = isReader101Context ? "reader_support" : "standard";
   const builderCopy = isReader101Context
     ? {
@@ -1354,15 +1357,17 @@ const Dashboard = () => {
                     }}
                   >
                     <span>⚠️</span>
-                    <strong>PDF uploaded, but script extraction failed.</strong>
+                    <strong>PDF uploaded, but extraction confidence is low.</strong>
                   </div>
                   <div style={{ fontSize: "0.875rem" }}>
-                    {`Extracted ${extractedWords} words. Re-upload a clearer PDF or paste the sides text directly.`}
+                    {uploadCanProceedViaDirectPdf
+                      ? `Extracted ${extractedWords} words, but quality checks flagged this file. You can still generate a Prep101 guide from the original PDF, or re-upload/paste text for a cleaner result.`
+                      : `Extracted ${extractedWords} words. Re-upload a clearer PDF or paste the sides text directly.`}
                   </div>
                 </div>
               )}
 
-              {uploadIsUsable && (
+              {canShowGuideDetails && (
                 <div>
                   <h3
                     style={{
@@ -1385,7 +1390,7 @@ const Dashboard = () => {
 
                   <GuideForm
                     onSubmit={handleGenerateGuide}
-                    hasFile={uploadIsUsable}
+                    hasFile={canShowGuideDetails}
                     isSubmitting={isGenerating}
                     disabled={!canGenerate}
                     defaultMode={builderMode}
