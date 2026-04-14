@@ -495,11 +495,14 @@ const Dashboard = () => {
 
   // ====== GENERATE GUIDE ======
   const handleGenerateGuide = async (formData) => {
+    const shouldUseTwoCallPdfEndpoint =
+      !isReader101Context && Boolean(uploadedFile);
+
     if (!uploadData?.uploadId && !uploadData?.uploadIds) {
       toast.error("Please upload your sides (PDF) before generating.");
       return;
     }
-    if (uploadData?.scriptReadable === false) {
+    if (uploadData?.scriptReadable === false && !shouldUseTwoCallPdfEndpoint) {
       toast.error(
         "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
       );
@@ -561,9 +564,6 @@ const Dashboard = () => {
         source: uploadData.source || uploadData.extractionMethod || "text",
         ...formData,
       };
-      const shouldUseTwoCallPdfEndpoint =
-        !isReader101Context && Boolean(uploadedFile);
-
       console.log("🚀 Starting guide generation for:", formData.characterName);
       toast.loading("Generating your guide... this may take about 3-6 minutes.");
       let res;
