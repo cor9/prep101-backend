@@ -248,6 +248,7 @@ const Dashboard = () => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeGenerationMode, setActiveGenerationMode] = useState("standard");
   const [refreshKey, setRefreshKey] = useState(0);
 
   // usage state
@@ -468,6 +469,8 @@ const Dashboard = () => {
     const extractedWords = Number(serializableData?.wordCount || 0);
     const uploadIsUsable =
       serializableData?.scriptReadable !== false && extractedWords > 0;
+    const isReaderContext = guideFilter === "reader101";
+    const canUseDirectPdf = !isReaderContext && Boolean(localFile);
     try {
       if (uploadIsUsable) {
         sessionStorage.setItem(
@@ -481,9 +484,16 @@ const Dashboard = () => {
       console.warn("Could not cache upload data for recovery:", error);
     }
     if (serializableData?.scriptReadable === false) {
-      toast.error(
-        "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
-      );
+      if (canUseDirectPdf) {
+        toast(
+          "We detected a formatting issue in extracted text. Prep101 will use direct PDF reading during generation.",
+          { icon: "📄", duration: 5000 }
+        );
+      } else {
+        toast.error(
+          "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
+        );
+      }
       return;
     }
     if (extractedWords === 0) {
@@ -521,6 +531,8 @@ const Dashboard = () => {
 
   // ====== GENERATE GUIDE ======
   const handleGenerateGuide = async (formData) => {
+    const modeForRequest = formData?.mode || (isReader101Context ? "reader_support" : "standard");
+    setActiveGenerationMode(modeForRequest);
     const shouldUseTwoCallPdfEndpoint =
       !isReader101Context && Boolean(uploadedFile);
 
@@ -591,7 +603,11 @@ const Dashboard = () => {
         ...formData,
       };
       console.log("🚀 Starting guide generation for:", formData.characterName);
-      toast.loading("Generating your guide... this may take about 3-6 minutes.");
+      const loadingCopy =
+        modeForRequest === "reader_support"
+          ? "Generating your Reader101 guide... this may take about 3-6 minutes."
+          : "Generating your Prep101 guide... this may take about 3-6 minutes.";
+      toast.loading(loadingCopy);
       let res;
       if (shouldUseTwoCallPdfEndpoint) {
         const multipart = new FormData();
@@ -671,7 +687,11 @@ const Dashboard = () => {
         openHtmlInNewTab(html);
       }
 
-      toast.success("Guide generated successfully! Opening now...");
+      const successCopy =
+        modeForRequest === "reader_support"
+          ? "Reader101 guide generated successfully! Opening now..."
+          : "Prep101 guide generated successfully! Opening now...";
+      toast.success(successCopy);
       try {
         sessionStorage.setItem("prep101_upload_data", JSON.stringify(uploadData));
       } catch (error) {
@@ -810,7 +830,7 @@ const Dashboard = () => {
               color: "#e5e7eb",
             }}
           >
-            <LoadingSpinner />
+            <LoadingSpinner mode={activeGenerationMode} />
             <p
               style={{
                 marginTop: "1.5rem",
@@ -818,8 +838,9 @@ const Dashboard = () => {
                 color: "#e5e7eb",
               }}
             >
-              Crafting your Prep101 audition guide. This usually takes about
-              3–6 minutes.
+              {activeGenerationMode === "reader_support"
+                ? "Crafting your Reader101 guide. This usually takes about 3–6 minutes."
+                : "Crafting your Prep101 audition guide. This usually takes about 3–6 minutes."}
             </p>
             <p
               style={{
@@ -1342,10 +1363,10 @@ const Dashboard = () => {
                 <div
                   style={{
                     padding: 16,
-                    background: "#fef2f2",
+                    background: uploadCanProceedViaDirectPdf ? "#eff6ff" : "#fef2f2",
                     borderRadius: 12,
-                    border: "1px solid #fca5a5",
-                    color: "#991b1b",
+                    border: uploadCanProceedViaDirectPdf ? "1px solid #93c5fd" : "1px solid #fca5a5",
+                    color: uploadCanProceedViaDirectPdf ? "#1e3a8a" : "#991b1b",
                   }}
                 >
                   <div
@@ -1356,8 +1377,12 @@ const Dashboard = () => {
                       marginBottom: "0.5rem",
                     }}
                   >
-                    <span>⚠️</span>
-                    <strong>PDF uploaded, but extraction confidence is low.</strong>
+                    <span>{uploadCanProceedViaDirectPdf ? "ℹ️" : "⚠️"}</span>
+                    <strong>
+                      {uploadCanProceedViaDirectPdf
+                        ? "PDF uploaded. We'll read directly from the original file during guide generation."
+                        : "PDF uploaded, but extraction confidence is low."}
+                    </strong>
                   </div>
                   <div style={{ fontSize: "0.875rem" }}>
                     {uploadCanProceedViaDirectPdf

@@ -2772,6 +2772,11 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       characterBreakdown,
       callbackNotes,
       focusArea,
+      castingDirectors,
+      showrunners,
+      network,
+      studio,
+      contractType,
     } = req.body;
 
     if (!characterName || !productionTitle || !productionType) {
@@ -2821,6 +2826,11 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       productionType: productionType.trim(),
       genre: (genre || "").trim(),
       actorAge: actorAge || "",
+      castingDirectors: (castingDirectors || "").trim(),
+      showrunners: (showrunners || "").trim(),
+      network: (network || "").trim(),
+      studio: (studio || "").trim(),
+      contractType: (contractType || "").trim(),
       characterBreakdown: characterBreakdown || "",
       callbackNotes: callbackNotes || "",
       apiKey,

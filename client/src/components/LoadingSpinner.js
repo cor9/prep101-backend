@@ -1,19 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
-const statusMessages = [
-  { text: "Analyzing your script...", emoji: "📖" },
-  { text: "Identifying character relationships...", emoji: "🎭" },
-  { text: "Building your character breakdown...", emoji: "✨" },
-  { text: "Crafting Uta Hagen's 9 Questions...", emoji: "🎯" },
-  { text: "Developing scene-by-scene analysis...", emoji: "🎬" },
-  { text: "Finding bold acting choices...", emoji: "⭐" },
-  { text: "Creating subtext for every line...", emoji: "💭" },
-  { text: "Designing your rehearsal strategy...", emoji: "📋" },
-  { text: "Polishing the final guide...", emoji: "✍️" },
-  { text: "Almost there—adding finishing touches...", emoji: "🎪" },
-];
+const STATUS_BY_MODE = {
+  standard: [
+    { text: "Analyzing your script...", emoji: "📖" },
+    { text: "Identifying character relationships...", emoji: "🎭" },
+    { text: "Building your character breakdown...", emoji: "✨" },
+    { text: "Crafting Uta Hagen's 9 Questions...", emoji: "🎯" },
+    { text: "Developing scene-by-scene analysis...", emoji: "🎬" },
+    { text: "Finding bold acting choices...", emoji: "⭐" },
+    { text: "Creating subtext for every line...", emoji: "💭" },
+    { text: "Designing your rehearsal strategy...", emoji: "📋" },
+    { text: "Polishing the final guide...", emoji: "✍️" },
+    { text: "Almost there—adding finishing touches...", emoji: "🎪" },
+  ],
+  reader_support: [
+    { text: "Reading your uploaded sides...", emoji: "📄" },
+    { text: "Mapping pacing and line flow...", emoji: "⏱️" },
+    { text: "Identifying support beats for the reader...", emoji: "🎧" },
+    { text: "Building cue-by-cue reader notes...", emoji: "📝" },
+    { text: "Flagging tone shifts and pauses...", emoji: "🎬" },
+    { text: "Preparing practical self-tape support tips...", emoji: "🎙️" },
+    { text: "Finalizing your Reader101 guide...", emoji: "✅" },
+  ],
+};
 
-const LoadingSpinner = () => {
+const LoadingSpinner = ({ mode = 'standard' }) => {
+  const statusMessages = useMemo(
+    () => STATUS_BY_MODE[mode] || STATUS_BY_MODE.standard,
+    [mode]
+  );
   const [messageIndex, setMessageIndex] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -32,7 +47,7 @@ const LoadingSpinner = () => {
       clearInterval(messageInterval);
       clearInterval(timeInterval);
     };
-  }, []);
+  }, [statusMessages.length]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -110,8 +125,7 @@ const LoadingSpinner = () => {
             margin: 0
           }}>
             <strong style={{ color: '#fbbf24' }}>Pro tip:</strong> Guides typically take 3-6 minutes.
-            Complex scripts or multiple files may take longer. Your guide is being crafted by AI
-            using professional acting methodology.
+            Complex scripts or multiple files may take longer.
           </p>
         </div>
       </div>

@@ -16,24 +16,90 @@ Rules:
 `.trim();
 
 const GUIDE_SYSTEM_PROMPT = `
-You are an elite acting coach and generate practical, actor-facing Prep101 audition guides.
+You are Corey Ralston's Prep101 coaching brain. Generate practical, actor-facing guidance that is playable in the room today.
 
-Write a complete HTML guide with:
+DELIVERABLE STRUCTURE (KEEP THIS ORDER, ALL 10 REQUIRED):
 1. Project Overview
 2. Character Breakdown
-3. Uta Hagen's 9 Questions (first-person character voice, grounded in script moments)
-4. Scene Action & Physicality (scene-by-scene, specific)
-5. Subtext Translation Table (at least 6 exact script lines)
+3. Uta Hagen's 9 Questions (first-person voice; each answer grounded in script evidence)
+4. Scene Action & Physicality (scene-by-scene, using actual scene headers/sluglines)
+5. Subtext Translation Table
 6. Character POV & Personalization
-7. Bold Choices (specific moments) + Two-Take Submission Strategy
+7. Bold Choices + Two-Take Submission Strategy
 8. Moment Before & Button
-9. Rehearsal Roadmap (10+ specific takes)
-10. Pre-Submission Checklist
+9. Rehearsal Roadmap
+10. Pre-Submission Checklist + Final Coach Note
 
-Hard rules:
+COMPLETION ENFORCEMENT (NON-NEGOTIABLE):
+- Complete every section fully before ending.
+- Never end mid-sentence, mid-section, or mid-thought.
+- If token pressure appears, compress earlier sections first.
+- NEVER truncate these: Two-Take Submission Strategy, Pre-Submission Checklist, Final Coach Note.
+- The Two-Take Strategy must include BOTH takes fully written.
+
+MANDATORY CONTENT RULES:
 - Do not invent script lines.
-- Coaching voice, not academic analysis.
-- Output complete self-contained HTML only.
+- Coaching voice, not academic analysis. Direction over observation.
+- Convert explanation into playable instruction: "Do this", "Hold this beat", "Don't play X - play Y."
+- Every scene analysis must include at least one coached pause/silence/stillness moment.
+
+ARCHETYPE TRAP (MANDATORY STANDALONE BLOCK):
+- In or immediately after Character Breakdown, add a clearly distinct block:
+  "THE TRAP: DO NOT PLAY [archetype]"
+- Explain why that archetype is wrong for this specific role.
+- Give one concrete behavioral alternative.
+
+SUBTEXT TABLE (STRICT FORMAT):
+- Minimum 6 real lines from the sides.
+- 3 columns exactly:
+  Line | Surface Meaning | Subtext / Action
+
+TWO-TAKE STRATEGY (REQUIRED):
+- Include BOTH takes, fully written.
+- For each take include:
+  - Emotional engine
+  - Primary tactic
+  - What makes it different from the other take
+  - One specific moment that lands differently
+
+PRODUCTION STAKES INTEGRATION (IF PROVIDED):
+- If metadata includes casting directors, showrunners/writers, or network/platform/studio/contract, weave those BY NAME into coaching language.
+- Must appear in:
+  1) Project Overview
+  2) At least one note inside Bold Choices / strategy
+  3) Final Coach Note
+
+PRE-SUBMISSION CHECKLIST (REQUIRED):
+- Framing / eyeline
+- Lighting
+- Background
+- Sound
+- File naming / takes
+- One character-specific performance note (moment before or button)
+
+FINAL COACH NOTE (REQUIRED):
+- Name the specific project and stakes.
+- Name casting directors by name if provided.
+- Identify the one thing that books the role and cannot be faked.
+- End with a direct send-off instruction, not generic encouragement.
+
+OUTPUT:
+- Return complete self-contained HTML only.
+`.trim();
+
+const GUIDE_COMPLETION_REPAIR_PROMPT = `
+You are repairing an incomplete Prep101 guide draft.
+
+Task:
+- Preserve the strongest existing content.
+- Fix completion and quality gaps.
+- Ensure all 10 required sections exist in the correct order.
+- Fully complete the Two-Take Strategy (both takes), Pre-Submission Checklist, and Final Coach Note.
+- Ensure the Archetype Trap standalone block exists after Character Breakdown.
+- Ensure the Subtext table has at least 6 real lines and 3 columns:
+  Line | Surface Meaning | Subtext / Action
+- Ensure actor-facing directive coaching language.
+- Return final, complete HTML only.
 `.trim();
 
 function getAnthropicText(data = {}) {
@@ -43,6 +109,51 @@ function getAnthropicText(data = {}) {
     .map((block) => block.text)
     .join("\n")
     .trim();
+}
+
+function stripHtml(input = "") {
+  return String(input || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function hasRequiredGuideSections(html = "") {
+  const checks = [
+    /Project Overview/i,
+    /Character Breakdown/i,
+    /Uta Hagen/i,
+    /Scene Action/i,
+    /Subtext/i,
+    /Character POV|Personalization/i,
+    /Bold Choices/i,
+    /Two-?Take/i,
+    /Moment Before/i,
+    /Rehearsal Roadmap/i,
+    /Pre-Submission Checklist/i,
+    /Final Coach Note/i,
+    /THE TRAP:\s*DO NOT PLAY/i,
+  ];
+  return checks.every((pattern) => pattern.test(html));
+}
+
+function hasMinimumSubtextRows(html = "") {
+  const quotedLines = (html.match(/"[^"\n]{3,}"/g) || []).length;
+  return quotedLines >= 6;
+}
+
+function appearsTruncated(html = "") {
+  const trimmed = String(html || "").trim();
+  if (!trimmed) return true;
+  const plain = stripHtml(trimmed);
+  if (!/[.!?]$/.test(plain)) return true;
+  if (/<html[\s>]/i.test(trimmed) && !/<\/html>\s*$/i.test(trimmed)) return true;
+  return false;
+}
+
+function needsRepairPass(html = "") {
+  return (
+    appearsTruncated(html) ||
+    !hasRequiredGuideSections(html) ||
+    !hasMinimumSubtextRows(html)
+  );
 }
 
 async function extractScreenplayFromPdf({
@@ -93,6 +204,13 @@ async function generateGuideHtmlFromScreenplay({
     `PROJECT TYPE: ${metadata.productionType}`,
     metadata.genre ? `GENRE: ${metadata.genre}` : null,
     metadata.actorAge ? `ACTOR AGE: ${metadata.actorAge}` : null,
+    metadata.castingDirectors
+      ? `CASTING DIRECTORS: ${metadata.castingDirectors}`
+      : null,
+    metadata.showrunners ? `SHOWRUNNERS / WRITERS: ${metadata.showrunners}` : null,
+    metadata.network ? `NETWORK / PLATFORM: ${metadata.network}` : null,
+    metadata.studio ? `STUDIO: ${metadata.studio}` : null,
+    metadata.contractType ? `CONTRACT TYPE: ${metadata.contractType}` : null,
     metadata.characterBreakdown
       ? `CHARACTER BREAKDOWN:\n${metadata.characterBreakdown}`
       : null,
@@ -104,7 +222,7 @@ async function generateGuideHtmlFromScreenplay({
   const { data, model } = await sendAnthropicMessage({
     apiKey,
     preferredModel,
-    maxTokens: 14000,
+    maxTokens: 18000,
     system: GUIDE_SYSTEM_PROMPT,
     messages: [
       {
@@ -115,7 +233,25 @@ async function generateGuideHtmlFromScreenplay({
   });
 
   const html = getAnthropicText(data);
-  return { html, model };
+  if (!needsRepairPass(html)) {
+    return { html, model };
+  }
+
+  const repair = await sendAnthropicMessage({
+    apiKey,
+    preferredModel,
+    maxTokens: 12000,
+    system: GUIDE_COMPLETION_REPAIR_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: `Repair this guide draft using the same script/metadata context.\n\nMETADATA:\n${metaBlock}\n\nSCRIPT:\n${screenplayText}\n\nDRAFT HTML:\n${html}`,
+      },
+    ],
+  });
+
+  const repairedHtml = getAnthropicText(repair.data);
+  return { html: repairedHtml || html, model: repair.model || model };
 }
 
 async function generateGuideFromPdfTwoCall({
@@ -125,6 +261,11 @@ async function generateGuideFromPdfTwoCall({
   productionType,
   genre,
   actorAge,
+  castingDirectors,
+  showrunners,
+  network,
+  studio,
+  contractType,
   characterBreakdown,
   callbackNotes,
   apiKey,
@@ -180,6 +321,11 @@ async function generateGuideFromPdfTwoCall({
       productionType,
       genre,
       actorAge,
+      castingDirectors,
+      showrunners,
+      network,
+      studio,
+      contractType,
       characterBreakdown,
       callbackNotes,
     },
