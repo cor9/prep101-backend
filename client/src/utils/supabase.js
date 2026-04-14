@@ -3,6 +3,7 @@ import API_BASE from '../config/api'
 
 const supabaseUrl = 'https://eokqyijxubrmompozguh.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVva3F5aWp4dWJybW9tcG96Z3VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MTQxNjUsImV4cCI6MjA3Mjk5MDE2NX0.T6xlKoYDXO-iVvbrjFV5QIOg7FCFC3YVjdrjqgy7Vy0'
+const DIRECT_API_BASE = 'https://prep101-api.vercel.app'
 
 // Disable auto session refresh to prevent errors when using backend-based auth
 export const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -13,6 +14,34 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 })
 
+const looksLikeHtml = (response) =>
+  String(response?.headers?.get('content-type') || '')
+    .toLowerCase()
+    .includes('text/html');
+
+async function authFetch(path, init = {}) {
+  const primaryBase = API_BASE || '';
+  const primaryUrl = `${primaryBase}${path}`;
+  const fallbackUrl = `${DIRECT_API_BASE}${path}`;
+  const canFallback = primaryUrl !== fallbackUrl;
+
+  const run = async (url) => fetch(url, init);
+
+  try {
+    const primaryResponse = await run(primaryUrl);
+    // If proxy returned HTML (usually SPA fallback), retry direct API.
+    if (canFallback && looksLikeHtml(primaryResponse)) {
+      return run(fallbackUrl);
+    }
+    return primaryResponse;
+  } catch (error) {
+    if (canFallback) {
+      return run(fallbackUrl);
+    }
+    throw error;
+  }
+}
+
 // Auth functions - use backend API for registration/login to ensure users are created in our database
 export const signUp = async (email, password, name) => {
   console.log('🔍 signUp called with:', { email, password: '***', name });
@@ -22,7 +51,7 @@ export const signUp = async (email, password, name) => {
   console.log('🔍 Cleaned email:', cleanEmail);
 
   try {
-    const response = await fetch(`${API_BASE}/api/auth/register`, {
+    const response = await authFetch('/api/auth/register', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -67,7 +96,7 @@ export const signIn = async (email, password) => {
   console.log('🔍 signIn called with:', { email });
 
   try {
-    const response = await fetch(`${API_BASE}/api/auth/login`, {
+    const response = await authFetch('/api/auth/login', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -101,7 +130,7 @@ export const signIn = async (email, password) => {
 
 export const signOut = async () => {
   try {
-    await fetch(`${API_BASE}/api/auth/logout`, {
+    await authFetch('/api/auth/logout', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -117,7 +146,7 @@ export const signOut = async () => {
 
 export const getCurrentUser = async () => {
   try {
-    const response = await fetch(`${API_BASE}/api/auth/verify`, {
+    const response = await authFetch('/api/auth/verify', {
       credentials: 'include',
     });
 
