@@ -609,6 +609,21 @@ const Dashboard = () => {
           : "Generating your Prep101 guide... this may take about 3-6 minutes.";
       toast.loading(loadingCopy);
       let res;
+      const runFetchWithRetry = async (url, init, retryInit = null) => {
+        try {
+          return await fetch(url, init);
+        } catch (error) {
+          const isNetworkFetchError =
+            error instanceof TypeError &&
+            /failed to fetch/i.test(String(error?.message || ""));
+          if (!isNetworkFetchError || !retryInit) {
+            throw error;
+          }
+          console.warn("Primary fetch failed, retrying with fallback request profile...", error);
+          await new Promise((resolve) => setTimeout(resolve, 400));
+          return fetch(url, retryInit);
+        }
+      };
       if (shouldUseTwoCallPdfEndpoint) {
         const multipart = new FormData();
         multipart.append("file", uploadedFile);
@@ -616,25 +631,52 @@ const Dashboard = () => {
           if (value == null) return;
           multipart.append(key, String(value));
         });
-        const multipartHeaders = token
-          ? { Authorization: `Bearer ${token}` }
-          : {};
-        res = await fetch(`${API_BASE}/api/guides/generate-from-pdf`, {
+        const multipartHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+        const primaryInit = {
           method: "POST",
           ...withApiCredentials({ headers: multipartHeaders }, user),
           body: multipart,
           signal: controller.signal,
-        });
+        };
+        const retryInit = {
+          method: "POST",
+          headers: multipartHeaders,
+          body: multipart,
+          signal: controller.signal,
+          mode: "cors",
+          credentials: "omit",
+        };
+        res = await runFetchWithRetry(
+          `${API_BASE}/api/guides/generate-from-pdf`,
+          primaryInit,
+          retryInit
+        );
       } else {
         const headers = {
           "Content-Type": "application/json",
         };
-        res = await fetch(`${API_BASE}/api/guides/generate`, {
+        const primaryInit = {
           method: "POST",
           ...withApiCredentials({ headers }, user),
           body: JSON.stringify(payload),
           signal: controller.signal,
-        });
+        };
+        const retryHeaders = token
+          ? { ...headers, Authorization: `Bearer ${token}` }
+          : headers;
+        const retryInit = {
+          method: "POST",
+          headers: retryHeaders,
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+          mode: "cors",
+          credentials: "omit",
+        };
+        res = await runFetchWithRetry(
+          `${API_BASE}/api/guides/generate`,
+          primaryInit,
+          retryInit
+        );
       }
 
       clearTimeout(timeoutId);
