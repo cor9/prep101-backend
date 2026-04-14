@@ -11,6 +11,25 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const AUTH_TOKEN_KEY = "ca101_token";
+
+  const readStoredToken = useCallback(() => {
+    try {
+      return localStorage.getItem(AUTH_TOKEN_KEY) || null;
+    } catch (_) {
+      return null;
+    }
+  }, []);
+
+  const writeStoredToken = useCallback((token) => {
+    try {
+      if (token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+    } catch (_) {}
+  }, []);
 
   const syncActiveActorCache = useCallback((nextUser) => {
     const activeActorId =
@@ -27,14 +46,29 @@ export const AuthProvider = ({ children }) => {
 
   const persistUser = useCallback((nextUser) => {
     if (nextUser) {
-      syncActiveActorCache(nextUser);
-      setUser(nextUser);
+      const authToken =
+        nextUser?.accessToken ||
+        nextUser?.token ||
+        readStoredToken() ||
+        null;
+      const hydrated = authToken
+        ? {
+            ...nextUser,
+            accessToken: authToken,
+            token: authToken,
+          }
+        : nextUser;
+      writeStoredToken(authToken);
+      syncActiveActorCache(hydrated);
+      setUser(hydrated);
+      return hydrated;
     } else {
       localStorage.removeItem('active_actor_id');
+      writeStoredToken(null);
       setUser(null);
+      return null;
     }
-    return nextUser;
-  }, [syncActiveActorCache]);
+  }, [syncActiveActorCache, readStoredToken, writeStoredToken]);
 
   const refreshUser = useCallback(async () => {
     const { user: currentUser, error } = await getCurrentUser();
@@ -73,6 +107,7 @@ export const AuthProvider = ({ children }) => {
       console.log('✅ User logged in successfully');
       // Update user state with the logged-in user
       if (data?.user) {
+        writeStoredToken(data.session?.access_token || null);
         const hydratedUser = {
           ...data.user,
           accessToken: data.session?.access_token,
@@ -100,6 +135,7 @@ export const AuthProvider = ({ children }) => {
       console.log('✅ User registered successfully');
       // Update user state with the registered user
       if (data?.user) {
+        writeStoredToken(data.session?.access_token || null);
         const hydratedUser = {
           ...data.user,
           accessToken: data.session?.access_token,
