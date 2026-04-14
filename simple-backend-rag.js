@@ -122,6 +122,7 @@ app.get("/", (req, res) => {
       health: "/health",
       apiHealth: "/api/health",
       upload: "/api/upload",
+      extractionJobs: "/api/extraction/jobs",
       guides: "/api/guides",
       auth: "/api/auth",
     },
@@ -201,6 +202,16 @@ const {
 } = require("./config/models");
 const { sendAnthropicMessage } = require("./services/anthropicClient");
 const { retrieveMethodologyContext } = require("./services/methodologyRetrieval");
+let enqueueExtractionJob = null;
+let getExtractionJob = null;
+
+try {
+  const extractionQueue = require("./services/extractionQueue");
+  enqueueExtractionJob = extractionQueue.enqueueExtractionJob;
+  getExtractionJob = extractionQueue.getExtractionJob;
+} catch (error) {
+  console.log("⚠️  Extraction queue unavailable:", error.message);
+}
 
 // Import new authentication and payment features (with error handling)
 let config,
@@ -2516,6 +2527,82 @@ function queueChildGuideGeneration({ guideId, childData, userId }) {
     await generateChildGuideAsync({ guideId, childData, userId });
   });
 }
+
+app.options("/api/extraction/jobs", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Max-Age", "86400");
+  res.status(200).end();
+});
+
+app.get("/api/extraction/jobs/:jobId", async (req, res) => {
+  try {
+    if (!getExtractionJob) {
+      return res.status(503).json({
+        error: "Extraction queue is not configured.",
+        hint: "Set REDIS_URL and start extraction worker process.",
+      });
+    }
+
+    const job = await getExtractionJob(req.params.jobId);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found." });
+    }
+
+    return res.status(200).json({
+      success: true,
+      job,
+    });
+  } catch (error) {
+    console.error("❌ Failed to fetch extraction job status:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch extraction job status.",
+      details: error.message,
+    });
+  }
+});
+
+app.post("/api/extraction/jobs", upload.single("file"), async (req, res) => {
+  try {
+    if (!enqueueExtractionJob) {
+      return res.status(503).json({
+        error: "Extraction queue is not configured.",
+        hint: "Set REDIS_URL and start extraction worker process.",
+      });
+    }
+
+    if (!req.file || req.file.mimetype !== "application/pdf") {
+      return res.status(400).json({ error: "Please upload a PDF file." });
+    }
+
+    const job = await enqueueExtractionJob({
+      filename: req.file.originalname,
+      pdfBase64: req.file.buffer.toString("base64"),
+      userId: req.userId || req.user?.id || null,
+      createdAt: new Date().toISOString(),
+    });
+
+    return res.status(202).json({
+      success: true,
+      jobId: String(job.id),
+      statusUrl: `/api/extraction/jobs/${job.id}`,
+      message: "Extraction job queued.",
+    });
+  } catch (error) {
+    console.error("❌ Failed to enqueue extraction job:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to enqueue extraction job.",
+      details: error.message,
+    });
+  }
+});
 
 // Handle OPTIONS preflight for upload endpoint
 app.options("/api/upload", (req, res) => {
