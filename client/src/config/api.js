@@ -1,16 +1,12 @@
 // API Configuration
-// In production on prep101.site, prefer same-origin /api via Netlify proxy
-// to avoid browser CORS/preflight instability on large multipart requests.
-const host =
-  typeof window !== "undefined" ? String(window.location.hostname || "") : "";
-const isPrep101Host = /(^|\.)prep101\.site$/i.test(host);
-
+// Use direct API domain by default. Some prep101.site edge routes can return
+// HTML 404 for /api/*, which breaks JSON parsing in auth flows.
 const API_BASE =
   process.env.REACT_APP_API_BASE_URL ||
-  (isPrep101Host ? "" : "https://prep101-api.vercel.app");
+  "https://prep101-api.vercel.app";
 
 // Debug: Log the API URL being used
-console.log("🔧 API_BASE URL:", API_BASE || "(same-origin)");
+console.log("🔧 API_BASE URL:", API_BASE);
 console.log("🔧 REACT_APP_API_BASE_URL:", process.env.REACT_APP_API_BASE_URL);
 
 export default API_BASE;
