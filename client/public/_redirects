@@ -1,4 +1,5 @@
 # Redirect rules for PREP101
+/api/* https://prep101-api.vercel.app/api/:splat 200
 / /index.html 200
 /dashboard /index.html 200
 /login /index.html 200
