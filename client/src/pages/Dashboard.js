@@ -821,7 +821,7 @@ const Dashboard = () => {
       }
     } catch (err) {
       if (
-        /Empty guide response|FUNCTION_INVOCATION_TIMEOUT|timed out on the server|HTTP 504/i.test(
+        /Empty guide response|FUNCTION_INVOCATION_TIMEOUT|timed out on the server|HTTP 504|Guide truncated|Missing Two-Take Strategy|Missing checklist/i.test(
           String(err?.message || "")
         )
       ) {

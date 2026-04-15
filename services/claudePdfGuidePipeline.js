@@ -262,18 +262,24 @@ function recoverScreenplayFromFallback(ocrFallback = {}) {
 
 function validateGuideHtml(html = "") {
   const missing = [];
-  if (!/Final Coach Note/i.test(html)) missing.push("Final Coach Note");
+  const hasFinalCoachNote =
+    /Final Coach Note/i.test(html) || /Closing Coach'?s?\s*Note/i.test(html);
+  if (!hasFinalCoachNote) missing.push("Final Coach Note");
   const hasTakeA = /Take\s*A\b/i.test(html);
   const hasTakeB = /Take\s*B\b/i.test(html);
   const hasTakeOne = /Take\s*1\b/i.test(html);
   const hasTakeTwo = /Take\s*2\b/i.test(html);
+  const hasTakeOneWord = /Take\s*One\b/i.test(html);
+  const hasTakeTwoWord = /Take\s*Two\b/i.test(html);
   if (!((hasTakeA && hasTakeB) || (hasTakeOne && hasTakeTwo))) {
-    missing.push("Two-Take Strategy (Take A + Take B)");
+    if (!(hasTakeOneWord && hasTakeTwoWord)) {
+      missing.push("Two-Take Strategy (Take A + Take B)");
+    }
   }
   if (!/Pre-Submission Checklist/i.test(html)) {
     missing.push("Pre-Submission Checklist");
   }
-  if (/TRUNCATED\s*—\s*REQUEST PART 2/i.test(html)) {
+  if (/TRUNCATED\s*[—-]\s*REQUEST PART 2/i.test(html)) {
     missing.push("Complete guide body (received truncation marker)");
   }
   return { valid: missing.length === 0, missing };
