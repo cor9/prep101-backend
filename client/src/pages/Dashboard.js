@@ -697,7 +697,7 @@ const Dashboard = () => {
       const loadingCopy =
         modeForRequest === "reader_support"
           ? "Generating your Reader101 guide... this may take about 3-6 minutes."
-          : "Generating your Prep101 guide... this may take about 3-6 minutes.";
+          : "Generating your Prep101 guide (extract -> analyze -> summarize -> final HTML)... this may take about 3-6 minutes.";
       toast.loading(loadingCopy);
       let res;
       const runFetchWithRetry = async (url, init, retryInit = null) => {
@@ -957,7 +957,7 @@ const Dashboard = () => {
             >
               {activeGenerationMode === "reader_support"
                 ? "Crafting your Reader101 guide. This usually takes about 3–6 minutes."
-                : "Crafting your Prep101 audition guide. This usually takes about 3–6 minutes."}
+                : "Crafting your Prep101 audition guide in staged passes (extract, analysis, summary, final HTML). This usually takes about 3–6 minutes."}
             </p>
             <p
               style={{
@@ -966,8 +966,8 @@ const Dashboard = () => {
                 color: "#9ca3af",
               }}
             >
-              You can keep this tab open and review your guide as soon as it’s
-              ready. Please don&apos;t close the page while we work.
+              We also run completion checks before delivery so your final sections
+              (Two-Take Strategy, checklist, Final Coach Note) are present. Please don&apos;t close the page while we work.
             </p>
           </div>
         </div>

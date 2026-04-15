@@ -2,16 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 
 const STATUS_BY_MODE = {
   standard: [
-    { text: "Analyzing your script...", emoji: "📖" },
-    { text: "Identifying character relationships...", emoji: "🎭" },
-    { text: "Building your character breakdown...", emoji: "✨" },
-    { text: "Crafting Uta Hagen's 9 Questions...", emoji: "🎯" },
-    { text: "Developing scene-by-scene analysis...", emoji: "🎬" },
-    { text: "Finding bold acting choices...", emoji: "⭐" },
-    { text: "Creating subtext for every line...", emoji: "💭" },
-    { text: "Designing your rehearsal strategy...", emoji: "📋" },
-    { text: "Polishing the final guide...", emoji: "✍️" },
-    { text: "Almost there—adding finishing touches...", emoji: "🎪" },
+    { text: "Reading your PDF sides (structured extraction)...", emoji: "📖" },
+    { text: "Building full character + scene analysis...", emoji: "🎭" },
+    { text: "Compressing analysis into a focused 300-word brief...", emoji: "🧠" },
+    { text: "Generating your final HTML Prep101 guide...", emoji: "✨" },
+    { text: "Writing Two-Take Strategy (Take A + Take B)...", emoji: "🎯" },
+    { text: "Completing Pre-Submission Checklist...", emoji: "📋" },
+    { text: "Finalizing Coach Note and end-of-scene instruction...", emoji: "🎬" },
+    { text: "Running completion checks for truncation safety...", emoji: "🛡️" },
+    { text: "Polishing your final guide for delivery...", emoji: "✍️" },
+    { text: "Almost there - packaging your guide now...", emoji: "🎪" },
   ],
   reader_support: [
     { text: "Reading your uploaded sides...", emoji: "📄" },
@@ -124,7 +124,7 @@ const LoadingSpinner = ({ mode = 'standard' }) => {
             fontSize: '0.875rem',
             margin: 0
           }}>
-            <strong style={{ color: '#fbbf24' }}>Pro tip:</strong> Guides typically take 3-6 minutes.
+            <strong style={{ color: '#fbbf24' }}>Pro tip:</strong> Prep101 now runs extraction, analysis, summary, and final guide assembly before delivery.
             Complex scripts or multiple files may take longer.
           </p>
         </div>
