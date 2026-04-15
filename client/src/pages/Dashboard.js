@@ -257,7 +257,14 @@ const Dashboard = () => {
   const [usageError, setUsageError] = useState(null);
 
   const { user } = useAuth();
-  const token = user?.accessToken || user?.token;
+  const token = (
+    user?.accessToken ||
+    user?.token ||
+    // Fallback: after a page refresh, /verify returns a serialized user without the token
+    // embedded. AuthContext tries localStorage (ca101_token) but may not have merged it back
+    // into the user object. Read it directly here as a safety net.
+    (() => { try { return localStorage.getItem('ca101_token') || null; } catch (_) { return null; } })()
+  );
   const activeActor = user?.account?.activeActor;
   const onboardingRequired = Boolean(user?.account?.onboardingRequired);
   const needsActorSelection = Boolean(user?.account?.needsActorSelection);
@@ -575,6 +582,21 @@ const Dashboard = () => {
     const parseAndHandleGuideResponse = async (response) => {
       const ct = response.headers.get("content-type") || "";
       let parsedData;
+
+      // Early guard: non-ok response with a non-JSON body (rate limiter plain text,
+      // Netlify edge error, etc). Without this, the code falls through to the html
+      // branch and emits a misleading "Empty guide response" which triggers the
+      // recovery loop unnecessarily.
+      if (!response.ok && !ct.includes("application/json")) {
+        const rawBody = await response.text().catch(() => "");
+        const preview = rawBody.slice(0, 200).trim();
+        const isHtmlError = preview.toLowerCase().startsWith("<!doctype") || preview.toLowerCase().startsWith("<html");
+        const errorDetail = isHtmlError
+          ? `Server returned HTML (HTTP ${response.status}) — likely a proxy or edge error.`
+          : (preview || `Request failed (HTTP ${response.status})`);
+        console.error("❌ Non-JSON API error:", response.status, errorDetail);
+        throw new Error(errorDetail);
+      }
 
       if (ct.includes("application/json")) {
         parsedData = await response.json();

@@ -10,7 +10,10 @@ export function buildAuthHeaders(user, extraHeaders = {}) {
 
 export function withApiCredentials(init = {}, user = null) {
   return {
-    credentials: "include",
+    // Use same-origin credentials so cookies work on same-origin paths (prep101.site/api/*)
+    // but cross-origin requests to Vercel can proceed without the stricter credentialed-preflight
+    // constraints. Auth is propagated via the Authorization header (Bearer token), not cookies.
+    credentials: "same-origin",
     ...init,
     headers: buildAuthHeaders(user, init.headers || {}),
   };

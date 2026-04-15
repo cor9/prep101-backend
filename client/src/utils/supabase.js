@@ -179,9 +179,16 @@ export const signOut = async () => {
 
 export const getCurrentUser = async () => {
   try {
-    const response = await authFetch('/api/auth/verify', {
+    // Read stored token to use as Bearer auth (cookies may not be forwarded by the proxy)
+    let storedToken = null;
+    try { storedToken = localStorage.getItem('ca101_token') || null; } catch (_) {}
+
+    const verifyInit = {
       credentials: 'include',
-    });
+      ...(storedToken ? { headers: { Authorization: `Bearer ${storedToken}` } } : {}),
+    };
+
+    const response = await authFetch('/api/auth/verify', verifyInit);
 
     if (!response.ok) {
       return { user: null, error: null };
@@ -190,7 +197,13 @@ export const getCurrentUser = async () => {
     const result = await parseJsonResponse(response, 'Verification failed');
     if (result.valid && result.user) {
       return {
-        user: result.user,
+        user: {
+          ...result.user,
+          // Attach the token to the user object so AuthContext can embed it
+          // without relying on the cookie round-trip.
+          accessToken: storedToken || result.user.accessToken || result.user.token || null,
+          token: storedToken || result.user.token || result.user.accessToken || null,
+        },
         error: null
       };
     }
