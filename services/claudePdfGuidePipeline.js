@@ -197,6 +197,7 @@ async function generateGuideHtmlFromScreenplay({
   metadata,
   preferredModel,
   apiKey,
+  startTime,
 }) {
   const metaBlock = [
     `ROLE: ${metadata.characterName}`,
@@ -222,7 +223,7 @@ async function generateGuideHtmlFromScreenplay({
   const { data, model } = await sendAnthropicMessage({
     apiKey,
     preferredModel,
-    maxTokens: 18000,
+    maxTokens: 12000,
     system: GUIDE_SYSTEM_PROMPT,
     messages: [
       {
@@ -232,15 +233,30 @@ async function generateGuideHtmlFromScreenplay({
     ],
   });
 
+  // Only run the repair pass if we have enough wall-clock budget remaining.
+  // The Vercel function has a hard 300s limit. Call 1 (extraction) + Call 2 (guide)
+  // can take 150-220s combined. A repair pass costs another 60-120s. If we're
+  // already past 220s, skip the repair and return what we have — a partial guide
+  // is far better than a FUNCTION_INVOCATION_TIMEOUT with nothing.
+  const elapsedSeconds = startTime ? (Date.now() - startTime) / 1000 : 0;
+  const REPAIR_BUDGET_SECONDS = 220;
+
   const html = getAnthropicText(data);
   if (!needsRepairPass(html)) {
     return { html, model };
   }
 
+  if (elapsedSeconds > REPAIR_BUDGET_SECONDS) {
+    console.warn(
+      `[Pipeline] Skipping repair pass — elapsed ${Math.round(elapsedSeconds)}s exceeds ${REPAIR_BUDGET_SECONDS}s budget. Returning first-pass output.`
+    );
+    return { html, model, repairSkipped: true };
+  }
+
   const repair = await sendAnthropicMessage({
     apiKey,
     preferredModel,
-    maxTokens: 12000,
+    maxTokens: 10000,
     system: GUIDE_COMPLETION_REPAIR_PROMPT,
     messages: [
       {
@@ -270,6 +286,9 @@ async function generateGuideFromPdfTwoCall({
   callbackNotes,
   apiKey,
 }) {
+  // Record wall-clock start so nested functions can make budget decisions
+  const startTime = Date.now();
+
   const extraction = await extractScreenplayFromPdf({
     pdfBuffer,
     role: characterName,
@@ -315,6 +334,7 @@ async function generateGuideFromPdfTwoCall({
   const guide = await generateGuideHtmlFromScreenplay({
     screenplayText,
     apiKey,
+    startTime,
     metadata: {
       characterName,
       productionTitle,
