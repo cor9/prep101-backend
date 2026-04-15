@@ -1,5 +1,84 @@
 # Session Updates
 
+## 2026-04-14
+
+### Incident log: Prep101 auth + upload + generation reliability failures
+- **User impact:** repeated login failures, guide-generation CORS failures, empty/invalid upload responses, and unfinished/empty guide outputs.
+- **Business impact:** excessive Netlify deploy churn during triage and paid credit overrun on the Pro account.
+
+### Primary issues observed
+- `Blocked form submission ... sandboxed ... allow-forms` on login and builder submits.
+- `Access to fetch ... /api/guides/generate-from-pdf ... blocked by CORS` from `prep101.site`.
+- `No token, authorization denied` on protected two-call endpoint.
+- `Unexpected token '<'` / `<!DOCTYPE ... is not valid JSON` from auth/upload requests receiving HTML instead of JSON.
+- `Failed to execute 'json' on 'Response': Unexpected end of JSON input` on upload parsing.
+- `Empty guide response` after successful submit path.
+- UI contradictions: stale `PDF uploaded successfully` state shown during/after failed extraction.
+- Reader101 showed Prep101/Bold-Choices style loading text, causing product confusion.
+
+### Root causes identified
+- `client/public/_redirects` did not include `/api/*` proxy rule, so `prep101.site/api/...` could resolve to SPA/404 HTML.
+- Frontend briefly switched between same-origin and cross-origin API routing while proxy behavior was inconsistent.
+- Auth token not always rehydrated after verify/refresh, causing bearer-less protected calls.
+- Upload and generation response parsing assumed valid JSON/non-empty content.
+- Dashboard state machine retained stale upload success state across new upload attempts.
+- Guide prompt lacked strict completion enforcement for final sections under long outputs.
+
+### Fixes shipped
+- Removed native form submit reliance in login and guide builder flows (JS submit only).
+- Hardened upload state flow:
+  - clear stale upload state at new upload start,
+  - only show ready/success when extraction is usable,
+  - show explicit low-confidence/failure states.
+- Updated Prep101/Reader101 generation UX:
+  - mode-specific loading copy,
+  - no cross-product messaging bleed,
+  - clearer low-confidence messaging.
+- Added two-call guardrails for low-confidence extraction:
+  - allow Prep101 direct-PDF generation path even when extraction quality flags low.
+- Added token persistence + rehydration in auth context (`ca101_token`) so protected calls keep bearer auth.
+- Added auth API fallback chain:
+  - primary host + direct API fallback,
+  - HTML-response detection and defensive JSON parsing.
+- Added upload parser hardening:
+  - safe text-first parse,
+  - empty/non-JSON handling,
+  - direct API retry on malformed response.
+- Added generation response recovery:
+  - retry once against direct API when primary response is empty.
+- Added strict guide completion controls in two-call pipeline:
+  - expanded system prompt requirements,
+  - mandatory archetype-trap block/subtext table/two-take/checklist/final coach note,
+  - automatic repair pass when output is truncated or missing required sections.
+- Backend CORS stabilization:
+  - reflect request `Origin`,
+  - set `Vary: Origin`,
+  - preserve credentials headers for cross-site requests.
+- Netlify proxy correction:
+  - added `/api/* https://prep101-api.vercel.app/api/:splat 200` to `client/public/_redirects`.
+
+### Key commits in this incident chain
+- `730bb00a` login submit sandbox fix
+- `6f864cfa` stale upload state gating fix
+- `de7bf13d` allow direct-PDF path on low-confidence extraction
+- `01ad3e3b` remove native GuideForm submit
+- `7b587538` completion-enforced prompt + reader/prep UX cleanup
+- `51d4c508` guide generation fetch retry profile
+- `c4519e18` auth token persistence/rehydration
+- `440b32e9` API routing change (later superseded)
+- `e9b4f903` auth fallback chain
+- `0c948a7a` HTML-response parse hardening
+- `90efa348` route API direct to prep101-api (later superseded)
+- `6f4c1004` backend CORS reflection fix
+- `9064fdbd` Netlify `_redirects` API proxy fix + same-origin restore
+- `af57d6b2` upload parse + retry hardening
+- `0ee1b15b` empty guide response recovery retry
+
+### Current state at log time
+- `prep101.site/api/auth/login` verified returning JSON (not HTML fallback).
+- `prep101.site/api/guides/generate-from-pdf` preflight verified with correct CORS headers.
+- Frontend and backend both redeployed with above fixes.
+
 ## 2026-04-09
 
 ### Launch architecture and product flow
