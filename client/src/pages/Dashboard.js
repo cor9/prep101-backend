@@ -596,10 +596,13 @@ const Dashboard = () => {
       if (!response.ok && !ct.includes("application/json")) {
         const rawBody = await response.text().catch(() => "");
         const preview = rawBody.slice(0, 200).trim();
+        const timeoutMarker = /FUNCTION_INVOCATION_TIMEOUT/i.test(rawBody);
         const isHtmlError = preview.toLowerCase().startsWith("<!doctype") || preview.toLowerCase().startsWith("<html");
-        const errorDetail = isHtmlError
-          ? `Server returned HTML (HTTP ${response.status}) — likely a proxy or edge error.`
-          : (preview || `Request failed (HTTP ${response.status})`);
+        const errorDetail = timeoutMarker
+          ? "Guide generation timed out on the server (FUNCTION_INVOCATION_TIMEOUT)."
+          : isHtmlError
+            ? `Server returned HTML (HTTP ${response.status}) — likely a proxy or edge error.`
+            : (preview || `Request failed (HTTP ${response.status})`);
         console.error("❌ Non-JSON API error:", response.status, errorDetail);
         throw new Error(errorDetail);
       }
@@ -817,7 +820,11 @@ const Dashboard = () => {
         }));
       }
     } catch (err) {
-      if (/Empty guide response/i.test(String(err?.message || ""))) {
+      if (
+        /Empty guide response|FUNCTION_INVOCATION_TIMEOUT|timed out on the server|HTTP 504/i.test(
+          String(err?.message || "")
+        )
+      ) {
         try {
           const directApiBase = "https://prep101-api.vercel.app";
           let recoveryResponse;

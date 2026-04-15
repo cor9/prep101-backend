@@ -259,6 +259,17 @@ function recoverScreenplayFromFallback(ocrFallback = {}) {
     .join("\n");
 }
 
+function markExtractionFailure(error) {
+  const message = error?.message || "Unknown extraction failure";
+  const wrapped = new Error(`EXTRACTION_FAILED: ${message}`);
+  wrapped.cause = error;
+  return wrapped;
+}
+
+function isExtractionFailure(error) {
+  return /^EXTRACTION_FAILED:/i.test(String(error?.message || ""));
+}
+
 async function extractScreenplay({
   pdfBuffer,
   role = "",
@@ -439,16 +450,23 @@ async function generateGuideFromPdfTwoCall({
   };
 
   const claudePipeline = async () => {
-    const extraction = await extractScreenplay({
-      pdfBuffer,
-      role: characterName,
-      apiKey,
-    });
+    let extraction;
+    try {
+      extraction = await extractScreenplay({
+        pdfBuffer,
+        role: characterName,
+        apiKey,
+      });
+    } catch (error) {
+      throw markExtractionFailure(error);
+    }
 
     const screenplayText = extraction.screenplayText || "";
     const screenplayWordCount = (screenplayText.match(/\b[\w']+\b/g) || []).length;
     if (screenplayWordCount < 80) {
-      throw new Error("Claude extraction too thin for reliable guide generation");
+      throw markExtractionFailure(
+        new Error("Claude extraction too thin for reliable guide generation")
+      );
     }
 
     const analysisStep = await generateAnalysis({
@@ -538,6 +556,9 @@ async function generateGuideFromPdfTwoCall({
   try {
     return await claudePipeline();
   } catch (e) {
+    if (!isExtractionFailure(e)) {
+      throw e;
+    }
     console.warn(
       `[ClaudePipeline] Primary pipeline failed: ${e.message}. Attempting OCR fallback pipeline.`
     );
