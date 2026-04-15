@@ -154,24 +154,61 @@ Reserve output budget explicitly for Phase 2.
 Do not let Phase 1 sections consume the entire response budget.
 If Phase 1 is running long, cut it short. Phase 2 must always be complete.
 
+OUTPUT PRIORITY ORDER:
+
+You must generate sections in this exact order:
+
+1. Project Overview
+2. Character Breakdown
+3. Bold Choices
+4. Two-Take Strategy
+5. Moment Before & Button
+6. Rehearsal Roadmap
+7. Pre-Submission Checklist
+8. Final Coach Note
+
+CRITICAL RULES:
+
+- The guide MUST NOT end before "Final Coach Note"
+- If token pressure occurs, COMPRESS earlier sections
+- NEVER truncate:
+  - Two-Take Strategy
+  - Checklist
+  - Final Coach Note
+  - Final Scene 3 physical instruction
+
+If you cannot complete the guide:
+OUTPUT:
+"TRUNCATED — REQUEST PART 2"
+
 OUTPUT:
 - Return complete self-contained HTML only.
 `.trim();
 
-const GUIDE_COMPLETION_REPAIR_PROMPT = `
-You are repairing an incomplete Prep101 guide draft.
+const ANALYSIS_SYSTEM_PROMPT = `
+You are an audition coach creating structured analysis for downstream generation.
 
-Task:
-- Preserve the strongest existing content.
-- Fix completion and quality gaps.
-- Ensure all 10 required sections exist in the correct order.
-- Fully complete the Two-Take Strategy (both takes), Pre-Submission Checklist, and Final Coach Note.
-- Ensure the Archetype Trap standalone block exists after Character Breakdown.
-- Ensure the Subtext table has at least 6 real lines and 3 columns:
-  Line | Surface Meaning | Subtext / Action
-- Ensure actor-facing directive coaching language.
-- Return final, complete HTML only.
+Output plain text only.
+
+Include ONLY these sections:
+1. Character Breakdown
+2. Hagen Questions
+3. Scene Action
+4. Subtext
+5. POV
+
+Rules:
+- NO HTML
+- NO checklist
+- NO coach note
+- NO two-take strategy
+- Keep the analysis grounded in provided script text and metadata.
 `.trim();
+
+const EXTRACT_MAX_TOKENS = 6000;
+const ANALYSIS_MAX_TOKENS = 6000;
+const SUMMARY_MAX_TOKENS = 800;
+const GUIDE_MAX_TOKENS = 8000;
 
 function getAnthropicText(data = {}) {
   const content = Array.isArray(data?.content) ? data.content : [];
@@ -182,52 +219,47 @@ function getAnthropicText(data = {}) {
     .trim();
 }
 
-function stripHtml(input = "") {
-  return String(input || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+function buildMetadataBlock(metadata = {}) {
+  return [
+    `ROLE: ${metadata.characterName}`,
+    `PROJECT TITLE: ${metadata.productionTitle}`,
+    `PROJECT TYPE: ${metadata.productionType}`,
+    metadata.genre ? `GENRE: ${metadata.genre}` : null,
+    metadata.actorAge ? `ACTOR AGE: ${metadata.actorAge}` : null,
+    metadata.castingDirectors
+      ? `CASTING DIRECTORS: ${metadata.castingDirectors}`
+      : null,
+    metadata.showrunners ? `SHOWRUNNERS / WRITERS: ${metadata.showrunners}` : null,
+    metadata.network ? `NETWORK / PLATFORM: ${metadata.network}` : null,
+    metadata.studio ? `STUDIO: ${metadata.studio}` : null,
+    metadata.contractType ? `CONTRACT TYPE: ${metadata.contractType}` : null,
+    metadata.characterBreakdown
+      ? `CHARACTER BREAKDOWN:\n${metadata.characterBreakdown}`
+      : null,
+    metadata.callbackNotes ? `CALLBACK NOTES:\n${metadata.callbackNotes}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
-function hasRequiredGuideSections(html = "") {
-  const checks = [
-    /Project Overview/i,
-    /Character Breakdown/i,
-    /Uta Hagen/i,
-    /Scene Action/i,
-    /Subtext/i,
-    /Character POV|Personalization/i,
-    /Bold Choices/i,
-    /Two-?Take/i,
-    /Moment Before/i,
-    /Rehearsal Roadmap/i,
-    /Pre-Submission Checklist/i,
-    /Final Coach Note|Closing Coach/i,
-    /THE TRAP:\s*DO NOT PLAY/i,
-  ];
-  return checks.every((pattern) => pattern.test(html));
-}
-
-function hasMinimumSubtextRows(html = "") {
-  const quotedLines = (html.match(/"[^"\n]{3,}"/g) || []).length;
-  return quotedLines >= 6;
-}
-
-function appearsTruncated(html = "") {
-  const trimmed = String(html || "").trim();
-  if (!trimmed) return true;
-  const plain = stripHtml(trimmed);
-  if (!/[.!?]$/.test(plain)) return true;
-  if (/<html[\s>]/i.test(trimmed) && !/<\/html>\s*$/i.test(trimmed)) return true;
-  return false;
-}
-
-function needsRepairPass(html = "") {
-  return (
-    appearsTruncated(html) ||
-    !hasRequiredGuideSections(html) ||
-    !hasMinimumSubtextRows(html)
+function logTokenUsage(step, data, model, maxTokens) {
+  const usage = data?.usage || {};
+  console.log(
+    `[ClaudePipeline] ${step} tokens -> model=${model} input=${usage.input_tokens ?? "n/a"} output=${usage.output_tokens ?? "n/a"} max=${maxTokens}`
   );
 }
 
-async function extractScreenplayFromPdf({
+function recoverScreenplayFromFallback(ocrFallback = {}) {
+  const sections = ocrFallback?.mapped?.sections || [];
+  return sections
+    .map((section) => String(section?.text || "").trim())
+    .filter(Boolean)
+    .filter((line) => line.length > 1)
+    .filter((line) => !/Sides by Breakdown Services/i.test(line))
+    .join("\n");
+}
+
+async function extractScreenplay({
   pdfBuffer,
   role = "",
   preferredModel,
@@ -236,7 +268,7 @@ async function extractScreenplayFromPdf({
   const { data, model } = await sendAnthropicMessage({
     apiKey,
     preferredModel,
-    maxTokens: 6000,
+    maxTokens: EXTRACT_MAX_TOKENS,
     system: EXTRACTION_SYSTEM_PROMPT,
     messages: [
       {
@@ -260,85 +292,119 @@ async function extractScreenplayFromPdf({
   });
 
   const screenplayText = getAnthropicText(data);
-  return { screenplayText, model };
+  logTokenUsage("extractScreenplay", data, model, EXTRACT_MAX_TOKENS);
+  return { screenplayText, model, usage: data?.usage };
 }
 
-async function generateGuideHtmlFromScreenplay({
+async function generateAnalysis({
   screenplayText,
   metadata,
   preferredModel,
   apiKey,
-  startTime,
 }) {
-  const metaBlock = [
-    `ROLE: ${metadata.characterName}`,
-    `PROJECT TITLE: ${metadata.productionTitle}`,
-    `PROJECT TYPE: ${metadata.productionType}`,
-    metadata.genre ? `GENRE: ${metadata.genre}` : null,
-    metadata.actorAge ? `ACTOR AGE: ${metadata.actorAge}` : null,
-    metadata.castingDirectors
-      ? `CASTING DIRECTORS: ${metadata.castingDirectors}`
-      : null,
-    metadata.showrunners ? `SHOWRUNNERS / WRITERS: ${metadata.showrunners}` : null,
-    metadata.network ? `NETWORK / PLATFORM: ${metadata.network}` : null,
-    metadata.studio ? `STUDIO: ${metadata.studio}` : null,
-    metadata.contractType ? `CONTRACT TYPE: ${metadata.contractType}` : null,
-    metadata.characterBreakdown
-      ? `CHARACTER BREAKDOWN:\n${metadata.characterBreakdown}`
-      : null,
-    metadata.callbackNotes ? `CALLBACK NOTES:\n${metadata.callbackNotes}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  const metaBlock = buildMetadataBlock(metadata);
 
   const { data, model } = await sendAnthropicMessage({
     apiKey,
     preferredModel,
-    maxTokens: 12000,
+    maxTokens: ANALYSIS_MAX_TOKENS,
+    system: ANALYSIS_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: `Generate a structured analysis from this screenplay and metadata.\n\n${metaBlock}\n\nSCREENPLAY:\n${screenplayText}`,
+      },
+    ],
+  });
+
+  const analysis = getAnthropicText(data);
+  logTokenUsage("generateAnalysis", data, model, ANALYSIS_MAX_TOKENS);
+  return { analysis, model, usage: data?.usage };
+}
+
+async function summarizeAnalysis({
+  analysis,
+  preferredModel,
+  apiKey,
+}) {
+  const summaryMessage = {
+    role: 'user',
+    content: `From the analysis above, extract a concise summary (max 300 words).
+
+Include ONLY:
+- Character core conflict
+- Scene-by-scene emotional arc (Scene 1, 2, 3)
+- Key physicality anchors
+- Central dramatic question
+
+Rules:
+- Plain text only (no HTML, no formatting)
+- No explanation, no extra commentary
+- No repetition of full analysis
+- Keep it tight and usable as input for the next generation step`
+  };
+
+  const { data, model } = await sendAnthropicMessage({
+    apiKey,
+    preferredModel,
+    maxTokens: SUMMARY_MAX_TOKENS,
+    messages: [
+      {
+        role: "assistant",
+        content: analysis,
+      },
+      summaryMessage,
+    ],
+  });
+
+  const summary = getAnthropicText(data);
+  logTokenUsage("summarizeAnalysis", data, model, SUMMARY_MAX_TOKENS);
+  return { summary, model, usage: data?.usage };
+}
+
+async function generateGuideHTML({
+  summary,
+  metadata,
+  preferredModel,
+  apiKey,
+}) {
+  const metaBlock = buildMetadataBlock(metadata);
+
+  const { data, model } = await sendAnthropicMessage({
+    apiKey,
+    preferredModel,
+    maxTokens: GUIDE_MAX_TOKENS,
     system: GUIDE_SYSTEM_PROMPT,
     messages: [
       {
         role: "user",
-        content: `Generate the full Prep101 HTML guide.\n\n${metaBlock}\n\nSCRIPT:\n${screenplayText}`,
+        content: `Generate the full Prep101 HTML guide.
+
+${metaBlock}
+
+SUMMARY OF CHARACTER & SCENES:
+${summary}`,
       },
     ],
   });
-
-  // Only run the repair pass if we have enough wall-clock budget remaining.
-  // The Vercel function has a hard 300s limit. Call 1 (extraction) + Call 2 (guide)
-  // can take 150-220s combined. A repair pass costs another 60-120s. If we're
-  // already past 220s, skip the repair and return what we have — a partial guide
-  // is far better than a FUNCTION_INVOCATION_TIMEOUT with nothing.
-  const elapsedSeconds = startTime ? (Date.now() - startTime) / 1000 : 0;
-  const REPAIR_BUDGET_SECONDS = 220;
 
   const html = getAnthropicText(data);
-  if (!needsRepairPass(html)) {
-    return { html, model };
+  logTokenUsage("generateGuideHTML", data, model, GUIDE_MAX_TOKENS);
+
+  if (!html.includes("Final Coach Note")) {
+    throw new Error("Guide truncated — retry with compression");
+  }
+  if (!html.includes("Take A") || !html.includes("Take B")) {
+    throw new Error("Missing Two-Take Strategy");
+  }
+  if (!/Pre-Submission Checklist/i.test(html)) {
+    throw new Error("Missing checklist");
+  }
+  if (html.includes("TRUNCATED — REQUEST PART 2")) {
+    throw new Error("Guide truncated — retry with compression");
   }
 
-  if (elapsedSeconds > REPAIR_BUDGET_SECONDS) {
-    console.warn(
-      `[Pipeline] Skipping repair pass — elapsed ${Math.round(elapsedSeconds)}s exceeds ${REPAIR_BUDGET_SECONDS}s budget. Returning first-pass output.`
-    );
-    return { html, model, repairSkipped: true };
-  }
-
-  const repair = await sendAnthropicMessage({
-    apiKey,
-    preferredModel,
-    maxTokens: 10000,
-    system: GUIDE_COMPLETION_REPAIR_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Repair this guide draft using the same script/metadata context.\n\nMETADATA:\n${metaBlock}\n\nSCRIPT:\n${screenplayText}\n\nDRAFT HTML:\n${html}`,
-      },
-    ],
-  });
-
-  const repairedHtml = getAnthropicText(repair.data);
-  return { html: repairedHtml || html, model: repair.model || model };
+  return { html, model, usage: data?.usage };
 }
 
 async function generateGuideFromPdfTwoCall({
@@ -357,83 +423,135 @@ async function generateGuideFromPdfTwoCall({
   callbackNotes,
   apiKey,
 }) {
-  // Record wall-clock start so nested functions can make budget decisions
-  const startTime = Date.now();
-
-  const extraction = await extractScreenplayFromPdf({
-    pdfBuffer,
-    role: characterName,
-    apiKey,
-  });
-
-  let screenplayText = extraction.screenplayText || "";
-  let wordCount = (screenplayText.match(/\b[\w']+\b/g) || []).length;
-  let extractionMethod = "claude_document";
-
-  // If Claude document extraction is too thin, automatically fall back
-  // to the OCR pipeline on the same uploaded PDF before hard-stopping.
-  if (wordCount < 80) {
-    try {
-      const ocrFallback = await processPdfExtractionJob({
-        filename: "upload.pdf",
-        pdfBase64: pdfBuffer.toString("base64"),
-      });
-      const sections = ocrFallback?.mapped?.sections || [];
-      const recovered = sections
-        .map((section) => String(section?.text || "").trim())
-        .filter(Boolean)
-        .filter((line) => line.length > 1)
-        .filter((line) => !/Sides by Breakdown Services/i.test(line))
-        .join("\n");
-      const recoveredWordCount = (recovered.match(/\b[\w']+\b/g) || []).length;
-      if (recoveredWordCount > wordCount) {
-        screenplayText = recovered;
-        wordCount = recoveredWordCount;
-        extractionMethod = `ocr_fallback:${ocrFallback.provider || "unknown"}`;
-      }
-    } catch (_fallbackError) {
-      // Preserve original hard-stop behavior only after fallback attempt.
-    }
-  }
-
-  if (wordCount < 80) {
-    throw new Error(
-      "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
-    );
-  }
-
-  const guide = await generateGuideHtmlFromScreenplay({
-    screenplayText,
-    apiKey,
-    startTime,
-    metadata: {
-      characterName,
-      productionTitle,
-      productionType,
-      genre,
-      actorAge,
-      castingDirectors,
-      showrunners,
-      network,
-      studio,
-      contractType,
-      characterBreakdown,
-      callbackNotes,
-    },
-  });
-
-  return {
-    screenplayText,
-    screenplayWordCount: wordCount,
-    htmlGuide: guide.html,
-    extractionModel: extraction.model,
-    extractionMethod,
-    guideModel: guide.model,
+  const metadata = {
+    characterName,
+    productionTitle,
+    productionType,
+    genre,
+    actorAge,
+    castingDirectors,
+    showrunners,
+    network,
+    studio,
+    contractType,
+    characterBreakdown,
+    callbackNotes,
   };
+
+  const claudePipeline = async () => {
+    const extraction = await extractScreenplay({
+      pdfBuffer,
+      role: characterName,
+      apiKey,
+    });
+
+    const screenplayText = extraction.screenplayText || "";
+    const screenplayWordCount = (screenplayText.match(/\b[\w']+\b/g) || []).length;
+    if (screenplayWordCount < 80) {
+      throw new Error("Claude extraction too thin for reliable guide generation");
+    }
+
+    const analysisStep = await generateAnalysis({
+      screenplayText,
+      metadata,
+      apiKey,
+    });
+    const summaryStep = await summarizeAnalysis({
+      analysis: analysisStep.analysis,
+      apiKey,
+    });
+    const guideStep = await generateGuideHTML({
+      summary: summaryStep.summary,
+      metadata,
+      apiKey,
+    });
+
+    return {
+      screenplayText,
+      screenplayWordCount,
+      analysisText: analysisStep.analysis,
+      analysisSummary: summaryStep.summary,
+      htmlGuide: guideStep.html,
+      extractionModel: extraction.model,
+      extractionMethod: "claude_document",
+      analysisModel: analysisStep.model,
+      summaryModel: summaryStep.model,
+      guideModel: guideStep.model,
+      tokenUsage: {
+        extraction: extraction.usage || null,
+        analysis: analysisStep.usage || null,
+        summary: summaryStep.usage || null,
+        guide: guideStep.usage || null,
+      },
+    };
+  };
+
+  const fallbackPipeline = async () => {
+    const ocrFallback = await processPdfExtractionJob({
+      filename: "upload.pdf",
+      pdfBase64: pdfBuffer.toString("base64"),
+    });
+
+    const screenplayText = recoverScreenplayFromFallback(ocrFallback);
+    const screenplayWordCount = (screenplayText.match(/\b[\w']+\b/g) || []).length;
+    if (screenplayWordCount < 80) {
+      throw new Error(
+        "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
+      );
+    }
+
+    const analysisStep = await generateAnalysis({
+      screenplayText,
+      metadata,
+      apiKey,
+    });
+    const summaryStep = await summarizeAnalysis({
+      analysis: analysisStep.analysis,
+      apiKey,
+    });
+    const guideStep = await generateGuideHTML({
+      summary: summaryStep.summary,
+      metadata,
+      apiKey,
+    });
+
+    return {
+      screenplayText,
+      screenplayWordCount,
+      analysisText: analysisStep.analysis,
+      analysisSummary: summaryStep.summary,
+      htmlGuide: guideStep.html,
+      extractionModel: ocrFallback?.provider || "ocr_fallback",
+      extractionMethod: `ocr_fallback:${ocrFallback?.provider || "unknown"}`,
+      analysisModel: analysisStep.model,
+      summaryModel: summaryStep.model,
+      guideModel: guideStep.model,
+      tokenUsage: {
+        extraction: null,
+        analysis: analysisStep.usage || null,
+        summary: summaryStep.usage || null,
+        guide: guideStep.usage || null,
+      },
+    };
+  };
+
+  try {
+    return await claudePipeline();
+  } catch (e) {
+    console.warn(
+      `[ClaudePipeline] Primary pipeline failed: ${e.message}. Attempting OCR fallback pipeline.`
+    );
+    return fallbackPipeline();
+  }
 }
 
 module.exports = {
   EXTRACTION_SYSTEM_PROMPT,
+  ANALYSIS_SYSTEM_PROMPT,
   GUIDE_SYSTEM_PROMPT,
+  extractScreenplay,
+  generateAnalysis,
+  summarizeAnalysis,
+  generateGuideHTML,
   generateGuideFromPdfTwoCall,
 };
