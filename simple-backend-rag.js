@@ -151,33 +151,49 @@ app.set("trust proxy", true);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Manual CORS middleware for maximum compatibility
-// NOTE: We reflect request origin to prevent intermittent browser CORS failures
-// on cross-site authenticated multipart requests.
+// CORS middleware — explicit allowlist so platform-level headers (vercel.json) and
+// Express headers stay in sync. Known origins get specific ACAO + credentials (needed
+// for the ca101_session cookie on proxied same-origin paths). Unknown/dev origins still
+// get CORS headers so local development works. No-origin requests (server-to-server, curl)
+// are passed through without CORS headers.
+const CORS_ALLOWED_ORIGINS = new Set([
+  'https://prep101.site',
+  'https://boldchoices.site',
+  'https://reader101.site',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
+  'http://localhost:5174',
+]);
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  if (origin) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
+  if (origin && CORS_ALLOWED_ORIGINS.has(origin)) {
+    // Known frontend: set specific origin and allow credentials (cookie auth)
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  } else if (origin) {
+    // Unknown origin (e.g., local dev at a non-listed port): reflect without credentials
+    // Cross-origin generation calls use Bearer tokens, not cookies, so credentials is not needed.
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
   }
+  // No origin = server-to-server or curl: skip CORS headers entirely
 
-  // Allow credentials for cookies/auth
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-  // Allow all common methods
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-
-  // Allow common headers
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.setHeader('Access-Control-Max-Age', '86400');
 
-  // Handle preflight immediately
+  // Respond to preflight immediately — 204 No Content is spec-correct for OPTIONS
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(204).end();
   }
 
   next();
 });
+
 
 // Continue with other imports
 // methodology folder is now included in vercel.json

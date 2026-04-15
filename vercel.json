@@ -8,6 +8,29 @@
       "includeFiles": "{services/**,config/**,models/**,middleware/**,routes/**,methodology/**,pdfservices-api-credentials.json,package.json,node_modules/@adobe/pdfservices-node-sdk/**}"
     }
   },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://prep101.site"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+        },
+        {
+          "key": "Access-Control-Max-Age",
+          "value": "86400"
+        }
+      ]
+    }
+  ],
   "redirects": [
     {
       "source": "/app/stripe/success",
@@ -27,3 +50,4 @@
     }
   ]
 }
+
