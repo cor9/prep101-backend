@@ -83,6 +83,77 @@ FINAL COACH NOTE (REQUIRED):
 - Identify the one thing that books the role and cannot be faked.
 - End with a direct send-off instruction, not generic encouragement.
 
+OUTPUT SEQUENCING — TRUNCATION PREVENTION:
+
+This guide must be COMPLETE. It must never end mid-sentence, mid-section, or mid-instruction.
+
+The most important sections for real-world actor use come at the END of the guide. These sections are mandatory and must always be fully delivered:
+
+1. Two-Take Strategy (both takes, fully written)
+2. Pre-Submission Checklist
+3. Closing Coach's Note
+4. Final physical/button instruction for Scene 3
+
+If output length becomes a risk, compress earlier sections FIRST in this exact order:
+
+1. Character POV & Personalization
+2. Rehearsal Roadmap (reduce from 10 takes to 6)
+3. Scene Action & Physicality (reduce to key beats only)
+4. Project Overview (condense comps and context)
+
+DO NOT compress or remove:
+- Two-Take Strategy
+- Pre-Submission Checklist
+- Closing Coach's Note
+- Final Scene 3 physical/button instruction
+
+If full completion is impossible within the output limit:
+- Do NOT silently truncate
+- Do NOT end mid-sentence
+- Do NOT omit end sections without notice
+
+Instead output this visible warning block:
+
+⚠ GUIDE INCOMPLETE DUE TO OUTPUT LIMIT
+Missing sections:
+- [list exact missing sections]
+
+Then stop cleanly.
+
+SECTION PRESENCE CHECK — REQUIRED BEFORE FINAL OUTPUT:
+
+Before delivering the guide, verify that all of the following are present:
+- Project Overview
+- Character Breakdown
+- Uta Hagen's 9 Questions
+- Scene Action & Physicality
+- Subtext Translation Table
+- Character POV & Personalization
+- Bold Choices
+- Two-Take Strategy
+- Moment Before & Button
+- Rehearsal Roadmap
+- Pre-Submission Checklist
+- Closing Coach's Note
+
+If any required section is missing, the output is invalid and must be rewritten shorter until all required sections fit.
+
+COACHING VOICE PRIORITY:
+
+When shortening for length, remove explanation before removing direction.
+Keep playable instructions.
+Cut analysis first, not tactics.
+
+TWO-PHASE GENERATION (INTERNAL):
+
+Build the guide in two internal phases:
+Phase 1: Project Overview, Character Breakdown, Uta Hagen's 9 Questions, Scene Action & Physicality, Subtext Translation Table, Character POV & Personalization
+Phase 2 (MUST COMPLETE FULLY): Bold Choices, Two-Take Strategy, Moment Before & Button, Rehearsal Roadmap, Pre-Submission Checklist, Closing Coach's Note
+
+Reserve output budget explicitly for Phase 2.
+Do not let Phase 1 sections consume the entire response budget.
+If Phase 1 is running long, cut it short. Phase 2 must always be complete.
+
 OUTPUT:
 - Return complete self-contained HTML only.
 `.trim();
@@ -128,7 +199,7 @@ function hasRequiredGuideSections(html = "") {
     /Moment Before/i,
     /Rehearsal Roadmap/i,
     /Pre-Submission Checklist/i,
-    /Final Coach Note/i,
+    /Final Coach Note|Closing Coach/i,
     /THE TRAP:\s*DO NOT PLAY/i,
   ];
   return checks.every((pattern) => pattern.test(html));
