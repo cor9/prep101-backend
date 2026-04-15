@@ -56,6 +56,7 @@ SUBTEXT TABLE (STRICT FORMAT):
 
 TWO-TAKE STRATEGY (REQUIRED):
 - Include BOTH takes, fully written.
+- Label them exactly as: "Take A" and "Take B".
 - For each take include:
   - Emotional engine
   - Primary tactic
@@ -259,6 +260,25 @@ function recoverScreenplayFromFallback(ocrFallback = {}) {
     .join("\n");
 }
 
+function validateGuideHtml(html = "") {
+  const missing = [];
+  if (!/Final Coach Note/i.test(html)) missing.push("Final Coach Note");
+  const hasTakeA = /Take\s*A\b/i.test(html);
+  const hasTakeB = /Take\s*B\b/i.test(html);
+  const hasTakeOne = /Take\s*1\b/i.test(html);
+  const hasTakeTwo = /Take\s*2\b/i.test(html);
+  if (!((hasTakeA && hasTakeB) || (hasTakeOne && hasTakeTwo))) {
+    missing.push("Two-Take Strategy (Take A + Take B)");
+  }
+  if (!/Pre-Submission Checklist/i.test(html)) {
+    missing.push("Pre-Submission Checklist");
+  }
+  if (/TRUNCATED\s*—\s*REQUEST PART 2/i.test(html)) {
+    missing.push("Complete guide body (received truncation marker)");
+  }
+  return { valid: missing.length === 0, missing };
+}
+
 function markExtractionFailure(error) {
   const message = error?.message || "Unknown extraction failure";
   const wrapped = new Error(`EXTRACTION_FAILED: ${message}`);
@@ -402,20 +422,61 @@ ${summary}`,
   const html = getAnthropicText(data);
   logTokenUsage("generateGuideHTML", data, model, GUIDE_MAX_TOKENS);
 
-  if (!html.includes("Final Coach Note")) {
-    throw new Error("Guide truncated — retry with compression");
-  }
-  if (!html.includes("Take A") || !html.includes("Take B")) {
-    throw new Error("Missing Two-Take Strategy");
-  }
-  if (!/Pre-Submission Checklist/i.test(html)) {
-    throw new Error("Missing checklist");
-  }
-  if (html.includes("TRUNCATED — REQUEST PART 2")) {
-    throw new Error("Guide truncated — retry with compression");
+  const firstPassValidation = validateGuideHtml(html);
+  if (firstPassValidation.valid) {
+    return { html, model, usage: data?.usage };
   }
 
-  return { html, model, usage: data?.usage };
+  const repairMissingList = firstPassValidation.missing.map((item) => `- ${item}`).join("\n");
+  const repair = await sendAnthropicMessage({
+    apiKey,
+    preferredModel,
+    maxTokens: GUIDE_MAX_TOKENS,
+    system: GUIDE_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: `Your previous guide draft is missing required sections.
+
+Missing:
+${repairMissingList}
+
+Rules for this repair:
+- Return complete self-contained HTML only
+- Include "Take A" and "Take B" labels explicitly
+- Must include "Pre-Submission Checklist"
+- Must include "Final Coach Note"
+- Do not output "TRUNCATED — REQUEST PART 2"
+
+METADATA:
+${metaBlock}
+
+SUMMARY OF CHARACTER & SCENES:
+${summary}
+
+PREVIOUS DRAFT:
+${html}`,
+      },
+    ],
+  });
+  logTokenUsage("generateGuideHTML.repair", repair.data, repair.model, GUIDE_MAX_TOKENS);
+
+  const repairedHtml = getAnthropicText(repair.data) || html;
+  const finalValidation = validateGuideHtml(repairedHtml);
+  if (!finalValidation.valid) {
+    if (finalValidation.missing.some((item) => /Final Coach Note|truncation/i.test(item))) {
+      throw new Error("Guide truncated — retry with compression");
+    }
+    if (finalValidation.missing.some((item) => /Two-Take Strategy/i.test(item))) {
+      throw new Error("Missing Two-Take Strategy");
+    }
+    if (finalValidation.missing.some((item) => /Checklist/i.test(item))) {
+      throw new Error("Missing checklist");
+    }
+    throw new Error(`Guide missing required sections: ${finalValidation.missing.join(", ")}`);
+  }
+
+  return { html: repairedHtml, model: repair.model || model, usage: repair.data?.usage || data?.usage };
 }
 
 async function generateGuideFromPdfTwoCall({
