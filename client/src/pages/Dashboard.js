@@ -538,8 +538,8 @@ const Dashboard = () => {
     let payload = null;
     const modeForRequest = formData?.mode || (isReader101Context ? "reader_support" : "standard");
     setActiveGenerationMode(modeForRequest);
-    const shouldUseTwoCallPdfEndpoint =
-      !isReader101Context && Boolean(uploadedFile);
+    // Reader101 uses the same direct Claude PDF endpoint as Prep101 when a file is present
+    const shouldUseTwoCallPdfEndpoint = Boolean(uploadedFile);
 
     // Generation endpoints go DIRECT to Vercel — never through the Netlify proxy.
     // Netlify's proxy (prep101.site → Vercel) has a hard 26-second timeout;
@@ -579,6 +579,10 @@ const Dashboard = () => {
         if (value == null) return;
         multipart.append(key, String(value));
       });
+      // Tell the backend which guide type to generate
+      if (isReader101Context) {
+        multipart.append("mode", "reader_support");
+      }
       return multipart;
     };
 

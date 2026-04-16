@@ -2783,6 +2783,7 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       network,
       studio,
       contractType,
+      mode,  // "reader_support" activates Reader101 path
     } = req.body;
 
     if (!characterName || !productionTitle || !productionType) {
@@ -2802,10 +2803,89 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       });
     }
 
-    const prep101Usage = buildPrep101Usage(currentUser);
     const isAdminUser =
       currentUser.betaAccessLevel === "admin" ||
       currentUser.subscription === "admin";
+
+    const apiKey = (process.env.ANTHROPIC_API_KEY || "").trim();
+    if (!apiKey) {
+      return res.status(503).json({ success: false, error: "ANTHROPIC_API_KEY is not configured." });
+    }
+
+    // ─── Reader101 path: same Claude PDF extraction as Prep101 ────────────────
+    if (mode === "reader_support") {
+      const reader101Usage = buildReader101Usage(currentUser);
+      if (!isAdminUser && !reader101Usage.canGenerate) {
+        return res.status(403).json({
+          success: false,
+          error: "Reader101 access is required to generate a reader guide.",
+          reader101Usage,
+        });
+      }
+      const { extractScreenplay } = require("./services/claudePdfGuidePipeline");
+      const { generateReaderGuide } = require("./services/readerGuideService");
+      const { repairScreenplayText } = require("./services/screenplayRepair");
+      const { parseScreenplayText } = require("./services/screenplayParser");
+
+      console.log("📖 [Reader101] generate-from-pdf — extracting via Claude...");
+      const extraction = await extractScreenplay({ pdfBuffer: req.file.buffer, role: characterName.trim(), apiKey });
+      const repairedText = repairScreenplayText(extraction.screenplayText || "");
+      const parsedScreenplay = parseScreenplayText(repairedText, { actorCharacter: characterName.trim() });
+      const FORBIDDEN_READER_ROLES = new Set(["NARRATOR","V.O.","VO","O.S.","OS","ANNOUNCER"]);
+      const readerRoles = (parsedScreenplay.readerRoles || []).filter(r => !FORBIDDEN_READER_ROLES.has(r.trim().toUpperCase()));
+
+      const readerGuideHtml = await generateReaderGuide({
+        sceneText: repairedText,
+        characterName: characterName.trim(),
+        characterNames: readerRoles,
+        structure: parsedScreenplay.structure,
+        actorAge: actorAge || "",
+        productionTitle: productionTitle.trim(),
+        productionType: productionType.trim(),
+        genre: genre || "",
+        storyline: storyline || "",
+        fallbackMode: false,
+      });
+      console.log("✅ [Reader101] Reader guide from PDF complete!");
+
+      const GuideModel = Guide || require("./models/Guide");
+      const readerGuideId = `reader_pdf_${Date.now()}_${Math.random().toString(36).substr(2,9)}`;
+      const readerPayload = {
+        guideId: readerGuideId, userId: currentUser.id,
+        characterName: characterName.trim(), productionTitle: productionTitle.trim(),
+        productionType: productionType.trim(), roleSize: roleSize || "Supporting",
+        genre: genre || "", storyline: storyline || "",
+        characterBreakdown: "", callbackNotes: "", focusArea: "reader_support",
+        sceneText: repairedText, generatedHtml: readerGuideHtml,
+        childGuideRequested: false, childGuideCompleted: false, guideType: "reader101",
+      };
+      let savedReaderGuide = null;
+      if (GuideModel) {
+        savedReaderGuide = await GuideModel.create(readerPayload);
+      } else {
+        const { randomUUID } = require("crypto");
+        readerPayload.id = randomUUID();
+        await ensureSupabaseUser(currentUser);
+        savedReaderGuide = await supabaseInsertGuide(readerPayload, { user: currentUser });
+      }
+      let updatedBillingUser = currentUser;
+      const rc = getReader101ConsumptionUpdate(currentUser);
+      if (!rc.allowed) throw new Error("Reader101 credits were exhausted before the guide could be saved.");
+      if (Object.keys(rc.updates).length > 0) updatedBillingUser = await persistBillingUserUpdates(currentUser, rc.updates);
+
+      return res.json({
+        success: true,
+        guideId: savedReaderGuide?.guideId || readerGuideId,
+        guideContent: readerGuideHtml,
+        mode: "reader_support",
+        savedToDatabase: true,
+        reader101Usage: buildReader101Usage(updatedBillingUser),
+        metadata: { characterName: characterName.trim(), productionTitle: productionTitle.trim(), productionType: productionType.trim(), extractionMethod: "claude_document", filename: req.file.originalname },
+      });
+    }
+    // ─── End Reader101 path ─────────────────────────────────────────────────
+
+    const prep101Usage = buildPrep101Usage(currentUser);
     const hasPrep101Access = isAdminUser || prep101Usage.canGenerate;
 
     if (!hasPrep101Access) {
@@ -2814,14 +2894,6 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
         error:
           "You've used your monthly Prep101 guides and have no top-up credits remaining.",
         prep101Usage,
-      });
-    }
-
-    const apiKey = (process.env.ANTHROPIC_API_KEY || "").trim();
-    if (!apiKey) {
-      return res.status(503).json({
-        success: false,
-        error: "ANTHROPIC_API_KEY is not configured.",
       });
     }
 
