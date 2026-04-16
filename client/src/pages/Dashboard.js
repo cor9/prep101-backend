@@ -232,19 +232,9 @@ const formatBoldAccess = (usage) => {
 };
 
 const Dashboard = () => {
-  const [uploadData, setUploadData] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem("prep101_upload_data");
-      if (!saved) return null;
-      const parsed = JSON.parse(saved);
-      const words = Number(parsed?.wordCount || 0);
-      const readable = parsed?.scriptReadable !== false && words > 0;
-      return readable ? parsed : null;
-    } catch (error) {
-      console.warn("Could not restore cached upload data:", error);
-      return null;
-    }
-  });
+  // Always start with no upload state on page load — sessionStorage is cleared immediately
+  // so a hard reload never shows a ghost "file uploaded" state.
+  const [uploadData, setUploadData] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -268,6 +258,13 @@ const Dashboard = () => {
   const activeActor = user?.account?.activeActor;
   const onboardingRequired = Boolean(user?.account?.onboardingRequired);
   const needsActorSelection = Boolean(user?.account?.needsActorSelection);
+
+  // Clear any stale cached upload data on mount — hard reloads must always start clean.
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem("prep101_upload_data");
+    } catch (_) {}
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
