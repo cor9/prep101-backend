@@ -209,7 +209,7 @@ Rules:
 const EXTRACT_MAX_TOKENS = 4000;  // tighter = faster extraction per call
 const ANALYSIS_MAX_TOKENS = 4000; // tighter = faster analysis per call
 const SUMMARY_MAX_TOKENS = 800;   // kept for backward compat (step removed from main pipeline)
-const GUIDE_MAX_TOKENS = 6000;    // reduced — prompts already enforce tight output order
+const GUIDE_MAX_TOKENS = 8000;    // restored — guide needs room; time saved by removing summarize step
 
 // Per-call timeout: abort a Claude call if it hasn't responded in this many ms.
 // Vercel maxDuration is 300s. With 3 sequential calls, 90s each = 270s max (30s headroom).
@@ -275,20 +275,37 @@ function recoverScreenplayFromFallback(ocrFallback = {}) {
 
 function validateGuideHtml(html = "") {
   const missing = [];
+
+  // Final Coach Note check
   const hasFinalCoachNote =
     /Final Coach Note/i.test(html) || /Closing Coach'?s?\s*Note/i.test(html);
   if (!hasFinalCoachNote) missing.push("Final Coach Note");
-  const hasTakeA = /Take\s*A\b/i.test(html);
-  const hasTakeB = /Take\s*B\b/i.test(html);
-  const hasTakeOne = /Take\s*1\b/i.test(html);
-  const hasTakeTwo = /Take\s*2\b/i.test(html);
-  const hasTakeOneWord = /Take\s*One\b/i.test(html);
-  const hasTakeTwoWord = /Take\s*Two\b/i.test(html);
-  if (!((hasTakeA && hasTakeB) || (hasTakeOne && hasTakeTwo))) {
-    if (!(hasTakeOneWord && hasTakeTwoWord)) {
-      missing.push("Two-Take Strategy (Take A + Take B)");
-    }
+
+  // Two-Take check — accept various labelling conventions Claude uses:
+  //   Take A / Take B        (preferred)
+  //   Take 1 / Take 2
+  //   Take One / Take Two
+  //   Option A / Option B
+  //   The section heading alone ("Two-Take Strategy" or "Two Take Strategy")
+  const hasTwoTakeHeading = /Two[- ]Take\s+Strat/i.test(html) || /Two-Take\s+Submission/i.test(html);
+  const hasTakeA       = /Take\s*A\b/i.test(html);
+  const hasTakeB       = /Take\s*B\b/i.test(html);
+  const hasTake1       = /Take\s*[#]?1\b/i.test(html);
+  const hasTake2       = /Take\s*[#]?2\b/i.test(html);
+  const hasTakeOne     = /Take\s+One\b/i.test(html);
+  const hasTakeTwo     = /Take\s+Two\b/i.test(html);
+  const hasOptionA     = /Option\s*A\b/i.test(html);
+  const hasOptionB     = /Option\s*B\b/i.test(html);
+  const hasTwoTakeContent =
+    (hasTakeA && hasTakeB) ||
+    (hasTake1 && hasTake2) ||
+    (hasTakeOne && hasTakeTwo) ||
+    (hasOptionA && hasOptionB);
+  // Pass the check if either the section heading OR the inner labels are present
+  if (!hasTwoTakeHeading && !hasTwoTakeContent) {
+    missing.push("Two-Take Strategy (Take A + Take B)");
   }
+
   if (!/Pre-Submission Checklist/i.test(html)) {
     missing.push("Pre-Submission Checklist");
   }
