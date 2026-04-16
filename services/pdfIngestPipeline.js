@@ -30,15 +30,89 @@ function getWordCount(text = "") {
   return (String(text).match(/\b[\w']+\b/g) || []).length;
 }
 
+function hasScreenplayStructure(text = "") {
+  const source = String(text || "");
+  if (!source.trim()) return false;
+
+  if (/\b(INT|EXT)\./i.test(source)) return true;
+  if (/^[A-Z][A-Z0-9\s'().\-]{1,30}:/m.test(source)) return true;
+
+  // Standalone uppercase cue line followed by likely dialogue line.
+  const lines = source.split("\n");
+  for (let index = 0; index < lines.length; index += 1) {
+    const cue = lines[index].trim();
+    if (!cue) continue;
+    if (cue.length < 2 || cue.length > 32) continue;
+    if (!/^[A-Z][A-Z\s'().\-]+$/.test(cue)) continue;
+    if (isLikelyWatermarkLine(cue)) continue;
+    if (/^(INT|EXT|EST|CUT TO|FADE (IN|OUT)|ANGLE ON|INSERT|DISSOLVE TO)\b/.test(cue)) {
+      continue;
+    }
+
+    let next = "";
+    for (let lookahead = index + 1; lookahead < lines.length; lookahead += 1) {
+      next = lines[lookahead].trim();
+      if (next) break;
+    }
+    if (!next || isLikelyWatermarkLine(next)) continue;
+
+    const looksLikeDialogue =
+      next.startsWith("(") ||
+      /^[A-Z]?[a-z][^:]{1,160}$/.test(next) ||
+      /^["'(]/.test(next);
+
+    if (looksLikeDialogue) return true;
+  }
+
+  return false;
+}
+
 function buildCharacterNames(text = "") {
-  const characterPattern = /^[A-Z][A-Z\s]+:/gm;
-  return [
-    ...new Set(
-      (String(text).match(characterPattern) || []).map((name) =>
-        name.replace(":", "").trim()
-      )
-    ),
-  ];
+  const source = String(text || "");
+  const names = new Set();
+  const lines = source.split("\n");
+
+  // Format: JAMIE:
+  const withColon = source.match(/^[ \t]*([A-Z][A-Z0-9\s'().\-]{1,30}):/gm) || [];
+  withColon.forEach((line) => {
+    const cleaned = line.replace(":", "").trim();
+    if (!cleaned || isLikelyWatermarkLine(cleaned)) return;
+    names.add(cleaned);
+  });
+
+  // Format: standalone screenplay cue line:
+  //     JAMIE
+  //     (O.S.)
+  //     I don't know.
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (!line) continue;
+    if (line.includes(":")) continue;
+    if (line.length < 2 || line.length > 32) continue;
+    if (!/^[A-Z][A-Z0-9\s'().\-]+$/.test(line)) continue;
+    if (/\d{2,}/.test(line) || /[\/\\|]/.test(line)) continue;
+    if (isLikelyWatermarkLine(line)) continue;
+    if (/^(INT|EXT|EST|CUT TO|FADE (IN|OUT)|ANGLE ON|INSERT|DISSOLVE TO)\b/.test(line)) continue;
+    if (line.split(/\s+/).length > 4) continue;
+
+    let next = "";
+    for (let lookahead = index + 1; lookahead < lines.length; lookahead += 1) {
+      next = lines[lookahead].trim();
+      if (next) break;
+    }
+    if (!next) continue;
+
+    const looksLikeDialogue =
+      next.startsWith("(") ||
+      /^[A-Z]?[a-z][^:]{1,160}$/.test(next) ||
+      /^["'(]/.test(next);
+
+    if (looksLikeDialogue) {
+      names.add(line);
+    }
+  }
+
+  return [...names];
 }
 
 function cleanPipelineText(text = "") {
@@ -135,8 +209,7 @@ function evaluateExtraction(stage, rawText, { minWordCount }) {
   const qualityAssessment = assessQuality(finalText);
   const hasScriptSignals =
     characterNames.length >= 2 ||
-    /\b(INT|EXT)\./i.test(finalText) ||
-    /^[A-Z][A-Z\s]{1,24}:/m.test(finalText);
+    hasScreenplayStructure(finalText);
 
   const failures = [];
   if (wordCount < minWordCount) failures.push(`wordCount<${minWordCount}`);
@@ -311,38 +384,46 @@ Return plain text only. No commentary.`;
 
   for (const model of modelsToTry) {
     try {
+      const configuredTimeout = Number(process.env.CLAUDE_DOCUMENT_TIMEOUT_MS || 90000);
+      const timeoutMs = Number.isFinite(configuredTimeout)
+        ? Math.min(180000, Math.max(15000, configuredTimeout))
+        : 90000;
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model,
-          max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 8192),
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: prompt },
-                {
-                  type: "document",
-                  source: {
-                    type: "base64",
-                    media_type: "application/pdf",
-                    data: pdfBuffer.toString("base64"),
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      let response;
+      try {
+        response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model,
+            max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 8192),
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: prompt },
+                  {
+                    type: "document",
+                    source: {
+                      type: "base64",
+                      media_type: "application/pdf",
+                      data: pdfBuffer.toString("base64"),
+                    },
                   },
-                },
-              ],
-            },
-          ],
-        }),
-      });
-      clearTimeout(timeout);
+                ],
+              },
+            ],
+          }),
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -854,7 +935,8 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
   if (
     textStage &&
     textStage.wordCount >= 60 &&
-    (textStage.characterNames || []).length >= 1
+    ((textStage.characterNames || []).length >= 1 ||
+      hasScreenplayStructure(textStage.text))
   ) {
     return {
       text: textStage.text,

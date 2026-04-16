@@ -1,7 +1,6 @@
 const assert = require("assert");
 const {
   __private: { evaluateExtraction, resolvePipelineResult },
-  IMAGE_BASED_READING_MESSAGE,
 } = require("../services/pdfIngestPipeline");
 
 function stage(stageName, text, minWordCount, source, overrides = {}) {
@@ -25,6 +24,17 @@ I am staying here.
 JUNE:
 Good.
   `.repeat(25);
+
+  const screenplayCueNoColonText = `
+INT. APARTMENT - NIGHT
+
+JAMIE
+(whispering)
+I don't want them to hear us.
+
+LANDON
+Then stop shouting.
+  `.repeat(14);
 
   const watermarkHeavyText = `
 B540LT
@@ -67,7 +77,7 @@ No. Keep driving ${index + 1}.
   });
   assert.equal(case2.source, "ocr", "Case 2 should escalate to OCR");
   assert.ok(
-    case2.warnings.includes(IMAGE_BASED_READING_MESSAGE),
+    case2.warnings.some((warning) => /image-based reading/i.test(String(warning || ""))),
     "Case 2 should include OCR recovery messaging"
   );
 
@@ -93,6 +103,18 @@ No. Keep driving ${index + 1}.
   assert.equal(case5.limited, true, "All-fail case should remain internally limited");
   assert.deepEqual(case5.warnings, [], "All-fail case should not surface a limited-text warning");
   assert.equal(case5.uploadMessage, null, "All-fail case should not send user-facing fallback copy");
+
+  const noColonStage = stage("text", screenplayCueNoColonText, 100, "text");
+  assert.ok(
+    (noColonStage.characterNames || []).includes("JAMIE"),
+    "Should detect standalone screenplay cue names without colon"
+  );
+  const case6 = resolvePipelineResult({
+    textStage: noColonStage,
+    ocrStage: null,
+    visionStage: null,
+  });
+  assert.equal(case6.source, "text", "Case 6 should pass with screenplay cue structure");
 
   console.log("pdf ingest pipeline routing tests passed");
 }
