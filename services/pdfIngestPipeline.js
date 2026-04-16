@@ -34,16 +34,32 @@ function hasScreenplayStructure(text = "") {
   const source = String(text || "");
   if (!source.trim()) return false;
 
-  if (/\b(INT|EXT)\./i.test(source)) return true;
-  if (/^[A-Z][A-Z0-9\s'().\-]{1,30}:/m.test(source)) return true;
+  const hasSceneHeading = /\b(INT|EXT)\./i.test(source);
+  const colonCueCount = (source.match(/^[ \t]*[A-Z][A-Z0-9\s'().\-]{1,30}:/gm) || []).length;
+  if (colonCueCount >= 2) return true;
 
   // Standalone uppercase cue line followed by likely dialogue line.
   const lines = source.split("\n");
+  const cueStopWords = new Set([
+    "PLEASE",
+    "OPTIONAL",
+    "LABELING",
+    "SCENE",
+    "SLATE",
+    "READ",
+    "NOTES",
+    "TAKES",
+    "AUDITION",
+  ]);
+  let cueCount = 0;
   for (let index = 0; index < lines.length; index += 1) {
     const cue = lines[index].trim();
     if (!cue) continue;
     if (cue.length < 2 || cue.length > 32) continue;
     if (!/^[A-Z][A-Z\s'().\-]+$/.test(cue)) continue;
+    const words = cue.split(/\s+/).filter(Boolean);
+    if (words.length > 4) continue;
+    if (words.some((word) => cueStopWords.has(word))) continue;
     if (isLikelyWatermarkLine(cue)) continue;
     if (/^(INT|EXT|EST|CUT TO|FADE (IN|OUT)|ANGLE ON|INSERT|DISSOLVE TO)\b/.test(cue)) {
       continue;
@@ -61,10 +77,11 @@ function hasScreenplayStructure(text = "") {
       /^[A-Z]?[a-z][^:]{1,160}$/.test(next) ||
       /^["'(]/.test(next);
 
-    if (looksLikeDialogue) return true;
+    if (looksLikeDialogue) cueCount += 1;
+    if (cueCount >= 2) return true;
   }
 
-  return false;
+  return Boolean(hasSceneHeading && cueCount >= 1);
 }
 
 function buildCharacterNames(text = "") {
@@ -381,73 +398,95 @@ Return plain text only. No commentary.`;
   ].filter(Boolean);
   const modelsToTry = [...new Set(fallbackModels)];
   let lastError = "unknown_document_error";
+  const isAbortError = (error) => {
+    const message = String(error?.message || "");
+    return (
+      error?.name === "AbortError" ||
+      /aborted/i.test(message) ||
+      /The user aborted a request/i.test(message)
+    );
+  };
 
   for (const model of modelsToTry) {
-    try {
-      const configuredTimeout = Number(process.env.CLAUDE_DOCUMENT_TIMEOUT_MS || 90000);
-      const timeoutMs = Number.isFinite(configuredTimeout)
-        ? Math.min(180000, Math.max(15000, configuredTimeout))
-        : 90000;
+    const configuredTimeout = Number(process.env.CLAUDE_DOCUMENT_TIMEOUT_MS || 120000);
+    const timeoutMs = Number.isFinite(configuredTimeout)
+      ? Math.min(210000, Math.max(20000, configuredTimeout))
+      : 120000;
+    const timeoutAttempts = [timeoutMs, Math.min(240000, timeoutMs + 45000)];
+
+    for (let attemptIndex = 0; attemptIndex < timeoutAttempts.length; attemptIndex += 1) {
+      const currentTimeoutMs = timeoutAttempts[attemptIndex];
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
-      let response;
       try {
-        response = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-          },
-          signal: controller.signal,
-          body: JSON.stringify({
-            model,
-            max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 8192),
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: prompt },
-                  {
-                    type: "document",
-                    source: {
-                      type: "base64",
-                      media_type: "application/pdf",
-                      data: pdfBuffer.toString("base64"),
+        const timeout = setTimeout(() => controller.abort(), currentTimeoutMs);
+        let response;
+        try {
+          response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+            },
+            signal: controller.signal,
+            body: JSON.stringify({
+              model,
+              max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 8192),
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    { type: "text", text: prompt },
+                    {
+                      type: "document",
+                      source: {
+                        type: "base64",
+                        media_type: "application/pdf",
+                        data: pdfBuffer.toString("base64"),
+                      },
                     },
-                  },
-                ],
-              },
-            ],
-          }),
+                  ],
+                },
+              ],
+            }),
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          lastError = `model=${model} status=${response.status} ${errorText}`;
+          break;
+        }
+
+        const json = await response.json();
+        const rawText =
+          json?.content?.map((part) => part?.text || "").join("\n") || "";
+        const evaluated = evaluateExtraction("document", rawText, {
+          minWordCount: 50,
         });
+        if (evaluated.wordCount > 0) {
+          return {
+            source: "document",
+            provider: `claude-document:${model}`,
+            ...evaluated,
+          };
+        }
+
+        lastError = `model=${model} returned_empty_document_text`;
+        break;
+      } catch (error) {
+        const hasNextAttempt = attemptIndex < timeoutAttempts.length - 1;
+        if (isAbortError(error) && hasNextAttempt) {
+          lastError = `model=${model} aborted_timeout_${currentTimeoutMs}ms_retrying`;
+          continue;
+        }
+        lastError = `model=${model} ${error.message || "request_failed"}`;
+        break;
       } finally {
-        clearTimeout(timeout);
+        controller.abort();
       }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        lastError = `model=${model} status=${response.status} ${errorText}`;
-        continue;
-      }
-
-      const json = await response.json();
-      const rawText =
-        json?.content?.map((part) => part?.text || "").join("\n") || "";
-      const evaluated = evaluateExtraction("document", rawText, {
-        minWordCount: 50,
-      });
-      if (evaluated.wordCount > 0) {
-        return {
-          source: "document",
-          provider: `claude-document:${model}`,
-          ...evaluated,
-        };
-      }
-
-      lastError = `model=${model} returned_empty_document_text`;
-    } catch (error) {
-      lastError = `model=${model} ${error.message || "request_failed"}`;
     }
   }
 
@@ -930,11 +969,19 @@ If text is partially obscured, reconstruct it naturally.`;
 }
 
 function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
+  const textFailures = new Set(textStage?.failures || []);
+  const textHasSevereNoise =
+    textFailures.has("watermarkInterference") ||
+    textFailures.has("metadataHeavyLines") ||
+    textFailures.has("repeatedTokens>20%") ||
+    textFailures.has("lowEntropy");
+
   // Be permissive when the text layer already looks script-like, even if
   // watermark heuristics are noisy. This avoids false fallback mode.
   if (
     textStage &&
     textStage.wordCount >= 60 &&
+    !textHasSevereNoise &&
     ((textStage.characterNames || []).length >= 1 ||
       hasScreenplayStructure(textStage.text))
   ) {
