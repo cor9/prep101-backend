@@ -211,14 +211,34 @@ const ANALYSIS_MAX_TOKENS = 4000; // tighter = faster analysis per call
 const SUMMARY_MAX_TOKENS = 800;   // kept for backward compat (step removed from main pipeline)
 const GUIDE_MAX_TOKENS = 8000;    // restored — guide needs room; time saved by removing summarize step
 
-// Per-call timeout: abort a Claude call if it hasn't responded in this many ms.
-// Vercel maxDuration is 300s. With 3 sequential calls, 90s each = 270s max (30s headroom).
-// 50s was too aggressive — Claude legitimately needs 60-80s on complex scripts.
-const PER_CALL_TIMEOUT_MS = 90_000;
+function clampTimeout(value, fallback) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(240_000, Math.max(30_000, numeric));
+}
 
-function makeCallSignal() {
+// Per-call timeout for Claude requests. Configurable via env for quick tuning in production.
+const PER_CALL_TIMEOUT_MS = clampTimeout(
+  process.env.CLAUDE_PDF_PER_CALL_TIMEOUT_MS,
+  120_000
+);
+const EXTRACTION_TIMEOUT_MS = clampTimeout(
+  process.env.CLAUDE_PDF_EXTRACTION_TIMEOUT_MS,
+  Math.max(PER_CALL_TIMEOUT_MS, 150_000)
+);
+
+function isAbortError(error) {
+  const message = String(error?.message || "");
+  return (
+    error?.name === "AbortError" ||
+    /aborted/i.test(message) ||
+    /The user aborted a request/i.test(message)
+  );
+}
+
+function makeCallSignal(timeoutMs = PER_CALL_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   // Clean up timer if the signal is already aborted
   controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
   return controller.signal;
@@ -332,36 +352,61 @@ async function extractScreenplay({
   preferredModel,
   apiKey,
 }) {
-  const { data, model } = await sendAnthropicMessage({
-    apiKey,
-    preferredModel,
-    maxTokens: EXTRACT_MAX_TOKENS,
-    system: EXTRACTION_SYSTEM_PROMPT,
-    signal: makeCallSignal(),
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "document",
-            source: {
-              type: "base64",
-              media_type: "application/pdf",
-              data: pdfBuffer.toString("base64"),
-            },
+  const messages = [
+    {
+      role: "user",
+      content: [
+        {
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: "application/pdf",
+            data: pdfBuffer.toString("base64"),
           },
-          {
-            type: "text",
-            text: `Extract screenplay text for role "${role || "Unknown"}".`,
-          },
-        ],
-      },
-    ],
-  });
+        },
+        {
+          type: "text",
+          text: `Extract screenplay text for role "${role || "Unknown"}".`,
+        },
+      ],
+    },
+  ];
 
-  const screenplayText = getAnthropicText(data);
-  logTokenUsage("extractScreenplay", data, model, EXTRACT_MAX_TOKENS);
-  return { screenplayText, model, usage: data?.usage };
+  const timeoutAttempts = [
+    EXTRACTION_TIMEOUT_MS,
+    Math.min(240_000, EXTRACTION_TIMEOUT_MS + 45_000),
+  ];
+  let lastError = null;
+
+  for (let attemptIndex = 0; attemptIndex < timeoutAttempts.length; attemptIndex += 1) {
+    const timeoutMs = timeoutAttempts[attemptIndex];
+    try {
+      const { data, model } = await sendAnthropicMessage({
+        apiKey,
+        preferredModel,
+        maxTokens: EXTRACT_MAX_TOKENS,
+        system: EXTRACTION_SYSTEM_PROMPT,
+        signal: makeCallSignal(timeoutMs),
+        messages,
+      });
+
+      const screenplayText = getAnthropicText(data);
+      logTokenUsage("extractScreenplay", data, model, EXTRACT_MAX_TOKENS);
+      return { screenplayText, model, usage: data?.usage };
+    } catch (error) {
+      lastError = error;
+      const hasNextAttempt = attemptIndex < timeoutAttempts.length - 1;
+      if (isAbortError(error) && hasNextAttempt) {
+        console.warn(
+          `[ClaudePipeline] extractScreenplay aborted at ${timeoutMs}ms; retrying with extended timeout.`
+        );
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError || new Error("Screenplay extraction failed");
 }
 
 async function generateAnalysis({

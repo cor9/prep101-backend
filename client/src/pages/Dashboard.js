@@ -822,7 +822,7 @@ const Dashboard = () => {
       }
     } catch (err) {
       if (
-        /Empty guide response|FUNCTION_INVOCATION_TIMEOUT|timed out on the server|HTTP 504|Guide truncated|Missing Two-Take Strategy|Missing checklist/i.test(
+        /Empty guide response|FUNCTION_INVOCATION_TIMEOUT|timed out on the server|HTTP 504|Guide truncated|Missing Two-Take Strategy|Missing checklist|aborted a request|AbortError/i.test(
           String(err?.message || "")
         )
       ) {
@@ -863,9 +863,12 @@ const Dashboard = () => {
       }
       console.error("Guide generation error:", err);
 
-      if (err.name === "AbortError") {
+      if (
+        err.name === "AbortError" ||
+        /aborted a request/i.test(String(err?.message || ""))
+      ) {
         toast.error(
-          "Guide generation timed out after 5 minutes. Please try again."
+          "Guide generation timed out while reading the PDF. Please retry; we've also added a longer extraction window."
         );
       } else {
         toast.error(`Failed to generate guide: ${err.message}`);
