@@ -212,9 +212,9 @@ const SUMMARY_MAX_TOKENS = 800;   // kept for backward compat (step removed from
 const GUIDE_MAX_TOKENS = 6000;    // reduced — prompts already enforce tight output order
 
 // Per-call timeout: abort a Claude call if it hasn't responded in this many ms.
-// Must stay well under Vercel's 60s function limit on Pro, or 300s on Enterprise.
-// 50 s gives 4 sequential calls ~200 s headroom, comfortably inside 300 s maxDuration.
-const PER_CALL_TIMEOUT_MS = 50_000;
+// Vercel maxDuration is 300s. With 3 sequential calls, 90s each = 270s max (30s headroom).
+// 50s was too aggressive — Claude legitimately needs 60-80s on complex scripts.
+const PER_CALL_TIMEOUT_MS = 90_000;
 
 function makeCallSignal() {
   const controller = new AbortController();
