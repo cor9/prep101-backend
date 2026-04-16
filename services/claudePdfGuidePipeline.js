@@ -206,10 +206,23 @@ Rules:
 - Keep the analysis grounded in provided script text and metadata.
 `.trim();
 
-const EXTRACT_MAX_TOKENS = 6000;
-const ANALYSIS_MAX_TOKENS = 6000;
-const SUMMARY_MAX_TOKENS = 800;
-const GUIDE_MAX_TOKENS = 8000;
+const EXTRACT_MAX_TOKENS = 4000;  // tighter = faster extraction per call
+const ANALYSIS_MAX_TOKENS = 4000; // tighter = faster analysis per call
+const SUMMARY_MAX_TOKENS = 800;   // kept for backward compat (step removed from main pipeline)
+const GUIDE_MAX_TOKENS = 6000;    // reduced — prompts already enforce tight output order
+
+// Per-call timeout: abort a Claude call if it hasn't responded in this many ms.
+// Must stay well under Vercel's 60s function limit on Pro, or 300s on Enterprise.
+// 50 s gives 4 sequential calls ~200 s headroom, comfortably inside 300 s maxDuration.
+const PER_CALL_TIMEOUT_MS = 50_000;
+
+function makeCallSignal() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
+  // Clean up timer if the signal is already aborted
+  controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+  return controller.signal;
+}
 
 function getAnthropicText(data = {}) {
   const content = Array.isArray(data?.content) ? data.content : [];
@@ -307,6 +320,7 @@ async function extractScreenplay({
     preferredModel,
     maxTokens: EXTRACT_MAX_TOKENS,
     system: EXTRACTION_SYSTEM_PROMPT,
+    signal: makeCallSignal(),
     messages: [
       {
         role: "user",
@@ -346,6 +360,7 @@ async function generateAnalysis({
     preferredModel,
     maxTokens: ANALYSIS_MAX_TOKENS,
     system: ANALYSIS_SYSTEM_PROMPT,
+    signal: makeCallSignal(),
     messages: [
       {
         role: "user",
@@ -400,18 +415,22 @@ Rules:
 }
 
 async function generateGuideHTML({
-  summary,
+  analysis,   // now receives full analysis text directly (summarizeAnalysis step removed)
+  summary,    // still accepted for backward compat when caller has a summary
   metadata,
   preferredModel,
   apiKey,
 }) {
   const metaBlock = buildMetadataBlock(metadata);
+  // Prefer the richer analysis over a compressed summary when both are supplied
+  const contextBlock = analysis || summary || "";
 
   const { data, model } = await sendAnthropicMessage({
     apiKey,
     preferredModel,
     maxTokens: GUIDE_MAX_TOKENS,
     system: GUIDE_SYSTEM_PROMPT,
+    signal: makeCallSignal(),
     messages: [
       {
         role: "user",
@@ -419,8 +438,8 @@ async function generateGuideHTML({
 
 ${metaBlock}
 
-SUMMARY OF CHARACTER & SCENES:
-${summary}`,
+SCRIPT ANALYSIS:
+${contextBlock}`,
       },
     ],
   });
@@ -433,35 +452,33 @@ ${summary}`,
     return { html, model, usage: data?.usage };
   }
 
+  // Repair pass — only if first pass is incomplete and we still have budget
   const repairMissingList = firstPassValidation.missing.map((item) => `- ${item}`).join("\n");
+  // Send a compact repair prompt — omit the previous draft to save tokens & time
   const repair = await sendAnthropicMessage({
     apiKey,
     preferredModel,
     maxTokens: GUIDE_MAX_TOKENS,
     system: GUIDE_SYSTEM_PROMPT,
+    signal: makeCallSignal(),
     messages: [
       {
         role: "user",
-        content: `Your previous guide draft is missing required sections.
-
-Missing:
+        content: `Your previous guide draft was missing required sections:
 ${repairMissingList}
 
-Rules for this repair:
-- Return complete self-contained HTML only
+Generate a COMPLETE Prep101 HTML guide. Rules:
 - Include "Take A" and "Take B" labels explicitly
-- Must include "Pre-Submission Checklist"
-- Must include "Final Coach Note"
-- Do not output "TRUNCATED — REQUEST PART 2"
+- Include "Pre-Submission Checklist"
+- Include "Final Coach Note"
+- Do NOT output "TRUNCATED — REQUEST PART 2"
+- Return only self-contained HTML
 
 METADATA:
 ${metaBlock}
 
-SUMMARY OF CHARACTER & SCENES:
-${summary}
-
-PREVIOUS DRAFT:
-${html}`,
+SCRIPT ANALYSIS:
+${contextBlock}`,
       },
     ],
   });
@@ -536,17 +553,16 @@ async function generateGuideFromPdfTwoCall({
       );
     }
 
+    // Call 2: analysis  (summarizeAnalysis step removed — saves ~15-30s per request)
     const analysisStep = await generateAnalysis({
       screenplayText,
       metadata,
       apiKey,
     });
-    const summaryStep = await summarizeAnalysis({
-      analysis: analysisStep.analysis,
-      apiKey,
-    });
+
+    // Call 3: HTML guide — receives analysis directly (no intermediate summary call)
     const guideStep = await generateGuideHTML({
-      summary: summaryStep.summary,
+      analysis: analysisStep.analysis,
       metadata,
       apiKey,
     });
@@ -555,17 +571,17 @@ async function generateGuideFromPdfTwoCall({
       screenplayText,
       screenplayWordCount,
       analysisText: analysisStep.analysis,
-      analysisSummary: summaryStep.summary,
+      analysisSummary: null,  // no longer generated
       htmlGuide: guideStep.html,
       extractionModel: extraction.model,
       extractionMethod: "claude_document",
       analysisModel: analysisStep.model,
-      summaryModel: summaryStep.model,
+      summaryModel: null,     // no longer generated
       guideModel: guideStep.model,
       tokenUsage: {
         extraction: extraction.usage || null,
         analysis: analysisStep.usage || null,
-        summary: summaryStep.usage || null,
+        summary: null,
         guide: guideStep.usage || null,
       },
     };
@@ -590,12 +606,9 @@ async function generateGuideFromPdfTwoCall({
       metadata,
       apiKey,
     });
-    const summaryStep = await summarizeAnalysis({
-      analysis: analysisStep.analysis,
-      apiKey,
-    });
+    // No summarizeAnalysis step — pass analysis directly (same as claude pipeline)
     const guideStep = await generateGuideHTML({
-      summary: summaryStep.summary,
+      analysis: analysisStep.analysis,
       metadata,
       apiKey,
     });
@@ -604,17 +617,17 @@ async function generateGuideFromPdfTwoCall({
       screenplayText,
       screenplayWordCount,
       analysisText: analysisStep.analysis,
-      analysisSummary: summaryStep.summary,
+      analysisSummary: null,
       htmlGuide: guideStep.html,
       extractionModel: ocrFallback?.provider || "ocr_fallback",
       extractionMethod: `ocr_fallback:${ocrFallback?.provider || "unknown"}`,
       analysisModel: analysisStep.model,
-      summaryModel: summaryStep.model,
+      summaryModel: null,
       guideModel: guideStep.model,
       tokenUsage: {
         extraction: null,
         analysis: analysisStep.usage || null,
-        summary: summaryStep.usage || null,
+        summary: null,
         guide: guideStep.usage || null,
       },
     };
