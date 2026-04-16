@@ -2703,6 +2703,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     uploads[uploadId] = {
       filename: req.file.originalname,
+      pdfBase64: req.file.buffer.toString("base64"),
       sceneText: cleanedText,
       characterNames,
       extractionMethod,
@@ -2763,11 +2764,9 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 // Claude Two-Call PDF -> Guide endpoint
 app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (req, res) => {
   try {
-    if (!req.file || req.file.mimetype !== "application/pdf") {
-      return res.status(400).json({ error: "Please upload a PDF file." });
-    }
-
     const {
+      uploadId,
+      uploadIds,
       characterName,
       actorAge,
       productionTitle,
@@ -2785,6 +2784,36 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       contractType,
       mode,  // "reader_support" activates Reader101 path
     } = req.body;
+
+    const requestedUploadIds = Array.isArray(uploadIds)
+      ? uploadIds
+      : uploadIds
+        ? [uploadIds]
+        : uploadId
+          ? [uploadId]
+          : [];
+
+    let pdfBuffer = req.file?.buffer || null;
+    let pdfFilename = req.file?.originalname || null;
+
+    if (!pdfBuffer) {
+      for (const id of requestedUploadIds) {
+        const cached = uploads[id];
+        if (!cached?.pdfBase64) continue;
+        const ownerId = cached.userId ? String(cached.userId) : null;
+        const requestUserId = req.userId || req.user?.id ? String(req.userId || req.user?.id) : null;
+        if (ownerId && requestUserId && ownerId !== requestUserId) continue;
+        pdfBuffer = Buffer.from(cached.pdfBase64, "base64");
+        pdfFilename = cached.filename || `upload_${id}.pdf`;
+        break;
+      }
+    }
+
+    if (!pdfBuffer) {
+      return res.status(400).json({
+        error: "Please upload a PDF file, or provide a valid uploadId from a recent PDF upload.",
+      });
+    }
 
     if (!characterName || !productionTitle || !productionType) {
       return res.status(400).json({
@@ -2828,7 +2857,7 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       const { parseScreenplayText } = require("./services/screenplayParser");
 
       console.log("📖 [Reader101] generate-from-pdf — extracting via Claude...");
-      const extraction = await extractScreenplay({ pdfBuffer: req.file.buffer, role: characterName.trim(), apiKey });
+      const extraction = await extractScreenplay({ pdfBuffer, role: characterName.trim(), apiKey });
       const repairedText = repairScreenplayText(extraction.screenplayText || "");
       const parsedScreenplay = parseScreenplayText(repairedText, { actorCharacter: characterName.trim() });
       const FORBIDDEN_READER_ROLES = new Set(["NARRATOR","V.O.","VO","O.S.","OS","ANNOUNCER"]);
@@ -2880,7 +2909,7 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
         mode: "reader_support",
         savedToDatabase: true,
         reader101Usage: buildReader101Usage(updatedBillingUser),
-        metadata: { characterName: characterName.trim(), productionTitle: productionTitle.trim(), productionType: productionType.trim(), extractionMethod: "claude_document", filename: req.file.originalname },
+        metadata: { characterName: characterName.trim(), productionTitle: productionTitle.trim(), productionType: productionType.trim(), extractionMethod: "claude_document", filename: pdfFilename },
       });
     }
     // ─── End Reader101 path ─────────────────────────────────────────────────
@@ -2898,7 +2927,7 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
     }
 
     const twoCall = await generateGuideFromPdfTwoCall({
-      pdfBuffer: req.file.buffer,
+      pdfBuffer,
       characterName: characterName.trim(),
       productionTitle: productionTitle.trim(),
       productionType: productionType.trim(),
@@ -2990,7 +3019,7 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
         extractionModel: twoCall.extractionModel,
         guideModel: twoCall.guideModel,
         persistenceMethod,
-        filename: req.file.originalname,
+        filename: pdfFilename,
       },
     });
   } catch (error) {

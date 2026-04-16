@@ -538,8 +538,15 @@ const Dashboard = () => {
     let payload = null;
     const modeForRequest = formData?.mode || (isReader101Context ? "reader_support" : "standard");
     setActiveGenerationMode(modeForRequest);
-    // Reader101 uses the same direct Claude PDF endpoint as Prep101 when a file is present
-    const shouldUseTwoCallPdfEndpoint = Boolean(uploadedFile);
+    const normalizedUploadIdsForDirectPdf = (
+      uploadData?.uploadIds || [uploadData?.uploadId]
+    ).filter(Boolean);
+    // Reader101 should prefer the same direct Claude PDF endpoint as Prep101.
+    // If the File object is missing (refresh/navigation), we can still target
+    // generate-from-pdf using a recent uploadId.
+    const shouldUseTwoCallPdfEndpoint =
+      Boolean(uploadedFile) ||
+      (isReader101Context && normalizedUploadIdsForDirectPdf.length > 0);
 
     // Generation endpoints go DIRECT to Vercel — never through the Netlify proxy.
     // Netlify's proxy (prep101.site → Vercel) has a hard 26-second timeout;
@@ -574,11 +581,19 @@ const Dashboard = () => {
 
     const buildMultipartPayload = () => {
       const multipart = new FormData();
-      multipart.append("file", uploadedFile);
+      if (uploadedFile) {
+        multipart.append("file", uploadedFile);
+      }
       Object.entries(formData || {}).forEach(([key, value]) => {
         if (value == null) return;
         multipart.append(key, String(value));
       });
+      const uploadIds = (
+        uploadData?.uploadIds || [uploadData?.uploadId]
+      ).filter(Boolean);
+      if (uploadIds[0]) {
+        multipart.append("uploadId", String(uploadIds[0]));
+      }
       // Tell the backend which guide type to generate
       if (isReader101Context) {
         multipart.append("mode", "reader_support");
@@ -887,7 +902,10 @@ const Dashboard = () => {
     uploadData?.scriptReadable !== false &&
     extractedWords > 0;
   const uploadCanProceedViaDirectPdf =
-    Boolean(uploadData) && !isReader101Context && Boolean(uploadedFile);
+    Boolean(uploadData) &&
+    (Boolean(uploadedFile) ||
+      (isReader101Context &&
+        Boolean(uploadData?.uploadId || uploadData?.uploadIds?.[0])));
   const canShowGuideDetails = uploadIsUsable || uploadCanProceedViaDirectPdf;
   const uploadHasFailed = Boolean(uploadData) && !uploadIsUsable;
 
