@@ -58,9 +58,13 @@
     }
 
     .nav-logo img {
-      height: 34px;
+      height: 48px;
       width: auto;
       object-fit: contain;
+      display: block;
+    }
+    @media (max-width: 640px) {
+      .nav-logo img { height: 38px; }
     }
 
     .nav-links {
@@ -134,32 +138,33 @@
 
     .hero {
       padding: 5rem 1.5rem 4rem;
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
-      position: relative;
-      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 3rem;
+      align-items: center;
     }
-    .hero-backdrop {
-      position: absolute;
-      top: 50%;
-      right: -4%;
-      transform: translateY(-50%);
+    .hero-inner { max-width: none; }
+    .hero-wordmark {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid rgba(99, 56, 6, 0.15);
+    }
+    .hero-wordmark img {
+      height: 56px;
+      width: auto;
+    }
+    .hero-wordmark-tag {
       font-family: var(--font-display);
-      font-size: clamp(200px, 32vw, 420px);
-      font-weight: 700;
-      line-height: 0.85;
-      color: var(--color-amber);
-      opacity: 0.06;
-      pointer-events: none;
-      user-select: none;
-      letter-spacing: -0.04em;
-      z-index: 0;
+      font-size: 16px;
+      font-style: italic;
+      color: var(--color-text-muted);
+      letter-spacing: -0.01em;
     }
-    .hero-backdrop-slash {
-      color: var(--color-coral);
-      opacity: 0.8;
-    }
-    .hero-inner { max-width: 900px; position: relative; z-index: 1; }
     .eyebrow {
       font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
       color: var(--color-amber); font-weight: 500; margin-bottom: 1.5rem;
@@ -174,48 +179,36 @@
       font-size: 18px; line-height: 1.6; color: var(--color-text-muted);
       max-width: 640px; margin-bottom: 1rem;
     }
-    .hero-trustline {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--color-text-muted);
-      margin-bottom: 1.5rem;
-      letter-spacing: 0.02em;
-    }
-    .hero-sub-emphasis { color: var(--color-text-primary); font-weight: 500; }
-    .hero-cta-row { display: flex; gap: 12px; margin: 2rem 0 3rem; flex-wrap: wrap; }
-    .network-strip {
-      margin: 0 0 3rem;
-      padding: 1.75rem 0;
-      border-top: 1px solid rgba(99, 56, 6, 0.12);
-      border-bottom: 1px solid rgba(99, 56, 6, 0.12);
-    }
-    .network-label {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--color-text-muted);
-      margin-bottom: 0.9rem;
-    }
-    .network-logos {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.9rem 1.25rem;
-    }
-    .network-logo {
-      font-family: var(--font-display);
-      font-size: clamp(18px, 2.2vw, 24px);
-      font-weight: 600;
+    .hero-sub-emphasis {
       color: var(--color-text-primary);
-      letter-spacing: -0.01em;
-      opacity: 0.85;
+      font-weight: 500;
+      font-size: 19px;
+      margin-bottom: 1.25rem;
     }
-    .network-logo-sep {
-      color: var(--color-amber);
-      font-size: 20px;
-      opacity: 0.5;
+    .hero-failures {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.5rem;
+      border-left: 3px solid var(--color-amber);
+      padding-left: 1.25rem;
     }
+    .hero-failures li {
+      font-family: var(--font-display);
+      font-size: clamp(19px, 2.2vw, 24px);
+      font-weight: 500;
+      font-style: italic;
+      color: var(--color-text-primary);
+      line-height: 1.35;
+      padding: 0.15rem 0;
+    }
+    .hero-sub-close {
+      font-size: 17px;
+      line-height: 1.6;
+      color: var(--color-text-muted);
+      max-width: 640px;
+      margin-bottom: 2rem;
+    }
+    .hero-cta-row { display: flex; gap: 12px; margin: 2rem 0 3rem; flex-wrap: wrap; }
     .btn-primary {
       background: var(--color-dark);
       color: var(--color-text-inverse);
@@ -238,19 +231,70 @@
       color: var(--color-text-primary); padding: 14px 24px;
       text-decoration: underline; font-size: 15px;
     }
-    .hero-stats {
-      display: flex; gap: 3rem; padding-top: 2rem;
-      border-top: 1px solid rgba(99, 56, 6, 0.15);
-      flex-wrap: wrap;
+    .hero-visual {
+      position: relative;
+      z-index: 1;
     }
-    .hero-stats > div { display: flex; flex-direction: column; }
-    .hero-stats strong { font-family: var(--font-display); font-size: 32px; font-weight: 600; }
-    .hero-stats span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+    .hero-guide-mockup {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px;
+      padding: 1rem;
+      max-width: 460px;
+      margin-left: auto;
+      box-shadow: 0 30px 80px rgba(99, 56, 6, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
+      transform: rotate(-1.5deg);
+      transition: transform 0.3s ease;
+      font-family: var(--font-body);
+    }
+    .hero-guide-mockup:hover { transform: rotate(0deg); }
+    .hero-guide-warn {
+      background: #1a1a1a;
+      border-radius: 6px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .hero-guide-warn-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-red-accent);
+      margin-bottom: 0.5rem;
+    }
+    .hero-guide-warn-line {
+      font-size: 12px;
+      line-height: 1.4;
+      color: #F1EFE8;
+      padding: 2px 0;
+    }
+    .hero-guide-section { margin-bottom: 0.4rem; }
+    .hero-guide-section-bar {
+      padding: 0.55rem 0.75rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      color: #F1EFE8;
+    }
+    .hero-guide-bar--amber { background: var(--color-amber); }
+    .hero-guide-bar--teal  { background: var(--color-teal); }
+    .hero-guide-bar--coral { background: var(--color-coral); }
 
     .parent-resources { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .parent-resources h2,
+    .features h2,
+    .examples h2,
+    .contrast-section h2 {
+      font-size: clamp(34px, 4.2vw, 52px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3rem;
+    }
     .parent-resources h2 {
-      font-size: clamp(24px, 3vw, 32px);
-      font-weight: 600; margin-bottom: 2rem; letter-spacing: -0.01em;
+      font-size: clamp(26px, 3vw, 34px);
+      margin-bottom: 2rem;
     }
     .resources-grid {
       display: grid;
@@ -351,10 +395,6 @@
     .resource-card:hover .resource-link { color: #fde89a; }
 
     .features { max-width: 1100px; margin: 0 auto; padding: 5rem 1.5rem; }
-    .features h2 {
-      font-size: clamp(28px, 3.5vw, 40px);
-      font-weight: 600; margin-bottom: 3rem; letter-spacing: -0.01em;
-    }
     .features-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -400,11 +440,7 @@
     }
     .contrast-inner { max-width: 1100px; margin: 0 auto; }
     .contrast-section .eyebrow { color: #FAC775; }
-    .contrast-section h2 {
-      font-size: clamp(28px, 3.5vw, 40px);
-      font-weight: 600; color: var(--color-text-inverse);
-      margin-bottom: 3rem; letter-spacing: -0.01em;
-    }
+    .contrast-section h2 { color: var(--color-text-inverse); }
     .contrast-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
     }
@@ -458,11 +494,11 @@
       display: block;
     }
     .section-title {
-      font-size: clamp(28px, 3.5vw, 40px);
+      font-size: clamp(34px, 4.2vw, 52px);
       font-weight: 600;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.02em;
       margin-bottom: 2.5rem;
-      line-height: 1.2;
+      line-height: 1.15;
     }
     .steps { display: flex; flex-direction: column; gap: 1.5rem; max-width: 760px; }
     .step {
@@ -482,10 +518,7 @@
     .step-desc { font-size: 15px; color: var(--color-text-muted); line-height: 1.6; }
 
     .examples { max-width: 1100px; margin: 0 auto; padding: 5rem 1.5rem; }
-    .examples h2 {
-      font-size: clamp(28px, 3.5vw, 40px);
-      font-weight: 600; margin-bottom: 1rem; letter-spacing: -0.01em;
-    }
+    .examples h2 { margin-bottom: 1rem; }
     .examples-intro {
       font-size: 16px; line-height: 1.6; color: var(--color-text-muted);
       max-width: 640px; margin-bottom: 3rem;
@@ -544,9 +577,16 @@
       border-bottom: 1px solid rgba(0,0,0,0.08);
       gap: 0.75rem;
     }
-    .ex-network {
-      font-family: var(--font-mono); font-size: 10px;
-      letter-spacing: 0.12em; color: var(--color-amber); font-weight: 500;
+    .ex-network-logo {
+      height: 22px;
+      width: auto;
+      max-width: 110px;
+      object-fit: contain;
+      filter: grayscale(100%) opacity(0.85);
+      transition: filter 0.2s ease;
+    }
+    .example-card:hover .ex-network-logo {
+      filter: grayscale(0%) opacity(1);
     }
     .ex-genre {
       font-family: var(--font-mono); font-size: 10px;
@@ -600,9 +640,6 @@
       background: linear-gradient(180deg, #fff 0%, #FAF7F0 100%);
       box-shadow: 0 8px 24px rgba(99, 56, 6, 0.08);
       transform: translateY(-4px);
-    }
-    @media (max-width: 720px) {
-      .pricing-card.featured { transform: none; }
     }
     .pricing-badge {
       position: absolute;
@@ -699,13 +736,41 @@
     }
     .bundle-price span { font-family: var(--font-mono); font-size: 14px; color: #aaa; margin-left: 4px; }
     .bundle-pitch { font-size: 16px; line-height: 1.6; color: #ddd; margin-bottom: 1.5rem; }
-    .bundle-includes { list-style: none; padding: 0; margin: 0 0 1.5rem; }
-    .bundle-includes li {
-      padding: 0.6rem 0; font-size: 15px;
-      border-top: 1px solid rgba(255,255,255,0.08);
+    .bundle-products {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin: 0 0 1.5rem;
+      padding: 1.25rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
     }
-    .bundle-includes li:first-child { border-top: none; }
-    .bundle-includes strong { color: #FAC775; font-weight: 500; }
+    .bundle-product {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.75rem;
+    }
+    .bundle-product-logo {
+      height: 38px;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+      opacity: 0.92;
+    }
+    .bundle-product-desc {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.4;
+      color: #FAC775;
+      font-weight: 500;
+    }
+    .bundle-product-desc span {
+      color: #aaa;
+      font-weight: 400;
+    }
     .bundle-math-wrap { margin-bottom: 1.5rem; }
     .bundle-math-label {
       font-family: var(--font-mono); font-size: 10px;
@@ -725,6 +790,148 @@
       font-size: 12px; color: #888; text-align: center;
       margin-top: 0.75rem; font-family: var(--font-mono);
     }
+
+    .about-work {
+      background: #fff;
+      border-top: 1px solid rgba(99, 56, 6, 0.08);
+      border-bottom: 1px solid rgba(99, 56, 6, 0.08);
+      padding: 5rem 1.5rem;
+    }
+    .about-work-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 4rem;
+      align-items: start;
+    }
+    .about-manifesto { max-width: 580px; }
+    .about-h2 {
+      font-family: var(--font-display);
+      font-size: clamp(30px, 3.8vw, 46px);
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin: 0.5rem 0 2rem;
+      color: var(--color-text-primary);
+    }
+    .about-lede {
+      font-size: 17px;
+      line-height: 1.65;
+      color: var(--color-text-primary);
+      margin-bottom: 2rem;
+    }
+    .about-pattern-intro {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-amber);
+      margin-bottom: 0.75rem;
+    }
+    .about-pattern {
+      font-family: var(--font-display);
+      font-size: clamp(20px, 2.2vw, 26px);
+      font-weight: 500;
+      line-height: 1.35;
+      color: var(--color-text-primary);
+      padding-left: 1.25rem;
+      border-left: 3px solid var(--color-amber);
+      margin-bottom: 2rem;
+    }
+    .about-pattern em {
+      font-style: italic;
+      color: var(--color-amber);
+      font-weight: 600;
+    }
+    .about-kicker {
+      font-family: var(--font-display);
+      font-size: clamp(18px, 2vw, 22px);
+      font-style: italic;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      margin-bottom: 1.5rem;
+    }
+    .about-close {
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--color-text-muted);
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(99, 56, 6, 0.12);
+    }
+    .about-credentials {
+      background: var(--color-bg);
+      border: 1px solid rgba(99, 56, 6, 0.15);
+      border-radius: 12px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.25rem;
+      position: sticky;
+      top: 100px;
+    }
+    .about-portrait {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid var(--color-amber);
+      flex-shrink: 0;
+      background: #e8e5dc;
+    }
+    .about-portrait img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .about-id {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      width: 100%;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(99, 56, 6, 0.18);
+      margin-bottom: 0.5rem;
+    }
+    .about-name {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+      margin-bottom: 0.4rem;
+    }
+    .about-role-primary {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-amber);
+      font-weight: 500;
+    }
+    .about-role-secondary {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-style: italic;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      letter-spacing: -0.005em;
+    }
+    .about-cta {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-amber);
+      text-decoration: none;
+      font-weight: 500;
+      padding-top: 0.25rem;
+      width: 100%;
+    }
+    .about-cta:hover { color: var(--color-coral); }
 
     .final-cta {
       max-width: 780px;
@@ -780,13 +987,9 @@
       .ex-genre { text-align: left; }
     }
     @media (max-width: 720px) {
-      .hero-backdrop {
-        font-size: 260px;
-        top: auto; bottom: -60px;
-        right: -20px;
-        transform: none;
-        opacity: 0.04;
-      }
+      .pricing-card.featured { transform: none; }
+      .hero { grid-template-columns: 1fr; gap: 2rem; }
+      .hero-guide-mockup { margin: 0 auto; max-width: 360px; }
     }
 
     @media (max-width: 640px) {
@@ -795,9 +998,6 @@
         width: 100%;
         justify-content: flex-start;
       }
-      .network-logos { gap: 0.5rem 0.9rem; }
-      .network-logo-sep { display: none; }
-      .hero-stats { gap: 1.5rem; }
       .contrast-grid,
       .examples-grid,
       .pricing-grid {
@@ -807,6 +1007,33 @@
         gap: 1rem;
       }
       .bundle-body { padding: 1.25rem; }
+    }
+    @media (max-width: 560px) {
+      .hero-wordmark {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+      .hero-wordmark img { height: 48px; }
+      .bundle-products { grid-template-columns: 1fr; gap: 0.75rem; padding: 1rem; }
+      .bundle-product { flex-direction: row; justify-content: flex-start; text-align: left; gap: 1rem; }
+      .bundle-product-logo { height: 32px; flex-shrink: 0; }
+    }
+    @media (max-width: 860px) {
+      .about-work-inner {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+      }
+      .about-credentials {
+        position: static;
+        max-width: 440px;
+        width: 100%;
+        margin: 0 auto;
+        align-items: center;
+        text-align: center;
+      }
+      .about-id { align-items: center; }
+      .about-manifesto { margin: 0 auto; }
     }
   </style>
 </head>
@@ -835,47 +1062,56 @@
   </nav>
 
   <section class="hero">
-    <div class="hero-backdrop" aria-hidden="true">R<span class="hero-backdrop-slash">/</span>101</div>
     <div class="hero-inner">
-      <p class="eyebrow">READER101 · FOR THE PERSON HOLDING THE SIDES</p>
-      <p class="hero-trustline">Built by a working casting pro. Used on auditions for Netflix, Hulu, Disney, and HBO.</p>
+      <div class="hero-wordmark">
+        <img src="reader101-logo.png" alt="Reader101" />
+        <span class="hero-wordmark-tag">For the person holding the sides</span>
+      </div>
+
       <h1 class="hero-h1">
-        The reason your child's tape<br>
-        isn't landing isn't the acting.
+        Most self-tapes don't fall flat<br>
+        because of the actor.
       </h1>
-      <p class="hero-sub">
-        It's the reader. Too flat, and your actor has nothing to respond to.
-        Too big, and the camera picks up on it. One glance at the page, and the scene dies.
-      </p>
+
       <p class="hero-sub hero-sub-emphasis">
-        Reader101 gives you exact, scene-specific coaching for the person on the other side of the camera.
+        They fall flat because of what the actor is working off of.
       </p>
+
+      <ul class="hero-failures">
+        <li>Wrong pace.</li>
+        <li>Wrong energy.</li>
+        <li>Talking through moments instead of letting them land.</li>
+        <li>And the actor has nothing to respond to.</li>
+      </ul>
+
+      <p class="hero-sub hero-sub-close">
+        Reader101 shows you exactly how to read the scene so the performance actually comes alive on camera.
+      </p>
+
       <div class="hero-cta-row">
         <a id="primary-cta" href="https://prep101.site/dashboard?product=reader101#guide-builder" class="btn-primary">
           Create a Reader Guide →
         </a>
         <a href="#how" class="btn-ghost">See how it works</a>
       </div>
-      <div class="network-strip">
-        <p class="network-label">Built on audition sides from</p>
-        <div class="network-logos">
-          <span class="network-logo">NETFLIX</span>
-          <span class="network-logo-sep">·</span>
-          <span class="network-logo">HULU</span>
-          <span class="network-logo-sep">·</span>
-          <span class="network-logo">DISNEY</span>
-          <span class="network-logo-sep">·</span>
-          <span class="network-logo">HBO</span>
-          <span class="network-logo-sep">·</span>
-          <span class="network-logo">WARNER BROS.</span>
-          <span class="network-logo-sep">·</span>
-          <span class="network-logo">SAG-AFTRA</span>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-guide-mockup">
+        <div class="hero-guide-warn">
+          <div class="hero-guide-warn-label">⚠ What Will Go Wrong</div>
+          <div class="hero-guide-warn-line">✕ Playing Gary as an oblivious bumbler — he's confident, not clueless.</div>
+          <div class="hero-guide-warn-line">✕ Laughing at Ben's jokes instead of defending yourself.</div>
+          <div class="hero-guide-warn-line">✕ Rushing the back half — Ben's spiral is the whole audition.</div>
         </div>
-      </div>
-      <div class="hero-stats">
-        <div><strong>12</strong><span>sections per guide</span></div>
-        <div><strong>&lt;40s</strong><span>to generate</span></div>
-        <div><strong>100%</strong><span>scene-specific</span></div>
+        <div class="hero-guide-section">
+          <div class="hero-guide-section-bar hero-guide-bar--amber">01 &nbsp; Why This Matters</div>
+        </div>
+        <div class="hero-guide-section">
+          <div class="hero-guide-section-bar hero-guide-bar--teal">02 &nbsp; Performance Engine</div>
+        </div>
+        <div class="hero-guide-section">
+          <div class="hero-guide-section-bar hero-guide-bar--coral">03 &nbsp; Scene Snapshot</div>
+        </div>
       </div>
     </div>
   </section>
@@ -1041,7 +1277,7 @@
           </div>
         </div>
         <div class="ex-meta">
-          <span class="ex-network">NETFLIX / SONY</span>
+          <img class="ex-network-logo" src="netflix.png" alt="Netflix" />
           <span class="ex-genre">Dramatic Series</span>
         </div>
         <h3>The God of the Woods</h3>
@@ -1060,7 +1296,7 @@
           </div>
         </div>
         <div class="ex-meta">
-          <span class="ex-network">DISNEY</span>
+          <img class="ex-network-logo" src="disneyplus.png" alt="Disney+" />
           <span class="ex-genre">Multi-Cam Sitcom</span>
         </div>
         <h3>BEN</h3>
@@ -1079,7 +1315,7 @@
           </div>
         </div>
         <div class="ex-meta">
-          <span class="ex-network">HULU / WARNER BROS.</span>
+          <img class="ex-network-logo" src="hulu.png" alt="Hulu" />
           <span class="ex-genre">Teen Series · Sensitive</span>
         </div>
         <h3>Foster Dade</h3>
@@ -1098,7 +1334,7 @@
           </div>
         </div>
         <div class="ex-meta">
-          <span class="ex-network">DISNEY BRANDED TV</span>
+          <img class="ex-network-logo" src="disneyplus.png" alt="Disney+" />
           <span class="ex-genre">Sci-Fi Adventure</span>
         </div>
         <h3>Last Kids on Earth</h3>
@@ -1117,7 +1353,7 @@
           </div>
         </div>
         <div class="ex-meta">
-          <span class="ex-network">FEATURE FILM</span>
+          <img class="ex-network-logo" src="warnerbros.png" alt="Warner Bros." />
           <span class="ex-genre">Rom-Com</span>
         </div>
         <h3>13 Going on 30</h3>
@@ -1136,7 +1372,7 @@
           </div>
         </div>
         <div class="ex-meta">
-          <span class="ex-network">INDIE FEATURE</span>
+          <img class="ex-network-logo" src="sagaftra.png" alt="SAG-AFTRA" />
           <span class="ex-genre">Drama</span>
         </div>
         <h3>The Friend Thing</h3>
@@ -1144,6 +1380,47 @@
         <p class="ex-teaches">Teaches: pacing a scene where tension builds line-by-line, not in bursts.</p>
         <span class="ex-view">View guide →</span>
       </a>
+
+    </div>
+  </section>
+
+  <section class="about-work">
+    <div class="about-work-inner">
+
+      <div class="about-manifesto">
+        <p class="eyebrow">ABOUT THE WORK</p>
+        <h2 class="about-h2">This system comes from real auditions.</h2>
+
+        <p class="about-lede">
+          Corey Ralston works at the intersection of coaching and talent management — training actors while seeing exactly what translates on tape.
+        </p>
+
+        <p class="about-pattern-intro">The pattern is consistent:</p>
+
+        <p class="about-pattern">
+          most auditions don't fall apart because of <em>talent</em>.<br>
+          They fall apart in the <em>choices</em>, the <em>preparation</em>, or the <em>read</em>.
+        </p>
+
+        <p class="about-kicker">These tools exist to fix that.</p>
+
+        <p class="about-close">
+          This isn't theory.<br>
+          It's a repeatable audition process.
+        </p>
+      </div>
+
+      <aside class="about-credentials">
+        <div class="about-portrait">
+          <img src="corey.jpg" alt="Corey Ralston" />
+        </div>
+        <div class="about-id">
+          <div class="about-name">Corey Ralston</div>
+          <div class="about-role-primary">Founder · Child Actor 101</div>
+          <div class="about-role-secondary">Youth Talent Manager &amp; Acting Coach</div>
+        </div>
+        <a href="https://childactor101.com" class="about-cta" target="_blank" rel="noopener">More about Corey →</a>
+      </aside>
 
     </div>
   </section>
@@ -1215,11 +1492,20 @@
         <p class="bundle-pitch">
           Every tool your actor needs for every audition — Bold Choices, Prep101, and Reader101 in one subscription.
         </p>
-        <ul class="bundle-includes">
-          <li><strong>Prep101</strong> — 5 guides/mo (one per audition week)</li>
-          <li><strong>Reader101</strong> — unlimited reader guides</li>
-          <li><strong>Bold Choices</strong> — unlimited choice-generation</li>
-        </ul>
+        <div class="bundle-products">
+          <div class="bundle-product">
+            <img src="preplogo.png" alt="Prep101" class="bundle-product-logo" />
+            <div class="bundle-product-desc">5 guides/mo<br><span>one per audition week</span></div>
+          </div>
+          <div class="bundle-product">
+            <img src="reader101-logo.png" alt="Reader101" class="bundle-product-logo" />
+            <div class="bundle-product-desc">Unlimited<br><span>reader guides</span></div>
+          </div>
+          <div class="bundle-product">
+            <img src="boldchoiceslogo.png" alt="Bold Choices" class="bundle-product-logo" />
+            <div class="bundle-product-desc">Unlimited<br><span>choice generation</span></div>
+          </div>
+        </div>
         <div class="bundle-math-wrap">
           <div class="bundle-math-label">The math</div>
           <div class="bundle-math">
