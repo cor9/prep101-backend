@@ -218,7 +218,7 @@ const Pricing = () => {
               padding: '2.5rem',
               marginBottom: '3rem',
               position: 'relative',
-              overflow: 'hidden',
+              overflow: 'visible',
             }}
           >
             <div style={{
