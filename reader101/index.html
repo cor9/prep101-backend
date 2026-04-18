@@ -208,6 +208,13 @@
       max-width: 640px;
       margin-bottom: 2rem;
     }
+    .hero-punchline {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-style: italic;
+      color: var(--color-text-primary);
+      margin-bottom: 0.5rem;
+    }
     .hero-cta-row { display: flex; gap: 12px; margin: 2rem 0 3rem; flex-wrap: wrap; }
     .btn-primary {
       background: var(--color-dark);
@@ -571,28 +578,6 @@
     .ex-preview-bar--amber { background: var(--color-amber); width: 85%; }
     .ex-preview-bar--teal  { background: var(--color-teal);  width: 70%; }
     .ex-preview-bar--coral { background: var(--color-coral); width: 55%; }
-    .ex-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding-bottom: 0.75rem; margin-bottom: 1rem;
-      border-bottom: 1px solid rgba(0,0,0,0.08);
-      gap: 0.75rem;
-    }
-    .ex-network-logo {
-      height: 22px;
-      width: auto;
-      max-width: 110px;
-      object-fit: contain;
-      filter: grayscale(100%) opacity(0.85);
-      transition: filter 0.2s ease;
-    }
-    .example-card:hover .ex-network-logo {
-      filter: grayscale(0%) opacity(1);
-    }
-    .ex-genre {
-      font-family: var(--font-mono); font-size: 10px;
-      letter-spacing: 0.08em; color: var(--color-text-muted);
-      text-align: right;
-    }
     .example-card h3 {
       font-family: var(--font-display); font-size: 24px;
       font-weight: 600; margin-bottom: 0.5rem;
@@ -979,12 +964,6 @@
         padding-left: 0.3rem;
         padding-right: 0.3rem;
       }
-      .ex-meta {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.35rem;
-      }
-      .ex-genre { text-align: left; }
     }
     @media (max-width: 720px) {
       .pricing-card.featured { transform: none; }
@@ -1087,6 +1066,7 @@
       <p class="hero-sub hero-sub-close">
         Reader101 shows you exactly how to read the scene so the performance actually comes alive on camera.
       </p>
+      <p class="hero-punchline">That’s the audition.</p>
 
       <div class="hero-cta-row">
         <a id="primary-cta" href="https://prep101.site/dashboard?product=reader101#guide-builder" class="btn-primary">
@@ -1155,7 +1135,7 @@
       <div class="feature-card">
         <div class="feature-num">01</div>
         <h3>Performance Engine</h3>
-        <p>We tell you whether this scene runs on push or pull — and exactly when to shift. Get the energy type wrong and your actor plays the wrong scene.</p>
+        <p>If you get the energy wrong, the actor plays the wrong scene. We tell you exactly when to push, when to pull, and when it flips.</p>
       </div>
 
       <div class="feature-card">
@@ -1167,7 +1147,7 @@
       <div class="feature-card">
         <div class="feature-num">03</div>
         <h3>Reader Fundamentals</h3>
-        <p>The 10 rules every reader breaks without noticing. The 50% rule, the 3-foot rule, how to listen on camera, when to step away.</p>
+        <p>These are the rules readers break without realizing it — and every one of them shows up on camera.</p>
       </div>
 
       <div class="feature-card">
@@ -1185,7 +1165,7 @@
       <div class="feature-card">
         <div class="feature-num">06</div>
         <h3>Quick Reset</h3>
-        <p>Four to five punchy reminders to read right before you press record. So you walk in focused, not guessing.</p>
+        <p>Four to five punchy reminders to read right before you press record. So you walk in focused — not guessing.</p>
       </div>
 
       <div class="feature-card">
@@ -1206,7 +1186,7 @@
   <section class="contrast-section">
     <div class="contrast-inner">
       <p class="eyebrow">WHY IT WORKS</p>
-      <h2>Every other reader tip looks like this.<br>Reader101 looks like this.</h2>
+      <h2>Most reader advice looks like this.<br>Reader101 looks like this.</h2>
       <div class="contrast-grid">
         <div class="contrast-col contrast-generic">
           <div class="contrast-quote-mark">"</div>
@@ -1239,21 +1219,21 @@
       <div class="step">
         <div class="step-num">01</div>
         <div>
-          <div class="step-title">Upload the sides</div>
+          <div class="step-title">Give us the scene.</div>
           <div class="step-desc">Drop in the PDF or paste the scene text. That's it — no account setup, no complicated forms.</div>
         </div>
       </div>
       <div class="step">
         <div class="step-num">02</div>
         <div>
-          <div class="step-title">We analyze the scene</div>
+          <div class="step-title">We break it down the way casting does.</div>
           <div class="step-desc">Genre, tone, push/pull dynamics, key beats, timing windows — all extracted from the actual sides, not generic templates.</div>
         </div>
       </div>
       <div class="step">
         <div class="step-num">03</div>
         <div>
-          <div class="step-title">Get your Reader Guide</div>
+          <div class="step-title">You know exactly how to read it.</div>
           <div class="step-desc">A complete, scannable guide written for you — not the actor. Read it in 2 minutes. Apply it in the first take.</div>
         </div>
       </div>
@@ -1262,8 +1242,8 @@
 
   <section class="examples" id="examples">
     <p class="eyebrow">LIVE EXAMPLES</p>
-    <h2>Real guides. Real productions.</h2>
-    <p class="examples-intro">Every example below is from an actual audition Reader101 was built for — major networks, streamers, SAG-AFTRA episodics. Tap any card to see the full guide.</p>
+    <h2>Real guides. Real audition scenarios.</h2>
+    <p class="examples-intro">Every example below reflects the kinds of roles, scenes, and dynamics actors are actually taping — not generic templates.</p>
 
     <div class="examples-grid">
 
@@ -1276,13 +1256,9 @@
             <div class="ex-preview-bar ex-preview-bar--coral"></div>
           </div>
         </div>
-        <div class="ex-meta">
-          <img class="ex-network-logo" src="netflix.png" alt="Netflix" />
-          <span class="ex-genre">Dramatic Series</span>
-        </div>
-        <h3>The God of the Woods</h3>
-        <p class="ex-role">Barbara Van Laar — multi-role reader support across three scenes</p>
-        <p class="ex-teaches">Teaches: how push/pull dynamics shift between scenes in the same audition.</p>
+        <h3>Prestige Drama Series</h3>
+        <p class="ex-role">Multi-scene reader support across shifting power dynamics</p>
+        <p class="ex-teaches">Teaches: how push/pull changes across scenes in the same audition</p>
         <span class="ex-view">View guide →</span>
       </a>
 
@@ -1295,13 +1271,9 @@
             <div class="ex-preview-bar ex-preview-bar--coral"></div>
           </div>
         </div>
-        <div class="ex-meta">
-          <img class="ex-network-logo" src="disneyplus.png" alt="Disney+" />
-          <span class="ex-genre">Multi-Cam Sitcom</span>
-        </div>
-        <h3>BEN</h3>
-        <p class="ex-role">Gary — the confidently deluded dad</p>
-        <p class="ex-teaches">Teaches: where confidence vs. cluelessness makes or breaks a multicam.</p>
+        <h3>Multi-Cam Comedy Lead</h3>
+        <p class="ex-role">Confident vs. clueless character balance</p>
+        <p class="ex-teaches">Teaches: where confidence flips into delusion — and how the reader controls it</p>
         <span class="ex-view">View guide →</span>
       </a>
 
@@ -1314,13 +1286,9 @@
             <div class="ex-preview-bar ex-preview-bar--coral"></div>
           </div>
         </div>
-        <div class="ex-meta">
-          <img class="ex-network-logo" src="hulu.png" alt="Hulu" />
-          <span class="ex-genre">Teen Series · Sensitive</span>
-        </div>
-        <h3>Foster Dade</h3>
-        <p class="ex-role">High-risk scene classification + moral collapse arc tracker</p>
-        <p class="ex-teaches">Teaches: how a reader protects an actor through intimate or morally charged material.</p>
+        <h3>Teen Drama — Sensitive Material</h3>
+        <p class="ex-role">High-risk scene with moral collapse</p>
+        <p class="ex-teaches">Teaches: how a reader holds space without flattening the actor</p>
         <span class="ex-view">View guide →</span>
       </a>
 
@@ -1333,13 +1301,9 @@
             <div class="ex-preview-bar ex-preview-bar--coral"></div>
           </div>
         </div>
-        <div class="ex-meta">
-          <img class="ex-network-logo" src="disneyplus.png" alt="Disney+" />
-          <span class="ex-genre">Sci-Fi Adventure</span>
-        </div>
-        <h3>Last Kids on Earth</h3>
-        <p class="ex-role">June Del Toro — grounded YA live-action</p>
-        <p class="ex-teaches">Teaches: how to ground a genre scene so the actor's emotional stakes still read.</p>
+        <h3>Genre Series (Sci-Fi / Adventure)</h3>
+        <p class="ex-role">Grounded emotional stakes inside heightened world</p>
+        <p class="ex-teaches">Teaches: how to keep the acting real when the world isn’t</p>
         <span class="ex-view">View guide →</span>
       </a>
 
@@ -1352,13 +1316,9 @@
             <div class="ex-preview-bar ex-preview-bar--coral"></div>
           </div>
         </div>
-        <div class="ex-meta">
-          <img class="ex-network-logo" src="warnerbros.png" alt="Warner Bros." />
-          <span class="ex-genre">Rom-Com</span>
-        </div>
-        <h3>13 Going on 30</h3>
-        <p class="ex-role">Grace — grounded comedy with real vulnerability</p>
-        <p class="ex-teaches">Teaches: how to hold comedy and high emotional stakes at the same time.</p>
+        <h3>Feature Comedy</h3>
+        <p class="ex-role">Light tone with real emotional undercurrent</p>
+        <p class="ex-teaches">Teaches: balancing comedy timing with emotional truth</p>
         <span class="ex-view">View guide →</span>
       </a>
 
@@ -1371,13 +1331,9 @@
             <div class="ex-preview-bar ex-preview-bar--coral"></div>
           </div>
         </div>
-        <div class="ex-meta">
-          <img class="ex-network-logo" src="sagaftra.png" alt="SAG-AFTRA" />
-          <span class="ex-genre">Drama</span>
-        </div>
-        <h3>The Friend Thing</h3>
-        <p class="ex-role">Tyler — high tension, emotional data points</p>
-        <p class="ex-teaches">Teaches: pacing a scene where tension builds line-by-line, not in bursts.</p>
+        <h3>Indie Drama</h3>
+        <p class="ex-role">Slow-burn tension across dialogue</p>
+        <p class="ex-teaches">Teaches: pacing a scene that builds line-by-line, not in bursts</p>
         <span class="ex-view">View guide →</span>
       </a>
 
@@ -1392,7 +1348,7 @@
         <h2 class="about-h2">This system comes from real auditions.</h2>
 
         <p class="about-lede">
-          Corey Ralston works at the intersection of coaching and talent management — training actors while seeing exactly what translates on tape.
+          Corey Ralston trains actors while seeing exactly what actually works on tape.
         </p>
 
         <p class="about-pattern-intro">The pattern is consistent:</p>
@@ -1429,7 +1385,8 @@
     <div class="section-label">Pricing</div>
     <h2 class="section-title">Simple. Scene-specific.<br>Worth every dollar.</h2>
     <p class="pricing-intro">
-      One audition gone wrong costs more than a year of this. Pick the tier that matches how often you're taping.
+      One audition gone wrong costs more than a year of this.
+      Fix the part most actors never think about.
     </p>
 
     <div class="pricing-grid">
@@ -1522,7 +1479,7 @@
   <section class="final-cta">
     <div class="section-label">Ready?</div>
     <h2 class="section-title" style="margin-bottom: 1rem;">The tape is about to roll.</h2>
-    <p style="color: var(--color-text-muted); margin-bottom: 2rem; font-size: 1rem;">Don't walk into the session guessing. Know exactly what to do — before you press record.</p>
+    <p style="color: var(--color-text-muted); margin-bottom: 2rem; font-size: 1rem;">Know what you’re doing before you press record.</p>
     <a class="btn-primary" href="#pricing" style="font-size: 1.05rem; padding: 1.1rem 2.5rem;">Get My Reader Guide →</a>
   </section>
 
