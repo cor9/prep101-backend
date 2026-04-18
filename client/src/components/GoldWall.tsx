@@ -44,8 +44,9 @@ export default function GoldWall() {
   return (
     <section className="goldWall" aria-labelledby="goldWallTitle">
       <div className="goldWallHeader">
+        <p className="goldWallEyebrow">Parent Feedback</p>
         <h2 id="goldWallTitle">Why Parents Call It "Gold"</h2>
-        <p>What families, actors, and reps actually say after using a guide.</p>
+        <p className="goldWallSub">Real feedback from parents, actors, and reps after using a guide.</p>
       </div>
       <div className="goldWallGrid">
         {TESTIMONIALS.map((t, i) => (

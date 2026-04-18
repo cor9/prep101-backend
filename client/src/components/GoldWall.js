@@ -19,10 +19,12 @@ const DATA = [
 export default function GoldWall() {
   return (
     <section className="goldWall" aria-labelledby="goldTitle">
-      <div className="goldHeader">
+      <div className="goldWallHeader">
+        <p className="goldWallEyebrow">Parent Feedback</p>
         <h2 id="goldTitle">Why Parents Call It "Gold"</h2>
+        <p className="goldWallSub">Real feedback from parents, actors, and reps after using a guide.</p>
       </div>
-      <div className="goldGrid">
+      <div className="goldWallGrid">
         {DATA.map((t, i) => {
           const display = t.author.startsWith("Agent ") ? t.author // keep agent full name for credibility
             : abbrev(t.author);
