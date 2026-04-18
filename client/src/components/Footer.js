@@ -8,10 +8,10 @@ import {
 } from '../utils/ecosystemLinks';
 
 const ECOSYSTEM = [
-  { label: 'ChildActor101', href: 'https://childactor101.com' },
-  { label: 'Bold Choices', href: 'https://boldchoices.site' },
-  { label: 'Reader101', href: 'https://reader101.site' },
-  { label: 'Coaching by Corey', href: 'https://coaching.childactor101.com' },
+  { label: 'Child Actor 101', href: 'https://childactor101.com', logo: null },
+  { label: 'Bold Choices', href: 'https://boldchoices.site', logo: '/boldchoiceslogo.png' },
+  { label: 'Reader101', href: 'https://reader101.site', logo: '/reader101-logo.png' },
+  { label: 'Coaching by Corey', href: 'https://coaching.childactor101.com', logo: null },
 ];
 
 const Footer = () => {
@@ -19,10 +19,10 @@ const Footer = () => {
   const token = user?.accessToken || user?.token;
   const links = ECOSYSTEM.map((item) => {
     if (item.label === 'Bold Choices') {
-      return { ...item, href: buildBoldChoicesUrl({ token, redirect: user ? '/generate' : '/', useBridge: Boolean(user) }) };
+      return { ...item, href: buildBoldChoicesUrl({ token, redirect: user ? '/generate' : '/', useBridge: Boolean(user) }), useBridge: true };
     }
     if (item.label === 'Reader101') {
-      return { ...item, href: buildReader101Url({ token, useBridge: Boolean(user) }) };
+      return { ...item, href: buildReader101Url({ token, useBridge: Boolean(user) }), useBridge: true };
     }
     return item;
   });
@@ -31,30 +31,32 @@ const Footer = () => {
     <footer className="footer">
       <div className="footer-content">
 
-        {/* Ecosystem */}
-        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(200,180,120,0.45)', marginBottom: '0.5rem' }}>
-            The Ecosystem
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {links.map(({ label, href }) => (
+        <div className="footer-ecosystem">
+          <div className="footer-ecosystem-label">The Child Actor 101 Ecosystem</div>
+          <div className="footer-ecosystem-logos">
+            {links.map(({ label, href, logo, useBridge }) => (
               <a
                 key={label}
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  fontSize: '0.78rem', fontWeight: 600,
-                  color: 'rgba(200,180,100,0.6)',
-                  textDecoration: 'none',
-                  padding: '3px 10px', borderRadius: 999,
-                  border: '1px solid rgba(200,180,100,0.15)',
-                  transition: 'color 0.2s, border-color 0.2s',
-                }}
-                onMouseEnter={e => { e.target.style.color = '#f59e0b'; e.target.style.borderColor = 'rgba(245,158,11,0.35)'; }}
-                onMouseLeave={e => { e.target.style.color = 'rgba(200,180,100,0.6)'; e.target.style.borderColor = 'rgba(200,180,100,0.15)'; }}
+                className="footer-ecosystem-item"
+                data-bridge={useBridge ? 'true' : 'false'}
               >
-                {label}
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt={label}
+                    className="footer-ecosystem-logo"
+                    onError={(event) => {
+                      const target = event.currentTarget;
+                      target.style.display = 'none';
+                      const fallback = target.nextElementSibling;
+                      if (fallback) fallback.classList.add('show');
+                    }}
+                  />
+                ) : null}
+                <span className={`footer-ecosystem-text ${logo ? '' : 'show'}`}>{label}</span>
               </a>
             ))}
           </div>

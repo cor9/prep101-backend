@@ -15,59 +15,73 @@ const Home = () => {
     <>
       <Navbar />
       <div className="home">
-        {/* DARK FULL-WIDTH HERO */}
         <section className="heroDark" aria-label="Prep101 hero">
           <img src="/preplogo.png" alt="Prep101" className="logoDark" loading="lazy" />
-          <h1 className="h1Dark">Audition prep parents call <strong style={{background:'none', color:'#FFC83A'}}>GOLD</strong>.</h1>
+          <h1 className="h1Dark">Audition prep parents call <strong className="goldText">GOLD</strong>.</h1>
           <p className="taglineDark">
-            Personalized coaching guides that break down every beat—so young actors show up <strong>prepared</strong>,
-            <strong> confident</strong>, and <strong>unforgettable</strong>.<br />
-            One Child Actor 101 account powers Prep101, Reader101, and Bold Choices.
-          </p>
-          <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: '1.25rem' }}>
-            Go deeper.
+            Personalized scene breakdowns and performance coaching — built from real auditions, delivered as a custom guide for every role.
           </p>
           <div className="btnRow">
             <button className="btn btnPrimaryDark" onClick={primary}>Get Started</button>
             <button className="btn btnSecondaryDark" onClick={() => navigate('/examples')}>See Examples</button>
           </div>
+          <p className="hero-account-note">
+            One account powers Prep101, Reader101, and Bold Choices.
+          </p>
         </section>
 
-        <section style={{ padding: '4rem 1.5rem' }}>
-          <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
-            <p style={{ fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>
-              The System
-            </p>
-            <h2 style={{ fontSize: 'clamp(1.8rem,4vw,2.6rem)', marginBottom: 20 }}>
-              The Self-Tape System
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.6)', maxWidth: 520, margin: '0 auto 40px' }}>
+        <section className="systemSection" aria-labelledby="system-title">
+          <div className="systemInner">
+            <p className="sectionLabel">The System</p>
+            <h2 id="system-title" className="systemTitle">The Self-Tape System</h2>
+            <p className="systemIntro">
               Most actors don’t struggle with talent.
               <br />
               They struggle with what to do, how to build it, and whether it works.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16 }}>
-              <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14 }}>
-                <strong>1. What do I do?</strong><br />
-                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>Bold Choices</span>
+            <div className="system-grid">
+              <a href="https://boldchoices.site" className="system-card system-card--sibling" target="_blank" rel="noopener noreferrer">
+                <div className="system-card-step">1. What do I do?</div>
+                <img src="/boldchoiceslogo.png" alt="Bold Choices" className="system-card-logo" loading="lazy" />
+                <div className="system-card-tagline">Find the choice</div>
+              </a>
+
+              <div className="system-card system-card--current" aria-current="page">
+                <div className="system-card-badge">YOU ARE HERE</div>
+                <div className="system-card-step">2. How do I build it?</div>
+                <img src="/preplogo.png" alt="Prep101" className="system-card-logo" loading="lazy" />
+                <div className="system-card-tagline">Build the performance</div>
               </div>
-              <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14 }}>
-                <strong>2. How do I build it?</strong><br />
-                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>Prep101</span>
-              </div>
-              <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14 }}>
-                <strong>3. Is the tape working?</strong><br />
-                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>Reader101</span>
-              </div>
+
+              <a href="https://reader101.site" className="system-card system-card--sibling" target="_blank" rel="noopener noreferrer">
+                <div className="system-card-step">3. Is the tape working?</div>
+                <img src="/reader101-logo.png" alt="Reader101" className="system-card-logo" loading="lazy" />
+                <div className="system-card-tagline">Protect the read</div>
+              </a>
             </div>
-            <p style={{ marginTop: 20, color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+            <p className="systemOutro">
               Used together, this becomes a repeatable process—not guesswork.
             </p>
           </div>
         </section>
 
         <div className="container">
-          {/* How it works */}
+          <section className="card prepGuide" aria-labelledby="prep-guide-title">
+            <p className="prepGuide__eyebrow">What You Get</p>
+            <h2 id="prep-guide-title" className="h2 prepGuide__title">What's in a Prep101 Guide</h2>
+            <p className="prepGuide__subhead">
+              Every guide is built from the actual sides. No templates, no generic notes. These are the sections every actor gets:
+            </p>
+            <div className="prepGuide__grid">
+              <article className="prepGuide__card"><span className="prepGuide__num">01</span><h3>Character Analysis</h3><p>Backstory, motivations, distinctive traits. What makes this character unique.</p></article>
+              <article className="prepGuide__card"><span className="prepGuide__num">02</span><h3>Scene Breakdown</h3><p>Beat-by-beat analysis. Where the turns are. What each line is doing.</p></article>
+              <article className="prepGuide__card"><span className="prepGuide__num">03</span><h3>Performance Notes</h3><p>Delivery, subtext, physicality, pacing. The craft behind the choices.</p></article>
+              <article className="prepGuide__card"><span className="prepGuide__num">04</span><h3>Bold Choices</h3><p>Where to take risks, where to stay grounded. The moments that get callbacks.</p></article>
+              <article className="prepGuide__card"><span className="prepGuide__num">05</span><h3>Button Strategy</h3><p>How to open, how to land, what the last beat should feel like.</p></article>
+              <article className="prepGuide__card"><span className="prepGuide__num">06</span><h3>Rehearsal Plan</h3><p>What to practice, how many times, what to record and review.</p></article>
+            </div>
+          </section>
+
           <section className="card hiw" aria-labelledby="how">
             <h2 id="how" className="h2 hiw__title">How It Works</h2>
             <ol className="hiw__steps">
@@ -89,10 +103,85 @@ const Home = () => {
             </ol>
           </section>
 
-          {/* GOLD WALL — with initials */}
           <GoldWall />
 
-          {/* Bottom CTA band */}
+          <section className="about-work" aria-labelledby="about-work-title">
+            <div className="about-work-inner">
+              <div className="about-manifesto">
+                <p className="about-eyebrow">ABOUT THE WORK</p>
+                <h2 id="about-work-title" className="about-h2">This system comes from real auditions.</h2>
+
+                <p className="about-lede">
+                  Corey Ralston works at the intersection of coaching and talent management — training actors while seeing exactly what translates on tape.
+                </p>
+
+                <p className="about-pattern-intro">The pattern is consistent:</p>
+
+                <p className="about-pattern">
+                  most auditions don't fall apart because of <em>talent</em>.<br />
+                  They fall apart in the <em>choices</em>, the <em>preparation</em>, or the <em>read</em>.
+                </p>
+
+                <p className="about-kicker">These tools exist to fix that.</p>
+
+                <p className="about-close">
+                  This isn't theory.<br />
+                  It's a repeatable audition process.
+                </p>
+              </div>
+
+              <aside className="about-credentials">
+                <div className="about-portrait">
+                  <img src="/corey.jpg" alt="Corey Ralston" loading="lazy" />
+                </div>
+                <div className="about-id">
+                  <div className="about-name">Corey Ralston</div>
+                  <div className="about-role-primary">Founder · Child Actor 101</div>
+                  <div className="about-role-secondary">Youth Talent Manager &amp; Acting Coach</div>
+                  <div className="about-role-tertiary">40 years in the entertainment industry</div>
+                </div>
+                <a href="https://childactor101.com" className="about-cta" target="_blank" rel="noopener noreferrer">More about Corey →</a>
+              </aside>
+            </div>
+          </section>
+
+          <section className="companionGuides" aria-labelledby="companion-guides-title">
+            <p className="sectionLabel">COMPANION GUIDES</p>
+            <h2 id="companion-guides-title" className="h2 companionGuides__title">Everything else you need for a great tape.</h2>
+            <p className="companionGuides__subhead">
+              Prep101 handles the performance. These three free guides handle everything around it.
+            </p>
+
+            <div className="resources-grid">
+              <a href="https://selftapetips.childactor101.com" className="resource-card resource-card--setup">
+                <div className="resource-card-inner">
+                  <div className="resource-kicker">The Setup Guide</div>
+                  <h3>Set up your self-tape <em>right.</em></h3>
+                  <p>Lighting, framing, background, audio — the complete technical checklist.</p>
+                  <span className="resource-link">Read the guide →</span>
+                </div>
+              </a>
+
+              <a href="https://memorize.childactor101.com" className="resource-card resource-card--memorize">
+                <div className="resource-card-inner">
+                  <div className="resource-kicker">The Memorization Guide</div>
+                  <h3>Memorize lines <em>fast.</em><br />Without the burnout.</h3>
+                  <p>The methods working kids actually use. No flashcards. No tears.</p>
+                  <span className="resource-link">Read the guide →</span>
+                </div>
+              </a>
+
+              <a href="https://zoomcb.childactor101.com" className="resource-card resource-card--callbacks">
+                <div className="resource-card-inner">
+                  <div className="resource-kicker">The Callback Guide</div>
+                  <h3>Zoom callbacks are <em>a different game.</em></h3>
+                  <p>Here's what changes when the producers are on the other end of the screen.</p>
+                  <span className="resource-link">Read the guide →</span>
+                </div>
+              </a>
+            </div>
+          </section>
+
           <section className="bottomCta" aria-label="Get started">
             <h3>Ready for a GOLD guide for your next audition?</h3>
             <div className="ctaActions">
@@ -104,13 +193,11 @@ const Home = () => {
               </button>
             </div>
           </section>
-
         </div>
-        
-        {/* Footer */}
+
         <Footer />
       </div>
-      
+
       <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify({
         "@context":"https://schema.org",
         "@type":"Product",
@@ -120,15 +207,12 @@ const Home = () => {
         "aggregateRating":{
           "@type":"AggregateRating",
           "ratingValue":"5",
-          "reviewCount": 7
+          "reviewCount": 4
         },
         "review": [
           { "@type":"Review", "author": {"@type":"Person","name":"Sara Shaddix"}, "reviewBody": "Holy Moly! That audition breakdown was incredible. Really phenomenal. It broke down every little bit and my daughter really took it to heart. I would easily pay $75–$125 for this.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
-          { "@type":"Review", "author": {"@type":"Person","name":"Jennifer Diamond"}, "reviewBody": "How in the world do you come up with all of this? This is gold!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
           { "@type":"Review", "author": {"@type":"Person","name":"Kristina Brunelle"}, "reviewBody": "O. M. G. Corey, You. Are. A Wizard! Seriously, this is pure gold, thank you so much!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
           { "@type":"Review", "author": {"@type":"Person","name":"Ty Correira"}, "reviewBody": "Thanks so much for the audition preparation guide, Corey. It gave me so much to work with and I really used it to inform a lot of choices in the audition.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
-          { "@type":"Review", "author": {"@type":"Person","name":"Olivia Eppe"}, "reviewBody": "This is so great to have!!! Very helpful!", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
-          { "@type":"Review", "author": {"@type":"Person","name":"Lynnette L."}, "reviewBody": "This is AWESOME! Thanks, Corey!! He dove right into it this morning.", "reviewRating":{"@type":"Rating","ratingValue":"5"} },
           { "@type":"Review", "author": {"@type":"Person","name":"Agent David Doan"}, "reviewBody": "These are incredible!", "reviewRating":{"@type":"Rating","ratingValue":"5"} }
         ]
       })}} />
