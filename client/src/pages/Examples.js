@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import '../styles/shared.css';
+import './Examples.css';
 
 const Examples = () => {
   const navigate = useNavigate();
@@ -89,140 +90,37 @@ const Examples = () => {
   return (
     <>
       <Navbar />
-      <div className="page-dark">
-        {/* Hero Section */}
-        <div className="page-hero">
+      <div className="page-dark examples-page">
+        <div className="page-hero examples-hero">
+          <p className="examples-eyebrow">Live Guide Library</p>
           <img src="/preplogo.png" alt="Prep101 logo" className="logo-hero" loading="lazy" />
           <h1 className="h1-hero">See Prep101 in Action</h1>
-          <p className="h2-hero">Real examples of our audition preparation guides</p>
+          <p className="h2-hero examples-hero-sub">Real examples of our audition preparation guides</p>
         </div>
 
         <div className="container-wide">
-          <div
-            className="card-white"
-            style={{
-              marginBottom: '2rem',
-              borderTop: '4px solid #14b8a6'
-            }}
-          >
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.4rem 0.8rem',
-                  borderRadius: '999px',
-                  background: 'rgba(20, 184, 166, 0.12)',
-                  color: '#0f766e',
-                  fontSize: '0.85rem',
-                  fontWeight: '800',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  marginBottom: '1rem'
-                }}
-              >
-                Reader101
-              </div>
-              <h2
-                style={{
-                  fontSize: '2rem',
-                  fontWeight: '900',
-                  color: 'var(--gray-800)',
-                  margin: '0 0 0.75rem 0'
-                }}
-              >
-                Reader Support Guide Examples
-              </h2>
-              <p
-                style={{
-                  color: 'var(--gray-600)',
-                  margin: 0,
-                  fontSize: '1rem',
-                  maxWidth: '720px',
-                  lineHeight: '1.6'
-                }}
-              >
+          <section className="examples-section examples-section--reader">
+            <header className="examples-section-head">
+              <p className="examples-kicker">Reader101</p>
+              <h2 className="examples-title">Reader Support Guide Examples</h2>
+              <p className="examples-intro">
                 A few live Reader101 examples. More are coming as soon as the updated front end is stable again.
               </p>
-            </div>
+            </header>
 
-            <div className="grid-responsive">
+            <div className="examples-grid">
               {readerTiles.map((t) => (
-                <div
-                  key={t.href}
-                  className="card-white"
-                  style={{
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                    margin: 0,
-                    background: 'linear-gradient(180deg, #ffffff 0%, #f4fffd 100%)',
-                    border: '1px solid rgba(20, 184, 166, 0.16)'
-                  }}
-                  onClick={() => open(t.href)}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.boxShadow = '0 28px 80px rgba(20,184,166,.12)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 22px 70px rgba(0,0,0,.10)';
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '0.35rem 0.7rem',
-                      borderRadius: '999px',
-                      background: '#0f172a',
-                      color: '#f8fafc',
-                      fontSize: '0.75rem',
-                      fontWeight: '800',
-                      letterSpacing: '0.05em',
-                      textTransform: 'uppercase',
-                      marginBottom: '1rem'
-                    }}
-                  >
-                    Example
-                  </div>
-                  <h3 style={{
-                    fontSize: '1.25rem',
-                    fontWeight: '800',
-                    color: 'var(--gray-800)',
-                    margin: '0 0 0.5rem 0',
-                    lineHeight: '1.3'
-                  }}>
+                <article key={t.href} className="example-card example-card--reader">
+                  <p className="example-pill">Reader Example</p>
+                  <h3 className="example-heading">
                     {t.heading}
                   </h3>
-                  <p style={{
-                    color: 'var(--gray-600)',
-                    margin: '0 0 1.5rem 0',
-                    fontSize: '0.95rem'
-                  }}>
+                  <p className="example-sub">
                     {t.sub}
                   </p>
                   <button
-                    className="btn"
-                    style={{
-                      width: '100%',
-                      background: 'linear-gradient(135deg, #14b8a6, #0f766e)',
-                      color: '#ecfeff',
-                      border: 'none',
-                      fontWeight: '700',
-                      fontSize: '1rem',
-                      padding: '0.875rem 1.5rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      boxShadow: '0 8px 20px rgba(15, 118, 110, 0.22)',
-                      cursor: 'pointer'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      open(t.href);
-                    }}
+                    className="example-btn example-btn--reader"
+                    onClick={() => open(t.href)}
                   >
                     <span>Open Reader101 Example</span>
                     <svg
@@ -240,73 +138,31 @@ const Examples = () => {
                       />
                     </svg>
                   </button>
-                </div>
+                </article>
               ))}
             </div>
-          </div>
+          </section>
 
-          {/* Grid */}
-          <div className="grid-responsive">
+          <section className="examples-section examples-section--prep">
+            <header className="examples-section-head">
+              <p className="examples-kicker examples-kicker--prep">Prep101</p>
+              <h2 className="examples-title">Audition Guide Examples</h2>
+              <p className="examples-intro">Browse style and genre-specific guide outputs.</p>
+            </header>
+
+            <div className="examples-grid">
             {tiles.map((t) => (
-              <div
-                key={t.href}
-                className="card-white"
-                style={{ cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
-                onClick={() => open(t.href)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 28px 80px rgba(0,0,0,.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 22px 70px rgba(0,0,0,.10)';
-                }}
-              >
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '800',
-                  color: 'var(--gray-800)',
-                  margin: '0 0 0.5rem 0',
-                  lineHeight: '1.3'
-                }}>
+              <article key={t.href} className="example-card example-card--prep">
+                <p className="example-pill example-pill--prep">Guide Example</p>
+                <h3 className="example-heading">
                   {t.heading}
                 </h3>
-                <p style={{
-                  color: 'var(--gray-600)',
-                  margin: '0 0 1.5rem 0',
-                  fontSize: '0.95rem'
-                }}>
+                <p className="example-sub">
                   {t.sub}
                 </p>
                 <button
-                  className="btn"
-                  style={{
-                    width: '100%',
-                    background: 'var(--gold-grad)',
-                    color: '#2f2500',
-                    border: 'none',
-                    fontWeight: '700',
-                    fontSize: '1rem',
-                    padding: '0.875rem 1.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    boxShadow: '0 4px 12px rgba(255, 200, 58, 0.3)',
-                    cursor: 'pointer'
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    open(t.href);
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(255, 200, 58, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 200, 58, 0.3)';
-                  }}
+                  className="example-btn example-btn--prep"
+                  onClick={() => open(t.href)}
                 >
                   <span>View Example</span>
                   <svg
@@ -324,29 +180,20 @@ const Examples = () => {
                     />
                   </svg>
                 </button>
-              </div>
+              </article>
             ))}
-          </div>
+            </div>
+          </section>
 
-          {/* Bottom CTA */}
           <div className="text-center mt-5">
-            <div className="card-dark">
-              <h2 style={{
-                fontSize: '1.5rem',
-                fontWeight: '800',
-                color: 'var(--white)',
-                margin: '0 0 1rem 0'
-              }}>
+            <div className="card-dark examples-cta">
+              <h2 className="examples-cta-title">
                 Ready to get your own custom guide?
               </h2>
-              <p style={{
-                color: 'var(--ink-dim)',
-                margin: '0 0 1.5rem 0',
-                fontSize: '1.1rem'
-              }}>
+              <p className="examples-cta-sub">
                 Upload your sides and get a personalized coaching guide in minutes.
               </p>
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div className="examples-cta-actions">
                 <button
                   className="btn btnPrimary"
                   onClick={() => navigate('/register')}
@@ -364,7 +211,6 @@ const Examples = () => {
           </div>
         </div>
 
-        {/* Footer */}
         <Footer />
       </div>
     </>
