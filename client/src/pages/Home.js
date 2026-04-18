@@ -49,13 +49,13 @@ const Home = () => {
               <div className="system-card system-card--current" aria-current="page">
                 <div className="system-card-badge">YOU ARE HERE</div>
                 <div className="system-card-step">2. How do I build it?</div>
-                <img src="/preplogo.png" alt="Prep101" className="system-card-logo" loading="lazy" />
+                <img src="/prep101-footer.png" alt="Prep101" className="system-card-logo" loading="lazy" />
                 <div className="system-card-tagline">Build the performance</div>
               </div>
 
               <a href="https://reader101.site" className="system-card system-card--sibling" target="_blank" rel="noopener noreferrer">
                 <div className="system-card-step">3. Is the tape working?</div>
-                <img src="/reader101-logo.png" alt="Reader101" className="system-card-logo" loading="lazy" />
+                <img src="/reader101-footer.png" alt="Reader101" className="system-card-logo" loading="lazy" />
                 <div className="system-card-tagline">Protect the read</div>
               </a>
             </div>
