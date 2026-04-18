@@ -182,7 +182,7 @@ const Pricing = () => {
               cta="Add Reader Guide"
               href={STRIPE.READER_ADDON}
               badge="Add-On"
-              color="#14b8a6"
+              color="var(--gold)"
             />
             <PlanCard
               name="Reader101 Single"
@@ -192,7 +192,7 @@ const Pricing = () => {
               features={['Full Reader Support Guide', 'PDF upload + scene analysis', 'Key beats, volume, connection coaching', '10 standard Reader Fundamentals included']}
               cta="Buy Reader Guide"
               href={STRIPE.READER_ONE}
-              color="#14b8a6"
+              color="var(--gold)"
             />
             <PlanCard
               name="Reader101 Monthly"
@@ -204,7 +204,7 @@ const Pricing = () => {
               href={STRIPE.READER_MONTHLY}
               popular
               badge="Most Popular"
-              color="#14b8a6"
+              color="var(--gold)"
             />
           </div>
 
@@ -212,8 +212,8 @@ const Pricing = () => {
           <div
             className="card-dark"
             style={{
-              background: 'linear-gradient(135deg, #0d1f3c 0%, #0f172a 60%, #0d2b2b 100%)',
-              border: '2px solid rgba(20,184,166,0.4)',
+              background: 'linear-gradient(135deg, #111d3a 0%, #0f172a 60%, #0b1227 100%)',
+              border: '2px solid rgba(255,200,58,0.42)',
               borderRadius: '20px',
               padding: '2.5rem',
               marginBottom: '3rem',
@@ -223,27 +223,27 @@ const Pricing = () => {
           >
             <div style={{
               position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
-              background: 'linear-gradient(135deg, #14b8a6, #6366f1)',
-              color: '#fff', padding: '0.3rem 1.25rem', borderRadius: '999px',
+              background: 'var(--gold-grad)',
+              color: '#2f2500', padding: '0.3rem 1.25rem', borderRadius: '999px',
               fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap',
             }}>⭐ The Complete Self-Tape System</div>
 
             <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                 <img src="/preplogo.png" alt="Prep101" style={{ height: 32, objectFit: 'contain' }} />
-                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '1.5rem', lineHeight: '32px' }}>+</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#14b8a6', lineHeight: '32px' }}>Reader101</span>
-                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '1.5rem', lineHeight: '32px' }}>+</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FF4D4D', lineHeight: '32px' }}>Bold Choices</span>
+                <span style={{ color: 'rgba(255,200,58,0.45)', fontSize: '1.5rem', lineHeight: '32px' }}>+</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffd873', lineHeight: '32px' }}>Reader101</span>
+                <span style={{ color: 'rgba(255,200,58,0.45)', fontSize: '1.5rem', lineHeight: '32px' }}>+</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ff8a8a', lineHeight: '32px' }}>Bold Choices</span>
               </div>
               <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 900, color: '#fff', margin: '0 0 0.5rem 0' }}>
                 The Complete Self-Tape System
               </h2>
               <div style={{ marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '3rem', fontWeight: 900, color: '#14b8a6' }}>$29.99</span>
+                <span style={{ fontSize: '3rem', fontWeight: 900, color: 'var(--gold)' }}>$29.99</span>
                 <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>/month</span>
               </div>
-              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.95rem', maxWidth: '620px', margin: '0 auto', lineHeight: 1.7 }}>
+              <p style={{ color: 'rgba(230,237,245,0.76)', fontSize: '0.95rem', maxWidth: '620px', margin: '0 auto', lineHeight: 1.7 }}>
                 Everything your actor needs for every audition. Get 5 Prep101 guides per month plus unlimited Reader101 and Bold Choices guides to support every audition from start to finish.
               </p>
             </div>
@@ -251,16 +251,16 @@ const Pricing = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
               {[
                 { icon: '📋', title: 'Prep101 Starter', desc: '5 guides/month — beats, subtext, buttons', color: '#f59e0b' },
-                { icon: '📖', title: 'Reader101', desc: 'Unlimited reader guides — every audition', color: '#14b8a6' },
-                { icon: '🎭', title: 'Bold Choices', desc: 'Unlimited daily acting choices', color: '#FF4D4D' },
+                { icon: '📖', title: 'Reader101', desc: 'Unlimited reader guides — every audition', color: '#ffd873' },
+                { icon: '🎭', title: 'Bold Choices', desc: 'Unlimited daily acting choices', color: '#ff8a8a' },
               ].map(item => (
                 <div key={item.title} style={{
-                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,200,58,0.16)',
                   borderRadius: '12px', padding: '1.25rem', textAlign: 'center',
                 }}>
                   <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{item.icon}</div>
                   <div style={{ fontWeight: 700, color: item.color, marginBottom: '0.25rem', fontSize: '0.95rem' }}>{item.title}</div>
-                  <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>{item.desc}</div>
+                  <div style={{ fontSize: '0.82rem', color: 'rgba(230,237,245,0.62)', lineHeight: 1.5 }}>{item.desc}</div>
                 </div>
               ))}
             </div>
@@ -269,15 +269,16 @@ const Pricing = () => {
               <button
                 onClick={() => go(STRIPE.BUNDLE)}
                 style={{
-                  background: 'linear-gradient(135deg, #14b8a6, #6366f1)',
-                  color: '#fff', border: 'none', borderRadius: '12px',
+                  background: 'var(--gold-grad)',
+                  color: '#2f2500', border: 'none', borderRadius: '12px',
                   padding: '1rem 2.5rem', fontSize: '1.05rem', fontWeight: 800,
                   cursor: 'pointer', letterSpacing: '0.02em',
+                  boxShadow: '0 12px 26px rgba(255,200,58,0.28)',
                 }}
               >
                 Get the Bundle — $29.99/month
               </button>
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', marginTop: '0.75rem' }}>
+              <p style={{ color: 'rgba(230,237,245,0.5)', fontSize: '0.8rem', marginTop: '0.75rem' }}>
                 Includes Prep101 Starter + Reader101 Monthly + Bold Choices Monthly. Cancel anytime.
               </p>
             </div>
