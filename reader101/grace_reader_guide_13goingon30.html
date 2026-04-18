@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reader Support Guide — Grace | 13 Going on 30</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #fff; font-family: system-ui, sans-serif; }
+.guide { max-width: 780px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+.guide-header { padding-bottom: 1rem; margin-bottom: 1.5rem; border-bottom: 3px solid #BA7517; }
+.guide-title { font-size: 22px; font-weight: 500; color: #1a1a1a; }
+.guide-sub { font-size: 12px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tag { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; border: 1px solid #ccc; color: #555; background: #f5f5f5; }
+
+.section { margin-bottom: 1.25rem; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; }
+
+.sec-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+.sh-dark  { background: #2C2C2A; }
+.sh-amber { background: #633806; }
+.sh-teal  { background: #085041; }
+.sh-coral { background: #4A1B0C; }
+.sh-red   { background: #791F1F; }
+.sh-muted { background: #f0efeb; }
+
+.sec-num { font-size: 11px; font-weight: 500; min-width: 20px; }
+.nl { color: #B4B2A9; }
+.nm { color: #666; }
+
+.sec-title { font-size: 15px; font-weight: 500; }
+.tl { color: #F1EFE8; }
+.tm { color: #1a1a1a; }
+
+.badge { margin-left: auto; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; background: rgba(255,255,255,0.15); color: #F1EFE8; }
+
+.sec-body { padding: 12px 16px 14px; }
+.sec-body ul { list-style: none; }
+.sec-body li { font-size: 14px; color: #1a1a1a; line-height: 1.65; padding: 3px 0 3px 18px; position: relative; }
+.sec-body li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+.ref { font-style: italic; color: #666; }
+.consequence { font-size: 13px; color: #666; display: block; padding-left: 18px; margin-top: 1px; margin-bottom: 4px; font-style: italic; }
+
+.intro-text { font-size: 14px; color: #1a1a1a; line-height: 1.7; padding: 12px 16px 14px; }
+
+.warn-box { margin: 0; padding: 14px 16px; background: #1a1a1a; }
+.warn-title { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: #E24B4A; margin-bottom: 10px; }
+.warn-box ul { list-style: none; }
+.warn-box li { font-size: 14px; color: #F1EFE8; line-height: 1.65; padding: 3px 0 3px 18px; position: relative; }
+.warn-box li::before { content: "✕"; position: absolute; left: 0; color: #E24B4A; font-size: 12px; }
+.warn-footer { font-size: 13px; color: #888; margin-top: 10px; font-style: italic; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 16px 14px; }
+.col-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+.col-head { padding: 8px 12px; }
+.chdo { background: #085041; }
+.chavoid { background: #4A1B0C; }
+.col-label-do { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #9FE1CB; }
+.col-label-avoid { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #F5C4B3; }
+.col-body { padding: 10px 12px; }
+.col-body li { font-size: 13px; color: #1a1a1a; line-height: 1.6; padding: 3px 0 3px 14px; position: relative; list-style: none; }
+.col-body li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+.scene-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 14px; }
+.scene-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+.scene-head { background: #2C2C2A; padding: 7px 10px; }
+.scene-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #D3D1C7; }
+.scene-body { padding: 8px 10px; }
+.scene-body li { font-size: 12px; color: #1a1a1a; line-height: 1.6; padding: 2px 0 2px 14px; position: relative; list-style: none; }
+.scene-body li::before { content: "—"; position: absolute; left: 0; color: #888; font-size: 12px; }
+
+.engine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px 14px; }
+.engine-card { border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
+.engine-head { padding: 8px 12px; }
+.eh-amber { background: #633806; }
+.eh-coral { background: #4A1B0C; }
+.el-amber { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #FAC775; }
+.el-coral { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #F5C4B3; }
+.engine-body { padding: 10px 12px; }
+.engine-body p { font-size: 13px; color: #1a1a1a; line-height: 1.7; }
+.engine-body .consequence { padding-left: 0; margin-top: 8px; font-size: 13px; color: #666; font-style: italic; }
+
+.inset-box { background: #f5f5f3; border-radius: 8px; margin: 12px 16px 14px; padding: 12px 14px; }
+.inset-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #666; margin-bottom: 8px; }
+.inset-box li { font-size: 13px; color: #1a1a1a; line-height: 1.65; padding: 3px 0 3px 16px; position: relative; list-style: none; }
+.inset-box li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+.anchor-line { font-size: 15px; font-weight: 500; color: #1a1a1a; padding: 12px 16px 0; font-style: italic; }
+
+.reset-box { background: #f5f5f3; border-radius: 8px; margin: 12px 16px 14px; padding: 12px 14px; }
+.reset-box li { font-size: 13px; color: #1a1a1a; line-height: 1.7; padding: 3px 0 3px 16px; position: relative; list-style: none; }
+.reset-box li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+@media (max-width: 520px) {
+  .two-col, .scene-grid, .engine-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="guide">
+
+  <div class="guide-header">
+    <div class="guide-title">Reader Support Guide — Grace Fischer</div>
+    <div class="guide-sub">13 Going on 30 · Feature Film · Carla Hool Casting · Dir. Brett Haley</div>
+    <div class="tag-row">
+      <span class="tag">3 Scenes</span>
+      <span class="tag">Grounded Comedy</span>
+      <span class="tag">You Read: Ollie · Alexis · Popular Girls</span>
+      <span class="tag">o/a June 2026 · Los Angeles</span>
+    </div>
+  </div>
+
+  <!-- WHAT WILL GO WRONG -->
+  <div class="section">
+    <div class="sec-head sh-red">
+      <span class="sec-num nl">⚠</span>
+      <span class="sec-title tl">What Will Go Wrong</span>
+    </div>
+    <div class="warn-box">
+      <div class="warn-title">Most readers will kill this audition by doing one of these three things:</div>
+      <ul>
+        <li>Play Ollie as the lovable goof — and erase the real hurt underneath his loyalty</li>
+        <li>Play Alexis as the cartoonish mean girl — and give Grace nothing real to desperately want</li>
+        <li>Let the comedy scenes run light and fast — and destroy Grace's actual emotional collapse</li>
+      </ul>
+      <div class="warn-footer">This is grounded realism first, comedy second. If the reader treats it like a sketch, the audition is over.</div>
+    </div>
+  </div>
+
+  <!-- WHY THIS MATTERS -->
+  <div class="section">
+    <div class="sec-head sh-amber">
+      <span class="sec-num nl">01</span>
+      <span class="sec-title tl">Why This Matters</span>
+    </div>
+    <p class="intro-text">Grace is trying to be seen by people who won't look at her — and your job is to be the one who does or doesn't look. Every scene is about her reaching and either getting something or having it yanked away. <strong>If you read Ollie as a sidekick or Alexis as a punchline, Grace has no real stakes to play against.</strong> These scenes only work when the people Grace is talking to feel completely, genuinely real — the warmth from Ollie, the social power from Alexis. Give her something worth fighting for. Give her something worth losing.</p>
+  </div>
+
+  <!-- PERFORMANCE ENGINE -->
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">02</span>
+      <span class="sec-title tl">Performance Engine</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card">
+        <div class="engine-head eh-amber"><div class="el-amber">Grace's Drive</div></div>
+        <div class="engine-body">
+          <p>Grace needs to be chosen. Not liked — chosen. Every line she speaks is an audition for belonging.</p>
+          <p class="consequence">→ The moment that pressure lands on the actor, the performance becomes real.</p>
+        </div>
+      </div>
+      <div class="engine-card">
+        <div class="engine-head eh-coral"><div class="el-coral">Your Function</div></div>
+        <div class="engine-body">
+          <p>Ollie gives her safety. Alexis gives her status. Both must feel like the real thing — not comedy archetypes.</p>
+          <p class="consequence">→ If either character is played for laughs, Grace's desperation reads as absurd instead of heartbreaking.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE SNAPSHOT -->
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">03</span>
+      <span class="sec-title tl">Scene Snapshot</span>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 1 — Bedroom</div></div>
+        <div class="scene-body"><ul>
+          <li>Birthday night, photos, The Notebook</li>
+          <li>Ollie's loyalty vs. Grace's obliviousness</li>
+          <li>You read: Ollie</li>
+          <li>Tone: warm, a little sad, easy</li>
+        </ul></div>
+      </div>
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 2 — The Quad</div></div>
+        <div class="scene-body"><ul>
+          <li>Grace approaches Alexis's group</li>
+          <li>Social humiliation in real time</li>
+          <li>You read: Alexis, Popular Girls, Ollie</li>
+          <li>Tone: cold calculation vs. desperate charm</li>
+        </ul></div>
+      </div>
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 3 — Bedroom / Door</div></div>
+        <div class="scene-body"><ul>
+          <li>Post-party collapse, Grace blows up at Ollie</li>
+          <li>She destroys the one real thing she had</li>
+          <li>You read: Ollie, Carey, Kirk</li>
+          <li>Tone: raw, escalating, no comedy</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YOUR JOB -->
+  <div class="section">
+    <div class="sec-head sh-amber">
+      <span class="sec-num nl">04</span>
+      <span class="sec-title tl">Your Job</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Wrong instinct: play Ollie as the sweet, slightly goofy best friend — it makes Grace's rejection land as dramatic irony, not devastation</li>
+      <li>Right call: play Ollie's care as completely earnest and real — his love for her is the most genuine thing in her life</li>
+      <li>Wrong instinct: play Alexis as evil and conniving — Grace would see through that immediately</li>
+      <li>Right call: play Alexis as genuinely powerful and casually indifferent — her cruelty is in not caring, not in scheming</li>
+      <li>Wrong instinct: mirror Grace's energy in Scene 2 — escalate with her anxiety</li>
+      <li>Right call: stay flat and unmoved as the Popular Girls — Grace's desperation lands harder against your stillness</li>
+      <li>In Scene 3, don't soften Ollie's heartbreak — he should feel the door slam as fully as the actor plays it</li>
+    </ul></div>
+  </div>
+
+  <!-- PLAYING MULTIPLE CHARACTERS -->
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">05</span>
+      <span class="sec-title tl">Playing Multiple Characters</span>
+      <span class="badge">mandatory</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Ollie (Scenes 1 & 3): Grace's person — warm, loyal, completely in love without knowing it</li>
+      <li>Alexis (Scene 2): runs the social world with bored confidence — power doesn't need effort</li>
+      <li>Popular Girls (Scene 2): a single organism — blank, unified, faintly amused by Grace's existence</li>
+      <li>Carey &amp; Kirk (Scene 3): concerned dads trying to reach her — read them soft and helpless, not parental</li>
+      <li><strong>If Ollie and Alexis feel the same, the audition dies instantly.</strong></li>
+      <li>Signal every character shift with a full physical and vocal reset — pause, land, commit</li>
+      <li>Ollie's warmth is open and facing toward her. Alexis's attention is pointed and transactional. Never swap these.</li>
+    </ul></div>
+  </div>
+
+  <!-- READER FUNDAMENTALS -->
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">06</span>
+      <span class="sec-title tm">Reader Fundamentals</span>
+    </div>
+    <div class="inset-box">
+      <div class="inset-title">This is where readers quietly ruin auditions:</div>
+      <ul>
+        <li>Reading Alexis with any edge or bite — Alexis doesn't need to try. The moment she tries, Grace wins</li>
+        <li>Dropping energy in Ollie's lines — his warmth is the emotional anchor of the whole material</li>
+        <li>Laughing or smiling during the quad scene — you're in the Popular Girl bubble. Stay stone-faced.</li>
+        <li>Playing Scene 3 tentatively — the dads need to feel genuinely worried, not procedural</li>
+        <li>Never act over the actor. Support. Don't compete.</li>
+        <li>Treating Grace's dancing-to-no-music beat as a joke — react like you're watching someone embarrass themselves</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- KEY BEATS -->
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">07</span>
+      <span class="sec-title tl">Key Beats</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>S1: Ollie's <span class="ref">"I've been working on it for weeks"</span> — play the vulnerability, not the excitement</li>
+      <li>S1: After <span class="ref">"Again?"</span> — let Ollie give in immediately; the sigh is love, not annoyance</li>
+      <li>S2: Alexis closes the Sidekick before she speaks — that click is her full attention landing on Grace. Hold it.</li>
+      <li>S2: <span class="ref">"You can come"</span> — deliver it flat and generous, like giving away nothing.<span class="consequence">If it sounds mean, Grace won't fall for it. She needs to believe it's real.</span></li>
+      <li>S2: <span class="ref">"But he can't come"</span> — say it about Ollie like he's a parking problem, not a person</li>
+      <li>S2: After Grace waves and stops — Alexis is watching. Let the silence sit. She's pleased.</li>
+      <li>S2: <span class="ref">"That's so sad"</span> — zero cruelty in it. Completely sincere. That's what makes it devastating.<span class="consequence">If it lands mean, the scene becomes a cartoon. It needs to land true.</span></li>
+      <li>S3: Ollie's <span class="ref">"Screw those guys"</span> — it's a declaration, not comfort. Give it conviction.</li>
+      <li>S3: <span class="ref">"I don't care about your stupid song!"</span> — Ollie receives this fully. Do not protect yourself from it.</li>
+      <li>S3: The door slam — Ollie is standing in rain now. React to the finality. Full stop.</li>
+    </ul></div>
+  </div>
+
+  <!-- RHYTHM PACE ENERGY -->
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">08</span>
+      <span class="sec-title tm">Rhythm, Pace & Energy</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Scene 1: easy and warm — no urgency; this is the last safe moment before everything breaks</li>
+      <li>Scene 2 (approaching the group): slow your pace as Alexis — every pause costs Grace something</li>
+      <li>Scene 2 (popular girl responses): shorter, flatter, faster — the group moves as one; no warmth in the rhythm</li>
+      <li>Scene 3 (dads): soft, worried, tentative — enter slowly into her space</li>
+      <li>Scene 3 (Grace's eruption): Ollie holds steady — don't match her escalation, let the stillness make it worse</li>
+      <li>Alexis's <span class="ref">"Whatever. See you tonight."</span> — your most casual line. Zero investment. Walk as you say it.</li>
+      <li>Ollie's <span class="ref">"But Grace —"</span> in Scene 3 — two words, completely broken. Slowest line of the guide.</li>
+    </ul></div>
+  </div>
+
+  <!-- DO THIS / AVOID THIS -->
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">09</span>
+      <span class="sec-title tl">Do This / Avoid This</span>
+    </div>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="col-head chdo"><div class="col-label-do">Do This</div></div>
+        <div class="col-body"><ul>
+          <li>Play Ollie's gift reveal with real nerves — he's been building to this for weeks</li>
+          <li>Let Alexis's compliment <span class="ref">"You're like, so good at that stuff"</span> land as genuinely meant</li>
+          <li>Stay completely still as the popular girls when Grace does the dance</li>
+          <li>In Scene 3, absorb Grace's attack on Ollie without flinching away from it</li>
+          <li>Play the dads as genuinely helpless — they can't reach her and they know it</li>
+        </ul></div>
+      </div>
+      <div class="col-card">
+        <div class="col-head chavoid"><div class="col-label-avoid">Avoid This</div></div>
+        <div class="col-body"><ul>
+          <li>Making Alexis sound mean — she should sound like she's doing Grace a favor</li>
+          <li>Reacting to Grace's dance with amusement — the blank stare is the whole beat</li>
+          <li>Playing Ollie as bumbling or awkward — he's earnest, not clumsy</li>
+          <li>Adding any warmth to the popular girls' <span class="ref">"Are you ok?"</span> — it's condescension, not concern</li>
+          <li>Rushing Scene 3 — the slower Ollie absorbs it, the harder it hits</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONNECTION -->
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">10</span>
+      <span class="sec-title tl">Connection</span>
+      <span class="badge">critical</span>
+    </div>
+    <p class="anchor-line">Grace can only fall as hard as you make the ground real.</p>
+    <div class="sec-body" style="padding-top:10px;"><ul>
+      <li>S1: Ollie's warmth is what makes his absence in Scene 3 catastrophic — build it here so it costs something later</li>
+      <li>S2: Alexis's social gravity must feel genuinely magnetic — Grace doesn't want to be Alexis, she wants to be seen by her</li>
+      <li>Hold the pause after Grace stops waving at Ollie — that moment of betrayal belongs to her, not to you</li>
+      <li>S3: Ollie standing in rain, receiving <span class="ref">"You're a LOSER"</span> — stay open, don't close off; his devastation is in not protecting himself</li>
+      <li>The YouTube page beat — no followers, no views — Grace turns to the cupcake alone. The dads are already gone from frame. Honor the silence.</li>
+    </ul></div>
+  </div>
+
+  <!-- TONE & REFERENCE ANCHOR -->
+  <div class="section">
+    <div class="sec-head sh-coral">
+      <span class="sec-num nl">11</span>
+      <span class="sec-title tl">Tone & Reference Anchor</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>If you play this like a Disney Channel sitcom, it falls apart immediately — the comedy dies when the truth does</li>
+      <li>Touchstone: the original <em>13 Going on 30</em> (2004) — warm, specific, emotionally honest, early-2000s texture</li>
+      <li>Supporting reference: <em>Eighth Grade</em> (2018) — social anxiety played completely straight, no distance from the cringe</li>
+      <li>The humor comes entirely from authenticity — the Twilight shirt, the AIM line, the birthday twin moment land because they're real, not because they're played for laughs</li>
+      <li>Grace's pop culture references (Team Jacob, "bomb dot com") are sincere — react to them straight, not with nostalgia winking</li>
+      <li>American accent throughout — no character shift, one consistent neutral American across all roles</li>
+    </ul></div>
+  </div>
+
+  <!-- QUICK RESET -->
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">12</span>
+      <span class="sec-title tm">Quick Reset</span>
+    </div>
+    <div class="reset-box"><ul>
+      <li>Scene 1: Birthday bedroom. Ollie loves her. She doesn't see it yet. Be warm enough that we feel the tragedy coming.</li>
+      <li>Scene 2: The quad. Alexis holds all the power. Grace needs all of it. Give her just enough to destroy her with it.</li>
+      <li>Scene 3: The door. Grace breaks the one real thing in her life. Ollie stands in rain. Take the hit fully.</li>
+      <li>Your job: Be real. Make the stakes matter. Let Grace fall from somewhere high.</li>
+    </ul></div>
+  </div>
+
+</div>
+</body>
+</html>

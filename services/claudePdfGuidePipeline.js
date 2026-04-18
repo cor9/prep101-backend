@@ -220,7 +220,7 @@ function clampTimeout(value, fallback) {
 // Per-call timeout for Claude requests. Configurable via env for quick tuning in production.
 const PER_CALL_TIMEOUT_MS = clampTimeout(
   process.env.CLAUDE_PDF_PER_CALL_TIMEOUT_MS,
-  120_000
+  150_000
 );
 const EXTRACTION_TIMEOUT_MS = clampTimeout(
   process.env.CLAUDE_PDF_EXTRACTION_TIMEOUT_MS,
@@ -228,12 +228,28 @@ const EXTRACTION_TIMEOUT_MS = clampTimeout(
 );
 
 function isAbortError(error) {
+  const name = String(error?.name || "");
+  const code = String(error?.code || "");
   const message = String(error?.message || "");
   return (
-    error?.name === "AbortError" ||
+    name === "AbortError" ||
+    code === "20" ||
     /aborted/i.test(message) ||
     /The user aborted a request/i.test(message)
   );
+}
+
+function wrapTimeoutError(error, stepName, timeoutMs) {
+  if (isAbortError(error)) {
+    const wrapped = new Error(
+      `TIMEOUT: ${stepName} exceeded its allowed time of ${Math.round(timeoutMs / 1000)} seconds. Claude is taking longer than usual to respond.`
+    );
+    wrapped.name = "TimeoutError";
+    wrapped.step = stepName;
+    wrapped.timeoutMs = timeoutMs;
+    return wrapped;
+  }
+  return error;
 }
 
 function makeCallSignal(timeoutMs = PER_CALL_TIMEOUT_MS) {
@@ -394,15 +410,15 @@ async function extractScreenplay({
       logTokenUsage("extractScreenplay", data, model, EXTRACT_MAX_TOKENS);
       return { screenplayText, model, usage: data?.usage };
     } catch (error) {
-      lastError = error;
+      lastError = wrapTimeoutError(error, "Screenplay extraction", timeoutMs);
       const hasNextAttempt = attemptIndex < timeoutAttempts.length - 1;
       if (isAbortError(error) && hasNextAttempt) {
         console.warn(
-          `[ClaudePipeline] extractScreenplay aborted at ${timeoutMs}ms; retrying with extended timeout.`
+          `[ClaudePipeline] Screenplay extraction aborted at ${timeoutMs}ms; retrying with extended timeout.`
         );
         continue;
       }
-      throw error;
+      throw lastError;
     }
   }
 
@@ -417,19 +433,22 @@ async function generateAnalysis({
 }) {
   const metaBlock = buildMetadataBlock(metadata);
 
-  const { data, model } = await sendAnthropicMessage({
-    apiKey,
-    preferredModel,
-    maxTokens: ANALYSIS_MAX_TOKENS,
-    system: ANALYSIS_SYSTEM_PROMPT,
-    signal: makeCallSignal(),
-    messages: [
-      {
-        role: "user",
-        content: `Generate a structured analysis from this screenplay and metadata.\n\n${metaBlock}\n\nSCREENPLAY:\n${screenplayText}`,
-      },
-    ],
-  });
+    const { data, model } = await sendAnthropicMessage({
+      apiKey,
+      preferredModel,
+      maxTokens: ANALYSIS_MAX_TOKENS,
+      system: ANALYSIS_SYSTEM_PROMPT,
+      signal: makeCallSignal(),
+      messages: [
+        {
+          role: "user",
+          content: `Generate a structured analysis from this screenplay and metadata.\n\n${metaBlock}\n\nSCREENPLAY:\n${screenplayText}`,
+        },
+      ],
+    });
+  } catch (error) {
+    throw wrapTimeoutError(error, "Script analysis", PER_CALL_TIMEOUT_MS);
+  }
 
   const analysis = getAnthropicText(data);
   logTokenUsage("generateAnalysis", data, model, ANALYSIS_MAX_TOKENS);
@@ -487,24 +506,27 @@ async function generateGuideHTML({
   // Prefer the richer analysis over a compressed summary when both are supplied
   const contextBlock = analysis || summary || "";
 
-  const { data, model } = await sendAnthropicMessage({
-    apiKey,
-    preferredModel,
-    maxTokens: GUIDE_MAX_TOKENS,
-    system: GUIDE_SYSTEM_PROMPT,
-    signal: makeCallSignal(),
-    messages: [
-      {
-        role: "user",
-        content: `Generate the full Prep101 HTML guide.
+    const { data, model } = await sendAnthropicMessage({
+      apiKey,
+      preferredModel,
+      maxTokens: GUIDE_MAX_TOKENS,
+      system: GUIDE_SYSTEM_PROMPT,
+      signal: makeCallSignal(),
+      messages: [
+        {
+          role: "user",
+          content: `Generate the full Prep101 HTML guide.
 
 ${metaBlock}
 
 SCRIPT ANALYSIS:
 ${contextBlock}`,
-      },
-    ],
-  });
+        },
+      ],
+    });
+  } catch (error) {
+    throw wrapTimeoutError(error, "HTML guide generation", PER_CALL_TIMEOUT_MS);
+  }
 
   const html = getAnthropicText(data);
   logTokenUsage("generateGuideHTML", data, model, GUIDE_MAX_TOKENS);

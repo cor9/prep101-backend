@@ -2841,8 +2841,13 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       return res.status(503).json({ success: false, error: "ANTHROPIC_API_KEY is not configured." });
     }
 
-    // ─── Reader101 path: same Claude PDF extraction as Prep101 ────────────────
-    if (mode === "reader_support") {
+    // ─── Reader101 detection logic ──────────────────────────────────────────
+    const isReader101Request = 
+      mode === "reader_support" || 
+      req.body.product === "reader101" || 
+      req.body.isReader101 === true;
+
+    if (isReader101Request) {
       const reader101Usage = buildReader101Usage(currentUser);
       if (!isAdminUser && !reader101Usage.canGenerate) {
         return res.status(403).json({
@@ -2863,18 +2868,29 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       const FORBIDDEN_READER_ROLES = new Set(["NARRATOR","V.O.","VO","O.S.","OS","ANNOUNCER"]);
       const readerRoles = (parsedScreenplay.readerRoles || []).filter(r => !FORBIDDEN_READER_ROLES.has(r.trim().toUpperCase()));
 
-      const readerGuideHtml = await generateReaderGuide({
-        sceneText: repairedText,
-        characterName: characterName.trim(),
-        characterNames: readerRoles,
-        structure: parsedScreenplay.structure,
-        actorAge: actorAge || "",
-        productionTitle: productionTitle.trim(),
-        productionType: productionType.trim(),
-        genre: genre || "",
-        storyline: storyline || "",
-        fallbackMode: false,
-      });
+      // Manage total time budget for the Reader101 path (240s to stay under Vercel's 300s)
+      const readerController = new AbortController();
+      const readerTimeout = setTimeout(() => readerController.abort(), 240_000);
+      let readerGuideHtml;
+
+      try {
+        readerGuideHtml = await generateReaderGuide({
+          sceneText: repairedText,
+          characterName: characterName.trim(),
+          characterNames: readerRoles,
+          structure: parsedScreenplay.structure,
+          actorAge: actorAge || "",
+          productionTitle: productionTitle.trim(),
+          productionType: productionType.trim(),
+          genre: genre || "",
+          storyline: storyline || "",
+          fallbackMode: false,
+        }, { signal: readerController.signal });
+        clearTimeout(readerTimeout);
+      } catch (e) {
+        clearTimeout(readerTimeout);
+        throw e;
+      }
       console.log("✅ [Reader101] Reader guide from PDF complete!");
 
       const GuideModel = Guide || require("./models/Guide");
@@ -3024,9 +3040,20 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
     });
   } catch (error) {
     console.error("❌ Two-call PDF guide generation failed:", error);
+
+    let errorMessage = error.message || "Failed to generate guide from PDF.";
+    
+    // Convert generic "The user aborted a request" into something more helpful
+    if (errorMessage.includes("aborted a request") || error.name === "AbortError" || error.name === "TimeoutError") {
+      if (!errorMessage.includes("exceeded its allowed time")) {
+        errorMessage = "The generation process timed out while waiting for Claude. This usually happens with very long or complex scripts. Please try again or paste the text directly.";
+      }
+    }
+
     return res.status(500).json({
       success: false,
-      error: error.message || "Failed to generate guide from PDF.",
+      error: errorMessage,
+      step: error.step || "unknown",
     });
   }
 });
@@ -3054,7 +3081,10 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       mode,
     } = req.body;
 
-    const isReaderMode = mode === "reader_support";
+    const isReaderMode = 
+      mode === "reader_support" || 
+      req.body.product === "reader101" || 
+      req.body.isReader101 === true;
 
     // Handle both single and multiple upload IDs
     const uploadIdList = uploadIds

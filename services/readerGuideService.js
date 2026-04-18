@@ -670,7 +670,8 @@ function validateReaderGuideOutput(html = "", modeContext = {}) {
   };
 }
 
-async function generateReaderGuide(data = {}) {
+async function generateReaderGuide(data = {}, options = {}) {
+  const signal = options.signal;
   const roleContext = resolveReaderRoleContext(data);
   const modeContext = buildReaderModeContext({
     ...data,
@@ -692,7 +693,7 @@ async function generateReaderGuide(data = {}) {
       ...modeContext,
       flags,
     },
-    { returnMeta: true }
+    { returnMeta: true, signal }
   );
 
   const validation = validateReaderGuideOutput(result.html, modeContext);

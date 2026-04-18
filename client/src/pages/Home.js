@@ -24,9 +24,45 @@ const Home = () => {
             <strong> confident</strong>, and <strong>unforgettable</strong>.<br />
             One Child Actor 101 account powers Prep101, Reader101, and Bold Choices.
           </p>
+          <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: '1.25rem' }}>
+            Go deeper.
+          </p>
           <div className="btnRow">
             <button className="btn btnPrimaryDark" onClick={primary}>Get Started</button>
             <button className="btn btnSecondaryDark" onClick={() => navigate('/examples')}>See Examples</button>
+          </div>
+        </section>
+
+        <section style={{ padding: '4rem 1.5rem' }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
+            <p style={{ fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>
+              The System
+            </p>
+            <h2 style={{ fontSize: 'clamp(1.8rem,4vw,2.6rem)', marginBottom: 20 }}>
+              The Self-Tape System
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.6)', maxWidth: 520, margin: '0 auto 40px' }}>
+              Most actors don’t struggle with talent.
+              <br />
+              They struggle with what to do, how to build it, and whether it works.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16 }}>
+              <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14 }}>
+                <strong>1. What do I do?</strong><br />
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>Bold Choices</span>
+              </div>
+              <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14 }}>
+                <strong>2. How do I build it?</strong><br />
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>Prep101</span>
+              </div>
+              <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14 }}>
+                <strong>3. Is the tape working?</strong><br />
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>Reader101</span>
+              </div>
+            </div>
+            <p style={{ marginTop: 20, color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+              Used together, this becomes a repeatable process—not guesswork.
+            </p>
           </div>
         </section>
 

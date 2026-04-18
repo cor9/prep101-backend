@@ -492,13 +492,14 @@ function invalidReaderOutput(output, actorRole) {
   );
 }
 
-async function callAnthropic(prompt, apiKey) {
+async function callAnthropic(prompt, apiKey, signal) {
   const { data: payload, model } = await sendAnthropicMessage({
     apiKey,
     preferredModel: DEFAULT_CLAUDE_MODEL,
     maxTokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 3500),
     system: CONTENT_SYSTEM_PROMPT,
     messages: [{ role: "user", content: prompt }],
+    signal,
   });
 
   const text = payload?.content?.[0]?.text;
@@ -516,8 +517,9 @@ async function callAnthropic(prompt, apiKey) {
   return text;
 }
 
-async function generateContent(meta = {}) {
+async function generateContent(meta = {}, options = {}) {
   const apiKey = String(process.env.ANTHROPIC_API_KEY || "").trim();
+  const signal = options.signal;
 
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY not configured");
@@ -529,7 +531,7 @@ async function generateContent(meta = {}) {
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       const prompt = buildContentPrompt(meta, validationFeedback);
-      const rawText = await callAnthropic(prompt, apiKey);
+      const rawText = await callAnthropic(prompt, apiKey, signal);
       const parsed = parseJsonResponse(rawText);
       const errors = validateStructuredContent(parsed, meta);
 

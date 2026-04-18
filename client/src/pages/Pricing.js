@@ -226,7 +226,7 @@ const Pricing = () => {
               background: 'linear-gradient(135deg, #14b8a6, #6366f1)',
               color: '#fff', padding: '0.3rem 1.25rem', borderRadius: '999px',
               fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-            }}>⭐ Save $20/month</div>
+            }}>⭐ The Complete Self-Tape System</div>
 
             <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
@@ -237,14 +237,14 @@ const Pricing = () => {
                 <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#FF4D4D', lineHeight: '32px' }}>Bold Choices</span>
               </div>
               <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 900, color: '#fff', margin: '0 0 0.5rem 0' }}>
-                Complete Self-Tape System
+                The Complete Self-Tape System
               </h2>
               <div style={{ marginBottom: '0.5rem' }}>
                 <span style={{ fontSize: '3rem', fontWeight: 900, color: '#14b8a6' }}>$29.99</span>
                 <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>/month</span>
               </div>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.95rem', maxWidth: '620px', margin: '0 auto', lineHeight: 1.7 }}>
-                The complete self-tape system. Get 5 Prep101 guides per month plus unlimited Reader101 and Bold Choices guides to support every audition from start to finish. Build stronger performances, make bolder choices, and ensure your reader supports — not hurts — the scene. Everything your actor needs to stand out, in one place.
+                Everything your actor needs for every audition. Get 5 Prep101 guides per month plus unlimited Reader101 and Bold Choices guides to support every audition from start to finish.
               </p>
             </div>
 

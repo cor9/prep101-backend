@@ -61,7 +61,7 @@ const S = {
     fontFamily: 'Fraunces, serif',
     fontSize: 'clamp(2.8rem, 8vw, 5.2rem)',
     fontWeight: 900,
-    lineHeight: 1.0,
+    lineHeight: 1.05,
     marginBottom: 28,
     letterSpacing: '-0.02em',
   },
@@ -86,7 +86,7 @@ const S = {
     background: 'linear-gradient(135deg, #FF4D4D 0%, #F5A623 100%)',
     color: '#fff',
     border: 'none',
-    borderRadius: 12,
+    borderRadius: 10,
     padding: '16px 36px',
     fontSize: 16,
     fontWeight: 700,
@@ -99,7 +99,7 @@ const S = {
     background: 'transparent',
     color: 'rgba(240,238,245,0.7)',
     border: '1.5px solid rgba(240,238,245,0.15)',
-    borderRadius: 12,
+    borderRadius: 10,
     padding: '16px 36px',
     fontSize: 16,
     fontWeight: 600,
@@ -111,7 +111,7 @@ const S = {
     gap: 48,
     justifyContent: 'center',
     flexWrap: 'wrap',
-    marginBottom: 100,
+    marginBottom: 80,
   },
   stat: {
     textAlign: 'center',
@@ -193,16 +193,17 @@ const S = {
   },
   featuresGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: 16,
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: 20,
     marginBottom: 80,
   },
   featureCard: {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: 14,
-    padding: '24px 22px',
-    transition: 'border-color 0.2s, background 0.2s',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 18,
+    padding: '28px 24px',
+    textAlign: 'center',
+    transition: 'all 0.2s',
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
@@ -334,7 +335,7 @@ const S = {
     background: 'rgba(155,109,255,0.15)',
     border: '1.5px solid rgba(155,109,255,0.4)',
     color: '#9B6DFF',
-    borderRadius: 12,
+    borderRadius: 10,
     padding: '14px 32px',
     fontSize: 15,
     fontWeight: 700,
@@ -355,16 +356,25 @@ const steps = [
   { num: '01', color: '#FF4D4D', bg: 'rgba(255,77,77,0.12)', title: 'Paste your sides', desc: 'Drop in the scene text or upload your PDF. That\'s it.' },
   { num: '02', color: '#F5A623', bg: 'rgba(245,166,35,0.12)', title: 'Add character info', desc: 'Role, show, casting — the more you give, the sharper the output.' },
   { num: '03', color: '#00D4C8', bg: 'rgba(0,212,200,0.12)', title: 'Get bold choices', desc: 'Specific. Playable. Memorable. Not generic — actually usable in the room.' },
-  { num: '04', color: '#9B6DFF', bg: 'rgba(155,109,255,0.12)', title: 'Spin it, push it', desc: 'Not feeling it? Spin Again or Make It Wilder. Fresh choices instantly.' },
+  { num: '04', color: '#9B6DFF', bg: 'rgba(155,109,255,0.12)', title: 'Push the choice further', desc: 'Take 2. Make it Wilder. Spin Again. Don’t settle for the first idea.' },
 ];
 
 const features = [
-  { icon: '🎯', title: 'Multiple bold ways to play the scene', desc: 'Get several specific, playable choices — not just one direction. See the scene from angles you wouldn\'t have found on your own.', color: '#FF4D4D' },
-  { icon: '🔄', title: 'Regenerate instantly for fresh takes', desc: 'Not feeling it? Get a completely new set of choices in seconds. No logging in again, no starting over.', color: '#F5A623' },
-  { icon: '🔥', title: 'Push beyond safe, predictable reads', desc: 'Every choice is designed to be castable and risky — not generic. Stop playing it safe before you even walk in.', color: '#00D4C8' },
-  { icon: '🎬', title: 'Always have a strong second take', desc: 'Know exactly what you\'re doing differently before they ask for another one. Never get caught flat on take two.', color: '#9B6DFF' },
-  { icon: '⚡', title: 'Build instincts with every audition', desc: 'The more you use it, the sharper your choices get. Treat every sides drop as a training rep, not a one-off.', color: '#3B9EE8' },
-  { icon: '🚀', title: 'Expand into full Prep101 breakdowns', desc: 'Liked the bold choices? Get the full coaching guide — beats, subtext, character motivation, and a full rehearsal plan.', color: '#FF4D4D' },
+  {
+    icon: '🎭',
+    title: 'Take 2',
+    desc: 'A completely different approach to the same moment. Not a tweak — a new direction.',
+  },
+  {
+    icon: '🔥',
+    title: 'Make It Wilder',
+    desc: 'Push the choice further. More risk. More specificity. More watchable.',
+  },
+  {
+    icon: '🔁',
+    title: 'Spin Again',
+    desc: 'Reset and regenerate entirely new ideas. No starting over.',
+  },
 ];
 
 export default function Landing() {
@@ -390,6 +400,7 @@ export default function Landing() {
         .feature-card:hover { border-color: rgba(255,255,255,0.14); background: rgba(255,255,255,0.05); }
         .btn-upgrade:hover { background: rgba(155,109,255,0.25); }
         .steps-grid { grid-template-columns: 1fr !important; }
+        @media (max-width: 900px) { .features-grid { grid-template-columns: 1fr !important; } }
         @media (min-width: 600px) { .steps-grid { grid-template-columns: repeat(2, 1fr) !important; } }
         @media (min-width: 900px) { .steps-grid { grid-template-columns: repeat(4, 1fr) !important; } }
       `}</style>
@@ -423,9 +434,11 @@ export default function Landing() {
         </h1>
 
         <p style={S.subtitle}>
-          Bold, specific, playable acting choices — generated in seconds.
-          Not "add more emotion." Not "be natural."
-          Exact adjustments that make casting remember you.
+          Drop your sides. Get bold, specific acting choices in seconds.
+          Then push them further — Take 2, Make It Wilder, or Spin Again until something clicks.
+        </p>
+        <p style={{ fontSize: 15, color: 'rgba(240,238,245,0.75)', fontWeight: 700, margin: '-16px 0 34px' }}>
+          Start here.
         </p>
 
         <div style={S.ctaGroup}>
@@ -445,6 +458,33 @@ export default function Landing() {
           </button>
         </div>
 
+        <div style={{
+          display: 'flex',
+          gap: 12,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          marginBottom: 48,
+        }}>
+          {[
+            'Take 2',
+            'Make It Wilder',
+            'Spin Again',
+          ].map(label => (
+            <div key={label} style={{
+              padding: '8px 16px',
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: 'rgba(240,238,245,0.6)',
+            }}>
+              {label}
+            </div>
+          ))}
+        </div>
+
         <div style={S.statsRow}>
           {[
             { num: '95%', label: 'of actors play it safe' },
@@ -458,10 +498,52 @@ export default function Landing() {
             </div>
           ))}
         </div>
+
+        <p style={{
+          fontSize: 14,
+          color: 'rgba(240,238,245,0.5)',
+          maxWidth: 420,
+          margin: '0 auto 60px',
+        }}>
+          Most auditions aren’t bad. They’re just forgettable.
+        </p>
       </div>
 
       {/* ── HOW IT WORKS ── */}
       <div style={S.howItWorks} id="how">
+        <section style={{ padding: '0 0 4rem' }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
+            <p style={{ fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>
+              The System
+            </p>
+            <h2 style={{ fontSize: 'clamp(1.8rem,4vw,2.6rem)', marginBottom: 20, color: '#F0EEF5' }}>
+              The Self-Tape System
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.6)', maxWidth: 520, margin: '0 auto 40px' }}>
+              Most actors don’t struggle with talent.
+              <br />
+              They struggle with what to do, how to build it, and whether it works.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16 }}>
+              <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14 }}>
+                <strong>1. What do I do?</strong><br />
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>Bold Choices</span>
+              </div>
+              <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14 }}>
+                <strong>2. How do I build it?</strong><br />
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>Prep101</span>
+              </div>
+              <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14 }}>
+                <strong>3. Is the tape working?</strong><br />
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>Reader101</span>
+              </div>
+            </div>
+            <p style={{ marginTop: 20, color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+              Used together, this becomes a repeatable process—not guesswork.
+            </p>
+          </div>
+        </section>
+
         <div style={S.sectionLabel}>How it works</div>
         <h2 style={S.sectionTitle}>
           Four steps.<br />One unforgettable audition.
@@ -480,10 +562,19 @@ export default function Landing() {
         {/* ── FEATURES ── */}
         <div style={S.sectionLabel}>Features</div>
         <h2 style={S.sectionTitle}>
-          Everything you need<br />to stand out.
+          Don’t like the first idea? Good.
         </h2>
+        <p style={{
+          textAlign: 'center',
+          color: 'rgba(240,238,245,0.55)',
+          marginBottom: 40,
+          maxWidth: 480,
+          marginInline: 'auto',
+        }}>
+          The best choices come from pushing past the obvious.
+        </p>
 
-        <div style={S.featuresGrid}>
+        <div className="features-grid" style={S.featuresGrid}>
           {features.map(f => (
             <div key={f.title} className="feature-card" style={S.featureCard}>
               <div style={S.featureIcon}>{f.icon}</div>
@@ -592,10 +683,10 @@ export default function Landing() {
             fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
             textTransform: 'uppercase', padding: '5px 14px',
             borderRadius: 999, marginBottom: 16,
-          }}>⭐ Save $20/month</div>
-          <h3 style={{ ...S.upgradeTitle, color: '#F0EEF5' }}>Complete Self-Tape System Bundle</h3>
+          }}>⭐ The Complete Self-Tape System</div>
+          <h3 style={{ ...S.upgradeTitle, color: '#F0EEF5' }}>The Complete Self-Tape System</h3>
           <p style={{ ...S.upgradeDesc }}>
-            Get Prep101 + Reader101 + Bold Choices — everything your actor needs, in one plan.<br /><br />
+            Everything your actor needs for every audition.<br /><br />
             5 Prep101 guides · Unlimited Reader Guides · Unlimited Bold Choices<br />
             <span style={{ color: '#14b8a6', fontWeight: 700 }}>$29.99/month</span>
           </p>

@@ -492,6 +492,7 @@ async function buildGuide(meta = {}, options = {}) {
   const templateStyle = selectTemplate(meta);
   const templatePath = path.join(process.cwd(), "reader101", "templates", `${templateStyle}.html`);
   const generateContentFn = options.generateContentFn || generateContent;
+  const signal = options.signal;
   let methodologyContext = "";
   let retrievalSignals = null;
 
@@ -536,12 +537,15 @@ async function buildGuide(meta = {}, options = {}) {
   let contentSource = "model";
 
   try {
-    rawContent = await generateContentFn({
-      ...meta,
-      templateStyle,
-      methodologyContext,
-      retrievalSignals,
-    });
+    rawContent = await generateContentFn(
+      {
+        ...meta,
+        templateStyle,
+        methodologyContext,
+        retrievalSignals,
+      },
+      { signal }
+    );
   } catch (error) {
     contentSource = "fallback";
     rawContent = {};

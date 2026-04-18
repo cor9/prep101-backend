@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reader Support Guide — Tyler | Friend Thing</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #fff; font-family: system-ui, sans-serif; }
+.guide { max-width: 780px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+.guide-header { padding-bottom: 1rem; margin-bottom: 1.5rem; border-bottom: 3px solid #BA7517; }
+.guide-title { font-size: 22px; font-weight: 500; color: #1a1a1a; }
+.guide-sub { font-size: 12px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tag { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; border: 1px solid #ccc; color: #555; background: #f5f5f5; }
+
+.section { margin-bottom: 1.25rem; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; }
+
+.sec-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+.sh-dark  { background: #2C2C2A; }
+.sh-amber { background: #633806; }
+.sh-teal  { background: #085041; }
+.sh-coral { background: #4A1B0C; }
+.sh-red   { background: #791F1F; }
+.sh-muted { background: #f0efeb; }
+
+.sec-num { font-size: 11px; font-weight: 500; min-width: 20px; }
+.nl { color: #B4B2A9; }
+.nm { color: #666; }
+
+.sec-title { font-size: 15px; font-weight: 500; }
+.tl { color: #F1EFE8; }
+.tm { color: #1a1a1a; }
+
+.badge { margin-left: auto; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; background: rgba(255,255,255,0.15); color: #F1EFE8; }
+
+.sec-body { padding: 12px 16px 14px; }
+.sec-body ul { list-style: none; }
+.sec-body li { font-size: 14px; color: #1a1a1a; line-height: 1.65; padding: 3px 0 3px 18px; position: relative; }
+.sec-body li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+.ref { font-style: italic; color: #666; }
+.consequence { font-size: 13px; color: #666; display: block; padding-left: 18px; margin-top: 1px; margin-bottom: 4px; font-style: italic; }
+
+.intro-text { font-size: 14px; color: #1a1a1a; line-height: 1.7; padding: 12px 16px 14px; }
+
+.warn-box { margin: 0; padding: 14px 16px; background: #1a1a1a; }
+.warn-title { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: #E24B4A; margin-bottom: 10px; }
+.warn-box ul { list-style: none; }
+.warn-box li { font-size: 14px; color: #F1EFE8; line-height: 1.65; padding: 3px 0 3px 18px; position: relative; }
+.warn-box li::before { content: "✕"; position: absolute; left: 0; color: #E24B4A; font-size: 12px; }
+.warn-footer { font-size: 13px; color: #888; margin-top: 10px; font-style: italic; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 16px 14px; }
+.col-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+.col-head { padding: 8px 12px; }
+.chdo { background: #085041; }
+.chavoid { background: #4A1B0C; }
+.col-label-do { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #9FE1CB; }
+.col-label-avoid { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #F5C4B3; }
+.col-body { padding: 10px 12px; }
+.col-body li { font-size: 13px; color: #1a1a1a; line-height: 1.6; padding: 3px 0 3px 14px; position: relative; list-style: none; }
+.col-body li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+.scene-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 14px; }
+.scene-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+.scene-head { background: #2C2C2A; padding: 7px 10px; }
+.scene-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #D3D1C7; }
+.scene-body { padding: 8px 10px; }
+.scene-body li { font-size: 12px; color: #1a1a1a; line-height: 1.6; padding: 2px 0 2px 14px; position: relative; list-style: none; }
+.scene-body li::before { content: "—"; position: absolute; left: 0; color: #888; font-size: 12px; }
+
+.engine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px 14px; }
+.engine-card { border-radius: 8px; overflow: hidden; border: 1px solid #ddd; }
+.engine-head { padding: 8px 12px; }
+.eh-amber { background: #633806; }
+.eh-coral { background: #4A1B0C; }
+.el-amber { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #FAC775; }
+.el-coral { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #F5C4B3; }
+.engine-body { padding: 10px 12px; }
+.engine-body p { font-size: 13px; color: #1a1a1a; line-height: 1.7; }
+.engine-body .consequence { padding-left: 0; margin-top: 8px; font-size: 13px; color: #666; font-style: italic; }
+
+.inset-box { background: #f5f5f3; border-radius: 8px; margin: 12px 16px 14px; padding: 12px 14px; }
+.inset-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #666; margin-bottom: 8px; }
+.inset-box li { font-size: 13px; color: #1a1a1a; line-height: 1.65; padding: 3px 0 3px 16px; position: relative; list-style: none; }
+.inset-box li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+.anchor-line { font-size: 15px; font-weight: 500; color: #1a1a1a; padding: 12px 16px 0; font-style: italic; }
+
+.reset-box { background: #f5f5f3; border-radius: 8px; margin: 12px 16px 14px; padding: 12px 14px; }
+.reset-box li { font-size: 13px; color: #1a1a1a; line-height: 1.7; padding: 3px 0 3px 16px; position: relative; list-style: none; }
+.reset-box li::before { content: "—"; position: absolute; left: 0; color: #888; }
+
+@media (max-width: 520px) {
+  .two-col, .scene-grid, .engine-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="guide">
+
+  <div class="guide-header">
+    <div class="guide-title">Reader Support Guide — Tyler</div>
+    <div class="guide-sub">Friend Thing · SAG-AFTRA Low Budget Feature · Aufiero/Horn Casting · Lead Role</div>
+    <div class="tag-row">
+      <span class="tag">3 Scenes</span>
+      <span class="tag">Perks of Being a Wallflower Tone</span>
+      <span class="tag">You Read: Ernie (all scenes)</span>
+      <span class="tag">Seattle 1996</span>
+    </div>
+  </div>
+
+  <!-- WHAT WILL GO WRONG -->
+  <div class="section">
+    <div class="sec-head sh-red">
+      <span class="sec-num nl">⚠</span>
+      <span class="sec-title tl">What Will Go Wrong</span>
+    </div>
+    <div class="warn-box">
+      <div class="warn-title">Most readers will kill this audition by doing one of these three things:</div>
+      <ul>
+        <li>Play Ernie as charmed and delighted by Tyler — and erase the tension she needs to push against</li>
+        <li>Rush past <span style="font-style:italic;">"I didn't leave my old school by choice"</span> and miss the entire weight of Scene 2</li>
+        <li>React to the Scene 3 confrontation with anger — and pull focus away from Tyler's realization</li>
+      </ul>
+      <div class="warn-footer">If any of these happen, Tyler has nothing to play. The audition collapses.</div>
+    </div>
+  </div>
+
+  <!-- WHY THIS MATTERS -->
+  <div class="section">
+    <div class="sec-head sh-amber">
+      <span class="sec-num nl">01</span>
+      <span class="sec-title tl">Why This Matters</span>
+    </div>
+    <p class="intro-text">Tyler controls every scene — but only if Ernie is someone worth controlling. She tests people. She deflects. She offers just enough to pull you in, then watches to see what you do with it. <strong>If you read Ernie as passive or starstruck, she has no one to test. If you read him flat, she has no reason to inch closer.</strong> These sides live in the space between connection and self-protection. Tyler can only be magnetic if Ernie is genuinely, specifically present — not just a cue machine feeding her lines.</p>
+  </div>
+
+  <!-- PERFORMANCE ENGINE -->
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">02</span>
+      <span class="sec-title tl">Performance Engine</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card">
+        <div class="engine-head eh-amber"><div class="el-amber">Tyler's Drive</div></div>
+        <div class="engine-body">
+          <p>Tyler is constantly measuring Ernie — is he real, or is he performing? She gives information in fragments to see if he'll chase it. The Kurdt patch, the pact, the accusation in Scene 3 — all tests.</p>
+          <span class="consequence">If Ernie doesn't have genuine reactions, she has no data. No data means no intimacy. The arc dies in Scene 1.</span>
+        </div>
+      </div>
+      <div class="engine-card">
+        <div class="engine-head eh-coral"><div class="el-coral">Your Fuel</div></div>
+        <div class="engine-body">
+          <p>Be genuinely thrown off. Let her surprises land. Ernie doesn't know where Tyler is going — neither should you. React off what she actually says, not off what you expect her to say.</p>
+          <span class="consequence">The moment you pre-plan Ernie's reactions, Tyler has nothing to crack open. The scenes go flat.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE SNAPSHOT -->
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">03</span>
+      <span class="sec-title tl">Scene Snapshot</span>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 1 — After Chapel</div></div>
+        <div class="scene-body"><ul>
+          <li>First real contact — Tyler opens with a jab</li>
+          <li>Ernie notices the Kurdt patch — genuine curiosity</li>
+          <li>Tyler delivers the two-Kurts philosophy unprompted</li>
+          <li>Ends on Tyler dismissing: <span class="ref" style="font-style:italic;">"Whatever."</span></li>
+        </ul></div>
+      </div>
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 2 — On the Bed</div></div>
+        <div class="scene-body"><ul>
+          <li>Tyler proposes the truth pact — this is the emotional pivot</li>
+          <li>She goes first: she didn't leave school by choice</li>
+          <li>Ernie offers something vulnerable: the apartment</li>
+          <li>Ends in physical closeness — pager interrupts</li>
+        </ul></div>
+      </div>
+      <div class="scene-card">
+        <div class="scene-head"><div class="scene-label">Scene 3 — Confrontation</div></div>
+        <div class="scene-body"><ul>
+          <li>Ernie finds Tyler kissing someone else</li>
+          <li>Ernie erupts — invokes the pact</li>
+          <li>Tyler lands the cut: <span class="ref" style="font-style:italic;">"You really are obsessed with me."</span></li>
+          <li>Tyler holds the power — Ernie loses it</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YOUR JOB -->
+  <div class="section">
+    <div class="sec-head sh-amber">
+      <span class="sec-num nl">04</span>
+      <span class="sec-title tl">Your Job</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>Most readers play Ernie as consistently impressed. Don't — let him be uncertain, slightly off-balance</li>
+      <li>S1: Read <span class="ref">"What's that about?"</span> as actual curiosity — not a conversation opener, not small talk</li>
+      <li>S1: After <span class="ref">"You sure about that?"</span> — don't fill the silence. Let Ernie not know what to say. That's in the script.</li>
+      <li>S1: <span class="ref">"That's cool."</span> is a failed attempt to connect — read it as slightly reaching, slightly flat</li>
+      <li>S2: The pact proposal catches Ernie off guard — don't read <span class="ref">"Ok"</span> like agreement. Read it like he's buying time.</li>
+      <li>S2: After Tyler's confession, <span class="ref">"What? Why?"</span> is genuine shock — not dramatic reaction, just real surprise</li>
+      <li>S2: <span class="ref">"I guess..."</span> and <span class="ref">"I don't know"</span> are Ernie stalling — give them space, don't rush to the next line</li>
+      <li>S2: <span class="ref">"I live in an apartment"</span> — read it like it costs something to say. Because it does.</li>
+      <li>S3: Most readers play Ernie's outburst as righteous anger. Don't — it's panic. He's losing something he thought was his.</li>
+      <li>S3: Read <span class="ref">"What the hell do you think you're doing?"</span> at full physical commitment — this is a SNAP, not a complaint</li>
+      <li>S3: After <span class="ref">"You really are obsessed with me"</span> — stop. Don't react beyond going still. Tyler wins Scene 3. Let her.</li>
+    </ul></div>
+  </div>
+
+  <!-- PLAYING MULTIPLE CHARACTERS -->
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">05</span>
+      <span class="sec-title tl">Playing Multiple Characters</span>
+      <span class="badge">mandatory</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>You play one character — Ernie — but he is not the same person across all three scenes</li>
+      <li>S1 Ernie: curious outsider, doesn't have his footing yet — reading Tyler, not trusting her</li>
+      <li>S2 Ernie: more open, believes in the pact — willing to be seen for the first time</li>
+      <li>S3 Ernie: unraveling — the pact feels violated, the vulnerability feels weaponized</li>
+      <li><strong>If S1 Ernie and S3 Ernie feel the same, the audition dies instantly — there's no arc for Tyler to anchor to</strong></li>
+      <li>Signal the shift between scenes with a deliberate internal reset — different posture, different baseline energy</li>
+    </ul></div>
+  </div>
+
+  <!-- READER FUNDAMENTALS -->
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">06</span>
+      <span class="sec-title tm">Reader Fundamentals</span>
+    </div>
+    <div class="inset-box">
+      <div class="inset-title">This is where readers quietly ruin auditions:</div>
+      <ul>
+        <li>Filling Ernie's pauses — the script writes in hesitation; honor it or you override Tyler's whole dynamic</li>
+        <li>Performing curiosity instead of feeling it — Tyler can tell the difference, and so can the room</li>
+        <li>Playing S3's outburst too big — if you steal the emotional peak, Tyler can't land her line</li>
+        <li>Reading ahead instead of reacting — Ernie doesn't know what Tyler will say next. Neither should you.</li>
+        <li>Never act over the actor. Support. Don't compete.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- KEY BEATS -->
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">07</span>
+      <span class="sec-title tl">Key Beats</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>S1: After Tyler explains the two Kurts — pause before <span class="ref">"How do you know all this?"</span> Let it sink in first</li>
+      <li>S1: <span class="ref">"Kurt meant a lot to me"</span> is Tyler closing a door — read Ernie's <span class="ref">"That's cool"</span> as the door closing on him</li>
+      <li>S1: Tyler's <span class="ref">"Whatever"</span> ends the scene — don't give Ernie a reaction after it. Dead stop.</li>
+      <li>S2: <span class="ref">"I didn't leave my old school by choice"</span> is a bomb drop — let the silence after it fully land before <span class="ref">"What? Why?"</span><span class="consequence">If you rush past this, Scene 2 has no spine. The entire pact setup goes soft.</span></li>
+      <li>S2: Tyler redirects with <span class="ref">"Your turn"</span> — read <span class="ref">"I don't know. I guess..."</span> as Ernie actually searching, not stalling for effect</li>
+      <li>S2: Tyler interrupts with <span class="ref">"Stop"</span> — let that land before continuing. Ernie goes silent because he's been caught, not because he's done talking.</li>
+      <li>S2: <span class="ref">"I live in an apartment"</span> — this is the emotional peak of the scene. Read it quietly. Flat. Real.<span class="consequence">If you play it for pathos, you pull focus and Tyler's response loses its power.</span></li>
+      <li>S3: <span class="ref">"Having fun?!"</span> escalates — each item Ernie lists (notes, phone calls, PACT, TRUTH) should land like a separate accusation, not one run-on outburst</li>
+      <li>S3: After <span class="ref">"You really are obsessed with me"</span> — go still. Don't give Tyler anything to deflect. She's won. Let her win.</li>
+    </ul></div>
+  </div>
+
+  <!-- RHYTHM PACE ENERGY -->
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">08</span>
+      <span class="sec-title tm">Rhythm, Pace & Energy</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>S1: Measured, slightly tentative — Ernie is reading Tyler, not yet chasing her</li>
+      <li>S1: Tyler's two-Kurts speech is uninterrupted — don't fill it with reactive sounds or breathing; let it run</li>
+      <li>S2 (first half): Deliberate, careful — the pact is serious business, not casual banter</li>
+      <li>S2 (second half): Drop pace after <span class="ref">"I didn't leave my old school by choice"</span> — go quieter, slower, more present</li>
+      <li>S3: Full acceleration from the top — Ernie has already snapped before his first line</li>
+      <li>S3: <span class="ref">"Having fun?!"</span> is your loudest moment across all three scenes — it earns the caps</li>
+      <li>S3: Tyler's final line drops the temperature — match that drop by going completely still</li>
+      <li>Parentheticals like <span class="ref">"(playing surprised)"</span> and <span class="ref">"(realizing)"</span> are actor direction only — skip them aloud</li>
+    </ul></div>
+  </div>
+
+  <!-- DO THIS / AVOID THIS -->
+  <div class="section">
+    <div class="sec-head sh-dark">
+      <span class="sec-num nl">09</span>
+      <span class="sec-title tl">Do This / Avoid This</span>
+    </div>
+    <div class="two-col">
+      <div class="col-card">
+        <div class="col-head chdo"><div class="col-label-do">Do This</div></div>
+        <div class="col-body"><ul>
+          <li>Let the pauses the script writes in actually happen</li>
+          <li>React to Tyler's information like it's genuinely surprising — because it is</li>
+          <li>Play <span class="ref">"I live in an apartment"</span> with full weight and zero performance</li>
+          <li>Go still after Tyler's final line — Ernie has nothing left to say</li>
+          <li>Commit fully to the S3 physical snap — cross the room, it's in the stage direction</li>
+        </ul></div>
+      </div>
+      <div class="col-card">
+        <div class="col-head chavoid"><div class="col-label-avoid">Avoid This</div></div>
+        <div class="col-body"><ul>
+          <li>Playing Ernie as charmed — he's off-balance, not smitten</li>
+          <li>Rushing <span class="ref">"What? Why?"</span> before the weight of Tyler's confession lands</li>
+          <li>Playing S3 as righteous anger — it's panic, not moral high ground</li>
+          <li>Adding vocal texture to <span class="ref">"I live in an apartment"</span> — the vulnerability is in the plainness</li>
+          <li>Reacting after <span class="ref">"Whatever"</span> ends Scene 1 — Tyler is already gone</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONNECTION -->
+  <div class="section">
+    <div class="sec-head sh-teal">
+      <span class="sec-num nl">10</span>
+      <span class="sec-title tl">Connection</span>
+      <span class="badge">critical</span>
+    </div>
+    <p class="anchor-line">Tyler can only go as far as Ernie lets her in.</p>
+    <div class="sec-body" style="padding-top:10px;"><ul>
+      <li>S1: Tyler tests Ernie with the Kurdt question — if Ernie isn't genuinely curious, she closes off immediately</li>
+      <li>S2: The pact only works if Ernie is actually considering it — play the pause before <span class="ref">"Ok"</span> as a real decision</li>
+      <li>After <span class="ref">"I didn't leave my old school by choice"</span> — your silence is the scene's emotional hinge; don't fill it</li>
+      <li>S2: Tyler touching Ernie's face only lands if <span class="ref">"I live in an apartment"</span> felt like a real risk to say — honor that</li>
+      <li>S3: Ernie's outburst only reveals how much he cared — play the loss underneath the anger, not the anger on top of the loss</li>
+    </ul></div>
+  </div>
+
+  <!-- TONE & REFERENCE ANCHOR -->
+  <div class="section">
+    <div class="sec-head sh-coral">
+      <span class="sec-num nl">11</span>
+      <span class="sec-title tl">Tone & Reference Anchor</span>
+    </div>
+    <div class="sec-body"><ul>
+      <li>If you play Ernie like a teen comedy sidekick, the entire emotional architecture of these scenes falls apart immediately</li>
+      <li>Touchstone: <em>The Perks of Being a Wallflower</em> — quiet observation, earned intimacy, real vulnerability without sentimentality</li>
+      <li>Secondary ref: <em>Stand by Me</em> — kids in genuine emotional territory, not performing adolescence</li>
+      <li>This is 1996 Seattle — Kurt Cobain has been dead for two years; the cultural weight of that is in the room</li>
+      <li>The Kurdt patch isn't a trivia moment — it's Tyler telling you who she is; read Ernie's reaction accordingly</li>
+      <li>Humor in this material comes from awkwardness and honesty — never from winking at the audience</li>
+    </ul></div>
+  </div>
+
+  <!-- QUICK RESET -->
+  <div class="section">
+    <div class="sec-head sh-muted">
+      <span class="sec-num nm">12</span>
+      <span class="sec-title tm">Quick Reset</span>
+    </div>
+    <div class="reset-box"><ul>
+      <li>Scene 1: After chapel. Ernie is curious. Tyler is testing. He fails. She walks.</li>
+      <li>Scene 2: On the bed. Tyler offers the pact. Ernie takes a real risk. She moves closer.</li>
+      <li>Scene 3: Ernie snaps. Tyler names what it is. She wins. He has nothing left.</li>
+      <li>Your job: Be present. Be thrown. Let Tyler be the smartest person in every room.</li>
+    </ul></div>
+  </div>
+
+</div>
+</body>
+</html>

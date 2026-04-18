@@ -595,8 +595,8 @@ const Dashboard = () => {
         multipart.append("uploadId", String(uploadIds[0]));
       }
       // Tell the backend which guide type to generate
-      if (isReader101Context) {
-        multipart.append("mode", "reader_support");
+      if (modeForRequest) {
+        multipart.append("mode", modeForRequest);
       }
       return multipart;
     };
@@ -648,16 +648,19 @@ const Dashboard = () => {
           return parsedData;
         }
 
-        if (!response.ok) {
+        if (!response.ok || parsedData?.success === false) {
           const serverMessage =
+            parsedData?.error ||
             parsedData?.reason ||
             parsedData?.detail ||
             parsedData?.message ||
-            parsedData?.debug?.tip ||
-            parsedData?.error;
-          throw new Error(
+            parsedData?.debug?.tip;
+            
+          const err = new Error(
             serverMessage || `Failed to generate guide (HTTP ${response.status})`
           );
+          if (parsedData?.step) err.step = parsedData.step;
+          throw err;
         }
 
         throw new Error("No guide content returned.");
@@ -710,6 +713,7 @@ const Dashboard = () => {
         fallbackMode: uploadData.fallbackMode || false,
         warnings: uploadData.warnings || [],
         source: uploadData.source || uploadData.extractionMethod || "text",
+        mode: modeForRequest,
         ...formData,
       };
       console.log("🚀 Starting guide generation for:", formData.characterName);
@@ -880,13 +884,16 @@ const Dashboard = () => {
 
       if (
         err.name === "AbortError" ||
-        /aborted a request/i.test(String(err?.message || ""))
+        /aborted a request|timeout/i.test(String(err?.message || ""))
       ) {
         toast.error(
-          "Guide generation timed out while reading the PDF. Please retry; we've also added a longer extraction window."
+          err.message.includes("TIMEOUT") 
+            ? err.message 
+            : "The generation process timed out. This usually happens with very long scripts or during high traffic. Please try again or paste the scene text directly below.",
+          { duration: 8000 }
         );
       } else {
-        toast.error(`Failed to generate guide: ${err.message}`);
+        toast.error(`Failed to generate guide: ${err.message}`, { duration: 6000 });
       }
     } finally {
       clearTimeout(timeoutId);
