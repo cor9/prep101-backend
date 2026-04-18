@@ -12,7 +12,7 @@ const Examples = () => {
     {
       heading: 'Reader101 Example 01',
       sub: 'Reader support guide artifact',
-      href: 'https://claude.site/public/artifacts/c6e99d33-7f23-45fc-b461-046af09d07ec'
+      href: 'https://claude.ai/public/artifacts/c6e99d33-7f23-45fc-b461-046af09d07ec'
     },
     {
       heading: 'Reader101 Example 02',
