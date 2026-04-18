@@ -4,793 +4,877 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reader101 — Fix the Part of Your Self-Tape No One Trains You For</title>
-  <meta name="version" content="1.1.2-optimized-trigger" />
   <meta name="description" content="Reader101 gives parents the exact coaching they need to support — not hurt — their child's self-tape performance. Scene-specific. Behavior-based. Immediate." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Literata:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --teal:     #14b8a6;
-      --teal-dk:  #0d9488;
-      --teal-glow:rgba(20,184,166,0.18);
-      --ink:      #080d14;
-      --slate:    #111827;
-      --card:     #141e2e;
-      --border:   rgba(148,163,184,0.1);
-      --mist:     #e2e8f0;
-      --dim:      rgba(226,232,240,0.55);
-      --amber:    #f59e0b;
-      --rose:     #f43f5e;
-      --violet:   #6366f1;
+      --color-bg: #F1EFE8;
+      --color-bg-dark: #1a1a1a;
+      --color-text-primary: #1a1a1a;
+      --color-text-muted: #666;
+      --color-text-inverse: #F1EFE8;
+
+      --color-amber: #633806;
+      --color-teal: #085041;
+      --color-coral: #4A1B0C;
+      --color-dark: #2C2C2A;
+      --color-red: #791F1F;
+      --color-red-accent: #E24B4A;
+
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body: 'Literata', Georgia, serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
     }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
-      background: var(--ink);
-      color: var(--mist);
-      font-family: "Inter", system-ui, sans-serif;
-      line-height: 1.7;
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      font-family: var(--font-body);
+      line-height: 1.6;
       overflow-x: hidden;
     }
 
-    /* ── NAV ──────────────────────────────────────────────────── */
+    h1, h2, h3 { font-family: var(--font-display); }
+    .eyebrow, .tag, .section-label { font-family: var(--font-mono); }
+
     nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      padding: 1rem 1.5rem;
-      background: rgba(8,13,20,0.9);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(241, 239, 232, 0.95);
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      backdrop-filter: blur(10px);
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
     }
-    .nav-logo {
-      font-family: "Sora", "Inter", system-ui, sans-serif;
-      font-size: 1.25rem; font-weight: 800; color: var(--teal);
-      text-decoration: none; letter-spacing: -0.02em;
+
+    .nav-logo img {
+      height: 34px;
+      width: auto;
+      object-fit: contain;
     }
-    .nav-logo span { color: var(--mist); }
-    .nav-links { display: flex; align-items: center; gap: 1.5rem; }
-    .nav-links a {
-      color: var(--dim); font-size: 0.88rem; text-decoration: none;
-      font-weight: 500; transition: color 0.2s;
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
-    .nav-links a:hover { color: var(--mist); }
+
+    .nav-links a,
+    .dropbtn {
+      color: var(--color-text-primary);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 0.45rem 0.5rem;
+    }
+
+    .nav-links a:hover,
+    .dropbtn:hover {
+      color: var(--color-amber);
+    }
+
     .btn-nav {
-      background: var(--teal); color: var(--ink);
-      border: none; border-radius: 8px; padding: 0.5rem 1.1rem;
-      font-size: 0.85rem; font-weight: 700; cursor: pointer;
-      text-decoration: none; transition: background 0.2s;
+      border: 1px solid rgba(0,0,0,0.18);
+      border-radius: 6px;
+      background: #fff;
+      padding: 0.55rem 0.75rem;
     }
-    .btn-nav:hover { background: var(--teal-dk); }
-    .account-pill {
-      display: none;
-      margin-top: 1rem;
-      background: rgba(20,184,166,0.1);
-      border: 1px solid rgba(20,184,166,0.22);
-      border-radius: 999px;
-      padding: 0.45rem 0.9rem;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      color: var(--mist);
-    }
-    .account-status {
-      display: none;
-      margin: 1.25rem auto 0;
-      max-width: 760px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 1rem;
-      text-align: left;
-    }
-    .account-status-title {
-      font-size: 0.75rem;
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: rgba(226,232,240,0.5);
-      margin-bottom: 0.85rem;
-    }
-    .account-status-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 0.8rem;
-    }
-    .account-status-card {
-      border-radius: 14px;
-      padding: 0.9rem 1rem;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.03);
-    }
-    .account-status-card strong {
-      display: block;
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 0.45rem;
-    }
-    .account-status-card span {
-      display: block;
-      font-size: 0.92rem;
-      font-weight: 700;
-      line-height: 1.5;
-      color: var(--mist);
-    }
-    .account-status-card.prep strong { color: var(--amber); }
-    .account-status-card.reader strong { color: var(--teal); }
-    .account-status-card.bold strong { color: #fb7185; }
 
-    /* ── HERO ─────────────────────────────────────────────────── */
-    .hero {
-      min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      text-align: center;
-      padding: 120px 1.5rem 80px;
+    .dropdown {
       position: relative;
-      overflow: hidden;
+      display: inline-block;
     }
-    .hero::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(20,184,166,0.12) 0%, transparent 70%);
-      pointer-events: none;
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      min-width: 260px;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 8px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+      padding: 0.5rem;
     }
-    .film-reel {
-      position: absolute; opacity: 0.04;
-      font-size: 28rem; line-height: 1;
-      top: 50%; left: 50%; transform: translate(-50%, -50%);
-      pointer-events: none; user-select: none;
+
+    .dropdown-content a {
+      display: block;
+      text-transform: none;
+      letter-spacing: 0.01em;
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--color-text-primary);
+      padding: 0.55rem 0.6rem;
+      border-radius: 6px;
     }
-    .hero-inner { position: relative; z-index: 1; max-width: 780px; }
+
+    .dropdown-content a:hover { background: rgba(99,56,6,0.08); color: var(--color-amber); }
+    .dropdown:hover .dropdown-content,
+    .dropdown:focus-within .dropdown-content { display: block; }
+
+    .hero { padding: 5rem 1.5rem 4rem; max-width: 900px; margin: 0 auto; }
+    .hero-inner { max-width: 900px; }
     .eyebrow {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(20,184,166,0.1);
-      border: 1px solid rgba(20,184,166,0.25);
-      border-radius: 999px; padding: 6px 16px;
-      font-size: 0.82rem; font-weight: 700; letter-spacing: 0.015em;
-      text-transform: none; color: var(--mist); margin-bottom: 2rem;
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--color-amber); font-weight: 500; margin-bottom: 1.5rem;
+      display: block;
     }
-    .eyebrow-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--teal); animation: pulse 2s infinite;
+    .hero-h1 {
+      font-size: clamp(36px, 5vw, 56px);
+      line-height: 1.1; font-weight: 600; color: var(--color-text-primary);
+      margin-bottom: 1.5rem; letter-spacing: -0.02em;
     }
-    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-    h1 {
-      font-family: "Sora", "Inter", system-ui, sans-serif;
-      font-size: clamp(2.8rem, 6vw, 4.5rem);
-      font-weight: 800; line-height: 1.05;
-      letter-spacing: -0.045em; margin-bottom: 1.5rem;
-    }
-    h1 .accent { color: var(--teal); }
-    h1 .muted { color: var(--dim); }
     .hero-sub {
-      font-size: clamp(1rem, 2vw, 1.18rem);
-      color: var(--dim); max-width: 560px; margin: 0 auto 2.5rem;
-      line-height: 1.75;
+      font-size: 18px; line-height: 1.6; color: var(--color-text-muted);
+      max-width: 640px; margin-bottom: 1rem;
     }
-    .cta-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem; }
+    .hero-sub-emphasis { color: var(--color-text-primary); font-weight: 500; }
+    .hero-cta-row { display: flex; gap: 12px; margin: 2rem 0 3rem; flex-wrap: wrap; }
     .btn-primary {
-      background: linear-gradient(135deg, var(--teal) 0%, #0891b2 100%);
-      color: #fff; border: none; border-radius: 12px;
-      padding: 1rem 2rem; font-size: 1rem; font-weight: 700;
-      cursor: pointer; letter-spacing: 0.02em;
-      box-shadow: 0 4px 24px rgba(20,184,166,0.3);
-      transition: opacity 0.2s, transform 0.15s; text-decoration: none;
+      background: var(--color-dark); color: var(--color-text-inverse);
+      padding: 14px 24px; border-radius: 6px; font-weight: 500;
+      text-decoration: none; font-size: 15px; display: inline-block;
     }
-    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
-    .btn-secondary {
-      background: transparent; color: var(--dim);
-      border: 1.5px solid rgba(148,163,184,0.2);
-      border-radius: 12px; padding: 1rem 2rem;
-      font-size: 1rem; font-weight: 600; cursor: pointer;
-      transition: border-color 0.2s, color 0.2s;
+    .btn-ghost {
+      color: var(--color-text-primary); padding: 14px 24px;
+      text-decoration: underline; font-size: 15px;
     }
-    .btn-secondary:hover { border-color: var(--teal); color: var(--mist); }
-    .stats-row {
-      display: flex; gap: 3rem; justify-content: center; flex-wrap: wrap;
+    .hero-stats {
+      display: flex; gap: 3rem; padding-top: 2rem;
+      border-top: 1px solid rgba(0,0,0,0.1);
+      flex-wrap: wrap;
     }
-    .stat-num {
-      font-family: "Sora", "Inter", system-ui, sans-serif;
-      font-size: 2.2rem; font-weight: 800; color: var(--teal); line-height: 1; margin-bottom: 4px;
-    }
-    .stat-label { font-size: 0.75rem; color: rgba(226,232,240,0.4); text-transform: uppercase; letter-spacing: 0.1em; }
+    .hero-stats > div { display: flex; flex-direction: column; }
+    .hero-stats strong { font-family: var(--font-display); font-size: 32px; font-weight: 600; }
+    .hero-stats span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
 
-    /* ── SECTIONS ─────────────────────────────────────────────── */
-    section { padding: 6rem 1.5rem; }
-    .container { max-width: 960px; margin: 0 auto; }
-    .section-label {
-      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em;
-      text-transform: uppercase; color: rgba(226,232,240,0.3);
-      text-align: center; margin-bottom: 1rem;
+    .parent-resources { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .parent-resources h2 {
+      font-size: clamp(24px, 3vw, 32px);
+      font-weight: 600; margin-bottom: 2rem; letter-spacing: -0.01em;
     }
-    h2.section-title {
-      font-family: "Sora", "Inter", system-ui, sans-serif;
-      font-size: clamp(1.9rem, 4vw, 2.65rem); font-weight: 800;
-      text-align: center; color: var(--mist);
-      margin-bottom: 3rem; line-height: 1.12;
-      letter-spacing: -0.035em;
-    }
-
-    /* ── PROBLEM SECTION ──────────────────────────────────────── */
-    .problem-card {
-      background: rgba(244,63,94,0.07);
-      border: 1px solid rgba(244,63,94,0.2);
-      border-radius: 16px; padding: 2.5rem;
-      text-align: center; max-width: 680px; margin: 0 auto;
-    }
-    .problem-card h3 {
-      font-family: "Sora", "Inter", system-ui, sans-serif;
-      font-size: clamp(1.45rem, 3vw, 2.05rem); font-weight: 800;
-      color: var(--mist); margin-bottom: 1rem; line-height: 1.18;
-      letter-spacing: -0.03em;
-    }
-    .problem-card p { color: var(--dim); font-size: 1rem; line-height: 1.75; }
-
-    /* ── FEATURE GRID ─────────────────────────────────────────── */
-    .grid-3 {
+    .resources-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.25rem;
+      gap: 1rem;
     }
-    .feat-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 1.75rem;
-      transition: border-color 0.2s;
+    .resource-card {
+      background: #fff; border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px; padding: 1.5rem;
+      text-decoration: none; color: inherit;
+      transition: border-color 0.15s ease;
     }
-    .feat-card:hover { border-color: rgba(20,184,166,0.3); }
-    .feat-icon { font-size: 1.75rem; margin-bottom: 0.75rem; }
-    .feat-title { font-size: 1rem; font-weight: 700; color: var(--mist); margin-bottom: 0.4rem; }
-    .feat-desc { font-size: 0.88rem; color: var(--dim); line-height: 1.6; }
+    .resource-card:hover { border-color: var(--color-teal); }
+    .resource-card h3 {
+      font-family: var(--font-display); font-size: 19px;
+      font-weight: 600; margin-bottom: 0.5rem;
+    }
+    .resource-card p {
+      font-size: 14px; line-height: 1.5;
+      color: var(--color-text-muted); margin-bottom: 1rem;
+    }
+    .resource-link {
+      font-family: var(--font-mono); font-size: 12px;
+      color: var(--color-teal); font-weight: 500;
+    }
 
-    /* ── HOW IT WORKS ─────────────────────────────────────────── */
-    .steps { display: flex; flex-direction: column; gap: 1.5rem; max-width: 640px; margin: 0 auto; }
+    .features { max-width: 1100px; margin: 0 auto; padding: 5rem 1.5rem; }
+    .features h2 {
+      font-size: clamp(28px, 3.5vw, 40px);
+      font-weight: 600; margin-bottom: 3rem; letter-spacing: -0.01em;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .feature-card {
+      background: #fff; border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px; padding: 1.75rem;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .feature-card:hover { transform: translateY(-2px); border-color: var(--color-amber); }
+    .feature-num {
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--color-amber); letter-spacing: 0.1em;
+      margin-bottom: 0.75rem; font-weight: 500;
+    }
+    .feature-card h3 {
+      font-family: var(--font-display); font-size: 22px;
+      font-weight: 600; margin-bottom: 0.75rem;
+    }
+    .feature-card p {
+      font-size: 15px; line-height: 1.6; color: var(--color-text-muted);
+    }
+
+    .contrast-section { background: var(--color-bg-dark); color: var(--color-text-inverse); padding: 5rem 1.5rem; }
+    .contrast-inner { max-width: 1100px; margin: 0 auto; }
+    .contrast-section .eyebrow { color: #FAC775; }
+    .contrast-section h2 {
+      font-size: clamp(28px, 3.5vw, 40px);
+      font-weight: 600; color: var(--color-text-inverse);
+      margin-bottom: 3rem; letter-spacing: -0.01em;
+    }
+    .contrast-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    }
+    .contrast-col {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 1.75rem;
+    }
+    .contrast-specific { border-color: var(--color-amber); background: rgba(99, 56, 6, 0.15); }
+    .contrast-label {
+      font-family: var(--font-mono); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 1.25rem; font-weight: 500;
+    }
+    .contrast-generic .contrast-label { color: #999; }
+    .contrast-specific .contrast-label { color: #FAC775; }
+    .contrast-col ul { list-style: none; padding: 0; margin: 0; }
+    .contrast-col li {
+      font-size: 15px; line-height: 1.6;
+      padding: 0.75rem 0; border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .contrast-col li:first-child { border-top: none; padding-top: 0; }
+    .contrast-generic li { color: #aaa; font-style: italic; }
+    .contrast-specific li { color: var(--color-text-inverse); }
+
+    #how { max-width: 1100px; margin: 0 auto; padding: 5rem 1.5rem; }
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--color-amber);
+      font-weight: 500;
+      margin-bottom: 1rem;
+      display: block;
+    }
+    .section-title {
+      font-size: clamp(28px, 3.5vw, 40px);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 2.5rem;
+      line-height: 1.2;
+    }
+    .steps { display: flex; flex-direction: column; gap: 1.5rem; max-width: 760px; }
     .step {
       display: flex; gap: 1.25rem; align-items: flex-start;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 1.5rem;
+      background: #fff; border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px; padding: 1.5rem;
     }
     .step-num {
       width: 36px; height: 36px; flex-shrink: 0;
-      border-radius: 50%; background: var(--teal-glow);
-      border: 1.5px solid var(--teal); color: var(--teal);
-      font-size: 0.85rem; font-weight: 800;
+      border-radius: 50%; background: rgba(8,80,65,0.1);
+      border: 1px solid var(--color-teal); color: var(--color-teal);
+      font-size: 12px; font-weight: 600;
       display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono);
     }
-    .step-title { font-size: 1rem; font-weight: 700; color: var(--mist); margin-bottom: 0.25rem; }
-    .step-desc { font-size: 0.88rem; color: var(--dim); line-height: 1.6; }
+    .step-title { font-size: 18px; font-weight: 600; margin-bottom: 0.25rem; }
+    .step-desc { font-size: 15px; color: var(--color-text-muted); line-height: 1.6; }
 
-    /* ── OUTPUT PREVIEW ───────────────────────────────────────── */
-    .output-grid {
+    .examples { max-width: 1100px; margin: 0 auto; padding: 5rem 1.5rem; }
+    .examples h2 {
+      font-size: clamp(28px, 3.5vw, 40px);
+      font-weight: 600; margin-bottom: 1rem; letter-spacing: -0.01em;
+    }
+    .examples-intro {
+      font-size: 16px; line-height: 1.6; color: var(--color-text-muted);
+      max-width: 640px; margin-bottom: 3rem;
+    }
+    .examples-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
     }
-    .output-section {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 1rem 1.25rem;
+    .example-card {
+      display: block; background: #fff;
+      border: 1px solid rgba(0,0,0,0.08); border-radius: 10px;
+      padding: 1.75rem; text-decoration: none; color: inherit;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .output-section .os-label {
-      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
-      text-transform: uppercase; color: var(--teal); margin-bottom: 0.4rem;
+    .example-card:hover {
+      transform: translateY(-3px); border-color: var(--color-amber);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
     }
-    .output-section .os-title { font-size: 0.88rem; font-weight: 600; color: var(--mist); }
+    .ex-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 0.75rem; margin-bottom: 1rem;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      gap: 0.75rem;
+    }
+    .ex-network {
+      font-family: var(--font-mono); font-size: 10px;
+      letter-spacing: 0.12em; color: var(--color-amber); font-weight: 500;
+    }
+    .ex-genre {
+      font-family: var(--font-mono); font-size: 10px;
+      letter-spacing: 0.08em; color: var(--color-text-muted);
+      text-align: right;
+    }
+    .example-card h3 {
+      font-family: var(--font-display); font-size: 24px;
+      font-weight: 600; margin-bottom: 0.5rem;
+    }
+    .ex-role {
+      font-size: 14px; color: var(--color-text-primary);
+      margin-bottom: 0.75rem; font-weight: 500;
+    }
+    .ex-teaches {
+      font-size: 14px; line-height: 1.5;
+      color: var(--color-text-muted); margin-bottom: 1.25rem;
+      font-style: italic;
+    }
+    .ex-view {
+      font-family: var(--font-mono); font-size: 12px;
+      color: var(--color-amber); font-weight: 500; letter-spacing: 0.04em;
+    }
 
-    /* ── PRICING ──────────────────────────────────────────────── */
+    #pricing {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 5rem 1.5rem;
+    }
     .pricing-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.5rem; margin-bottom: 2rem;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
     }
     .pricing-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 18px; padding: 2rem 1.75rem;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px;
+      padding: 1.75rem;
       position: relative;
-      transition: border-color 0.2s;
     }
     .pricing-card.featured {
-      border-color: rgba(20,184,166,0.4);
-      background: linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(99,102,241,0.06) 100%);
+      border: 2px solid var(--color-amber);
     }
     .pricing-badge {
-      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-      background: linear-gradient(135deg, var(--teal), var(--violet));
-      color: #fff; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
-      text-transform: uppercase; padding: 4px 14px; border-radius: 999px;
-      white-space: nowrap;
+      position: absolute;
+      top: -11px;
+      left: 1rem;
+      background: var(--color-amber);
+      color: var(--color-text-inverse);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
     }
-    .pricing-name { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); margin-bottom: 0.75rem; }
-    .pricing-price { font-family: "Sora", "Inter", system-ui, sans-serif; font-size: 2.8rem; font-weight: 800; color: var(--mist); line-height: 1; letter-spacing: -0.04em; }
-    .pricing-per { font-size: 0.82rem; color: rgba(226,232,240,0.35); margin-bottom: 1.5rem; }
-    .pricing-features { list-style: none; margin-bottom: 1.75rem; }
-    .pricing-features li { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.88rem; color: var(--dim); margin-bottom: 0.6rem; line-height: 1.45; }
-    .pricing-features .ck { color: var(--teal); font-weight: 700; flex-shrink: 0; }
-    .btn-plan {
-      width: 100%; padding: 0.875rem; border-radius: 10px;
-      font-size: 0.95rem; font-weight: 700; cursor: pointer;
-      border: none; transition: opacity 0.2s;
-    }
-    .btn-plan.primary { background: var(--teal); color: var(--ink); }
-    .btn-plan.primary:hover { opacity: 0.88; }
-    .btn-plan.ghost {
-      background: transparent; color: var(--dim);
-      border: 1.5px solid rgba(148,163,184,0.2);
-    }
-    .btn-plan.ghost:hover { border-color: var(--teal); color: var(--mist); }
-
-    /* bundle card */
-    .bundle-card {
-      background: linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(99,102,241,0.08) 100%);
-      border: 2px solid rgba(20,184,166,0.3); border-radius: 20px;
-      padding: 3rem 2.5rem 2.5rem; text-align: center; position: relative;
-    }
-    .bundle-badge {
-      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-      background: linear-gradient(135deg, var(--teal), var(--violet));
-      color: #fff; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
-      text-transform: uppercase; padding: 4px 18px; border-radius: 999px;
-    }
-    .bundle-title { font-family: "Sora", "Inter", system-ui, sans-serif; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; color: var(--mist); margin-bottom: 0.5rem; letter-spacing: -0.035em; }
-    .bundle-price { font-family: "Sora", "Inter", system-ui, sans-serif; font-size: 3rem; font-weight: 800; color: var(--teal); letter-spacing: -0.045em; }
-    .bundle-desc { font-size: 0.95rem; color: var(--dim); max-width: 560px; margin: 1rem auto 1.75rem; line-height: 1.7; }
-    .bundle-includes { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem; }
-    .bundle-pill {
-      background: rgba(255,255,255,0.05); border: 1px solid var(--border);
-      border-radius: 999px; padding: 0.35rem 1rem;
-      font-size: 0.82rem; font-weight: 600; color: var(--dim);
-    }
-    .btn-bundle {
-      background: linear-gradient(135deg, var(--teal), var(--violet));
-      color: #fff; border: none; border-radius: 12px;
-      padding: 1rem 2.5rem; font-size: 1rem; font-weight: 800;
-      cursor: pointer; letter-spacing: 0.02em;
-      transition: opacity 0.2s;
-    }
-    .btn-bundle:hover { opacity: 0.88; }
-
-    /* ── FOOTER ───────────────────────────────────────────────── */
-    footer {
-      border-top: 1px solid var(--border); padding: 2.5rem 1.5rem;
-      text-align: center;
-    }
-    .footer-logo {
-      font-family: "Sora", "Inter", system-ui, sans-serif;
-      font-size: 1.5rem; font-weight: 800; color: var(--teal);
+    .pricing-name {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
       margin-bottom: 0.75rem;
     }
-    .footer-links { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem; }
-    .footer-links a { color: rgba(226,232,240,0.35); font-size: 0.85rem; text-decoration: none; transition: color 0.2s; }
-    .footer-links a:hover { color: var(--mist); }
-    .footer-copy { font-size: 0.78rem; color: rgba(226,232,240,0.25); }
+    .pricing-price {
+      font-family: var(--font-display);
+      font-size: 46px;
+      line-height: 1;
+      margin-bottom: 0.35rem;
+    }
+    .pricing-per {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--color-text-muted);
+      margin-bottom: 1.2rem;
+    }
+    .pricing-features { list-style: none; margin-bottom: 1.5rem; }
+    .pricing-features li {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      font-size: 14px;
+      color: var(--color-text-muted);
+      margin-bottom: 0.55rem;
+      line-height: 1.5;
+    }
+    .pricing-features .ck { color: var(--color-teal); font-weight: 600; }
+    .btn-plan {
+      width: 100%;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: var(--font-body);
+    }
+    .btn-plan.primary {
+      background: var(--color-dark);
+      color: var(--color-text-inverse);
+    }
+    .btn-plan.ghost {
+      background: transparent;
+      border: 1px solid rgba(0,0,0,0.18);
+      color: var(--color-text-primary);
+    }
+
+    .bundle-card {
+      background: var(--color-bg-dark); color: var(--color-text-inverse);
+      border-radius: 12px; overflow: hidden; margin: 3rem auto 0;
+      max-width: 780px; border: 2px solid var(--color-amber);
+    }
+    .bundle-header {
+      background: var(--color-amber); padding: 0.75rem 1.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 0.5rem;
+    }
+    .bundle-flag {
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 0.12em; font-weight: 500; color: var(--color-text-inverse);
+    }
+    .bundle-savings {
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 0.04em; color: #FAC775;
+    }
+    .bundle-body { padding: 2rem; }
+    .bundle-price { margin-bottom: 1.25rem; }
+    .bundle-price strong {
+      font-family: var(--font-display); font-size: 48px; font-weight: 600;
+    }
+    .bundle-price span { font-family: var(--font-mono); font-size: 14px; color: #aaa; margin-left: 4px; }
+    .bundle-pitch { font-size: 16px; line-height: 1.6; color: #ddd; margin-bottom: 1.5rem; }
+    .bundle-includes { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+    .bundle-includes li {
+      padding: 0.6rem 0; font-size: 15px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .bundle-includes li:first-child { border-top: none; }
+    .bundle-includes strong { color: #FAC775; font-weight: 500; }
+    .bundle-math {
+      display: flex; justify-content: space-between; padding: 1rem;
+      background: rgba(255,255,255,0.04); border-radius: 6px;
+      font-family: var(--font-mono); font-size: 13px;
+      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .bundle-math s { color: #888; }
+    .bundle-math strong { color: #FAC775; }
+    .btn-bundle { display: block; text-align: center; background: var(--color-amber); }
+    .bundle-fine {
+      font-size: 12px; color: #888; text-align: center;
+      margin-top: 0.75rem; font-family: var(--font-mono);
+    }
+
+    .final-cta {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 5rem 1.5rem;
+      text-align: center;
+    }
+
+    footer {
+      border-top: 1px solid rgba(0,0,0,0.08);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+    }
+    .footer-logo img { height: 28px; width: auto; object-fit: contain; opacity: 0.6; }
+    .footer-links {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 0.75rem 0;
+    }
+    .footer-links a {
+      color: var(--color-text-muted);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .footer-links a:hover { color: var(--color-text-primary); }
+    .footer-copy { font-size: 12px; color: var(--color-text-muted); }
+
+    @media (max-width: 900px) {
+      .nav-links {
+        gap: 0.35rem;
+      }
+      .dropbtn {
+        padding-left: 0.3rem;
+        padding-right: 0.3rem;
+      }
+    }
 
     @media (max-width: 640px) {
-      .nav-links { display: none; }
-      .stats-row { gap: 1.5rem; }
+      nav { padding: 0.75rem 1rem; }
+      .nav-links {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .hero-stats { gap: 1.5rem; }
+      .features-grid,
+      .contrast-grid,
+      .examples-grid,
+      .resources-grid,
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+      .examples-grid {
+        gap: 1rem;
+      }
+      .ex-meta {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .bundle-body { padding: 1.25rem; }
     }
   </style>
 </head>
 <body>
 
-  <!-- NAV -->
   <nav>
     <a class="nav-logo" href="#">
-      <img src="reader101-logo.png" alt="Reader101" style="height:36px; width:auto; object-fit:contain;" />
+      <img src="reader101-logo.png" alt="Reader101" />
     </a>
     <div class="nav-links">
       <a href="#how">How it works</a>
-      <a href="#examples">Live Examples</a>
+      <a href="#examples">Examples</a>
       <a href="#pricing">Pricing</a>
-      <a id="prep-link" href="https://prep101.site" target="_blank" rel="noopener">Prep101</a>
-      <a id="bold-link" href="https://boldchoices.site" target="_blank" rel="noopener">Bold Choices</a>
-      <a href="https://childactor101.com" target="_blank" rel="noopener">ChildActor101</a>
-      <a href="https://coaching.childactor101.com" target="_blank" rel="noopener">Coaching</a>
-      <a href="help-center.html">Help Center</a>
-      <a id="account-link" class="btn-nav" href="https://prep101.site/dashboard?product=reader101">Open Account Hub</a>
+      <div class="dropdown">
+        <button class="dropbtn" aria-haspopup="true" aria-expanded="false">More from Child Actor 101 ▾</button>
+        <div class="dropdown-content">
+          <a id="prep-link" href="https://prep101.site" target="_blank" rel="noopener">Prep101</a>
+          <a id="bold-link" href="https://boldchoices.site" target="_blank" rel="noopener">Bold Choices</a>
+          <a href="https://childactor101.com" target="_blank" rel="noopener">ChildActor101</a>
+          <a href="https://coaching.childactor101.com" target="_blank" rel="noopener">Coaching</a>
+          <a href="help-center.html">Help Center</a>
+        </div>
+      </div>
+      <a id="account-link" class="btn-nav" href="https://prep101.site/login?next=https%3A%2F%2Freader101.site%2Fauth-callback.html%3Fredirect%3Dhttps%253A%252F%252Freader101.site%252F">Sign in</a>
     </div>
   </nav>
 
-  <!-- HERO -->
   <section class="hero">
-    <div class="film-reel">🎬</div>
     <div class="hero-inner">
-      <div class="eyebrow">
-        <div class="eyebrow-dot"></div>
-        The reason your child's tape might not be landing
-      </div>
-      <div id="account-pill" class="account-pill">Connected to your Child Actor 101 account</div>
-      <div id="account-status" class="account-status">
-        <div class="account-status-title">Current account access</div>
-        <div class="account-status-grid">
-          <div class="account-status-card prep">
-            <strong>Prep101</strong>
-            <span id="prep-access-copy">Checking access...</span>
-          </div>
-          <div class="account-status-card reader">
-            <strong>Reader101</strong>
-            <span id="reader-access-copy">Checking access...</span>
-          </div>
-          <div class="account-status-card bold">
-            <strong>Bold Choices</strong>
-            <span id="bold-access-copy">Checking access...</span>
-          </div>
-        </div>
-      </div>
-
-      <img src="reader101-logo.png" alt="Reader101" style="width:100%; max-width:480px; height:auto; object-fit:contain; margin-bottom:1.5rem;" />
-
+      <p class="eyebrow">READER101 · FOR THE PERSON HOLDING THE SIDES</p>
+      <h1 class="hero-h1">
+        The reason your child's tape<br>
+        isn't landing isn't the acting.
+      </h1>
       <p class="hero-sub">
-        You're not just reading lines.<br>
-        You're shaping the scene.<br>
-        <strong style="color: var(--teal)">Actors perform off of you.</strong>
+        It's the reader. Too flat, and your actor has nothing to respond to.
+        Too big, and the camera picks up on it. One glance at the page, and the scene dies.
       </p>
-      <p style="font-size:0.95rem;color:rgba(226,232,240,0.75);font-weight:700;letter-spacing:0.02em;margin:-1.4rem 0 2rem;">
-        Fix the tape.
+      <p class="hero-sub hero-sub-emphasis">
+        Reader101 gives you exact, scene-specific coaching for the person on the other side of the camera.
       </p>
+      <div class="hero-cta-row">
+        <a id="primary-cta" href="https://prep101.site/dashboard?product=reader101#guide-builder" class="btn-primary">
+          Create a Reader Guide →
+        </a>
+        <a href="#how" class="btn-ghost">See how it works</a>
+      </div>
+      <div class="hero-stats">
+        <div><strong>12</strong><span>sections per guide</span></div>
+        <div><strong>&lt;40s</strong><span>to generate</span></div>
+        <div><strong>100%</strong><span>scene-specific</span></div>
+      </div>
+    </div>
+  </section>
 
-      <div class="cta-group">
-        <a id="primary-cta" class="btn-primary" href="https://prep101.site/dashboard?product=reader101#guide-builder">Create a Reader101 Guide →</a>
-        <button class="btn-secondary" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
+  <section class="parent-resources">
+    <p class="eyebrow">BEFORE YOU RECORD</p>
+    <h2>Free guides for parents running the tape.</h2>
+    <div class="resources-grid">
+      <a href="https://selftapetips.childactor101.com" class="resource-card">
+        <h3>Set up your self-tape</h3>
+        <p>Lighting, framing, background, audio — the complete technical checklist.</p>
+        <span class="resource-link">Read the guide →</span>
+      </a>
+      <a href="https://memorize.childactor101.com" class="resource-card">
+        <h3>Help your child memorize lines</h3>
+        <p>The memorization methods working kids actually use. No flashcards.</p>
+        <span class="resource-link">Read the guide →</span>
+      </a>
+      <a href="https://zoomcb.childactor101.com" class="resource-card">
+        <h3>Prepare for callbacks</h3>
+        <p>Zoom callbacks are a different game. Here's what changes.</p>
+        <span class="resource-link">Read the guide →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="features">
+    <p class="eyebrow">WHAT YOU GET</p>
+    <h2>Not reader tips. Reader coaching.</h2>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-num">01</div>
+        <h3>Performance Engine</h3>
+        <p>We tell you whether this scene runs on push or pull — and exactly when to shift. Get the energy type wrong and your actor plays the wrong scene.</p>
       </div>
 
-      <div class="stats-row">
-        <div>
-          <div class="stat-num">12</div>
-          <div class="stat-label">sections per guide</div>
+      <div class="feature-card">
+        <div class="feature-num">02</div>
+        <h3>Key Beats</h3>
+        <p>Most readers blow past the silence your kid needs. We tell you exactly where to shut up, and what collapses if you don't.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-num">03</div>
+        <h3>Reader Fundamentals</h3>
+        <p>The 10 rules every reader breaks without noticing. The 50% rule, the 3-foot rule, how to listen on camera, when to step away.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-num">04</div>
+        <h3>Do This / Avoid This</h3>
+        <p>Scene-specific, not generic. "If you rush this line, the actor loses the emotional turn." This scene only. No filler.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-num">05</div>
+        <h3>Connection Coaching</h3>
+        <p>Dead eyes are visible on camera. We tell you exactly when connection is non-negotiable, and how to stay in it without performing.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-num">06</div>
+        <h3>Quick Reset</h3>
+        <p>Four to five punchy reminders to read right before you press record. So you walk in focused, not guessing.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="contrast-section">
+    <div class="contrast-inner">
+      <p class="eyebrow">WHY IT WORKS</p>
+      <h2>Every other reader tip looks like this.<br>Reader101 looks like this.</h2>
+      <div class="contrast-grid">
+        <div class="contrast-col contrast-generic">
+          <div class="contrast-label">Generic advice</div>
+          <ul>
+            <li>"Don't rush the lines."</li>
+            <li>"Be supportive."</li>
+            <li>"Match the actor's energy."</li>
+            <li>"Don't read ahead."</li>
+          </ul>
         </div>
-        <div>
-          <div class="stat-num">&lt;40s</div>
-          <div class="stat-label">to generate</div>
-        </div>
-        <div>
-          <div class="stat-num">100%</div>
-          <div class="stat-label">scene-specific</div>
+        <div class="contrast-col contrast-specific">
+          <div class="contrast-label">Reader101</div>
+          <ul>
+            <li>"At the honeymoon spiral, freeze. Don't laugh. Your stillness is the scene."</li>
+            <li>"When Ben rewrites your nickname to 'Gare With No Hair' — take the hit. Don't laugh it off."</li>
+            <li>"This is a pull scene until line 14, then it flips. If you stay soft, the turn never lands."</li>
+            <li>"Hold brief eye contact on 'Do not poo-poo the poof.' This is real wisdom being dispensed."</li>
+          </ul>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- START HERE -->
-  <section id="start-here" style="background: var(--slate); border-bottom: 1px solid var(--border); padding: 4rem 1.5rem;">
-    <div class="container" style="text-align: center;">
-      <div class="section-label">Get Started</div>
-      <h2 class="section-title">Start Here</h2>
-      <div class="cta-group" style="margin-bottom: 0;">
-        <a class="btn-secondary" href="https://selftapetips.childactor101.com" style="text-decoration: none;">Set up your self tape →</a>
-        <a class="btn-secondary" href="https://memorize.childactor101.com" style="text-decoration: none;">Help your child memorize lines →</a>
-        <a class="btn-secondary" href="https://zoomcb.childactor101.com" style="text-decoration: none;">Prepare for callbacks →</a>
+  <section id="how">
+    <div class="section-label">How it works</div>
+    <h2 class="section-title">Three steps.<br>One better self-tape.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Upload the sides</div>
+          <div class="step-desc">Drop in the PDF or paste the scene text. That's it — no account setup, no complicated forms.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">We analyze the scene</div>
+          <div class="step-desc">Genre, tone, push/pull dynamics, key beats, timing windows — all extracted from the actual sides, not generic templates.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Get your Reader Guide</div>
+          <div class="step-desc">A complete, scannable guide written for you — not the actor. Read it in 2 minutes. Apply it in the first take.</div>
+        </div>
       </div>
     </div>
   </section>
 
-  <section style="padding:4rem 1.5rem;">
-    <div style="max-width:900px;margin:0 auto;text-align:center;">
-      
-      <p style="font-size:0.75rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:12px;">
-        The System
-      </p>
+  <section class="examples" id="examples">
+    <p class="eyebrow">LIVE EXAMPLES</p>
+    <h2>Real guides. Real productions.</h2>
+    <p class="examples-intro">Every example below is from an actual audition Reader101 was built for — major networks, streamers, SAG-AFTRA episodics. Tap any card to see the full guide.</p>
 
-      <h2 style="font-size:clamp(1.8rem,4vw,2.6rem);margin-bottom:20px;">
-        The Self-Tape System
-      </h2>
+    <div class="examples-grid">
 
-      <p style="color:rgba(255,255,255,0.6);max-width:520px;margin:0 auto 40px;">
-        Most actors don’t struggle with talent.  
-        They struggle with what to do, how to build it, and whether it works.
-      </p>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
-        
-        <div style="padding:20px;border:1px solid rgba(255,255,255,0.1);border-radius:14px;">
-          <strong>1. What do I do?</strong><br>
-          <span style="color:rgba(255,255,255,0.6);font-size:0.9rem;">Bold Choices</span>
+      <a href="https://reader101.site/barbara_reader_guide_tgotw" class="example-card">
+        <div class="ex-meta">
+          <span class="ex-network">NETFLIX / SONY</span>
+          <span class="ex-genre">Dramatic Series</span>
         </div>
+        <h3>The God of the Woods</h3>
+        <p class="ex-role">Barbara Van Laar — multi-role reader support across three scenes</p>
+        <p class="ex-teaches">Teaches: how push/pull dynamics shift between scenes in the same audition.</p>
+        <span class="ex-view">View guide →</span>
+      </a>
 
-        <div style="padding:20px;border:1px solid rgba(255,255,255,0.1);border-radius:14px;">
-          <strong>2. How do I build it?</strong><br>
-          <span style="color:rgba(255,255,255,0.6);font-size:0.9rem;">Prep101</span>
+      <a href="https://reader101.site/ben_reader_support_guide" class="example-card">
+        <div class="ex-meta">
+          <span class="ex-network">DISNEY</span>
+          <span class="ex-genre">Multi-Cam Sitcom</span>
         </div>
+        <h3>BEN</h3>
+        <p class="ex-role">Gary — the confidently deluded dad</p>
+        <p class="ex-teaches">Teaches: where confidence vs. cluelessness makes or breaks a multicam.</p>
+        <span class="ex-view">View guide →</span>
+      </a>
 
-        <div style="padding:20px;border:1px solid rgba(255,255,255,0.1);border-radius:14px;">
-          <strong>3. Is the tape working?</strong><br>
-          <span style="color:rgba(255,255,255,0.6);font-size:0.9rem;">Reader101</span>
+      <a href="https://reader101.site/foster_dade_reader_guide_v3" class="example-card">
+        <div class="ex-meta">
+          <span class="ex-network">HULU / WARNER BROS.</span>
+          <span class="ex-genre">Teen Series · Sensitive</span>
         </div>
+        <h3>Foster Dade</h3>
+        <p class="ex-role">High-risk scene classification + moral collapse arc tracker</p>
+        <p class="ex-teaches">Teaches: how a reader protects an actor through intimate or morally charged material.</p>
+        <span class="ex-view">View guide →</span>
+      </a>
 
-      </div>
+      <a href="https://reader101.site/june_reader_guide_lkoe_v4" class="example-card">
+        <div class="ex-meta">
+          <span class="ex-network">DISNEY BRANDED TV</span>
+          <span class="ex-genre">Sci-Fi Adventure</span>
+        </div>
+        <h3>Last Kids on Earth</h3>
+        <p class="ex-role">June Del Toro — grounded YA live-action</p>
+        <p class="ex-teaches">Teaches: how to ground a genre scene so the actor's emotional stakes still read.</p>
+        <span class="ex-view">View guide →</span>
+      </a>
 
-      <p style="margin-top:20px;color:rgba(255,255,255,0.5);font-size:0.9rem;">
-        Used together, this becomes a repeatable process—not guesswork.
-      </p>
+      <a href="https://reader101.site/grace_reader_guide_13goingon30" class="example-card">
+        <div class="ex-meta">
+          <span class="ex-network">FEATURE FILM</span>
+          <span class="ex-genre">Rom-Com</span>
+        </div>
+        <h3>13 Going on 30</h3>
+        <p class="ex-role">Grace — grounded comedy with real vulnerability</p>
+        <p class="ex-teaches">Teaches: how to hold comedy and high emotional stakes at the same time.</p>
+        <span class="ex-view">View guide →</span>
+      </a>
+
+      <a href="https://reader101.site/tyler_reader_guide_friendthing" class="example-card">
+        <div class="ex-meta">
+          <span class="ex-network">INDIE FEATURE</span>
+          <span class="ex-genre">Drama</span>
+        </div>
+        <h3>The Friend Thing</h3>
+        <p class="ex-role">Tyler — high tension, emotional data points</p>
+        <p class="ex-teaches">Teaches: pacing a scene where tension builds line-by-line, not in bursts.</p>
+        <span class="ex-view">View guide →</span>
+      </a>
 
     </div>
   </section>
 
-  <!-- PROBLEM -->
-  <section style="padding: 4rem 1.5rem;">
-    <div class="container">
-      <div class="problem-card">
-        <h3>"The reason your child's tape might not be landing… isn't the acting."</h3>
-        <p>
-          The reader — you — is invisible in the room but visible on screen.<br><br>
-          Too flat, and the actor has nothing to respond to.<br>
-          Too big, and the camera picks up on it.<br>
-          Look at the page once, and the scene dies.<br><br>
-          Reader101 gives you what no one else does: <strong style="color: var(--mist)">exact, scene-specific coaching</strong> for the person holding the sides.
+  <section id="pricing">
+    <div class="section-label">Pricing</div>
+    <h2 class="section-title">Simple. Scene-specific.<br>Worth every dollar.</h2>
+
+    <div class="pricing-grid">
+
+      <div class="pricing-card">
+        <div class="pricing-name">Add-On to Prep101</div>
+        <div class="pricing-price">$6.99</div>
+        <div class="pricing-per">per guide</div>
+        <ul class="pricing-features">
+          <li><span class="ck">✓</span>Add a Reader Guide to any Prep101 guide</li>
+          <li><span class="ck">✓</span>Scene-specific reader coaching</li>
+          <li><span class="ck">✓</span>All 12 sections</li>
+          <li><span class="ck">✓</span>Instant delivery</li>
+        </ul>
+        <button class="btn-plan ghost" onclick="window.location.href='https://buy.stripe.com/28E5kD9Gf9LNd2RdgC2wV09'">Add to Prep101 Guide</button>
+      </div>
+
+      <div class="pricing-card">
+        <div class="pricing-name">One Guide</div>
+        <div class="pricing-price">$11.99</div>
+        <div class="pricing-per">per guide</div>
+        <ul class="pricing-features">
+          <li><span class="ck">✓</span>Full standalone Reader Guide</li>
+          <li><span class="ck">✓</span>PDF upload or paste sides</li>
+          <li><span class="ck">✓</span>All 12 sections</li>
+          <li><span class="ck">✓</span>10 Reader Fundamentals always included</li>
+          <li><span class="ck">✓</span>No subscription needed</li>
+        </ul>
+        <button class="btn-plan ghost" onclick="window.location.href='https://buy.stripe.com/28E4gz19J5vx7Ixb8u2wV0a'">Buy One Guide</button>
+      </div>
+
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Most Popular</div>
+        <div class="pricing-name">Monthly</div>
+        <div class="pricing-price">$19.99</div>
+        <div class="pricing-per">per month</div>
+        <ul class="pricing-features">
+          <li><span class="ck">✓</span>Unlimited Reader Guides</li>
+          <li><span class="ck">✓</span>Every audition, every week</li>
+          <li><span class="ck">✓</span>All 12 sections per guide</li>
+          <li><span class="ck">✓</span>10 Reader Fundamentals always included</li>
+          <li><span class="ck">✓</span>Cancel anytime</li>
+        </ul>
+        <button class="btn-plan primary" onclick="window.location.href='https://buy.stripe.com/00w7sL3hR7DFd2R4K62wV0b'">Subscribe — $19.99/mo</button>
+      </div>
+    </div>
+
+    <div class="bundle-card">
+      <div class="bundle-header">
+        <span class="bundle-flag">★ THE COMPLETE SELF-TAPE SYSTEM</span>
+        <span class="bundle-savings">Save $32/mo vs. buying separately</span>
+      </div>
+      <div class="bundle-body">
+        <div class="bundle-price">
+          <strong>$29.99</strong><span>/month</span>
+        </div>
+        <p class="bundle-pitch">
+          Every tool your actor needs for every audition — Bold Choices, Prep101, and Reader101 in one subscription.
         </p>
+        <ul class="bundle-includes">
+          <li><strong>Prep101</strong> — 5 guides/mo (one per audition week)</li>
+          <li><strong>Reader101</strong> — unlimited reader guides</li>
+          <li><strong>Bold Choices</strong> — unlimited choice-generation</li>
+        </ul>
+        <div class="bundle-math">
+          <span>Separate: $19.99 + $19.99 + $19.99 = <s>$59.97</s>/mo</span>
+          <span>Bundle: <strong>$29.99/mo</strong></span>
+        </div>
+        <a href="https://buy.stripe.com/7sY4gz3hRe23faZ4K62wV0c" class="btn-primary btn-bundle">Get the Bundle — $29.99/month</a>
+        <p class="bundle-fine">Cancel anytime. All three products in one subscription.</p>
       </div>
     </div>
   </section>
 
-  <!-- WHAT YOU GET -->
-  <section>
-    <div class="container">
-      <div class="section-label">What you get</div>
-      <h2 class="section-title">Not reader tips.<br>Reader coaching.</h2>
-      <div class="grid-3">
-        <div class="feat-card">
-          <div class="feat-icon">🎭</div>
-          <div class="feat-title">Performance Engine</div>
-          <div class="feat-desc">Know whether this is a PUSH or PULL scene — and exactly when to shift. Your energy type shapes the actor's response.</div>
-        </div>
-        <div class="feat-card">
-          <div class="feat-icon">🔑</div>
-          <div class="feat-title">Key Beats</div>
-          <div class="feat-desc">Line-by-line instructions: where to pause, slow down, hold silence — and what happens to the actor's performance if you don't.</div>
-        </div>
-        <div class="feat-card">
-          <div class="feat-icon">🎯</div>
-          <div class="feat-title">Reader Fundamentals</div>
-          <div class="feat-desc">The 10 rules every reader needs: the 50% rule, the 3-foot rule, how to listen on camera, when to step away.</div>
-        </div>
-        <div class="feat-card">
-          <div class="feat-icon">✅</div>
-          <div class="feat-title">Do This / Avoid This</div>
-          <div class="feat-desc">Scene-specific. Consequence language. "If you rush this line, the actor loses the emotional turn." Not generic. This scene only.</div>
-        </div>
-        <div class="feat-card">
-          <div class="feat-icon">👀</div>
-          <div class="feat-title">Connection Coaching</div>
-          <div class="feat-desc">Eye-line, active listening, presence. Dead eyes are visible on camera. We'll tell you exactly when connection is non-negotiable.</div>
-        </div>
-        <div class="feat-card">
-          <div class="feat-icon">🧠</div>
-          <div class="feat-title">Quick Reset</div>
-          <div class="feat-desc">4–5 punchy reminders to read right before pressing record. So you walk in focused, not guessing.</div>
-        </div>
-      </div>
-    </div>
+  <section class="final-cta">
+    <div class="section-label">Ready?</div>
+    <h2 class="section-title" style="margin-bottom: 1rem;">The tape is about to roll.</h2>
+    <p style="color: var(--color-text-muted); margin-bottom: 2rem; font-size: 1rem;">Don't walk into the session guessing. Know exactly what to do — before you press record.</p>
+    <a class="btn-primary" href="#pricing" style="font-size: 1.05rem; padding: 1.1rem 2.5rem;">Get My Reader Guide →</a>
   </section>
 
-  <!-- HOW IT WORKS -->
-  <section id="how" style="background: var(--slate);">
-    <div class="container">
-      <div class="section-label">How it works</div>
-      <h2 class="section-title">Three steps.<br>One better self-tape.</h2>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">01</div>
-          <div>
-            <div class="step-title">Upload the sides</div>
-            <div class="step-desc">Drop in the PDF or paste the scene text. That's it — no account setup, no complicated forms.</div>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">02</div>
-          <div>
-            <div class="step-title">We analyze the scene</div>
-            <div class="step-desc">Genre, tone, push/pull dynamics, key beats, timing windows — all extracted from the actual sides, not generic templates.</div>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">03</div>
-          <div>
-            <div class="step-title">Get your Reader Guide</div>
-            <div class="step-desc">A complete, scannable guide written for you — not the actor. Read it in 2 minutes. Apply it in the first take.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- EXAMPLES -->
-  <section id="examples" style="background: var(--ink);">
-    <div class="container">
-      <div class="section-label">Examples</div>
-      <h2 class="section-title">See Reader101 in action.</h2>
-      <div class="grid-3">
-        <!-- Example 01 -->
-        <a href="barbara_reader_guide_tgotw.html" target="_blank" class="feat-card" style="text-decoration: none; border-color: rgba(20,184,166,0.2);">
-          <div class="feat-icon">📄</div>
-          <div class="feat-title">Dramatic Series Example</div>
-          <div class="feat-desc">Detailed reader support guide for Barbara. See push/pull dynamics in action.</div>
-          <div style="margin-top: 1rem; color: var(--teal); font-size: 0.8rem; font-weight: 700;">VIEW EXAMPLE →</div>
-        </a>
-        <!-- Example 02 -->
-        <a href="ben_reader_support_guide.html" target="_blank" class="feat-card" style="text-decoration: none; border-color: rgba(20,184,166,0.2);">
-          <div class="feat-icon">📄</div>
-          <div class="feat-title">Multi-Cam Sitcom Example</div>
-          <div class="feat-desc">Complete reader coaching guide focusing on tone and reference anchors.</div>
-          <div style="margin-top: 1rem; color: var(--teal); font-size: 0.8rem; font-weight: 700;">VIEW EXAMPLE →</div>
-        </a>
-        <!-- Example 03 -->
-        <a href="foster_dade_reader_guide_v3.html" target="_blank" class="feat-card" style="text-decoration: none; border-color: rgba(20,184,166,0.2);">
-          <div class="feat-icon">📄</div>
-          <div class="feat-title">Teen Series (sensitive material) Example</div>
-          <div class="feat-desc">Deep-dive into physical directives and key beat analysis for Foster.</div>
-          <div style="margin-top: 1rem; color: var(--teal); font-size: 0.8rem; font-weight: 700;">VIEW EXAMPLE →</div>
-        </a>
-        <!-- Example 04 -->
-        <a href="june_reader_guide_lkoe_v4.html" target="_blank" class="feat-card" style="text-decoration: none; border-color: rgba(20,184,166,0.3);">
-          <div class="feat-icon">📄</div>
-          <div class="feat-title">Sci-Fi Adventure Series Example</div>
-          <div class="feat-desc">Complex reader dynamics and connection coaching for the June scene.</div>
-          <div style="margin-top: 1rem; color: var(--teal); font-size: 0.8rem; font-weight: 700;">VIEW EXAMPLE →</div>
-        </a>
-        <!-- Example 05 -->
-        <a href="grace_reader_guide_13goingon30.html" target="_blank" class="feat-card" style="text-decoration: none; border-color: rgba(20,184,166,0.3); background: var(--teal-glow);">
-          <div class="feat-icon">📄</div>
-          <div class="feat-title">ROMCOM Feature Film Example</div>
-          <div class="feat-desc">Grounded comedy reader support guide for Grace. Focus on high stakes and real vulnerability.</div>
-          <div style="margin-top: 1rem; color: var(--teal); font-size: 0.8rem; font-weight: 700;">VIEW EXAMPLE →</div>
-        </a>
-        <!-- Example 06 -->
-        <a href="tyler_reader_guide_friendthing.html" target="_blank" class="feat-card" style="text-decoration: none; border-color: rgba(20,184,166,0.3); background: var(--teal-glow);">
-          <div class="feat-icon">📄</div>
-          <div class="feat-title">Indie Drama Film Example</div>
-          <div class="feat-desc">Authentic reader coaching for Tyler. High tension, specific pacing, and emotional data points.</div>
-          <div style="margin-top: 1rem; color: var(--teal); font-size: 0.8rem; font-weight: 700;">VIEW EXAMPLE →</div>
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- OUTPUT PREVIEW -->
-  <section>
-    <div class="container">
-      <div class="section-label">Output structure</div>
-      <h2 class="section-title">What's in every guide.</h2>
-      <div class="output-grid">
-        <div class="output-section">
-          <div class="os-label">⚠️ Section 1</div>
-          <div class="os-title">Why This Matters</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">🎭 Section 2</div>
-          <div class="os-title">Performance Engine (Push/Pull)</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">🎬 Section 3</div>
-          <div class="os-title">Scene Snapshot</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">🎯 Section 4</div>
-          <div class="os-title">Your Job</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">🎯 Section 5</div>
-          <div class="os-title">Reader Fundamentals (10 Rules)</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">⏱️ Section 6</div>
-          <div class="os-title">Key Beats</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">🎤 Section 7</div>
-          <div class="os-title">How to Read</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">🔊 Section 8</div>
-          <div class="os-title">Volume & Energy</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">✅ Section 9</div>
-          <div class="os-title">Do This / Avoid This</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">👀 Section 10</div>
-          <div class="os-title">Connection (CRITICAL)</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">🎧 Section 11</div>
-          <div class="os-title">Tone & Reference Anchor</div>
-        </div>
-        <div class="output-section">
-          <div class="os-label">🧠 Section 12</div>
-          <div class="os-title">Quick Reset</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- PRICING -->
-  <section id="pricing" style="background: var(--slate);">
-    <div class="container">
-      <div class="section-label">Pricing</div>
-      <h2 class="section-title">Simple. Scene-specific.<br>Worth every dollar.</h2>
-
-      <div class="pricing-grid">
-
-        <!-- Add-On -->
-        <div class="pricing-card">
-          <div class="pricing-name">Add-On to Prep101</div>
-          <div class="pricing-price">$6.99</div>
-          <div class="pricing-per">per guide</div>
-          <ul class="pricing-features">
-            <li><span class="ck">✓</span>Add a Reader Guide to any Prep101 guide</li>
-            <li><span class="ck">✓</span>Scene-specific reader coaching</li>
-            <li><span class="ck">✓</span>All 12 sections</li>
-            <li><span class="ck">✓</span>Instant delivery</li>
-          </ul>
-          <button class="btn-plan ghost" onclick="window.location.href='https://buy.stripe.com/28E5kD9Gf9LNd2RdgC2wV09'">Add to Prep101 Guide</button>
-        </div>
-
-        <!-- One Guide -->
-        <div class="pricing-card">
-          <div class="pricing-name">One Guide</div>
-          <div class="pricing-price">$11.99</div>
-          <div class="pricing-per">per guide</div>
-          <ul class="pricing-features">
-            <li><span class="ck">✓</span>Full standalone Reader Guide</li>
-            <li><span class="ck">✓</span>PDF upload or paste sides</li>
-            <li><span class="ck">✓</span>All 12 sections</li>
-            <li><span class="ck">✓</span>10 Reader Fundamentals always included</li>
-            <li><span class="ck">✓</span>No subscription needed</li>
-          </ul>
-          <button class="btn-plan ghost" onclick="window.location.href='https://buy.stripe.com/28E4gz19J5vx7Ixb8u2wV0a'">Buy One Guide</button>
-        </div>
-
-        <!-- Monthly -->
-        <div class="pricing-card featured">
-          <div class="pricing-badge">Most Popular</div>
-          <div class="pricing-name">Monthly</div>
-          <div class="pricing-price">$19.99</div>
-          <div class="pricing-per">per month</div>
-          <ul class="pricing-features">
-            <li><span class="ck">✓</span>Unlimited Reader Guides</li>
-            <li><span class="ck">✓</span>Every audition, every week</li>
-            <li><span class="ck">✓</span>All 12 sections per guide</li>
-            <li><span class="ck">✓</span>10 Reader Fundamentals always included</li>
-            <li><span class="ck">✓</span>Cancel anytime</li>
-          </ul>
-          <button class="btn-plan primary" onclick="window.location.href='https://buy.stripe.com/00w7sL3hR7DFd2R4K62wV0b'">Subscribe — $19.99/mo</button>
-        </div>
-      </div>
-
-      <!-- BUNDLE -->
-      <div class="bundle-card">
-        <div class="bundle-badge">⭐ The Complete Self-Tape System</div>
-        <div style="margin-top: 0.5rem;">
-          <img src="bundle.png" alt="Complete Self-Tape System" style="max-width:340px; width:100%; height:auto; object-fit:contain; margin-bottom:0.5rem;" />
-          <div class="bundle-price">$29.99<span style="font-size:1rem; color: var(--dim); font-family: Inter, sans-serif;">/month</span></div>
-        </div>
-        <div class="bundle-desc">
-          Everything your actor needs for every audition. Get 5 Prep101 guides per month plus unlimited Reader101 and Bold Choices guides to support every audition from start to finish.
-        </div>
-        <div class="bundle-includes">
-          <span class="bundle-pill"><img src="preplogo.png" alt="Prep101" style="height:18px; vertical-align:middle; margin-right:4px;"> 5 guides/mo</span>
-          <span class="bundle-pill">📖 Reader101 Unlimited</span>
-          <span class="bundle-pill">🎭 Bold Choices Unlimited</span>
-        </div>
-        <button class="btn-bundle" onclick="window.location.href='https://buy.stripe.com/7sY4gz3hRe23faZ4K62wV0c'">Get the Bundle — $29.99/month</button>
-        <p style="margin-top: 0.75rem; font-size: 0.8rem; color: rgba(226,232,240,0.3);">Cancel anytime. All three products in one subscription.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- FINAL CTA -->
-  <section style="text-align: center;">
-    <div class="container" style="max-width: 600px;">
-      <div class="section-label">Ready?</div>
-      <h2 class="section-title" style="margin-bottom: 1rem;">The tape is about to roll.</h2>
-      <p style="color: var(--dim); margin-bottom: 2rem; font-size: 1rem;">Don't walk into the session guessing. Know exactly what to do — before you press record.</p>
-      <a class="btn-primary" href="#pricing" style="font-size: 1.05rem; padding: 1.1rem 2.5rem;">Get My Reader Guide →</a>
-    </div>
-  </section>
-
-  <!-- FOOTER -->
   <footer>
     <div class="footer-logo">
-      <img src="reader101-logo.png" alt="Reader101" style="height:28px; width:auto; object-fit:contain; opacity:0.6;" />
+      <img src="reader101-logo.png" alt="Reader101" />
     </div>
     <div class="footer-links">
       <a href="https://childactor101.com" target="_blank" rel="noopener">ChildActor101</a>
@@ -802,7 +886,7 @@
     <div class="footer-copy">
       A product of Prep101 &middot; &copy; 2026 Corey Ralston
     </div>
-</footer>
+  </footer>
 
 <script>
   (async function () {
@@ -810,202 +894,80 @@
     try {
       token = localStorage.getItem('ca101_token');
     } catch (_) {}
+
     var urlParams = new URLSearchParams(window.location.search);
     var queryToken = urlParams.get('token');
     if (queryToken) {
       token = queryToken;
-      try {
-        localStorage.setItem('ca101_token', queryToken);
-      } catch (_) {}
+      try { localStorage.setItem('ca101_token', queryToken); } catch (_) {}
       urlParams.delete('token');
       var cleanedUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '') + window.location.hash;
       window.history.replaceState({}, '', cleanedUrl);
     }
+
     var prepDashboard = 'https://prep101.site/dashboard?product=reader101#guide-builder';
-    var prepOnboardingBase = 'https://prep101.site/onboarding?next=' + encodeURIComponent(prepDashboard);
-    var prepSelectActorBase = 'https://prep101.site/select-actor?next=' + encodeURIComponent(prepDashboard);
-    var boldWorkspaceUrl = 'https://boldchoices.site/generate';
     var prepWorkspaceUrl = 'https://prep101.site/dashboard?product=prep101';
+    var boldWorkspaceUrl = 'https://boldchoices.site/generate';
     var verifyUrl = 'https://prep101-api.vercel.app/api/auth/verify';
     var prepLoginUrl = 'https://prep101.site/login?next=' + encodeURIComponent('https://reader101.site/auth-callback.html?redirect=' + encodeURIComponent('https://reader101.site/'));
+
     var accountLink = document.getElementById('account-link');
     var primaryCta = document.getElementById('primary-cta');
     var prepLink = document.getElementById('prep-link');
     var boldLink = document.getElementById('bold-link');
     var footerPrepLink = document.getElementById('footer-prep-link');
     var footerBoldLink = document.getElementById('footer-bold-link');
-    var accountPill = document.getElementById('account-pill');
-    var accountStatus = document.getElementById('account-status');
-    var prepAccessCopy = document.getElementById('prep-access-copy');
-    var readerAccessCopy = document.getElementById('reader-access-copy');
-    var boldAccessCopy = document.getElementById('bold-access-copy');
-    var accountState = null;
-    var hasSharedApiSession = false;
 
     function buildPrepRedirectUrl(destination) {
-      if (!token || hasSharedApiSession) return destination;
+      if (!token) return destination;
       return 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(destination) + '&token=' + encodeURIComponent(token);
     }
 
     function applySignedOutState() {
       if (accountLink) {
-        accountLink.textContent = 'Sign In With Child Actor 101';
+        accountLink.textContent = 'Sign in';
         accountLink.href = prepLoginUrl;
       }
-      if (primaryCta) primaryCta.href = accountLink ? accountLink.href : '#pricing';
-      if (prepLink) prepLink.href = prepWorkspaceUrl;
-      if (boldLink) boldLink.href = 'https://boldchoices.site/';
-      if (footerPrepLink) footerPrepLink.href = prepWorkspaceUrl;
-      if (footerBoldLink) footerBoldLink.href = 'https://boldchoices.site/';
+      if (primaryCta) primaryCta.href = accountLink ? accountLink.href : prepLoginUrl;
+      if (prepLink) prepLink.href = 'https://prep101.site';
+      if (boldLink) boldLink.href = 'https://boldchoices.site';
+      if (footerPrepLink) footerPrepLink.href = 'https://prep101.site';
+      if (footerBoldLink) footerBoldLink.href = 'https://boldchoices.site';
     }
 
-    function applyTokenFallbackState() {
-      var prepDestination = buildPrepRedirectUrl(prepDashboard);
+    function applySignedInState() {
       if (accountLink) {
-        accountLink.textContent = 'Open Account Hub';
-        accountLink.href = prepDestination;
+        accountLink.textContent = 'Sign in';
+        accountLink.href = buildPrepRedirectUrl(prepDashboard);
       }
-      if (primaryCta) {
-        primaryCta.href = prepDestination;
-        primaryCta.textContent = 'Create a Reader101 Guide →';
-      }
+      if (primaryCta) primaryCta.href = buildPrepRedirectUrl(prepDashboard);
       if (prepLink) prepLink.href = buildPrepRedirectUrl(prepWorkspaceUrl);
-      if (boldLink) boldLink.href = 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token);
+      if (boldLink) boldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;
       if (footerPrepLink) footerPrepLink.href = buildPrepRedirectUrl(prepWorkspaceUrl);
-      if (footerBoldLink) footerBoldLink.href = 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token);
+      if (footerBoldLink) footerBoldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;
     }
 
-    function describePrepAccess(usage) {
-      if (!usage) return 'No shared account data yet';
-      var pieces = ['5 guides/month'];
-      if ((usage.topUpCredits || 0) > 0) {
-        pieces.push(String(usage.topUpCredits) + ' add-on ' + (usage.topUpCredits === 1 ? 'credit' : 'credits'));
-      }
-      return pieces.join(' • ');
-    }
-
-    function describeReaderAccess(usage) {
-      if (!usage) return 'No Reader101 access loaded';
-      if (usage.unlimited) return 'Unlimited access';
-      if ((usage.credits || 0) > 0) {
-        return String(usage.credits) + ' Reader101 ' + (usage.credits === 1 ? 'credit' : 'credits');
-      }
-      return 'No Reader101 credits yet';
-    }
-
-    function describeBoldAccess(usage) {
-      if (!usage) return 'No Bold Choices access loaded';
-      if (usage.unlimited) return 'Included with your plan';
-      if ((usage.credits || 0) > 0) {
-        return String(usage.credits) + ' Bold Choices ' + (usage.credits === 1 ? 'credit' : 'credits');
-      }
-      return 'Included access';
-    }
-
+    var hasSession = false;
     try {
-      var verifyResponse = await fetch(verifyUrl, {
-        credentials: 'include'
-      });
+      var verifyResponse = await fetch(verifyUrl, { credentials: 'include' });
       var verifyData = await verifyResponse.json();
-      if (verifyResponse.ok && verifyData.valid && verifyData.user) {
-        accountState = verifyData.user;
-        hasSharedApiSession = true;
-      }
-    } catch (error) {}
+      hasSession = !!(verifyResponse.ok && verifyData.valid && verifyData.user);
+    } catch (_) {}
 
-    if (!accountState && token) {
+    if (!hasSession && token) {
       try {
         await fetch('https://prep101-api.vercel.app/api/auth/session', {
           method: 'POST',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: token })
         });
-
-        var refreshedVerifyResponse = await fetch(verifyUrl, {
-          credentials: 'include'
-        });
-        var refreshedVerifyData = await refreshedVerifyResponse.json();
-        if (refreshedVerifyResponse.ok && refreshedVerifyData.valid && refreshedVerifyData.user) {
-          accountState = refreshedVerifyData.user;
-          hasSharedApiSession = true;
-        }
-      } catch (error) {}
+        hasSession = true;
+      } catch (_) {}
     }
 
-    if (!accountState && token) {
-      try {
-        var tokenVerifyResponse = await fetch(verifyUrl, {
-          headers: {
-            Authorization: 'Bearer ' + token
-          }
-        });
-        var tokenVerifyData = await tokenVerifyResponse.json();
-        if (tokenVerifyResponse.ok && tokenVerifyData.valid && tokenVerifyData.user) {
-          accountState = tokenVerifyData.user;
-        }
-      } catch (error) {}
-    }
-
-    if (accountState) {
-      if (accountPill) accountPill.style.display = 'inline-flex';
-      if (accountStatus) accountStatus.style.display = 'block';
-      if (accountPill && accountState && accountState.account && accountState.account.activeActor) {
-        var actor = accountState.account.activeActor;
-        accountPill.textContent =
-          'Working as: ' +
-          actor.actorName +
-          (actor.ageRange ? ' (' + actor.ageRange + ')' : '');
-      }
-      if (prepAccessCopy) {
-        prepAccessCopy.textContent = describePrepAccess(accountState && accountState.prep101Usage);
-      }
-      if (readerAccessCopy) {
-        readerAccessCopy.textContent = describeReaderAccess(accountState && accountState.reader101Usage);
-      }
-      if (boldAccessCopy) {
-        boldAccessCopy.textContent = describeBoldAccess(accountState && accountState.boldChoicesUsage);
-      }
-
-      var prepDestination =
-        accountState && accountState.account && accountState.account.onboardingRequired
-          ? buildPrepRedirectUrl(prepOnboardingBase)
-          : accountState && accountState.account && accountState.account.needsActorSelection
-            ? buildPrepRedirectUrl(prepSelectActorBase)
-            : buildPrepRedirectUrl(prepDashboard);
-
-      if (accountLink) {
-        accountLink.textContent =
-          accountState && accountState.account && accountState.account.onboardingRequired
-            ? 'Finish Account Setup'
-            : accountState && accountState.account && accountState.account.needsActorSelection
-              ? 'Choose Active Actor'
-              : accountState && accountState.reader101Usage && accountState.reader101Usage.canGenerate
-                ? 'Open Account Hub'
-              : 'Open Account Hub';
-        accountLink.href = prepDestination;
-      }
-      if (primaryCta) {
-        primaryCta.href = prepDestination;
-        primaryCta.textContent =
-          accountState && accountState.account && accountState.account.onboardingRequired
-            ? 'Finish Account Setup →'
-            : accountState && accountState.account && accountState.account.needsActorSelection
-              ? 'Choose Active Actor →'
-              : accountState && accountState.reader101Usage && accountState.reader101Usage.unlimited
-                ? 'Create a Reader101 Guide →'
-              : accountState && accountState.reader101Usage && accountState.reader101Usage.credits > 0
-                  ? 'Create a Reader101 Guide →'
-                  : 'Get Reader101 Access →';
-      }
-      if (prepLink) prepLink.href = token ? 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(prepWorkspaceUrl) + '&token=' + encodeURIComponent(token) : prepWorkspaceUrl;
-      if (boldLink) boldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;
-      if (footerPrepLink) footerPrepLink.href = token ? 'https://prep101.site/auth-callback?redirect=' + encodeURIComponent(prepWorkspaceUrl) + '&token=' + encodeURIComponent(token) : prepWorkspaceUrl;
-      if (footerBoldLink) footerBoldLink.href = token ? 'https://boldchoices.site/auth-callback?redirect=%2Fgenerate&token=' + encodeURIComponent(token) : boldWorkspaceUrl;
-    } else if (token) {
-      applyTokenFallbackState();
+    if (hasSession || token) {
+      applySignedInState();
     } else {
       applySignedOutState();
     }
