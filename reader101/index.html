@@ -7,7 +7,7 @@
   <meta name="description" content="Reader101 gives parents the exact coaching they need to support — not hurt — their child's self-tape performance. Scene-specific. Behavior-based. Immediate." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Literata:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Literata:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@500;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --color-bg: #F1EFE8;
@@ -31,7 +31,9 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
-      background: var(--color-bg);
+      background:
+        var(--color-bg)
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
       color: var(--color-text-primary);
       font-family: var(--font-body);
       line-height: 1.6;
@@ -130,8 +132,34 @@
 
     section[id] { scroll-margin-top: 80px; }
 
-    .hero { padding: 5rem 1.5rem 4rem; max-width: 900px; margin: 0 auto; }
-    .hero-inner { max-width: 900px; }
+    .hero {
+      padding: 5rem 1.5rem 4rem;
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-backdrop {
+      position: absolute;
+      top: 50%;
+      right: -4%;
+      transform: translateY(-50%);
+      font-family: var(--font-display);
+      font-size: clamp(200px, 32vw, 420px);
+      font-weight: 700;
+      line-height: 0.85;
+      color: var(--color-amber);
+      opacity: 0.06;
+      pointer-events: none;
+      user-select: none;
+      letter-spacing: -0.04em;
+      z-index: 0;
+    }
+    .hero-backdrop-slash {
+      color: var(--color-coral);
+      opacity: 0.8;
+    }
+    .hero-inner { max-width: 900px; position: relative; z-index: 1; }
     .eyebrow {
       font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
       color: var(--color-amber); font-weight: 500; margin-bottom: 1.5rem;
@@ -155,6 +183,39 @@
     }
     .hero-sub-emphasis { color: var(--color-text-primary); font-weight: 500; }
     .hero-cta-row { display: flex; gap: 12px; margin: 2rem 0 3rem; flex-wrap: wrap; }
+    .network-strip {
+      margin: 0 0 3rem;
+      padding: 1.75rem 0;
+      border-top: 1px solid rgba(99, 56, 6, 0.12);
+      border-bottom: 1px solid rgba(99, 56, 6, 0.12);
+    }
+    .network-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: 0.9rem;
+    }
+    .network-logos {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.9rem 1.25rem;
+    }
+    .network-logo {
+      font-family: var(--font-display);
+      font-size: clamp(18px, 2.2vw, 24px);
+      font-weight: 600;
+      color: var(--color-text-primary);
+      letter-spacing: -0.01em;
+      opacity: 0.85;
+    }
+    .network-logo-sep {
+      color: var(--color-amber);
+      font-size: 20px;
+      opacity: 0.5;
+    }
     .btn-primary {
       background: var(--color-dark);
       color: var(--color-text-inverse);
@@ -193,28 +254,101 @@
     }
     .resources-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+    @media (max-width: 960px) {
+      .resources-grid { grid-template-columns: repeat(2, 1fr); }
+      .resource-card--callbacks { grid-column: span 2; }
+    }
+    @media (max-width: 580px) {
+      .resources-grid { grid-template-columns: 1fr; }
+      .resource-card--callbacks { grid-column: auto; }
     }
     .resource-card {
-      background: #fff; border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 10px; padding: 1.5rem;
-      text-decoration: none; color: inherit;
-      transition: border-color 0.15s ease;
+      position: relative;
+      display: block;
+      border-radius: 12px;
+      text-decoration: none;
+      overflow: hidden;
+      min-height: 260px;
+      box-shadow: 0 4px 14px rgba(30, 42, 46, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      background: #1e2a2e;
+      color: #faf6ef;
+      font-family: 'Fraunces', Georgia, serif;
     }
-    .resource-card:hover { border-color: var(--color-teal); }
+    .resource-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(30, 42, 46, 0.18);
+    }
+    .resource-card::before {
+      content: "";
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 240px; height: 240px;
+      background: radial-gradient(circle, rgba(217, 164, 58, 0.18), transparent 65%);
+      pointer-events: none;
+    }
+    .resource-card--setup::before {
+      background: radial-gradient(circle, rgba(217, 164, 58, 0.22), transparent 65%);
+    }
+    .resource-card--memorize::before {
+      background: radial-gradient(circle, rgba(228, 107, 80, 0.20), transparent 65%);
+    }
+    .resource-card--callbacks::before {
+      background: radial-gradient(circle, rgba(42, 138, 143, 0.22), transparent 65%);
+    }
+    .resource-card-inner {
+      position: relative;
+      padding: 1.75rem 1.5rem 1.5rem;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 260px;
+    }
+    .resource-kicker {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #d9a43a;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
     .resource-card h3 {
-      font-family: var(--font-display); font-size: 19px;
-      font-weight: 600; margin-bottom: 0.5rem;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.75rem;
+      color: #faf6ef;
+    }
+    .resource-card h3 em {
+      font-style: italic;
+      color: #fde89a;
+      font-weight: 500;
     }
     .resource-card p {
-      font-size: 14px; line-height: 1.5;
-      color: var(--color-text-muted); margin-bottom: 1rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+      color: rgba(250, 246, 239, 0.75);
+      margin-bottom: 1.5rem;
+      flex-grow: 1;
     }
     .resource-link {
-      font-family: var(--font-mono); font-size: 12px;
-      color: var(--color-teal); font-weight: 500;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 500;
+      color: #d9a43a;
+      transition: color 0.15s ease;
     }
+    .resource-card:hover .resource-link { color: #fde89a; }
 
     .features { max-width: 1100px; margin: 0 auto; padding: 5rem 1.5rem; }
     .features h2 {
@@ -278,6 +412,23 @@
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 10px; padding: 1.75rem;
+      position: relative;
+    }
+    .contrast-quote-mark {
+      position: absolute;
+      top: -20px;
+      right: 20px;
+      font-family: var(--font-display);
+      font-size: 120px;
+      line-height: 1;
+      font-weight: 700;
+      opacity: 0.08;
+      pointer-events: none;
+      user-select: none;
+    }
+    .contrast-specific .contrast-quote-mark {
+      color: #FAC775;
+      opacity: 0.15;
     }
     .contrast-specific { border-color: var(--color-amber); background: rgba(99, 56, 6, 0.15); }
     .contrast-label {
@@ -354,6 +505,39 @@
       transform: translateY(-3px); border-color: var(--color-amber);
       box-shadow: 0 8px 24px rgba(0,0,0,0.06);
     }
+    .ex-preview {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background: #fafaf7;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+    .ex-preview-warn {
+      width: 32px; height: 32px;
+      background: #1a1a1a;
+      color: var(--color-red-accent);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .ex-preview-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+    .ex-preview-bar {
+      height: 8px;
+      border-radius: 2px;
+      width: 100%;
+    }
+    .ex-preview-bar--amber { background: var(--color-amber); width: 85%; }
+    .ex-preview-bar--teal  { background: var(--color-teal);  width: 70%; }
+    .ex-preview-bar--coral { background: var(--color-coral); width: 55%; }
     .ex-meta {
       display: flex; justify-content: space-between; align-items: center;
       padding-bottom: 0.75rem; margin-bottom: 1rem;
@@ -595,6 +779,15 @@
       }
       .ex-genre { text-align: left; }
     }
+    @media (max-width: 720px) {
+      .hero-backdrop {
+        font-size: 260px;
+        top: auto; bottom: -60px;
+        right: -20px;
+        transform: none;
+        opacity: 0.04;
+      }
+    }
 
     @media (max-width: 640px) {
       nav { padding: 0.75rem 1rem; }
@@ -602,10 +795,11 @@
         width: 100%;
         justify-content: flex-start;
       }
+      .network-logos { gap: 0.5rem 0.9rem; }
+      .network-logo-sep { display: none; }
       .hero-stats { gap: 1.5rem; }
       .contrast-grid,
       .examples-grid,
-      .resources-grid,
       .pricing-grid {
         grid-template-columns: 1fr;
       }
@@ -641,6 +835,7 @@
   </nav>
 
   <section class="hero">
+    <div class="hero-backdrop" aria-hidden="true">R<span class="hero-backdrop-slash">/</span>101</div>
     <div class="hero-inner">
       <p class="eyebrow">READER101 · FOR THE PERSON HOLDING THE SIDES</p>
       <p class="hero-trustline">Built by a working casting pro. Used on auditions for Netflix, Hulu, Disney, and HBO.</p>
@@ -661,6 +856,22 @@
         </a>
         <a href="#how" class="btn-ghost">See how it works</a>
       </div>
+      <div class="network-strip">
+        <p class="network-label">Built on audition sides from</p>
+        <div class="network-logos">
+          <span class="network-logo">NETFLIX</span>
+          <span class="network-logo-sep">·</span>
+          <span class="network-logo">HULU</span>
+          <span class="network-logo-sep">·</span>
+          <span class="network-logo">DISNEY</span>
+          <span class="network-logo-sep">·</span>
+          <span class="network-logo">HBO</span>
+          <span class="network-logo-sep">·</span>
+          <span class="network-logo">WARNER BROS.</span>
+          <span class="network-logo-sep">·</span>
+          <span class="network-logo">SAG-AFTRA</span>
+        </div>
+      </div>
       <div class="hero-stats">
         <div><strong>12</strong><span>sections per guide</span></div>
         <div><strong>&lt;40s</strong><span>to generate</span></div>
@@ -673,20 +884,29 @@
     <p class="eyebrow">BEFORE YOU RECORD</p>
     <h2>Free guides for parents running the tape.</h2>
     <div class="resources-grid">
-      <a href="https://selftapetips.childactor101.com" class="resource-card">
-        <h3>Set up your self-tape</h3>
-        <p>Lighting, framing, background, audio — the complete technical checklist.</p>
-        <span class="resource-link">Read the guide →</span>
+      <a href="https://selftapetips.childactor101.com" class="resource-card resource-card--setup">
+        <div class="resource-card-inner">
+          <div class="resource-kicker">The Setup Guide</div>
+          <h3>Set up your self-tape <em>right.</em></h3>
+          <p>Lighting, framing, background, audio — the complete technical checklist.</p>
+          <span class="resource-link">Read the guide →</span>
+        </div>
       </a>
-      <a href="https://memorize.childactor101.com" class="resource-card">
-        <h3>Help your child memorize lines</h3>
-        <p>The memorization methods working kids actually use. No flashcards.</p>
-        <span class="resource-link">Read the guide →</span>
+      <a href="https://memorize.childactor101.com" class="resource-card resource-card--memorize">
+        <div class="resource-card-inner">
+          <div class="resource-kicker">The Memorization Guide</div>
+          <h3>Memorize lines <em>fast.</em><br>Without the burnout.</h3>
+          <p>The methods working kids actually use. No flashcards. No tears.</p>
+          <span class="resource-link">Read the guide →</span>
+        </div>
       </a>
-      <a href="https://zoomcb.childactor101.com" class="resource-card">
-        <h3>Prepare for callbacks</h3>
-        <p>Zoom callbacks are a different game. Here's what changes.</p>
-        <span class="resource-link">Read the guide →</span>
+      <a href="https://zoomcb.childactor101.com" class="resource-card resource-card--callbacks">
+        <div class="resource-card-inner">
+          <div class="resource-kicker">The Callback Guide</div>
+          <h3>Zoom callbacks are <em>a different game.</em></h3>
+          <p>Here's what changes when the producers are on the other end of the screen.</p>
+          <span class="resource-link">Read the guide →</span>
+        </div>
       </a>
     </div>
   </section>
@@ -753,6 +973,7 @@
       <h2>Every other reader tip looks like this.<br>Reader101 looks like this.</h2>
       <div class="contrast-grid">
         <div class="contrast-col contrast-generic">
+          <div class="contrast-quote-mark">"</div>
           <div class="contrast-label">Generic advice</div>
           <ul>
             <li>"Don't rush the lines."</li>
@@ -762,6 +983,7 @@
           </ul>
         </div>
         <div class="contrast-col contrast-specific">
+          <div class="contrast-quote-mark">"</div>
           <div class="contrast-label">Reader101</div>
           <ul>
             <li>"At the honeymoon spiral, freeze. Don't laugh. Your stillness is the scene."</li>
@@ -810,6 +1032,14 @@
     <div class="examples-grid">
 
       <a href="https://reader101.site/barbara_reader_guide_tgotw" class="example-card">
+        <div class="ex-preview">
+          <div class="ex-preview-warn">⚠</div>
+          <div class="ex-preview-stack">
+            <div class="ex-preview-bar ex-preview-bar--amber"></div>
+            <div class="ex-preview-bar ex-preview-bar--teal"></div>
+            <div class="ex-preview-bar ex-preview-bar--coral"></div>
+          </div>
+        </div>
         <div class="ex-meta">
           <span class="ex-network">NETFLIX / SONY</span>
           <span class="ex-genre">Dramatic Series</span>
@@ -821,6 +1051,14 @@
       </a>
 
       <a href="https://reader101.site/ben_reader_support_guide" class="example-card">
+        <div class="ex-preview">
+          <div class="ex-preview-warn">⚠</div>
+          <div class="ex-preview-stack">
+            <div class="ex-preview-bar ex-preview-bar--amber"></div>
+            <div class="ex-preview-bar ex-preview-bar--teal"></div>
+            <div class="ex-preview-bar ex-preview-bar--coral"></div>
+          </div>
+        </div>
         <div class="ex-meta">
           <span class="ex-network">DISNEY</span>
           <span class="ex-genre">Multi-Cam Sitcom</span>
@@ -832,6 +1070,14 @@
       </a>
 
       <a href="https://reader101.site/foster_dade_reader_guide_v3" class="example-card">
+        <div class="ex-preview">
+          <div class="ex-preview-warn">⚠</div>
+          <div class="ex-preview-stack">
+            <div class="ex-preview-bar ex-preview-bar--amber"></div>
+            <div class="ex-preview-bar ex-preview-bar--teal"></div>
+            <div class="ex-preview-bar ex-preview-bar--coral"></div>
+          </div>
+        </div>
         <div class="ex-meta">
           <span class="ex-network">HULU / WARNER BROS.</span>
           <span class="ex-genre">Teen Series · Sensitive</span>
@@ -843,6 +1089,14 @@
       </a>
 
       <a href="https://reader101.site/june_reader_guide_lkoe_v4" class="example-card">
+        <div class="ex-preview">
+          <div class="ex-preview-warn">⚠</div>
+          <div class="ex-preview-stack">
+            <div class="ex-preview-bar ex-preview-bar--amber"></div>
+            <div class="ex-preview-bar ex-preview-bar--teal"></div>
+            <div class="ex-preview-bar ex-preview-bar--coral"></div>
+          </div>
+        </div>
         <div class="ex-meta">
           <span class="ex-network">DISNEY BRANDED TV</span>
           <span class="ex-genre">Sci-Fi Adventure</span>
@@ -854,6 +1108,14 @@
       </a>
 
       <a href="https://reader101.site/grace_reader_guide_13goingon30" class="example-card">
+        <div class="ex-preview">
+          <div class="ex-preview-warn">⚠</div>
+          <div class="ex-preview-stack">
+            <div class="ex-preview-bar ex-preview-bar--amber"></div>
+            <div class="ex-preview-bar ex-preview-bar--teal"></div>
+            <div class="ex-preview-bar ex-preview-bar--coral"></div>
+          </div>
+        </div>
         <div class="ex-meta">
           <span class="ex-network">FEATURE FILM</span>
           <span class="ex-genre">Rom-Com</span>
@@ -865,6 +1127,14 @@
       </a>
 
       <a href="https://reader101.site/tyler_reader_guide_friendthing" class="example-card">
+        <div class="ex-preview">
+          <div class="ex-preview-warn">⚠</div>
+          <div class="ex-preview-stack">
+            <div class="ex-preview-bar ex-preview-bar--amber"></div>
+            <div class="ex-preview-bar ex-preview-bar--teal"></div>
+            <div class="ex-preview-bar ex-preview-bar--coral"></div>
+          </div>
+        </div>
         <div class="ex-meta">
           <span class="ex-network">INDIE FEATURE</span>
           <span class="ex-genre">Drama</span>
