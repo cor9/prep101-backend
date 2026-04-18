@@ -64,7 +64,9 @@ export default function Navbar() {
   return (
     <nav className={`nav ${scrolled ? "nav--scrolled" : ""}`}>
       <div className="nav__inner">
-        <Link to="/" className="nav__brand">Prep101</Link>
+        <Link to="/" className="nav__brand" aria-label="Prep101 home">
+          <img src="/prep101-footer.png" alt="Prep101" className="nav__brand-logo" />
+        </Link>
 
         {/* Ecosystem links */}
         <div className="nav__ecosystem" style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>

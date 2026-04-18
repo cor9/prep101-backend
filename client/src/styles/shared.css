@@ -281,11 +281,17 @@
 }
 
 .nav__brand {
-  color: #fff;
-  font-weight: 900;
-  letter-spacing: .02em;
   text-decoration: none;
-  font-size: 1.3rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav__brand-logo {
+  height: 34px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.35));
 }
 
 .nav__links {
@@ -341,4 +347,10 @@
   background: rgba(255,255,255,.06);
   border-color: #e6edf5;
   transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .nav__brand-logo {
+    height: 28px;
+  }
 }

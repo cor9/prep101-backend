@@ -87,7 +87,13 @@ const Pricing = () => {
 
         {/* Hero */}
         <section className="page-hero">
-          <img src="/preplogo.png" alt="Prep101 logo" className="logo-hero" loading="lazy" />
+          <img
+            src="/prep101-logo.png"
+            alt="Prep101 logo"
+            className="logo-hero"
+            loading="lazy"
+            style={{ height: 'clamp(170px, 21vw, 280px)' }}
+          />
           <h1 className="h1-hero">Simple, Transparent Pricing</h1>
           <p className="h2-hero">One Child Actor 101 account. Every tool your actor needs — from prep to performance.</p>
         </section>
@@ -230,7 +236,8 @@ const Pricing = () => {
 
             <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                <img src="/preplogo.png" alt="Prep101" style={{ height: 32, objectFit: 'contain' }} />
+                <span style={{ color: 'rgba(255,200,58,0.45)', fontSize: '1.5rem', lineHeight: '32px' }}>+</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffd873', lineHeight: '32px' }}>Prep101</span>
                 <span style={{ color: 'rgba(255,200,58,0.45)', fontSize: '1.5rem', lineHeight: '32px' }}>+</span>
                 <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ffd873', lineHeight: '32px' }}>Reader101</span>
                 <span style={{ color: 'rgba(255,200,58,0.45)', fontSize: '1.5rem', lineHeight: '32px' }}>+</span>
@@ -250,15 +257,15 @@ const Pricing = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
               {[
-                { icon: '📋', title: 'Prep101 Starter', desc: '5 guides/month — beats, subtext, buttons', color: '#f59e0b' },
-                { icon: '📖', title: 'Reader101', desc: 'Unlimited reader guides — every audition', color: '#ffd873' },
-                { icon: '🎭', title: 'Bold Choices', desc: 'Unlimited daily acting choices', color: '#ff8a8a' },
+                { logo: '/prep101-footer.png', title: 'Prep101 Starter', desc: '5 guides/month — beats, subtext, buttons', color: '#f59e0b' },
+                { logo: '/reader101-footer.png', title: 'Reader101', desc: 'Unlimited reader guides — every audition', color: '#ffd873' },
+                { logo: '/boldchoices-logo.png', title: 'Bold Choices', desc: 'Unlimited daily acting choices', color: '#ff8a8a' },
               ].map(item => (
                 <div key={item.title} style={{
                   background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,200,58,0.16)',
                   borderRadius: '12px', padding: '1.25rem', textAlign: 'center',
                 }}>
-                  <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{item.icon}</div>
+                  <img src={item.logo} alt={item.title} style={{ height: 34, width: 'auto', objectFit: 'contain', margin: '0 auto 0.55rem', display: 'block' }} />
                   <div style={{ fontWeight: 700, color: item.color, marginBottom: '0.25rem', fontSize: '0.95rem' }}>{item.title}</div>
                   <div style={{ fontSize: '0.82rem', color: 'rgba(230,237,245,0.62)', lineHeight: 1.5 }}>{item.desc}</div>
                 </div>
@@ -266,6 +273,12 @@ const Pricing = () => {
             </div>
 
             <div style={{ textAlign: 'center' }}>
+              <p style={{ color: '#ffd873', fontSize: '0.95rem', margin: '0 0 0.55rem 0', fontWeight: 700 }}>
+                $19.99 + $19.99 + $9.99 = $49.97
+              </p>
+              <p style={{ color: '#fff', fontSize: '1rem', margin: '0 0 1rem 0', fontWeight: 800 }}>
+                Savings of $19.98
+              </p>
               <button
                 onClick={() => go(STRIPE.BUNDLE)}
                 style={{
@@ -290,6 +303,12 @@ const Pricing = () => {
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--gray-800)', textAlign: 'center', margin: '0 0 1.5rem 0' }}>
                 Additional Services
               </h2>
+              <div style={{ textAlign: 'center', margin: '-0.4rem 0 1.1rem 0' }}>
+                <p style={{ margin: '0 0 .45rem 0', color: 'var(--gray-500)', fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', fontSize: '.75rem' }}>
+                  by
+                </p>
+                <img src="/coaching-logo.png" alt="Coaching by Corey" style={{ height: 40, width: 'auto', objectFit: 'contain' }} />
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {[
                   { title: 'Self-Tape Feedback', price: '$22', desc: 'Professional feedback on your self-tape performance', href: STRIPE.ADDON_FEEDBACK, cta: 'Get Feedback' },
@@ -306,7 +325,7 @@ const Pricing = () => {
             </div>
 
             {/* FAQ */}
-            <div className="card-white">
+            <div className="card-white" style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)', border: '1px solid rgba(15,23,42,.08)' }}>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--gray-800)', textAlign: 'center', margin: '0 0 1.5rem 0' }}>
                 Questions
               </h2>
