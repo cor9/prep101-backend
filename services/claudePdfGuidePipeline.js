@@ -433,7 +433,9 @@ async function generateAnalysis({
 }) {
   const metaBlock = buildMetadataBlock(metadata);
 
-    const { data, model } = await sendAnthropicMessage({
+  let data, model;
+  try {
+    ({ data, model } = await sendAnthropicMessage({
       apiKey,
       preferredModel,
       maxTokens: ANALYSIS_MAX_TOKENS,
@@ -445,7 +447,7 @@ async function generateAnalysis({
           content: `Generate a structured analysis from this screenplay and metadata.\n\n${metaBlock}\n\nSCREENPLAY:\n${screenplayText}`,
         },
       ],
-    });
+    }));
   } catch (error) {
     throw wrapTimeoutError(error, "Script analysis", PER_CALL_TIMEOUT_MS);
   }
@@ -506,7 +508,9 @@ async function generateGuideHTML({
   // Prefer the richer analysis over a compressed summary when both are supplied
   const contextBlock = analysis || summary || "";
 
-    const { data, model } = await sendAnthropicMessage({
+  let data, model;
+  try {
+    ({ data, model } = await sendAnthropicMessage({
       apiKey,
       preferredModel,
       maxTokens: GUIDE_MAX_TOKENS,
@@ -523,7 +527,7 @@ SCRIPT ANALYSIS:
 ${contextBlock}`,
         },
       ],
-    });
+    }));
   } catch (error) {
     throw wrapTimeoutError(error, "HTML guide generation", PER_CALL_TIMEOUT_MS);
   }
