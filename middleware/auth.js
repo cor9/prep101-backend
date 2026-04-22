@@ -125,8 +125,11 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
 // Track failed login attempts
 const failedAttempts = new Map();
 
-// Clean up old failed attempts every hour
-setInterval(() => {
+// Clean up old failed attempts every hour.
+// Use .unref() so this timer does NOT prevent Vercel serverless functions
+// from completing — a referenced setInterval keeps the event loop alive,
+// causing FUNCTION_INVOCATION_FAILED crashes on every request.
+const _failedAttemptsCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, data] of failedAttempts.entries()) {
     if (now - data.timestamp > 60 * 60 * 1000) {
@@ -135,6 +138,7 @@ setInterval(() => {
     }
   }
 }, 60 * 60 * 1000);
+if (_failedAttemptsCleanupTimer.unref) _failedAttemptsCleanupTimer.unref();
 
 function parseCookies(cookieHeader = "") {
   return String(cookieHeader || "")
