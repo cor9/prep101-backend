@@ -22,13 +22,16 @@ export default function AuthBridge() {
 
     if (user?.accessToken || user?.token) {
       const token = user.accessToken || user.token;
-      const sep = redirect.includes('?') ? '&' : '?';
-      window.location.href = `${redirect}${sep}token=${encodeURIComponent(token)}`;
-    } else {
-      // Not logged in — bounce to login, come back here after
-      const returnUrl = encodeURIComponent(window.location.href);
-      window.location.href = `/login?next=${returnUrl}`;
+      if (token && token !== "null" && token !== "undefined") {
+        const sep = redirect.includes('?') ? '&' : '?';
+        window.location.href = `${redirect}${sep}token=${encodeURIComponent(token)}`;
+        return;
+      }
     }
+    
+    // Not logged in (or token invalid) — bounce to login, come back here after
+    const returnUrl = encodeURIComponent(window.location.href);
+    window.location.href = `/login?next=${returnUrl}`;
   }, [user]);
 
   return (

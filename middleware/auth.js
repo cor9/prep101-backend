@@ -339,7 +339,7 @@ async function getSupabaseUserFromToken(token) {
 module.exports = async (req, res, next) => {
   try {
     const cookies = parseCookies(req.headers?.cookie);
-    const token =
+    let token =
       req.header("Authorization")?.replace("Bearer ", "") ||
       cookies[AUTH_COOKIE_NAME] ||
       req.query?.token ||
@@ -348,11 +348,18 @@ module.exports = async (req, res, next) => {
       req.body?.access_token;
     const clientIP = req.ip || req.connection.remoteAddress;
 
+    // Sanitize token: treat "null" or "undefined" strings as missing
+    if (token === "null" || token === "undefined") {
+      token = null;
+    }
+
     if (!token) {
-      // Log unauthorized access attempt
-      console.log(
-        `🔒 Unauthorized access attempt from IP: ${clientIP}, Path: ${req.path}`
-      );
+      // Log unauthorized access attempt (less verbose for health checks/root)
+      if (req.path !== "/" && req.path !== "/health") {
+        console.log(
+          `🔒 No token from IP: ${clientIP}, Path: ${req.path}`
+        );
+      }
       return res
         .status(401)
         .json({ message: "No token, authorization denied" });

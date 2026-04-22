@@ -26,7 +26,9 @@ const resolvePostAuthDestination = (nextDestination, user) => {
       url.origin !== window.location.origin &&
       /auth-callback(\.html)?$/i.test(url.pathname)
     ) {
-      url.searchParams.set('token', token);
+      if (token && token !== "null") {
+        url.searchParams.set('token', token);
+      }
       return url.toString();
     }
 

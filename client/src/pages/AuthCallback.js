@@ -8,9 +8,18 @@ export default function AuthCallback() {
     const redirect = params.get('redirect') || '/dashboard';
 
     const finish = async () => {
-      if (token) {
+      if (token && token !== 'null') {
+        // Persist token to localStorage immediately so it's available 
+        // even if the cookie-based session call fails or is blocked
         try {
-          await fetch(`${API_BASE}/api/auth/session`, {
+          localStorage.setItem('ca101_token', token);
+          console.log('✅ Token persisted to localStorage');
+        } catch (e) {
+          console.warn('⚠️ Failed to persist token to localStorage', e);
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/api/auth/session`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -18,7 +27,13 @@ export default function AuthCallback() {
             },
             body: JSON.stringify({ token }),
           });
-        } catch (_) {}
+          
+          if (!res.ok) {
+            console.error('❌ Session creation failed:', res.status);
+          }
+        } catch (err) {
+          console.error('❌ Auth session fetch error:', err);
+        }
       }
 
       window.location.replace(redirect);

@@ -158,8 +158,13 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // are passed through without CORS headers.
 const CORS_ALLOWED_ORIGINS = new Set([
   'https://prep101.site',
+  'https://www.prep101.site',
   'https://boldchoices.site',
+  'https://www.boldchoices.site',
   'https://reader101.site',
+  'https://www.reader101.site',
+  'https://childactor101.com',
+  'https://www.childactor101.com',
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
