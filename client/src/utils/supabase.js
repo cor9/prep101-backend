@@ -71,6 +71,13 @@ async function parseJsonResponse(response, fallbackMessage = 'Request failed') {
     if (looksLikeHtmlBody(raw)) {
       throw new Error('Unexpected HTML response from auth service. Please retry.');
     }
+    
+    // If it's a simple string, it might be a plain-text error from a proxy or rate-limiter
+    if (raw && raw.length > 0 && raw.length < 200) {
+      return { message: raw };
+    }
+    
+    console.error('🔍 JSON Parse failed. Raw response:', raw.substring(0, 500));
     throw new Error(fallbackMessage);
   }
 }

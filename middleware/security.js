@@ -6,7 +6,7 @@ const helmet = require('helmet');
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 50, // Increased from 5 to 50 for smoother navigation
-  message: 'Too many authentication attempts, please try again later',
+  message: { message: 'Too many authentication attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
@@ -18,22 +18,22 @@ const authLimiter = rateLimit({
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later',
+  message: { message: 'Too many requests from this IP, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
   // Vercel/proxy configuration
-  validate: { trustProxy: false } // Disable validation for serverless environments
+  validate: { trustProxy: true } // Enable validation for serverless environments
 });
 
 // Rate limiting for payment endpoints
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // limit each IP to 10 payment requests per windowMs
-  message: 'Too many payment attempts, please try again later',
+  message: { message: 'Too many payment attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
   // Vercel/proxy configuration
-  validate: { trustProxy: false } // Disable validation for serverless environments
+  validate: { trustProxy: true } // Enable validation for serverless environments
 });
 
 // Slow down repeated requests
