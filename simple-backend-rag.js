@@ -2790,29 +2790,56 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       mode,  // "reader_support" activates Reader101 path
     } = req.body;
 
-    const requestedUploadIds = Array.isArray(uploadIds)
-      ? uploadIds
-      : uploadIds
-        ? [uploadIds]
-        : uploadId
-          ? [uploadId]
-          : [];
+    // Support array-style uploadIds[] from multipart (sent as "uploadIds[]" key)
+    const uploadIdsArray = req.body['uploadIds[]']
+      ? (Array.isArray(req.body['uploadIds[]']) ? req.body['uploadIds[]'] : [req.body['uploadIds[]']])
+      : [];
+
+    const requestedUploadIds = [
+      ...(Array.isArray(uploadIds) ? uploadIds : uploadIds ? [uploadIds] : []),
+      ...(uploadId && !uploadIds ? [uploadId] : []),
+      ...uploadIdsArray,
+    ].filter((id, i, arr) => id && arr.indexOf(id) === i); // unique, non-empty
 
     let pdfBuffer = req.file?.buffer || null;
     let pdfFilename = req.file?.originalname || null;
+    // Collect all cached PDF entries for each uploadId (multi-file support)
+    const allCachedEntries = [];
 
-    if (!pdfBuffer) {
-      for (const id of requestedUploadIds) {
-        const cached = uploads[id];
-        if (!cached?.pdfBase64) continue;
-        const ownerId = cached.userId ? String(cached.userId) : null;
-        const requestUserId = req.userId || req.user?.id ? String(req.userId || req.user?.id) : null;
-        if (ownerId && requestUserId && ownerId !== requestUserId) continue;
-        pdfBuffer = Buffer.from(cached.pdfBase64, "base64");
-        pdfFilename = cached.filename || `upload_${id}.pdf`;
-        break;
+    const requestUserId = req.userId || req.user?.id
+      ? String(req.userId || req.user?.id)
+      : null;
+
+    for (const id of requestedUploadIds) {
+      const cached = uploads[id];
+      if (!cached?.pdfBase64) continue;
+      const ownerId = cached.userId ? String(cached.userId) : null;
+      if (ownerId && requestUserId && ownerId !== requestUserId) continue;
+      allCachedEntries.push(cached);
+    }
+
+    if (!pdfBuffer && allCachedEntries.length > 0) {
+      // Primary buffer (first uploaded file)
+      pdfBuffer = Buffer.from(allCachedEntries[0].pdfBase64, 'base64');
+      pdfFilename = allCachedEntries[0].filename || `upload_${requestedUploadIds[0]}.pdf`;
+    }
+
+    // If multiple PDFs were uploaded, build a merged scene text so the
+    // Reader101 / text-based pipeline sees the complete script.
+    let mergedSceneTextFromCache = null;
+    if (allCachedEntries.length > 1) {
+      const parts = allCachedEntries
+        .map((entry, i) => {
+          const text = entry.sceneText || entry.text || '';
+          const name = entry.filename || `File ${i + 1}`;
+          return text ? `--- FILE: ${name} ---\n${text}` : null;
+        })
+        .filter(Boolean);
+      if (parts.length > 0) {
+        mergedSceneTextFromCache = parts.join('\n\n');
       }
     }
+
 
     if (!pdfBuffer) {
       return res.status(400).json({
@@ -2867,8 +2894,20 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       const { parseScreenplayText } = require("./services/screenplayParser");
 
       console.log("📖 [Reader101] generate-from-pdf — extracting via Claude...");
-      const extraction = await extractScreenplay({ pdfBuffer, role: characterName.trim(), apiKey });
-      const repairedText = repairScreenplayText(extraction.screenplayText || "");
+
+      let repairedText;
+
+      if (mergedSceneTextFromCache) {
+        // Multi-PDF: text was already extracted per-file during upload — merge and use directly
+        console.log(`📖 [Reader101] Using pre-extracted text from ${allCachedEntries.length} uploaded PDFs (${mergedSceneTextFromCache.length} chars)`);
+        const { repairScreenplayText: repairFn } = require("./services/screenplayRepair");
+        repairedText = repairFn(mergedSceneTextFromCache);
+      } else {
+        // Single PDF: run Claude document extraction as usual
+        const extraction = await extractScreenplay({ pdfBuffer, role: characterName.trim(), apiKey });
+        repairedText = repairScreenplayText(extraction.screenplayText || "");
+      }
+
       const parsedScreenplay = parseScreenplayText(repairedText, { actorCharacter: characterName.trim() });
       const FORBIDDEN_READER_ROLES = new Set(["NARRATOR","V.O.","VO","O.S.","OS","ANNOUNCER"]);
       const readerRoles = (parsedScreenplay.readerRoles || []).filter(r => !FORBIDDEN_READER_ROLES.has(r.trim().toUpperCase()));

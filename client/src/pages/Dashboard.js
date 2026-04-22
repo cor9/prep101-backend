@@ -591,9 +591,12 @@ const Dashboard = () => {
       const uploadIds = (
         uploadData?.uploadIds || [uploadData?.uploadId]
       ).filter(Boolean);
+      // Always send the primary uploadId for backward compat
       if (uploadIds[0]) {
         multipart.append("uploadId", String(uploadIds[0]));
       }
+      // Also send all uploadIds so the backend can merge multiple PDFs
+      uploadIds.forEach((id) => multipart.append("uploadIds[]", String(id)));
       // Tell the backend which guide type to generate
       if (modeForRequest) {
         multipart.append("mode", modeForRequest);
@@ -1481,6 +1484,7 @@ const Dashboard = () => {
                 onUpload={handleFileUpload}
                 onUploadStart={handleUploadStart}
                 onUploadEnd={handleUploadEnd}
+                allowMultiple={isReader101Context}
               />
 
               {uploadIsUsable && (
