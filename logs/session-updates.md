@@ -1,5 +1,17 @@
 # Session Updates
 
+## 2026-04-23
+
+### Migrate Guide Generation to Async Background Workers
+- **Objective:** Solve Vercel 504 execution timeouts for long-running Claude API tasks across Prep101, Reader101, and Bold Choices by decoupling generation from the HTTP request lifecycle.
+- **Architecture Updates:**
+  - Implemented `services/guideQueue.js` utilizing BullMQ and Redis with an in-memory development fallback to orchestrate async generation jobs.
+  - Implemented `services/guideJobProcessor.js` to execute the actual guide generation pipeline (Prep101, Reader101, Bold Choices) and schema validation within background workers.
+  - Refactored `simple-backend-rag.js` and `routes/boldChoices.js` generation endpoints to immediately enqueue jobs and return HTTP 202 Accepted.
+  - Added new `/api/guides/jobs/:id` and `/api/bold-choices/jobs/:id` polling endpoints.
+  - Updated React frontend (`Dashboard.js` and `BoldChoices.js`) to continuously poll the job endpoints with visual progress updates until completion, replacing blocking fetch requests.
+- **Coupling & Billing Enhancements:**
+  - Deferred database persistence (Supabase/Sequelize) and credit deductions until the polling endpoint retrieves a completed job status, ensuring the background worker remains stateless and free of tightly-coupled authentication logic.
 ## 2026-04-14
 
 ### Incident log: Prep101 auth + upload + generation reliability failures
