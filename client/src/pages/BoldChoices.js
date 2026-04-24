@@ -275,9 +275,36 @@ const BoldChoices = () => {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      let data = await res.json();
 
-      if (!res.ok || !data.success) {
+      if (res.status === 202 && data.jobId) {
+        let jobStatus = "waiting";
+        let jobData = null;
+        
+        while (jobStatus !== "completed" && jobStatus !== "failed") {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          const pollRes = await fetch(`${API_BASE}/api/bold-choices/jobs/${data.jobId}`, {
+            ...withApiCredentials({}, user),
+          });
+          
+          if (!pollRes.ok) throw new Error("Failed to poll guide status");
+          jobData = await pollRes.json();
+          jobStatus = jobData.state;
+          
+          if (jobData.statusMessage && toastId) {
+            toast.loading(`${jobData.progress}% - ${jobData.statusMessage}`, { id: toastId });
+          }
+        }
+        
+        if (jobStatus === "failed") {
+          throw new Error(jobData.failedReason || "Guide generation failed in background worker.");
+        }
+        
+        data = jobData;
+      }
+
+      if ((!res.ok && res.status !== 202) || !data.success) {
         throw new Error(data.error || `Server error (${res.status})`);
       }
 

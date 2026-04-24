@@ -222,6 +222,8 @@ const {
 let enqueueExtractionJob = null;
 let getExtractionJob = null;
 let processPdfExtractionJob = null;
+let enqueueGuideJob = null;
+let getGuideJob = null;
 
 try {
   const extractionQueue = require("./services/extractionQueue");
@@ -229,6 +231,14 @@ try {
   getExtractionJob = extractionQueue.getExtractionJob;
 } catch (error) {
   console.log("⚠️  Extraction queue unavailable:", error.message);
+}
+
+try {
+  const guideQueue = require("./services/guideQueue");
+  enqueueGuideJob = guideQueue.enqueueGuideJob;
+  getGuideJob = guideQueue.getGuideJob;
+} catch (error) {
+  console.log("⚠️  Guide queue unavailable:", error.message);
 }
 
 try {
@@ -332,6 +342,16 @@ function assessContentQuality(text, wordCount, isUpload = false) {
 
 function getMeaningfulWordCount(text = "") {
   return (text.match(/\b[\w']+\b/g) || []).length;
+}
+
+function recoverTextFromExtractionJobResult(ocrFallback = {}) {
+  const sections = ocrFallback?.mapped?.sections || [];
+  return sections
+    .map((section) => String(section?.text || "").trim())
+    .filter(Boolean)
+    .filter((line) => line.length > 1)
+    .filter((line) => !/Sides by Breakdown Services/i.test(line))
+    .join("\n");
 }
 
 // Import and mount new API routes (with error handling)
@@ -2672,16 +2692,122 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     }
 
     console.log(`[UPLOAD] Extracting text from ${req.file.originalname}`);
-    const pipelineResult = await ingestPdf(req.file.buffer, {
+    let pipelineResult = await ingestPdf(req.file.buffer, {
       maxPages: 6,
       maxPipelineMs: 35000,
       allowLocalRaster: !process.env.VERCEL,
     });
-    const cleanedText = pipelineResult.text || "";
-    const quality = assessQuality(cleanedText);
-    const wordCount = pipelineResult.wordCount || quality.wordCount || getMeaningfulWordCount(cleanedText);
-    const extractionMethod = pipelineResult.source || "text";
-    const fallbackMode = Boolean(pipelineResult.limited);
+    let cleanedText = pipelineResult.text || "";
+    let quality = assessQuality(cleanedText);
+    let wordCount = pipelineResult.wordCount || quality.wordCount || getMeaningfulWordCount(cleanedText);
+    let pageCount =
+      Number(
+        pipelineResult.pageCount ||
+          pipelineResult.diagnostics?.textStage?.pageCount ||
+          0
+      ) || null;
+    let looksUnderExtracted =
+      pageCount >= 3 && wordCount < pageCount * 90;
+    let looksCorruptedByWatermark =
+      quality.quality === "repetitive" ||
+      quality.fallbackRecommended === true ||
+      pipelineResult.diagnostics?.textStage?.failures?.some((failure) =>
+        /watermarkInterference|repeatedTokens|lowEntropy|repetitive/i.test(String(failure || ""))
+      );
+    let extractionMethod = pipelineResult.source || "text";
+    let fallbackMode = Boolean(
+      pipelineResult.limited || looksUnderExtracted || looksCorruptedByWatermark
+    );
+    let uploadWarnings = [...(pipelineResult.warnings || [])];
+
+    if (fallbackMode && processPdfExtractionJob) {
+      try {
+        console.warn("[UPLOAD] Low-density/corrupted watermark extraction detected; trying purifier/OCR recovery.", {
+          filename: req.file.originalname,
+          wordCount,
+          pageCount,
+          extractionMethod,
+          quality: quality.quality,
+        });
+        const recovered = await processPdfExtractionJob({
+          filename: req.file.originalname,
+          pdfBase64: req.file.buffer.toString("base64"),
+          userId: req.userId || req.user?.id || null,
+          createdAt: new Date().toISOString(),
+        });
+        const recoveredText = recoverTextFromExtractionJobResult(recovered);
+        const recoveredWordCount = getMeaningfulWordCount(recoveredText);
+        const recoveredQuality = assessQuality(recoveredText);
+        const recoveryMinimum = pageCount ? pageCount * 90 : 180;
+        const recoveryIsUsableForCorruption =
+          looksCorruptedByWatermark &&
+          recoveredWordCount >= recoveryMinimum &&
+          recoveredQuality.quality !== "repetitive" &&
+          recoveredQuality.quality !== "empty";
+        const recoveryBeatsLowDensityText =
+          recoveredWordCount > Math.max(wordCount * 2, recoveryMinimum);
+
+        if (recoveryIsUsableForCorruption || recoveryBeatsLowDensityText) {
+          cleanedText = recoveredText;
+          wordCount = recoveredWordCount;
+          pageCount = recovered.pageCount || pageCount;
+          quality = recoveredQuality;
+          extractionMethod = `purifier_ocr:${recovered.provider || "unknown"}`;
+          fallbackMode = false;
+          looksUnderExtracted = false;
+          looksCorruptedByWatermark = false;
+          uploadWarnings = [
+            ...(recovered.fallbackReason ? [`OCR fallback note: ${recovered.fallbackReason}`] : []),
+          ];
+          pipelineResult = {
+            ...pipelineResult,
+            text: recoveredText,
+            wordCount: recoveredWordCount,
+            pageCount,
+            source: extractionMethod,
+            limited: false,
+            confidence: "medium",
+            characterNames: [],
+            warnings: uploadWarnings,
+            diagnostics: {
+              ...pipelineResult.diagnostics,
+              purifierOcr: {
+                provider: recovered.provider,
+                pageCount: recovered.pageCount,
+                blockCount: recovered.blockCount,
+                fallbackReason: recovered.fallbackReason || null,
+              },
+            },
+          };
+          console.log("[UPLOAD] Purifier/OCR recovery succeeded.", {
+            filename: req.file.originalname,
+            recoveredWordCount,
+            provider: recovered.provider,
+          });
+        } else {
+          console.warn("[UPLOAD] Purifier/OCR recovery did not improve extraction enough.", {
+            recoveredWordCount,
+            recoveredQuality: recoveredQuality.quality,
+            originalWordCount: wordCount,
+            provider: recovered.provider,
+            fallbackReason: recovered.fallbackReason,
+          });
+        }
+      } catch (ocrError) {
+        console.warn("[UPLOAD] Purifier/OCR recovery failed; keeping limited extraction.", ocrError.message);
+      }
+    }
+
+    if (looksUnderExtracted) {
+      uploadWarnings.push(
+        `Only ${wordCount} words were recovered from a ${pageCount}-page PDF, so this upload is being treated as a partial extraction.`
+      );
+    }
+    if (looksCorruptedByWatermark) {
+      uploadWarnings.push(
+        "The extracted text appears dominated by repeated watermark tokens, so this upload is being treated as a partial extraction."
+      );
+    }
 
     extractionStats.totals[extractionMethod] =
       (extractionStats.totals[extractionMethod] || 0) + 1;
@@ -2691,7 +2817,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       wordCount,
       quality: quality.quality,
       fallbackMode,
-      warnings: pipelineResult.warnings || [],
+      pageCount,
+      warnings: uploadWarnings,
       diagnostics: pipelineResult.diagnostics || null,
       timestamp: new Date().toISOString(),
     };
@@ -2716,11 +2843,12 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         pipelineResult.confidence || (quality.usable ? "high" : "low"),
       uploadTime: new Date(),
       wordCount: wordCount,
+      pageCount,
       fileType: fileType,
       userId: req.userId || req.user?.id || null,
       fallbackMode,
       quality,
-      warnings: pipelineResult.warnings || [],
+      warnings: uploadWarnings,
       source: extractionMethod,
     };
 
@@ -2734,6 +2862,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       sceneText: cleanedText,
       characterNames,
       wordCount: wordCount,
+      pageCount,
       extractionMethod,
       extractionConfidence:
         pipelineResult.confidence || (quality.usable ? "high" : "low"),
@@ -2744,14 +2873,23 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       source: extractionMethod,
       confidence:
         pipelineResult.confidence || (quality.usable ? "high" : "low"),
-      warnings: pipelineResult.warnings || [],
-      uploadMessage: pipelineResult.uploadMessage || null,
+      warnings: uploadWarnings,
+      uploadMessage:
+        pipelineResult.uploadMessage ||
+        (looksUnderExtracted
+          ? `Only ${wordCount} words were recovered from this ${pageCount}-page PDF. We'll use recovery reading during generation instead of trusting that count.`
+          : looksCorruptedByWatermark
+            ? "The PDF text layer appears dominated by watermark text. We'll use recovery reading during generation instead of trusting that count."
+          : null),
       debug: {
         method: extractionMethod,
         usable: quality.usable,
         reason: quality.reason,
         ratio: quality.ratio,
         shortButReadable: Boolean(quality.shortButReadable),
+        looksUnderExtracted,
+        looksCorruptedByWatermark,
+        pageCount,
         diagnostics: pipelineResult.diagnostics || null,
       }
     });
@@ -2824,21 +2962,33 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       pdfFilename = allCachedEntries[0].filename || `upload_${requestedUploadIds[0]}.pdf`;
     }
 
-    // If multiple PDFs were uploaded, build a merged scene text so the
-    // Reader101 / text-based pipeline sees the complete script.
-    let mergedSceneTextFromCache = null;
-    if (allCachedEntries.length > 1) {
-      const parts = allCachedEntries
-        .map((entry, i) => {
-          const text = entry.sceneText || entry.text || '';
-          const name = entry.filename || `File ${i + 1}`;
-          return text ? `--- FILE: ${name} ---\n${text}` : null;
-        })
-        .filter(Boolean);
-      if (parts.length > 0) {
-        mergedSceneTextFromCache = parts.join('\n\n');
-      }
+    // Use upload-stage recovered text as a safety net for both single and
+    // multi-file Reader101 generations. Some PDFs are readable by the staged
+    // ingest pipeline but fail the direct Claude document reader.
+    let mergedSceneTextFromCache = allCachedEntries
+      .map((entry, i) => {
+        const text = entry.sceneText || entry.text || "";
+        if (!text.trim()) return null;
+        const name = entry.filename || `File ${i + 1}`;
+        return allCachedEntries.length > 1 ? `--- FILE: ${name} ---\n${text}` : text;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+
+    if (!mergedSceneTextFromCache && req.body.sceneText) {
+      mergedSceneTextFromCache = String(req.body.sceneText || "");
     }
+
+    const cachedSceneWordCount = mergedSceneTextFromCache
+      ? (mergedSceneTextFromCache.match(/\b[\w']+\b/g) || []).length
+      : 0;
+    const cachedPageCount =
+      allCachedEntries.reduce(
+        (max, entry) => Math.max(max, Number(entry.pageCount || 0)),
+        0
+      ) || null;
+    const cachedTextLooksUnderExtracted =
+      cachedPageCount >= 3 && cachedSceneWordCount < cachedPageCount * 90;
 
 
     if (!pdfBuffer) {
@@ -2896,16 +3046,64 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       console.log("📖 [Reader101] generate-from-pdf — extracting via Claude...");
 
       let repairedText;
+      const recoverReaderTextFromStagedIngest = async (reason) => {
+        console.warn(`[Reader101] Direct PDF extraction ${reason}; trying staged ingest fallback.`);
+        const { ingestPdf } = require("./services/pdfIngestPipeline");
+        const ingestResult = await ingestPdf(pdfBuffer, {
+          maxPages: 6,
+          maxPipelineMs: 35000,
+          allowLocalRaster: !process.env.VERCEL,
+        });
+        const fallbackText = ingestResult?.text || "";
+        const fallbackWordCount = (fallbackText.match(/\b[\w']+\b/g) || []).length;
+        if (fallbackWordCount >= 80) {
+          console.warn(
+            `[Reader101] Staged ingest fallback recovered ${fallbackWordCount} words via ${ingestResult?.source || "unknown"}.`
+          );
+          return repairScreenplayText(fallbackText);
+        }
+        return null;
+      };
 
-      if (mergedSceneTextFromCache) {
-        // Multi-PDF: text was already extracted per-file during upload — merge and use directly
-        console.log(`📖 [Reader101] Using pre-extracted text from ${allCachedEntries.length} uploaded PDFs (${mergedSceneTextFromCache.length} chars)`);
-        const { repairScreenplayText: repairFn } = require("./services/screenplayRepair");
-        repairedText = repairFn(mergedSceneTextFromCache);
-      } else {
-        // Single PDF: run Claude document extraction as usual
+      try {
         const extraction = await extractScreenplay({ pdfBuffer, role: characterName.trim(), apiKey });
         repairedText = repairScreenplayText(extraction.screenplayText || "");
+      } catch (error) {
+        if (
+          mergedSceneTextFromCache &&
+          cachedSceneWordCount >= 80 &&
+          !cachedTextLooksUnderExtracted
+        ) {
+          console.warn(
+            `[Reader101] Direct PDF extraction failed (${error.message}); using upload-stage extracted text (${cachedSceneWordCount} words).`
+          );
+          repairedText = repairScreenplayText(mergedSceneTextFromCache);
+        } else {
+          repairedText = await recoverReaderTextFromStagedIngest(`failed (${error.message})`);
+          if (!repairedText) throw error;
+        }
+      }
+
+      const repairedWordCount = (repairedText.match(/\b[\w']+\b/g) || []).length;
+      const directTextLooksUnderExtracted =
+        cachedPageCount >= 3 && repairedWordCount < cachedPageCount * 90;
+      if (
+        (repairedWordCount < 80 || directTextLooksUnderExtracted) &&
+        mergedSceneTextFromCache &&
+        cachedSceneWordCount >= 80 &&
+        !cachedTextLooksUnderExtracted
+      ) {
+        console.warn(
+          `[Reader101] Direct PDF extraction returned only ${repairedWordCount} words; using upload-stage extracted text (${cachedSceneWordCount} words).`
+        );
+        repairedText = repairScreenplayText(mergedSceneTextFromCache);
+      } else if (repairedWordCount < 80 || directTextLooksUnderExtracted) {
+        const stagedText = await recoverReaderTextFromStagedIngest(
+          directTextLooksUnderExtracted
+            ? `returned only ${repairedWordCount} words for ${cachedPageCount} pages`
+            : `returned only ${repairedWordCount} words`
+        );
+        if (stagedText) repairedText = stagedText;
       }
 
       const parsedScreenplay = parseScreenplayText(repairedText, { actorCharacter: characterName.trim() });
@@ -3150,6 +3348,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
           sceneText: req.body.sceneText || req.body.text,
           characterNames: req.body.characterNames || [],
           wordCount: req.body.wordCount || 0,
+          pageCount: req.body.pageCount || null,
           uploadTime: new Date(),
           fileType: "sides", // Default
           userId: req.userId,
@@ -3177,6 +3376,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         wordCount:
           fallback.wordCount ||
           (fallback.sceneText.match(/\b\w+\b/g) || []).length,
+        pageCount: fallback.pageCount || null,
         fileType: fallback.fileType || "sides",
         userId: req.userId || req.user?.id || null,
         fallbackMode: Boolean(fallback.fallbackMode),
@@ -3446,350 +3646,188 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       });
     }
 
-    // ─── Reader101: Reader Support Guide mode ────────────────────────────────
-    if (isReaderMode) {
-      console.log("📖 [Reader101] Reader Support mode activated — generating reader guide");
-      const { generateReaderGuide } = require("./services/readerGuideService");
-
-      const readerGuideHtml = await generateReaderGuide({
-        sceneText: combinedSceneText,
-        characterName: characterName.trim(),
-        characterNames: combinedCharacterNames,
-        structure: parsedScreenplay.structure,
-        actorAge: actorAge || "",
-        productionTitle: productionTitle.trim(),
-        productionType: productionType.trim(),
-        genre: genre || "",
-        storyline: storyline || "",
-        fallbackMode: shouldForceReaderFallback,
+    // ─── QUEUE ASYNC JOB ────────────────────────────────
+    
+    // Check if queue is available
+    if (!enqueueGuideJob) {
+      return res.status(503).json({
+        success: false,
+        error: "Guide generation queue is unavailable on this server. Please try again later.",
       });
-
-      console.log("✅ [Reader101] Reader guide complete!");
-
-      // Save reader guide to database (same table, tagged with mode)
-      try {
-        const GuideModel = Guide || require("./models/Guide");
-        const readerGuideId = `reader_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-        const readerPayload = {
-          guideId: readerGuideId,
-          userId: currentUser.id,
-          characterName: characterName.trim(),
-          productionTitle: productionTitle.trim(),
-          productionType: productionType.trim(),
-          roleSize: roleSize || "Supporting",
-          genre: genre || "",
-          storyline: storyline || "",
-          characterBreakdown: "",
-          callbackNotes: "",
-          focusArea: "reader_support",
-          sceneText: combinedSceneText,
-          generatedHtml: readerGuideHtml,
-          childGuideRequested: false,
-          childGuideCompleted: false,
-        };
-
-        let savedReaderGuide = null;
-        if (GuideModel) {
-          savedReaderGuide = await GuideModel.create(readerPayload);
-        } else {
-          const { randomUUID } = require("crypto");
-          readerPayload.id = randomUUID();
-          await ensureSupabaseUser(currentUser);
-          savedReaderGuide = await supabaseInsertGuide(readerPayload, { user: currentUser });
-        }
-
-        let updatedBillingUser = currentUser;
-        const consumption = getReader101ConsumptionUpdate(currentUser);
-        if (!consumption.allowed) {
-          throw new Error("Reader101 credits were exhausted before the guide could be saved.");
-        }
-        if (Object.keys(consumption.updates).length > 0) {
-          updatedBillingUser = await persistBillingUserUpdates(
-            currentUser,
-            consumption.updates
-          );
-        }
-
-        return res.json({
-          success: true,
-          guideId: savedReaderGuide?.guideId || readerGuideId,
-          guideContent: readerGuideHtml,
-          mode: "reader_support",
-          childGuideRequested: false,
-          childGuideQueued: false,
-          childGuideCompleted: false,
-          reader101Usage: buildReader101Usage(updatedBillingUser),
-          reader101CreditSource: consumption.source,
-          metadata: {
-            characterName: characterName.trim(),
-            productionTitle: productionTitle.trim(),
-            productionType: productionType.trim(),
-            guideLength: readerGuideHtml.length,
-            generationTime: Date.now() - requestStartTime,
-          },
-        });
-      } catch (saveErr) {
-        console.error("[Reader101] Failed to save reader guide:", saveErr);
-        // Still return the guide even if save fails
-        return res.json({
-          success: true,
-          guideId: `reader_${Date.now()}`,
-          guideContent: readerGuideHtml,
-          mode: "reader_support",
-          childGuideRequested: false,
-          childGuideQueued: false,
-          childGuideCompleted: false,
-          saveError: "Guide generated but could not be saved",
-        });
-      }
     }
-    // ── End Reader101 mode ────────────────────────────────────────────────────
 
-    const guideContentRaw = await generateActingGuideWithRAG({
-      sceneText: combinedSceneText,
-      characterName: characterName.trim(),
-      productionTitle: productionTitle.trim(),
-      productionType: productionType.trim(),
-      genre: (genre || "").trim(),
-      storyline: (storyline || "").trim(),
-      extractionMethod: allUploadData[0].extractionMethod,
-      hasFullScript: hasFullScript,
-      fallbackMode: shouldForcePrepFallback,
+    const payload = {
+      userId: currentUser.id,
+      isReaderMode,
+      combinedSceneText,
+      characterName,
+      actorAge,
+      productionTitle,
+      productionType,
+      genre,
+      storyline,
+      roleSize,
+      characterBreakdown,
+      callbackNotes,
+      focusArea,
+      childGuideRequested,
       uploadData: allUploadData,
+      hasFullScript,
+      shouldForceReaderFallback,
+      shouldForcePrepFallback,
+      combinedWordCount,
+      uploadIdList,
+      // Minimal upload extraction to survive queue serialization
+      uploads: uploadIdList.reduce((acc, id) => {
+        if (uploads[id]) {
+          acc[id] = {
+            filename: uploads[id].filename,
+            extractionMethod: uploads[id].extractionMethod,
+          };
+        }
+        return acc;
+      }, {})
+    };
+
+    console.log(`[GENERATE] Enqueuing guide job for user ${currentUser.id}`);
+    const job = await enqueueGuideJob(payload);
+
+    return res.status(202).json({
+      success: true,
+      jobId: job.id,
+      message: "Guide generation started. Please wait...",
     });
 
-    const guideContent = wrapGuideHtml(guideContentRaw, {
-      characterName: characterName.trim(),
-      productionTitle: productionTitle.trim(),
-      productionType: productionType.trim(),
-    });
-
-    console.log(`✅ Corey Ralston RAG Guide Complete!`);
-
-    // Save guide to database
-    try {
-      const GuideModel = Guide || require("./models/Guide");
-      const generatedGuideId = `corey_rag_${Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-
-      const baseGuidePayload = {
-        guideId: generatedGuideId,
-        userId: currentUser.id,
-        characterName: characterName.trim(),
-        productionTitle: productionTitle.trim(),
-        productionType: productionType.trim(),
-        roleSize: roleSize || "Supporting",
-        genre: genre || "Drama",
-        storyline: storyline || "",
-        characterBreakdown: characterBreakdown || "",
-        callbackNotes: callbackNotes || "",
-        focusArea: focusArea || "",
-        sceneText: combinedSceneText,
-        generatedHtml: guideContent,
-        childGuideRequested: childGuideRequested || false,
-        childGuideCompleted: false,
-        guideType: isReaderMode ? 'reader101' : 'prep101',
-      };
-
-      let persistedGuide = null;
-      let persistenceMethod = "sequelize";
-
-      if (GuideModel) {
-        persistedGuide = await GuideModel.create(baseGuidePayload);
-      } else {
-        persistenceMethod = "supabase";
-
-        // Generate UUID for Supabase (it doesn't auto-generate like Sequelize)
-        const { randomUUID } = require("crypto");
-        baseGuidePayload.id = randomUUID();
-
-        // Ensure user exists in Supabase Users table (for foreign key constraint)
-        const userEnsured = await ensureSupabaseUser(currentUser);
-        if (!userEnsured) {
-          console.error(
-            "❌ Failed to ensure user exists in Supabase Users table"
-          );
-          throw new Error(
-            "Supabase Users table is not configured for guide saving"
-          );
-        }
-
-        persistedGuide = await supabaseInsertGuide(baseGuidePayload, {
-          user: currentUser,
-        });
-        if (!persistedGuide) {
-          throw new Error(
-            "Guide model unavailable and Supabase fallback failed"
-          );
-        }
-      }
-
-      console.log(
-        `💾 Guide saved via ${persistenceMethod} with ID: ${persistedGuide.id}`
-      );
-
-      let updatedBillingUser = currentUser;
-      const consumption = getPrep101ConsumptionUpdate(currentUser);
-      if (!consumption.allowed) {
-        throw new Error("Prep101 credits were exhausted before the guide could be saved.");
-      }
-      if (Object.keys(consumption.updates).length > 0) {
-        updatedBillingUser = await persistBillingUserUpdates(
-          currentUser,
-          consumption.updates
-        );
-      }
-
-      let childGuideQueued = false;
-      let childGuideCompleted = false;
-      if (childGuideRequested) {
-        childGuideQueued = true;
-        // In Vercel serverless, generate child guide SYNCHRONOUSLY before sending response
-        // Fire-and-forget doesn't work because the function terminates after res.json()
-        if (process.env.VERCEL) {
-          console.log(
-            `🌟 Generating child guide synchronously for ${persistedGuide.id} (Vercel mode)`
-          );
-          try {
-            const childResult = await generateChildGuideAsync({
-              guideId: persistedGuide.id,
-              childData: {
-                sceneText: combinedSceneText,
-                characterName: characterName.trim(),
-                productionTitle: productionTitle.trim(),
-                productionType: productionType.trim(),
-                parentGuideContent: guideContentRaw,
-                extractionMethod: allUploadData[0].extractionMethod,
-              },
-              userId: currentUser?.id,
-            });
-            if (childResult.success) {
-              childGuideCompleted = true;
-              console.log(`✅ Child guide completed for ${persistedGuide.id}`);
-            } else {
-              console.error(`❌ Child guide failed: ${childResult.error}`);
-            }
-          } catch (childErr) {
-            console.error(`❌ Child guide error:`, childErr);
-          }
-        } else {
-          // Non-Vercel: queue for background processing
-          queueChildGuideGeneration({
-            guideId: persistedGuide.id,
-            childData: {
-              sceneText: combinedSceneText,
-              characterName: characterName.trim(),
-              productionTitle: productionTitle.trim(),
-              productionType: productionType.trim(),
-              parentGuideContent: guideContentRaw,
-              extractionMethod: allUploadData[0].extractionMethod,
-            },
-            userId: currentUser?.id,
-          });
-        }
-      }
-
-      // Log the response being sent
-      const responseData = {
-        success: true,
-        guideId: persistedGuide.guideId,
-        guideContent,
-        childGuideRequested: !!childGuideRequested,
-        childGuideQueued,
-        childGuideCompleted: childGuideCompleted,
-        childGuideMessage: childGuideCompleted
-          ? "Child guide generated successfully!"
-          : childGuideQueued
-            ? "Child guide is being generated in the background."
-            : childGuideRequested
-              ? "Child guide requested but queue unavailable."
-              : null,
-        generatedAt: new Date(),
-        savedToDatabase: true,
-        prep101Usage: buildPrep101Usage(updatedBillingUser),
-        prep101CreditSource: consumption.source,
-        metadata: {
-          characterName,
-          productionTitle,
-          productionType,
-          scriptWordCount: combinedWordCount,
-          guideLength: guideContent.length,
-          childGuideStatus: childGuideCompleted
-            ? "completed"
-            : childGuideQueued
-              ? "queued"
-              : childGuideRequested
-                ? "pending"
-                : "not_requested",
-          model: DEFAULT_CLAUDE_MODEL,
-          ragEnabled: true,
-          methodologyFiles: Object.keys(methodologyDatabase).length,
-          contentQuality: "corey-ralston-methodology-enhanced",
-          fileCount: uploadIdList.length,
-          uploadedFiles: uploadIdList.map((id) => uploads[id].filename),
-        },
-      };
-
-      console.log(`🌟 Sending response to frontend:`, {
-        childGuideRequested: responseData.childGuideRequested,
-        childGuideQueued: responseData.childGuideQueued,
-        childGuideCompleted: responseData.childGuideCompleted,
-      });
-
-      res.json(responseData);
-    } catch (dbError) {
-      console.error("❌ Database save error:", dbError);
-
-      // Check if it's an authentication error
-      if (
-        dbError.message.includes("Authentication required") ||
-        dbError.message.includes("User not found")
-      ) {
-        return res.status(401).json({
-          success: false,
-          error: "Authentication required to save guide",
-          message: "Please log in to save your guide to your account",
-          guideContent: guideContent, // Still provide the guide content
-          generatedAt: new Date(),
-          savedToDatabase: false,
-        });
-      }
-
-      // Still return the guide content even if save fails for other reasons
-      res.json({
-        success: true,
-        guideId: `corey_rag_${uploadIdList[0] || uploadId}`,
-        guideContent: guideContent,
-        generatedAt: new Date(),
-        savedToDatabase: false,
-        saveError: dbError.message,
-        metadata: {
-          characterName,
-          productionTitle,
-          productionType,
-          scriptWordCount: combinedWordCount,
-          guideLength: guideContent.length,
-          model: DEFAULT_CLAUDE_MODEL,
-          ragEnabled: true,
-          methodologyFiles: Object.keys(methodologyDatabase).length,
-          contentQuality: "corey-ralston-methodology-enhanced",
-          fileCount: uploadIdList.length,
-          uploadedFiles: uploadIdList.map((id) => uploads[id].filename),
-        },
-      });
-    }
   } catch (error) {
     console.error("❌ Corey Ralston RAG error:", error);
-    // Always surface the server-side reason for easier client debug (no secrets)
     res.status(500).json({
-      error:
-        "Failed to generate Corey Ralston methodology guide. Please try again.",
+      error: "Failed to start guide generation. Please try again.",
       reason: error && error.message ? String(error.message) : undefined,
     });
   }
 });
+
+// Endpoint to poll for guide job status
+app.get("/api/guides/jobs/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!getGuideJob) {
+      return res.status(503).json({ error: "Guide job service unavailable" });
+    }
+
+    const job = await getGuideJob(id);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    if (job.state !== "completed") {
+      return res.json({
+        id: job.id,
+        state: job.state,
+        progress: job.progress,
+        statusMessage: job.statusMessage || "Processing...",
+        failedReason: job.failedReason,
+      });
+    }
+
+    // JOB IS COMPLETED
+    // We now have the result from the worker, we need to save it and deduct credits.
+    const { guidePayload, isReaderMode, combinedWordCount } = job.result;
+    
+    const currentUser = await loadBillingUser(
+      req.user || (User && req.userId ? await User.findByPk(req.userId) : null)
+    );
+
+    if (!currentUser) {
+      return res.status(401).json({ error: "Authentication required to finalize guide" });
+    }
+
+    // Check if this job has already been finalized and saved
+    // We can check if a guide with this guideId exists for the user
+    let alreadyPersisted = false;
+    const GuideModel = Guide || require("./models/Guide");
+    if (GuideModel) {
+      const existing = await GuideModel.findOne({ where: { guideId: guidePayload.guideId } });
+      if (existing) alreadyPersisted = true;
+    } else {
+      const existing = await supabaseFetchGuide({ guideId: guidePayload.guideId });
+      if (existing) alreadyPersisted = true;
+    }
+
+    if (alreadyPersisted) {
+      return res.json({
+        id: job.id,
+        state: "completed",
+        progress: 100,
+        statusMessage: "Completed",
+        guideId: guidePayload.guideId,
+        guideContent: guidePayload.generatedHtml,
+        metadata: {
+          characterName: guidePayload.characterName,
+          productionTitle: guidePayload.productionTitle,
+          productionType: guidePayload.productionType,
+          guideLength: guidePayload.generatedHtml.length,
+          alreadyPersisted: true,
+        }
+      });
+    }
+
+    console.log(`[JOB ${id}] Finalizing and saving generated guide...`);
+
+    let persistedGuide = null;
+    let persistenceMethod = "sequelize";
+
+    if (GuideModel) {
+      persistedGuide = await GuideModel.create(guidePayload);
+    } else {
+      persistenceMethod = "supabase";
+      const { randomUUID } = require("crypto");
+      guidePayload.id = randomUUID();
+      await ensureSupabaseUser(currentUser);
+      persistedGuide = await supabaseInsertGuide(guidePayload, { user: currentUser });
+      if (!persistedGuide) throw new Error("Supabase save failed");
+    }
+
+    // Deduct credits
+    let updatedBillingUser = currentUser;
+    let consumption = null;
+
+    if (isReaderMode) {
+      consumption = getReader101ConsumptionUpdate(currentUser);
+      if (!consumption.allowed) throw new Error("Reader101 credits exhausted");
+    } else {
+      consumption = getPrep101ConsumptionUpdate(currentUser);
+      if (!consumption.allowed) throw new Error("Prep101 credits exhausted");
+    }
+
+    if (Object.keys(consumption.updates).length > 0) {
+      updatedBillingUser = await persistBillingUserUpdates(currentUser, consumption.updates);
+    }
+
+    return res.json({
+      id: job.id,
+      state: "completed",
+      progress: 100,
+      statusMessage: "Completed",
+      guideId: persistedGuide.guideId,
+      guideContent: persistedGuide.generatedHtml,
+      savedToDatabase: true,
+      usage: isReaderMode ? buildReader101Usage(updatedBillingUser) : buildPrep101Usage(updatedBillingUser),
+      metadata: {
+        characterName: guidePayload.characterName,
+        productionTitle: guidePayload.productionTitle,
+        productionType: guidePayload.productionType,
+        scriptWordCount: combinedWordCount,
+        guideLength: guidePayload.generatedHtml.length,
+        persistenceMethod
+      }
+    });
+
+  } catch (error) {
+    console.error(`❌ Job status error [${req.params.id}]:`, error);
+    res.status(500).json({ error: "Failed to finalize guide job", reason: error.message });
+  }
 
 // Methodology API endpoint to view loaded files
 app.get("/api/methodology", (req, res) => {

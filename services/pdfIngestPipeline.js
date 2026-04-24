@@ -24,7 +24,11 @@ const IMAGE_BASED_READING_MESSAGE =
   "This file's formatting is interfering with text extraction. We're switching to image-based reading to recover the script.";
 const IMAGE_BASED_RECOVERY_SUCCESS_MESSAGE =
   "Image-based reading recovered usable script text.";
+const LOW_DENSITY_EXTRACTION_MESSAGE =
+  "Only a small amount of text was recovered for this multi-page PDF. We'll treat the upload as limited and use recovery paths during generation.";
 const MIN_IMAGE_RECOVERY_WORDS = 80;
+const MIN_EXPECTED_WORDS_PER_SCRIPT_PAGE = 90;
+const MIN_PAGES_FOR_DENSITY_CHECK = 3;
 
 function getWordCount(text = "") {
   return (String(text).match(/\b[\w']+\b/g) || []).length;
@@ -308,6 +312,13 @@ function buildConfidence(wordCount, source, limited) {
   return "low";
 }
 
+function isSuspiciouslyShortForPageCount(stage = {}) {
+  const pageCount = Number(stage.pageCount || 0);
+  const wordCount = Number(stage.wordCount || 0);
+  if (pageCount < MIN_PAGES_FOR_DENSITY_CHECK) return false;
+  return wordCount < pageCount * MIN_EXPECTED_WORDS_PER_SCRIPT_PAGE;
+}
+
 async function extractTextStage(pdfBuffer) {
   const candidates = [];
 
@@ -315,6 +326,7 @@ async function extractTextStage(pdfBuffer) {
   candidates.push({
     source: "text",
     provider: "pdf-parse",
+    pageCount: basic.numpages || basic.numrender || null,
     ...evaluateExtraction("text", basic.text || "", { minWordCount: 100 }),
   });
 
@@ -324,6 +336,7 @@ async function extractTextStage(pdfBuffer) {
       candidates.push({
         source: "text",
         provider: "adobe",
+        pageCount: basic.numpages || basic.numrender || null,
         ...evaluateExtraction("text", adobe.text || "", { minWordCount: 100 }),
       });
     } catch (_error) {
@@ -975,12 +988,14 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
     textFailures.has("metadataHeavyLines") ||
     textFailures.has("repeatedTokens>20%") ||
     textFailures.has("lowEntropy");
+  const textLooksUnderExtracted = isSuspiciouslyShortForPageCount(textStage);
 
   // Be permissive when the text layer already looks script-like, even if
   // watermark heuristics are noisy. This avoids false fallback mode.
   if (
     textStage &&
     textStage.wordCount >= 60 &&
+    !textLooksUnderExtracted &&
     !textHasSevereNoise &&
     ((textStage.characterNames || []).length >= 1 ||
       hasScreenplayStructure(textStage.text))
@@ -998,7 +1013,7 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
     };
   }
 
-  if (textStage.quality === "good") {
+  if (textStage.quality === "good" && !textLooksUnderExtracted) {
     return {
       text: textStage.text,
       source: "text",
@@ -1049,14 +1064,18 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
     [visionStage, ocrStage, textStage]
       .filter(Boolean)
       .sort((a, b) => (b?.wordCount || 0) - (a?.wordCount || 0))[0] || textStage;
+  const pageCount = textStage?.pageCount || bestStage?.pageCount || null;
+  const warnings = [];
+  if (textLooksUnderExtracted) warnings.push(LOW_DENSITY_EXTRACTION_MESSAGE);
 
   return {
     text: bestStage?.text || "",
     source: bestStage?.source || "vision",
     confidence: "low",
-    warnings: [],
+    warnings,
     characterNames: bestStage?.characterNames || [],
     wordCount: bestStage?.wordCount || 0,
+    pageCount,
     limited: true,
     uploadMessage: null,
     diagnostics: { textStage, ocrStage, visionStage },
@@ -1065,7 +1084,7 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
 
 async function ingestPdf(pdfBuffer, options = {}) {
   const textStage = await extractTextStage(pdfBuffer);
-  if (textStage.quality === "good") {
+  if (textStage.quality === "good" && !isSuspiciouslyShortForPageCount(textStage)) {
     return resolvePipelineResult({ textStage, ocrStage: null, visionStage: null });
   }
 
@@ -1085,7 +1104,11 @@ async function ingestPdf(pdfBuffer, options = {}) {
     documentCandidates
       .slice()
       .sort((a, b) => (b?.wordCount || 0) - (a?.wordCount || 0))[0] || null;
-  if (documentStage && documentStage.quality === "good") {
+  const documentLooksUnderExtracted = isSuspiciouslyShortForPageCount({
+    ...documentStage,
+    pageCount: textStage?.pageCount || documentStage?.pageCount,
+  });
+  if (documentStage && documentStage.quality === "good" && !documentLooksUnderExtracted) {
     return {
       text: documentStage.text,
       source: "document",
@@ -1093,6 +1116,7 @@ async function ingestPdf(pdfBuffer, options = {}) {
       warnings: [],
       characterNames: documentStage.characterNames || [],
       wordCount: documentStage.wordCount || 0,
+      pageCount: textStage?.pageCount || documentStage.pageCount || null,
       limited: false,
       uploadMessage: null,
       diagnostics: {
@@ -1184,8 +1208,11 @@ async function ingestPdf(pdfBuffer, options = {}) {
     warnings: [],
     characterNames: bestBaseStage?.characterNames || textStage.characterNames || [],
     wordCount: bestBaseStage?.wordCount || textStage.wordCount || 0,
+    pageCount: textStage?.pageCount || bestBaseStage?.pageCount || null,
     limited: true,
-    uploadMessage: null,
+    uploadMessage: isSuspiciouslyShortForPageCount(textStage)
+      ? LOW_DENSITY_EXTRACTION_MESSAGE
+      : null,
     diagnostics: {
       textStage,
       claudeDocumentStage,

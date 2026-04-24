@@ -5,6 +5,7 @@ const { randomUUID } = require("crypto");
 const { generateBoldChoices } = require("../services/boldChoicesService");
 const { renderBoldChoicesTemplate } = require("../services/boldChoicesTemplate");
 const { checkAndIncrement } = require("../services/boldChoicesUsage");
+const { enqueueGuideJob, getGuideJob } = require("../services/guideQueue");
 const auth = require("../middleware/auth");
 const { buildAccountContext } = require("../services/accountContextService");
 const {
@@ -373,6 +374,8 @@ router.post("/generate", auth, async (req, res) => {
 
     // ── Call Claude ──────────────────────────────────────────────────────────
     const inputData = {
+      jobType: "bold_choices",
+      userId,
       characterName: characterName.trim(),
       sceneText: normalizedSceneText,
       actorAge,
@@ -389,24 +392,76 @@ router.post("/generate", auth, async (req, res) => {
       spinAgain: actualSpinAgain,
       fallbackMode,
       previousOutputSummary, // injected into prompt for spin-aware variation
+      format,
+      preview,
     };
 
-    const guideData = await generateBoldChoices(inputData);
+    console.log(`[BoldChoices] Enqueuing guide job for user ${userId}`);
+    const job = await enqueueGuideJob(inputData);
 
-    // ── Schema guard: retry once with stricter instruction if invalid ─────────
-    if (!isValidGuideData(guideData)) {
-      console.warn("[BoldChoices] Schema guard failed — retrying with stricter instruction");
-      inputData._schemaRetry = true;
-      const retryData = await generateBoldChoices(inputData);
-      if (!isValidGuideData(retryData)) {
-        console.error("[BoldChoices] Schema guard failed on retry too.");
-        return res.status(500).json({ error: "Generated guide was malformed. Please try again." });
-      }
-      Object.assign(guideData, retryData);
+    return res.status(202).json({
+      success: true,
+      jobId: job.id,
+      message: "Bold choices generation started. Please wait...",
+    });
+
+// Delete remaining code in /generate since it's now async
+  } catch (err) {
+    console.error("[BoldChoices] Generation error:", err.message);
+    return res.status(500).json({
+      error: "Failed to generate Bold Choices guide",
+      detail: err.message || "Unknown generation error",
+    });
+  }
+});
+
+/**
+ * GET /api/bold-choices/jobs/:id
+ * Polls for the completion of a Bold Choices generation job.
+ */
+router.get("/jobs/:id", auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!getGuideJob) {
+      return res.status(503).json({ error: "Guide job service unavailable" });
     }
 
-    // ── Store generation with ID ──────────────────────────────────────────────
+    const job = await getGuideJob(id);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    if (job.state !== "completed") {
+      return res.json({
+        id: job.id,
+        state: job.state,
+        progress: job.progress,
+        statusMessage: job.statusMessage || "Processing...",
+        failedReason: job.failedReason,
+      });
+    }
+
+    const { guideData, inputData } = job.result;
+    const {
+      userId,
+      characterName,
+      actorAge,
+      productionTitle,
+      productionType,
+      roleSize,
+      genre,
+      characterDescription,
+      storyline,
+      format,
+      preview,
+      modifier,
+      spinAgain,
+    } = inputData;
+
+    const currentUser = await loadBillingUser(req.user);
     const generationId = uuidv4();
+
     generationsCache.set(generationId, {
       id: generationId,
       data: guideData,
@@ -414,13 +469,11 @@ router.post("/generate", auth, async (req, res) => {
       userId,
       createdAt: new Date().toISOString(),
     });
-    // Evict stale entries (keep last 200)
     if (generationsCache.size > 200) {
       const firstKey = generationsCache.keys().next().value;
       generationsCache.delete(firstKey);
     }
 
-    // ── Persist generation to Supabase (non-blocking) ─────────────────────────
     if (SUPABASE_URL && SUPABASE_KEY) {
       fetch(`${SUPABASE_URL}/rest/v1/boldchoices_generations`, {
         method: "POST",
@@ -433,7 +486,7 @@ router.post("/generate", auth, async (req, res) => {
         body: JSON.stringify({
           id: generationId,
           user_id: String(userId),
-          character_name: characterName.trim(),
+          character_name: characterName,
           show: productionTitle || null,
           modifier: modifier || null,
           is_preview: !!preview,
@@ -446,9 +499,11 @@ router.post("/generate", auth, async (req, res) => {
       }).catch((err) => console.warn("[BoldChoices] Failed to persist generation:", err.message));
     }
 
-    // ── Format and return ─────────────────────────────────────────────────────
     if (format === "json") {
       return res.json({
+        id: job.id,
+        state: "completed",
+        progress: 100,
         success: true,
         data: guideData,
         meta: inputData,
@@ -459,9 +514,8 @@ router.post("/generate", auth, async (req, res) => {
       });
     }
 
-    // Default: return rendered HTML
     const meta = {
-      characterName: characterName.trim(),
+      characterName,
       actorAge: actorAge || "",
       productionTitle: productionTitle || "",
       productionType: productionType || "",
@@ -475,10 +529,10 @@ router.post("/generate", auth, async (req, res) => {
 
     if (!preview) {
       try {
-        const savedGuide = await persistGuideToLibrary(billingUser || req.user, {
+        const savedGuide = await persistGuideToLibrary(currentUser, {
           guideId: `bold_choices_${generationId}`,
           userId,
-          characterName: characterName.trim(),
+          characterName: characterName,
           productionTitle: productionTitle || "Bold Choices",
           productionType: productionType || "Performance Guide",
           roleSize: roleSize || "Unknown",
@@ -486,8 +540,8 @@ router.post("/generate", auth, async (req, res) => {
           storyline: storyline || "",
           characterBreakdown: characterDescription || "",
           callbackNotes: "",
-          focusArea: actualModifier || (actualSpinAgain ? "spin_again" : "bold_choices"),
-          sceneText: normalizedSceneText,
+          focusArea: modifier || (spinAgain ? "spin_again" : "bold_choices"),
+          sceneText: inputData.sceneText,
           generatedHtml: html,
           childGuideRequested: false,
           childGuideCompleted: false,
@@ -501,28 +555,26 @@ router.post("/generate", auth, async (req, res) => {
       }
     }
 
-    console.log(`[BoldChoices] Done (${html.length} chars). modifier: ${modifier || "none"}`);
-
     return res.json({
+      id: job.id,
+      state: "completed",
+      progress: 100,
       success: true,
       html,
       isPreview: preview,
       meta,
       modifier,
       generationId,
-      boldChoicesUsage: buildBoldChoicesUsage(billingUser),
-      boldChoicesCreditSource:
-        boldCreditConsumption?.source || (hasUnlimitedAccess ? "unlimited" : "free"),
+      boldChoicesUsage: buildBoldChoicesUsage(currentUser),
+      boldChoicesCreditSource: "unlimited", // Usage was already deducted during generation start
       savedGuideId,
       savedGuideRecordId,
       savedToAccount: Boolean(savedGuideRecordId),
     });
+
   } catch (err) {
-    console.error("[BoldChoices] Generation error:", err.message);
-    return res.status(500).json({
-      error: "Failed to generate Bold Choices guide",
-      detail: err.message || "Unknown generation error",
-    });
+    console.error(`[BoldChoices] Job status error [${req.params.id}]:`, err);
+    res.status(500).json({ error: "Failed to finalize guide job", reason: err.message });
   }
 });
 

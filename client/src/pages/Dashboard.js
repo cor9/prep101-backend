@@ -536,17 +536,25 @@ const Dashboard = () => {
   // ====== GENERATE GUIDE ======
   const handleGenerateGuide = async (formData) => {
     let payload = null;
+    let loadingToastId = null;
     const modeForRequest = formData?.mode || (isReader101Context ? "reader_support" : "standard");
     setActiveGenerationMode(modeForRequest);
     const normalizedUploadIdsForDirectPdf = (
       uploadData?.uploadIds || [uploadData?.uploadId]
     ).filter(Boolean);
-    // Reader101 should prefer the same direct Claude PDF endpoint as Prep101.
-    // If the File object is missing (refresh/navigation), we can still target
-    // generate-from-pdf using a recent uploadId.
+    const uploadLooksUsable =
+      uploadData?.scriptReadable !== false &&
+      !uploadData?.fallbackMode &&
+      Number(uploadData?.wordCount || 0) > 0 &&
+      Boolean(uploadData?.sceneText || uploadData?.text);
+    // Do not re-read PDFs once upload has recovered usable script text. That
+    // path is slower, can time out on Vercel, and can discard the OCR result.
+    // Only use generate-from-pdf when upload is partial/unreadable and we need
+    // the backend to try one more PDF-native recovery pass.
     const shouldUseTwoCallPdfEndpoint =
-      Boolean(uploadedFile) ||
-      (isReader101Context && normalizedUploadIdsForDirectPdf.length > 0);
+      !uploadLooksUsable &&
+      (Boolean(uploadedFile) ||
+        (isReader101Context && normalizedUploadIdsForDirectPdf.length > 0));
 
     // Generation endpoints go DIRECT to Vercel — never through the Netlify proxy.
     // Netlify's proxy (prep101.site → Vercel) has a hard 26-second timeout;
@@ -608,10 +616,6 @@ const Dashboard = () => {
       const ct = response.headers.get("content-type") || "";
       let parsedData;
 
-      // Early guard: non-ok response with a non-JSON body (rate limiter plain text,
-      // Netlify edge error, etc). Without this, the code falls through to the html
-      // branch and emits a misleading "Empty guide response" which triggers the
-      // recovery loop unnecessarily.
       if (!response.ok && !ct.includes("application/json")) {
         const rawBody = await response.text().catch(() => "");
         const preview = rawBody.slice(0, 200).trim();
@@ -629,6 +633,35 @@ const Dashboard = () => {
       if (ct.includes("application/json")) {
         parsedData = await response.json();
         console.log("🎭 Guide generation response:", parsedData);
+
+        // Async Job Handling
+        if (response.status === 202 && parsedData.jobId) {
+          let jobStatus = "waiting";
+          let jobData = null;
+          
+          while (jobStatus !== "completed" && jobStatus !== "failed") {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            const pollRes = await fetch(`${GENERATION_API_BASE}/api/guides/jobs/${parsedData.jobId}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            
+            if (!pollRes.ok) throw new Error("Failed to poll guide status");
+            jobData = await pollRes.json();
+            jobStatus = jobData.state;
+            
+            if (jobData.statusMessage && loadingToastId) {
+              toast.loading(`${jobData.progress}% - ${jobData.statusMessage}`, { id: loadingToastId });
+            }
+          }
+          
+          if (jobStatus === "failed") {
+            throw new Error(jobData.failedReason || "Guide generation failed in background worker.");
+          }
+          
+          // Use the finalized job data
+          parsedData = jobData;
+        }
 
         if (parsedData?.guideContent) {
           openHtmlInNewTab(parsedData.guideContent);
@@ -696,6 +729,7 @@ const Dashboard = () => {
                 extractionConfidence:
                   uploadData.extractionConfidence || "unknown",
                 wordCount: uploadData.wordCount || 0,
+                pageCount: uploadData.pageCount || null,
                 fileType: uploadData.fileType || "sides",
                 fallbackMode: Boolean(uploadData.fallbackMode),
                 warnings: uploadData.warnings || [],
@@ -712,6 +746,7 @@ const Dashboard = () => {
         sceneText: normalizedSceneText,
         filename: normalizedFilename,
         wordCount: uploadData.wordCount,
+        pageCount: uploadData.pageCount,
         characterNames: uploadData.characterNames,
         fallbackMode: uploadData.fallbackMode || false,
         warnings: uploadData.warnings || [],
@@ -724,7 +759,7 @@ const Dashboard = () => {
         modeForRequest === "reader_support"
           ? "Generating your Reader101 guide... this may take about 3-6 minutes."
           : "Generating your Prep101 guide (extract -> analyze -> summarize -> final HTML)... this may take about 3-6 minutes.";
-      toast.loading(loadingCopy);
+      loadingToastId = toast.loading(loadingCopy);
       let res;
       const runFetchWithRetry = async (url, init, retryInit = null) => {
         try {
@@ -843,11 +878,16 @@ const Dashboard = () => {
         }));
       }
     } catch (err) {
-      if (
-        /Empty guide response|FUNCTION_INVOCATION_TIMEOUT|timed out on the server|HTTP 504|Guide truncated|Missing Two-Take Strategy|Missing checklist|aborted a request|AbortError/i.test(
-          String(err?.message || "")
-        )
-      ) {
+      const errorMessage = String(err?.message || "");
+      const isHardServerTimeout =
+        /FUNCTION_INVOCATION_TIMEOUT|timed out on the server|HTTP 504/i.test(errorMessage);
+      const canAttemptRecovery =
+        !isHardServerTimeout &&
+        /Empty guide response|Guide truncated|Missing Two-Take Strategy|Missing checklist|aborted a request|AbortError/i.test(
+          errorMessage
+        );
+
+      if (canAttemptRecovery) {
         try {
           const directApiBase = "https://prep101-api.vercel.app";
           let recoveryResponse;
@@ -887,11 +927,11 @@ const Dashboard = () => {
 
       if (
         err.name === "AbortError" ||
-        /aborted a request|timeout/i.test(String(err?.message || ""))
+        /aborted a request|timeout|FUNCTION_INVOCATION_TIMEOUT|HTTP 504/i.test(errorMessage)
       ) {
         toast.error(
-          err.message.includes("TIMEOUT") 
-            ? err.message 
+          isHardServerTimeout
+            ? "Guide generation timed out on the server. We stopped this attempt instead of pretending it is still building. Please retry, or paste the recovered scene text if this PDF keeps timing out."
             : "The generation process timed out. This usually happens with very long scripts or during high traffic. Please try again or paste the scene text directly below.",
           { duration: 8000 }
         );
@@ -901,7 +941,7 @@ const Dashboard = () => {
     } finally {
       clearTimeout(timeoutId);
       setIsGenerating(false);
-      toast.dismiss(); // Dismiss any loading toasts
+      if (loadingToastId) toast.dismiss(loadingToastId);
     }
   };
 

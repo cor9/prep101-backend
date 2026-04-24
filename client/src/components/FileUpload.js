@@ -154,6 +154,7 @@ const FileUpload = ({ onUpload, onUploadStart, onUploadEnd, allowMultiple = fals
             extractionMethod: data.extractionMethod || 'upload',
             extractionConfidence: data.extractionConfidence || 'unknown',
             wordCount: data.wordCount || 0,
+            pageCount: data.pageCount || null,
             fileType: data.fileType || 'sides',
             fallbackMode: Boolean(data.fallbackMode),
             warnings: sanitizeWarnings(data.warnings),
@@ -203,6 +204,11 @@ const FileUpload = ({ onUpload, onUploadStart, onUploadEnd, allowMultiple = fals
 
       if (sanitizedUploadMessage) {
         toast(sanitizedUploadMessage, { id: toastId, icon: '🧠', duration: 5000 });
+      } else if (anyFallback || firstData.scriptReadable === false) {
+        toast(
+          'PDF uploaded, but the text layer looks incomplete or watermark-heavy. We will use recovery reading during generation.',
+          { id: toastId, icon: '⚠️', duration: 7000 }
+        );
       } else {
         toast.success(label, { id: toastId });
       }

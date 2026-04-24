@@ -148,19 +148,22 @@
     .hero-inner { max-width: none; }
     .hero-wordmark {
       display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1.75rem;
-      padding-bottom: 1.25rem;
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.85rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
       border-bottom: 1px solid rgba(99, 56, 6, 0.15);
     }
     .hero-wordmark img {
-      height: 56px;
-      width: auto;
+      width: min(100%, 520px);
+      height: auto;
+      max-height: 220px;
+      object-fit: contain;
     }
     .hero-wordmark-tag {
       font-family: var(--font-display);
-      font-size: 16px;
+      font-size: clamp(17px, 2.2vw, 22px);
       font-style: italic;
       color: var(--color-text-muted);
       letter-spacing: -0.01em;
@@ -955,11 +958,9 @@
     }
     @media (max-width: 560px) {
       .hero-wordmark {
-        flex-direction: column;
-        align-items: flex-start;
         gap: 0.5rem;
       }
-      .hero-wordmark img { height: 48px; }
+      .hero-wordmark img { width: min(100%, 360px); }
       .bundle-products { grid-template-columns: 1fr; gap: 0.75rem; padding: 1rem; }
       .bundle-product { flex-direction: row; justify-content: flex-start; text-align: left; gap: 1rem; }
       .bundle-product-logo { height: 32px; flex-shrink: 0; }
