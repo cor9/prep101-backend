@@ -3828,6 +3828,7 @@ app.get("/api/guides/jobs/:id", auth, async (req, res) => {
     console.error(`❌ Job status error [${req.params.id}]:`, error);
     res.status(500).json({ error: "Failed to finalize guide job", reason: error.message });
   }
+});
 
 // Methodology API endpoint to view loaded files
 app.get("/api/methodology", (req, res) => {
