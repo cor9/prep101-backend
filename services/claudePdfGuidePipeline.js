@@ -317,6 +317,31 @@ function recoverScreenplayFromFallback(ocrFallback = {}) {
     .join("\n");
 }
 
+function hasScreenplayStructure(text = "") {
+  const source = String(text || "");
+  if (!source.trim()) return false;
+  if (/\b(INT|EXT|INT\/EXT|I\/E)\./i.test(source)) return true;
+  if ((source.match(/^[ \t]*[A-Z][A-Z0-9\s'().\-]{1,30}:/gm) || []).length >= 2) {
+    return true;
+  }
+  const lines = source.split("\n");
+  let cueCount = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    const cue = lines[index].trim();
+    if (!/^[A-Z][A-Z0-9\s'().\-]{1,32}$/.test(cue)) continue;
+    if (cue.split(/\s+/).length > 4) continue;
+    if (/\d{2,}/.test(cue)) continue;
+    let next = "";
+    for (let lookahead = index + 1; lookahead < lines.length; lookahead += 1) {
+      next = lines[lookahead].trim();
+      if (next) break;
+    }
+    if (/^(\(|["']|[A-Z]?[a-z])/.test(next)) cueCount += 1;
+    if (cueCount >= 2) return true;
+  }
+  return false;
+}
+
 function validateGuideHtml(html = "") {
   const missing = [];
   const fabricatedSourceWarnings = [
@@ -672,6 +697,11 @@ async function generateGuideFromPdfTwoCall({
         new Error("Claude extraction too thin for reliable guide generation")
       );
     }
+    if (!hasScreenplayStructure(screenplayText)) {
+      throw markExtractionFailure(
+        new Error("Claude extraction did not produce recognizable screenplay sides")
+      );
+    }
 
     // Call 2: analysis  (summarizeAnalysis step removed — saves ~15-30s per request)
     const analysisStep = await generateAnalysis({
@@ -719,6 +749,11 @@ async function generateGuideFromPdfTwoCall({
     if (screenplayWordCount < 80) {
       throw new Error(
         "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
+      );
+    }
+    if (!hasScreenplayStructure(screenplayText)) {
+      throw new Error(
+        "I was unable to recover recognizable screenplay sides from the PDF. Please re-upload a clearer PDF or paste the scene text directly."
       );
     }
 

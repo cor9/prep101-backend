@@ -234,6 +234,7 @@ function evaluateExtraction(stage, rawText, { minWordCount }) {
 
   const failures = [];
   if (wordCount < minWordCount) failures.push(`wordCount<${minWordCount}`);
+  if (!hasScriptSignals) failures.push("noScreenplayStructure");
   if (repeatedTokenRatio > 0.2) failures.push("repeatedTokens>20%");
   if (metadataLineRatio > 0.35) failures.push("metadataHeavyLines");
   if (watermarkInterference.shouldEscalateToOCR) {
@@ -258,6 +259,7 @@ function evaluateExtraction(stage, rawText, { minWordCount }) {
     wordCount,
     quality,
     failures,
+    hasScriptSignals,
     repeatedTokenRatio,
     metadataLineRatio,
     entropyRatio,
@@ -987,7 +989,8 @@ function resolvePipelineResult({ textStage, ocrStage, visionStage }) {
     textFailures.has("watermarkInterference") ||
     textFailures.has("metadataHeavyLines") ||
     textFailures.has("repeatedTokens>20%") ||
-    textFailures.has("lowEntropy");
+    textFailures.has("lowEntropy") ||
+    textFailures.has("noScreenplayStructure");
   const textLooksUnderExtracted = isSuspiciouslyShortForPageCount(textStage);
 
   // Be permissive when the text layer already looks script-like, even if
@@ -1234,6 +1237,7 @@ async function ingestPdf(pdfBuffer, options = {}) {
 module.exports = {
   IMAGE_BASED_READING_MESSAGE,
   ingestPdf,
+  hasScreenplayStructure,
   __private: {
     cleanPipelineText,
     evaluateExtraction,

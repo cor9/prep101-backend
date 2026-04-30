@@ -210,6 +210,7 @@ const { scrubWatermarks, assessQuality } = require(path.join(
 ));
 const {
   ingestPdf,
+  hasScreenplayStructure,
 } = require(path.join(process.cwd(), "services", "pdfIngestPipeline"));
 const {
   DEFAULT_CLAUDE_MODEL,
@@ -2731,7 +2732,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       quality.quality === "repetitive" ||
       quality.fallbackRecommended === true ||
       pipelineResult.diagnostics?.textStage?.failures?.some((failure) =>
-        /watermarkInterference|repeatedTokens|lowEntropy|repetitive/i.test(String(failure || ""))
+        /watermarkInterference|repeatedTokens|lowEntropy|noScreenplayStructure|repetitive/i.test(String(failure || ""))
       );
     let extractionMethod = pipelineResult.source || "text";
     let fallbackMode = Boolean(
@@ -2825,6 +2826,11 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     if (looksCorruptedByWatermark) {
       uploadWarnings.push(
         "The extracted text appears dominated by repeated watermark tokens, so this upload is being treated as a partial extraction."
+      );
+    }
+    if (pipelineResult.diagnostics?.textStage?.failures?.includes("noScreenplayStructure")) {
+      uploadWarnings.push(
+        "The extracted text does not look like screenplay sides, so this upload is being treated as a partial extraction."
       );
     }
 
@@ -3572,6 +3578,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     );
     const cleanedMeaningfulText = scrubWatermarks(combinedSceneText || "");
     const meaningfulWordCount = getMeaningfulWordCount(cleanedMeaningfulText);
+    const hasScriptSignals = hasScreenplayStructure(cleanedMeaningfulText);
 
     console.log(`🎭 COREY RALSTON RAG Generation... [Fallback: ${isFallbackGeneration}]`);
     console.log(`🎬 ${characterName} | ${productionTitle} (Words: ${combinedWordCount})`);
@@ -3599,6 +3606,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     const readerUnreadableCorruption =
       contentQuality.quality === "empty" ||
       contentQuality.quality === "repetitive" ||
+      !hasScriptSignals ||
       (contentQuality.repetitiveRatio &&
         contentQuality.repetitiveRatio > 0.8) ||
       (contentQuality.repetitionRatio &&
@@ -3619,6 +3627,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
         contentQuality.quality === "empty" ||
         contentQuality.quality === "repetitive" ||
         contentQuality.quality === "too_short" ||
+        !hasScriptSignals ||
         combinedWordCount < 100);
 
     const hasReaderMetadata = Boolean(
@@ -3632,6 +3641,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     if (shouldForcePrepFallback) {
       console.warn("[GENERATION] Limited-text fallback engaged for Prep101:", {
         wordCount: combinedWordCount,
+        hasScriptSignals,
         repetitiveRatio: contentQuality.repetitiveRatio,
         repetitionRatio: contentQuality.repetitionRatio,
         reason: contentQuality.reason,
