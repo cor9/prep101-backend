@@ -3696,7 +3696,10 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       }, {})
     };
 
-    if (process.env.REDIS_URL && enqueueGuideJob) {
+    const guideQueueEnabled =
+      String(process.env.ENABLE_GUIDE_QUEUE || "").toLowerCase() === "true";
+
+    if (guideQueueEnabled && process.env.REDIS_URL && enqueueGuideJob) {
       console.log(`[GENERATE] Enqueuing durable guide job for user ${currentUser.id}`);
       const job = await enqueueGuideJob(payload);
 
@@ -3708,7 +3711,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     }
 
     console.log(
-      `[GENERATE] REDIS_URL missing; generating and saving guide synchronously for user ${currentUser.id}`
+      `[GENERATE] Durable guide queue disabled; generating and saving guide synchronously for user ${currentUser.id}`
     );
 
     const { processGuideJob } = require("./services/guideJobProcessor");

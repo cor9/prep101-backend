@@ -2,7 +2,13 @@ const path = require("path");
 const { repairScreenplayText } = require("./screenplayRepair");
 const { parseScreenplayText } = require("./screenplayParser");
 const { generateReaderGuide } = require("./readerGuideService");
-const { generateActingGuideWithRAG } = require("./claudePdfGuidePipeline");
+const {
+  generateAnalysis,
+  generateGuideHTML,
+} = require("./claudePdfGuidePipeline");
+const {
+  DEFAULT_CLAUDE_MODEL,
+} = require("../config/models");
 const { scrubWatermarks, assessQuality } = require("./textCleaner");
 const { generateBoldChoices } = require("./boldChoicesService");
 const {
@@ -59,6 +65,47 @@ function wrapGuideHtml(rawHtml, guide = {}) {
 ${content}
 </body>
 </html>`;
+}
+
+function buildPrep101Metadata(payload = {}) {
+  return {
+    characterName: payload.characterName || "",
+    actorAge: payload.actorAge || "",
+    productionTitle: payload.productionTitle || "",
+    productionType: payload.productionType || "",
+    roleSize: payload.roleSize || "",
+    genre: payload.genre || "",
+    storyline: payload.storyline || "",
+    characterBreakdown: payload.characterBreakdown || "",
+    callbackNotes: payload.callbackNotes || "",
+    focusArea: payload.focusArea || "",
+    extractionMethod:
+      payload.uploadData && payload.uploadData[0]
+        ? payload.uploadData[0].extractionMethod || payload.uploadData[0].source || "text"
+        : "text",
+    hasFullScript: Boolean(payload.hasFullScript),
+  };
+}
+
+async function generatePrep101GuideFromText(payload = {}) {
+  const apiKey = (process.env.ANTHROPIC_API_KEY || "").trim();
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
+
+  const metadata = buildPrep101Metadata(payload);
+  const analysisStep = await generateAnalysis({
+    screenplayText: payload.repairedText || payload.combinedSceneText || "",
+    metadata,
+    preferredModel: DEFAULT_CLAUDE_MODEL,
+    apiKey,
+  });
+  const guideStep = await generateGuideHTML({
+    analysis: analysisStep.analysis,
+    metadata,
+    preferredModel: DEFAULT_CLAUDE_MODEL,
+    apiKey,
+  });
+
+  return wrapGuideHtml(guideStep.html, metadata);
 }
 
 // Stub implementation since we can't easily import everything from simple-backend-rag.js
@@ -171,17 +218,18 @@ async function processGuideJob(payload, jobInstance = null) {
     
     const extractionMethod = uploadData && uploadData[0] ? uploadData[0].extractionMethod : "text";
     
-    const guideContentRaw = await generateActingGuideWithRAG({
-      sceneText: repairedText,
+    const guideContentRaw = await generatePrep101GuideFromText({
+      ...payload,
+      repairedText,
       characterName: characterName.trim(),
       productionTitle: productionTitle.trim(),
       productionType: productionType.trim(),
       genre: (genre || "").trim(),
       storyline: (storyline || "").trim(),
-      extractionMethod: extractionMethod,
-      hasFullScript: hasFullScript,
+      extractionMethod,
+      hasFullScript,
       fallbackMode: shouldForcePrepFallback,
-      uploadData: uploadData,
+      uploadData,
     });
 
     generatedHtml = wrapGuideHtml(guideContentRaw, {
