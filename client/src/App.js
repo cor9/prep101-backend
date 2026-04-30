@@ -32,6 +32,15 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const ownerAdminEmails = new Set([
+    'corey@childactor101.com',
+    'admin@prep101.site',
+    'themrralstons@icloud.com'
+  ]);
+  const isAdminUser =
+    user?.betaAccessLevel === 'admin' ||
+    ownerAdminEmails.has(String(user?.email || '').trim().toLowerCase());
+  const isAdminRoute = location.pathname === '/admin';
 
   console.log('🔒 ProtectedRoute - user:', user ? 'logged in' : 'not logged in');
   console.log('🔒 ProtectedRoute - loading:', loading);
@@ -58,6 +67,8 @@ function ProtectedRoute({ children }) {
   }
 
   if (
+    !isAdminRoute &&
+    !isAdminUser &&
     user?.account?.onboardingRequired &&
     location.pathname !== '/onboarding'
   ) {
@@ -65,6 +76,8 @@ function ProtectedRoute({ children }) {
   }
 
   if (
+    !isAdminRoute &&
+    !isAdminUser &&
     user?.account?.needsActorSelection &&
     location.pathname !== '/select-actor'
   ) {

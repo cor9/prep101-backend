@@ -28,11 +28,335 @@ const ADMIN_SUBSCRIPTION_VALUES = [
   "boldchoices_monthly",
 ];
 
+const DEFAULT_OWNER_EMAILS = [
+  "corey@childactor101.com",
+  "admin@prep101.site",
+  "themrralstons@icloud.com",
+];
+
+function getAdminOwnerEmails() {
+  const configured = String(process.env.OWNER_EMAILS || process.env.OWNER_EMAIL || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set([...DEFAULT_OWNER_EMAILS, ...configured]);
+}
+
+function isOwnerAdminEmail(email) {
+  if (!email) return false;
+  return getAdminOwnerEmails().has(String(email).trim().toLowerCase());
+}
+
 const router = express.Router();
 
 // Check if database models are available
 const hasDatabase = User !== null && Guide !== null;
 const hasSupabaseFallback = isSupabaseAdminConfigured();
+
+function plainRow(row) {
+  return row && typeof row.get === "function" ? row.get({ plain: true }) : row;
+}
+
+async function supabaseCount(table, apply = (query) => query) {
+  const result = await runAdminQuery(async (client) => {
+    let query = client.from(table).select("id", {
+      count: "exact",
+      head: true,
+    });
+    query = apply(query);
+    const { count, error } = await query;
+    if (error) throw error;
+    return count || 0;
+  }, 0);
+  return result || 0;
+}
+
+async function supabaseRows(table, apply = (query) => query) {
+  return runAdminQuery(async (client) => {
+    let query = client.from(table).select("*");
+    query = apply(query);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }, []);
+}
+
+function ilikeSupabaseSearch(query, search, fields) {
+  const term = String(search || "").trim();
+  if (!term) return query;
+  return query.or(fields.map((field) => `${field}.ilike.%${term}%`).join(","));
+}
+
+async function fetchSupabaseAdminDashboard() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+  const lastMonthEnd = thisMonth;
+
+  const [
+    users,
+    recentUsers,
+    recentGuides,
+    totalUsers,
+    totalGuides,
+    usersToday,
+    usersThisWeek,
+    usersThisMonth,
+    lastMonthUsers,
+    guidesToday,
+    guidesThisWeek,
+    guidesThisMonth,
+  ] = await Promise.all([
+    supabaseRows(supabaseTables.users),
+    supabaseRows(supabaseTables.users, (q) => q.order("createdAt", { ascending: false }).limit(5)),
+    supabaseRows(supabaseTables.guides, (q) => q.order("createdAt", { ascending: false }).limit(5)),
+    supabaseCount(supabaseTables.users),
+    supabaseCount(supabaseTables.guides),
+    supabaseCount(supabaseTables.users, (q) => q.gte("createdAt", today)),
+    supabaseCount(supabaseTables.users, (q) => q.gte("createdAt", thisWeek)),
+    supabaseCount(supabaseTables.users, (q) => q.gte("createdAt", thisMonth)),
+    supabaseCount(supabaseTables.users, (q) => q.gte("createdAt", lastMonthStart).lt("createdAt", lastMonthEnd)),
+    supabaseCount(supabaseTables.guides, (q) => q.gte("createdAt", today)),
+    supabaseCount(supabaseTables.guides, (q) => q.gte("createdAt", thisWeek)),
+    supabaseCount(supabaseTables.guides, (q) => q.gte("createdAt", thisMonth)),
+  ]);
+
+  const usersById = new Map(users.map((u) => [u.id, u]));
+  const activeSubscriptions = users.filter(
+    (u) => u.subscriptionStatus === "active" && getPrimaryPlanName(u) !== "free"
+  ).length;
+  const betaTesters = users.filter((u) => Boolean(u.isBetaTester)).length;
+  const totalGuidesUsed = users.reduce((sum, u) => sum + Number(u.guidesUsed || 0), 0);
+  const userGrowthRate =
+    lastMonthUsers > 0
+      ? Number((((usersThisMonth - lastMonthUsers) / lastMonthUsers) * 100).toFixed(1))
+      : usersThisMonth > 0
+        ? 100
+        : 0;
+
+  return {
+    success: true,
+    dashboard: {
+      overview: {
+        totalUsers,
+        totalGuides,
+        activeSubscriptions,
+        betaTesters,
+        promoCodesCount: 0,
+        redemptionsCount: 0,
+      },
+      users: {
+        total: totalUsers,
+        today: usersToday,
+        thisWeek: usersThisWeek,
+        thisMonth: usersThisMonth,
+        growthRate: userGrowthRate,
+      },
+      guides: {
+        total: totalGuides,
+        today: guidesToday,
+        thisWeek: guidesThisWeek,
+        thisMonth: guidesThisMonth,
+        totalUsed: totalGuidesUsed,
+        avgPerUser: totalUsers ? (totalGuides / totalUsers).toFixed(2) : "0.00",
+      },
+      subscriptions: Object.entries(
+        users.reduce((acc, row) => {
+          const type = getPrimaryPlanName(row);
+          acc[type] = (acc[type] || 0) + 1;
+          return acc;
+        }, {})
+      ).map(([type, count]) => ({ type, count })),
+      recentUsers: recentUsers.map((u) => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        subscription: u.subscription,
+        planDisplay: getPrimaryPlanName(u),
+        createdAt: u.createdAt,
+      })),
+      recentGuides: recentGuides.map((g) => {
+        const user = usersById.get(g.userId);
+        return {
+          id: g.id,
+          guideId: g.guideId,
+          characterName: g.characterName,
+          productionTitle: g.productionTitle,
+          createdAt: g.createdAt,
+          user: user ? { email: user.email, name: user.name } : null,
+        };
+      }),
+    },
+    source: "supabase",
+  };
+}
+
+async function fetchSupabaseAdminUsers(req) {
+  const page = Math.max(1, parseInt(req.query.page || "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || "25", 10)));
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+  const search = (req.query.search || "").trim();
+
+  const result = await runAdminQuery(async (client) => {
+    let query = client
+      .from(supabaseTables.users)
+      .select("*", { count: "exact" });
+    query = ilikeSupabaseSearch(query, search, ["email", "name"]);
+    if (req.query.subscription && ADMIN_SUBSCRIPTION_VALUES.includes(req.query.subscription)) {
+      query = query.eq("subscription", req.query.subscription);
+    }
+    if (req.query.betaOnly === "true") query = query.eq("isBetaTester", true);
+    const sortBy = ["createdAt", "email", "name", "subscription", "guidesUsed", "guidesLimit"].includes(req.query.sortBy)
+      ? req.query.sortBy
+      : "createdAt";
+    query = query.order(sortBy, { ascending: req.query.sortOrder === "asc" }).range(from, to);
+    const { data, count, error } = await query;
+    if (error) throw error;
+    return { rows: data || [], count: count || 0 };
+  }, { rows: [], count: 0 });
+
+  const userIds = result.rows.map((u) => u.id);
+  const guides = userIds.length
+    ? await supabaseRows(supabaseTables.guides, (q) => q.in("userId", userIds))
+    : [];
+  const guideStatsByUser = guides.reduce((acc, guide) => {
+    const id = guide.userId;
+    if (!acc[id]) acc[id] = { guidesCount: 0, lastGuideAt: null };
+    acc[id].guidesCount += 1;
+    if (!acc[id].lastGuideAt || new Date(guide.createdAt) > new Date(acc[id].lastGuideAt)) {
+      acc[id].lastGuideAt = guide.createdAt;
+    }
+    return acc;
+  }, {});
+
+  return {
+    success: true,
+    page,
+    limit,
+    total: result.count,
+    totalPages: Math.ceil(result.count / limit),
+    users: result.rows.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      subscription: u.subscription,
+      planDisplay: getPrimaryPlanName(u),
+      subscriptionStatus: u.subscriptionStatus,
+      stripeCustomerId: u.stripeCustomerId,
+      stripeSubscriptionId: u.stripeSubscriptionId,
+      stripePriceId: u.stripePriceId,
+      currentPeriodEnd: u.currentPeriodEnd,
+      guidesUsed: u.guidesUsed,
+      guidesLimit: u.guidesLimit,
+      prep101TopUpCredits: u.prep101TopUpCredits,
+      reader101Credits: u.reader101Credits,
+      boldChoicesCredits: u.boldChoicesCredits,
+      prep101Usage: buildPrep101Usage(u),
+      reader101Usage: buildReader101Usage(u),
+      boldChoicesUsage: buildBoldChoicesUsage(u),
+      guidesCount: guideStatsByUser[u.id]?.guidesCount || 0,
+      lastGuideAt: guideStatsByUser[u.id]?.lastGuideAt || null,
+      isBetaTester: u.isBetaTester,
+      betaAccessLevel: u.betaAccessLevel,
+      betaStatus: u.betaStatus,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    })),
+    source: "supabase",
+  };
+}
+
+async function fetchSupabaseAdminGuides(req) {
+  const page = Math.max(1, parseInt(req.query.page || "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || "25", 10)));
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+  const search = (req.query.search || "").trim();
+
+  const result = await runAdminQuery(async (client) => {
+    let query = client.from(supabaseTables.guides).select("*", { count: "exact" });
+    query = ilikeSupabaseSearch(query, search, ["characterName", "productionTitle", "guideId"]);
+    if (req.query.productionType) query = query.eq("productionType", req.query.productionType);
+    if (req.query.genre) query = query.eq("genre", req.query.genre);
+    if (req.query.userId) query = query.eq("userId", req.query.userId);
+    if (typeof req.query.isPublic !== "undefined") query = query.eq("isPublic", req.query.isPublic === "true");
+    const sortBy = ["createdAt", "characterName", "productionTitle", "viewCount"].includes(req.query.sortBy)
+      ? req.query.sortBy
+      : "createdAt";
+    query = query.order(sortBy, { ascending: req.query.sortOrder === "asc" }).range(from, to);
+    const { data, count, error } = await query;
+    if (error) throw error;
+    return { rows: data || [], count: count || 0 };
+  }, { rows: [], count: 0 });
+
+  const userIds = [...new Set(result.rows.map((g) => g.userId).filter(Boolean))];
+  const users = userIds.length
+    ? await supabaseRows(supabaseTables.users, (q) => q.in("id", userIds))
+    : [];
+  const usersById = new Map(users.map((u) => [u.id, u]));
+
+  return {
+    success: true,
+    page,
+    limit,
+    total: result.count,
+    totalPages: Math.ceil(result.count / limit),
+    guides: result.rows.map((g) => {
+      const user = usersById.get(g.userId);
+      return {
+        ...g,
+        user: user ? { id: user.id, email: user.email, name: user.name } : null,
+      };
+    }),
+    source: "supabase",
+  };
+}
+
+async function fetchSupabaseGuideAnalytics() {
+  const guides = await supabaseRows(supabaseTables.guides);
+  const countBy = (field) =>
+    Object.entries(
+      guides.reduce((acc, guide) => {
+        const key = guide[field] || "Unknown";
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {})
+    )
+      .map(([key, count]) => ({ key, count }))
+      .sort((a, b) => b.count - a.count);
+
+  return {
+    success: true,
+    analytics: {
+      byProductionType: countBy("productionType").map((r) => ({ type: r.key, count: r.count })),
+      byGenre: countBy("genre").map((r) => ({ genre: r.key, count: r.count })),
+      byRoleSize: countBy("roleSize").map((r) => ({ roleSize: r.key, count: r.count })),
+      visibility: {
+        public: guides.filter((g) => Boolean(g.isPublic)).length,
+        private: guides.filter((g) => !g.isPublic).length,
+      },
+      childGuides: {
+        requested: guides.filter((g) => Boolean(g.childGuideRequested)).length,
+        completed: guides.filter((g) => Boolean(g.childGuideCompleted)).length,
+      },
+      topViewed: guides
+        .filter((g) => Number(g.viewCount || 0) > 0)
+        .sort((a, b) => Number(b.viewCount || 0) - Number(a.viewCount || 0))
+        .slice(0, 10),
+      dailyCreation: Object.entries(
+        guides.reduce((acc, guide) => {
+          const date = String(guide.createdAt || "").slice(0, 10);
+          if (date) acc[date] = (acc[date] || 0) + 1;
+          return acc;
+        }, {})
+      ).map(([date, count]) => ({ date, count })),
+    },
+    source: "supabase",
+  };
+}
 
 // Log database status on module load
 console.log("🔍 Admin routes - Database status:", {
@@ -62,13 +386,12 @@ const requireAdmin = async (req, res, next) => {
       email: user?.email,
       isBetaTester: user?.isBetaTester,
       betaAccessLevel: user?.betaAccessLevel,
-      isOwnerEmail: user?.email === "corey@childactor101.com",
+      isOwnerEmail: isOwnerAdminEmail(user?.email),
     });
 
     const isBetaAdmin =
       user && user.isBetaTester && user.betaAccessLevel === "admin";
-    const ownerEmail = process.env.OWNER_EMAIL || "corey@childactor101.com";
-    const isOwnerEmail = user && user.email === ownerEmail;
+    const isOwnerEmail = user && isOwnerAdminEmail(user.email);
 
     if (!isBetaAdmin && !isOwnerEmail) {
       console.log("❌ Admin access denied:", {
@@ -98,6 +421,10 @@ const requireAdmin = async (req, res, next) => {
  */
 router.get("/dashboard", auth, requireAdmin, async (req, res) => {
   try {
+    if (hasSupabaseFallback) {
+      return res.json(await fetchSupabaseAdminDashboard());
+    }
+
     // Check if database is available
     if (!hasDatabase) {
       if (!hasSupabaseFallback) {
@@ -347,6 +674,10 @@ router.get("/stats", auth, requireAdmin, async (req, res) => {
  */
 router.get("/users", auth, requireAdmin, async (req, res) => {
   try {
+    if (hasSupabaseFallback) {
+      return res.json(await fetchSupabaseAdminUsers(req));
+    }
+
     if (!hasDatabase) {
       return res.status(503).json({
         success: false,
@@ -712,6 +1043,70 @@ router.put("/users/:id/guides", auth, requireAdmin, async (req, res) => {
         .json({ message: "No guide fields provided to update" });
     }
 
+    if (hasSupabaseFallback) {
+      const existing = await runAdminQuery(async (client) => {
+        const { data, error } = await client
+          .from(supabaseTables.users)
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      }, null);
+
+      if (!existing) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const updates = {};
+      if (
+        typeof guidesLimit === "number" &&
+        Number.isInteger(guidesLimit) &&
+        guidesLimit >= 0
+      ) {
+        updates.guidesLimit = guidesLimit;
+      }
+      if (
+        typeof guidesUsed === "number" &&
+        Number.isInteger(guidesUsed) &&
+        guidesUsed >= 0
+      ) {
+        updates.guidesUsed = guidesUsed;
+      }
+      if (
+        typeof addGuides === "number" &&
+        Number.isInteger(addGuides) &&
+        addGuides !== 0
+      ) {
+        updates.guidesLimit =
+          (updates.guidesLimit ?? Number(existing.guidesLimit || 0)) + addGuides;
+      }
+
+      const updated = await runAdminQuery(async (client) => {
+        const { data, error } = await client
+          .from(supabaseTables.users)
+          .update(updates)
+          .eq("id", id)
+          .select("*")
+          .single();
+        if (error) throw error;
+        return data;
+      });
+
+      return res.json({
+        success: true,
+        message: "Guide limits updated",
+        user: {
+          id: updated.id,
+          email: updated.email,
+          subscription: updated.subscription,
+          guidesUsed: updated.guidesUsed,
+          guidesLimit: updated.guidesLimit,
+          prep101TopUpCredits: updated.prep101TopUpCredits,
+        },
+      });
+    }
+
     const user = await User.findByPk(id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -817,6 +1212,10 @@ router.delete("/users/:id", auth, requireAdmin, async (req, res) => {
  */
 router.get("/guides", auth, requireAdmin, async (req, res) => {
   try {
+    if (hasSupabaseFallback) {
+      return res.json(await fetchSupabaseAdminGuides(req));
+    }
+
     if (!hasDatabase) {
       return res.status(503).json({
         success: false,
@@ -914,6 +1313,23 @@ router.get("/guides", auth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error("Admin guides fetch error:", error);
     res.status(500).json({ message: "Failed to fetch guides" });
+  }
+});
+
+/**
+ * GET /api/admin/guides/analytics
+ * Supabase-safe guide analytics. This route must be registered before
+ * /api/admin/guides/:id so "analytics" is not treated as a guide id.
+ */
+router.get("/guides/analytics", auth, requireAdmin, async (req, res, next) => {
+  try {
+    if (hasSupabaseFallback) {
+      return res.json(await fetchSupabaseGuideAnalytics());
+    }
+    return next();
+  } catch (error) {
+    console.error("Admin guide analytics fallback error:", error);
+    return res.status(500).json({ message: "Failed to fetch guide analytics" });
   }
 });
 
@@ -1685,6 +2101,52 @@ router.get("/activity", auth, requireAdmin, async (req, res) => {
     );
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
+    if (hasSupabaseFallback) {
+      const [users, guides] = await Promise.all([
+        supabaseRows(supabaseTables.users),
+        supabaseRows(supabaseTables.guides),
+      ]);
+      const totalsByDate = {};
+      for (
+        let d = new Date(startDate);
+        d <= new Date();
+        d.setDate(d.getDate() + 1)
+      ) {
+        const dateStr = d.toISOString().split("T")[0];
+        totalsByDate[dateStr] = {
+          date: dateStr,
+          newUsers: 0,
+          newGuides: 0,
+          totalUsers: users.filter((u) => new Date(u.createdAt) < startDate).length,
+          totalGuides: guides.filter((g) => new Date(g.createdAt) < startDate).length,
+        };
+      }
+      for (const u of users) {
+        const date = String(u.createdAt || "").slice(0, 10);
+        if (totalsByDate[date]) totalsByDate[date].newUsers += 1;
+      }
+      for (const g of guides) {
+        const date = String(g.createdAt || "").slice(0, 10);
+        if (totalsByDate[date]) totalsByDate[date].newGuides += 1;
+      }
+      const sortedDates = Object.keys(totalsByDate).sort();
+      sortedDates.forEach((date, i) => {
+        if (i > 0) {
+          const prev = totalsByDate[sortedDates[i - 1]];
+          totalsByDate[date].totalUsers = prev.totalUsers + totalsByDate[date].newUsers;
+          totalsByDate[date].totalGuides = prev.totalGuides + totalsByDate[date].newGuides;
+        } else {
+          totalsByDate[date].totalUsers += totalsByDate[date].newUsers;
+          totalsByDate[date].totalGuides += totalsByDate[date].newGuides;
+        }
+      });
+      return res.json({
+        success: true,
+        activity: { days, startDate, data: sortedDates.map((date) => totalsByDate[date]) },
+        source: "supabase",
+      });
+    }
+
     // Daily user registrations
     const dailyUsers = await User.findAll({
       attributes: [
@@ -1788,6 +2250,61 @@ router.get("/growth", auth, requireAdmin, async (req, res) => {
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+
+    if (hasSupabaseFallback) {
+      const [users, guides] = await Promise.all([
+        supabaseRows(supabaseTables.users),
+        supabaseRows(supabaseTables.guides),
+      ]);
+      const between = (row, start, end = null) => {
+        const created = new Date(row.createdAt);
+        return created >= start && (!end || created < end);
+      };
+      const usersThisMonth = users.filter((u) => between(u, thisMonth)).length;
+      const usersLastMonth = users.filter((u) => between(u, lastMonth, thisMonth)).length;
+      const guidesThisMonth = guides.filter((g) => between(g, thisMonth)).length;
+      const guidesLastMonth = guides.filter((g) => between(g, lastMonth, thisMonth)).length;
+      const userGrowth =
+        usersLastMonth > 0
+          ? Number((((usersThisMonth - usersLastMonth) / usersLastMonth) * 100).toFixed(1))
+          : usersThisMonth > 0
+            ? 100
+            : 0;
+      const guideGrowth =
+        guidesLastMonth > 0
+          ? Number((((guidesThisMonth - guidesLastMonth) / guidesLastMonth) * 100).toFixed(1))
+          : guidesThisMonth > 0
+            ? 100
+            : 0;
+      const activeUsers = new Set(
+        guides.filter((g) => between(g, thisMonth)).map((g) => g.userId).filter(Boolean)
+      ).size;
+      return res.json({
+        success: true,
+        growth: {
+          users: {
+            total: users.length,
+            thisMonth: usersThisMonth,
+            lastMonth: usersLastMonth,
+            growth: userGrowth,
+            trend: usersThisMonth > usersLastMonth ? "up" : usersThisMonth < usersLastMonth ? "down" : "stable",
+          },
+          guides: {
+            total: guides.length,
+            thisMonth: guidesThisMonth,
+            lastMonth: guidesLastMonth,
+            growth: guideGrowth,
+            trend: guidesThisMonth > guidesLastMonth ? "up" : guidesThisMonth < guidesLastMonth ? "down" : "stable",
+            avgPerUser: users.length ? Number((guides.length / users.length).toFixed(2)) : 0,
+          },
+          engagement: {
+            activeUsersThisMonth: activeUsers,
+            activeRate: users.length ? ((activeUsers / users.length) * 100).toFixed(1) : 0,
+          },
+        },
+        source: "supabase",
+      });
+    }
 
     // Get counts for current and previous months
     const [

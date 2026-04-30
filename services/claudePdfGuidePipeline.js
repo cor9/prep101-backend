@@ -150,15 +150,7 @@ When shortening for length, remove explanation before removing direction.
 Keep playable instructions.
 Cut analysis first, not tactics.
 
-TWO-PHASE GENERATION (INTERNAL):
-
-Build the guide in two internal phases:
-Phase 1: Project Overview, Character Breakdown, Uta Hagen's 9 Questions, Scene Action & Physicality, Subtext Translation Table, Character POV & Personalization
-Phase 2 (MUST COMPLETE FULLY): Bold Choices, Two-Take Strategy, Moment Before & Button, Rehearsal Roadmap, Pre-Submission Checklist, Closing Coach's Note
-
-Reserve output budget explicitly for Phase 2.
-Do not let Phase 1 sections consume the entire response budget.
-If Phase 1 is running long, cut it short. Phase 2 must always be complete.
+  
 
 OUTPUT PRIORITY ORDER:
 
@@ -353,17 +345,13 @@ function validateGuideHtml(html = "") {
   ];
 
   // Final Coach Note check
+  // Look for it followed by some text, or specifically look for the <h2>/<h3> heading
   const hasFinalCoachNote =
-    /Final Coach Note/i.test(html) || /Closing Coach'?s?\s*Note/i.test(html);
+    /<h[1-6][^>]*>[^<]*(?:Final Coach Note|Closing Coach'?s?\s*Note)/i.test(html) || 
+    /(?:Final Coach Note|Closing Coach'?s?\s*Note)[\s\S]{50,}/i.test(html);
   if (!hasFinalCoachNote) missing.push("Final Coach Note");
 
-  // Two-Take check — accept various labelling conventions Claude uses:
-  //   Take A / Take B        (preferred)
-  //   Take 1 / Take 2
-  //   Take One / Take Two
-  //   Option A / Option B
-  //   The section heading alone ("Two-Take Strategy" or "Two Take Strategy")
-  const hasTwoTakeHeading = /Two[- ]Take\s+Strat/i.test(html) || /Two-Take\s+Submission/i.test(html);
+  // Two-Take check — require the actual takes to be present!
   const hasTakeA       = /Take\s*A\b/i.test(html);
   const hasTakeB       = /Take\s*B\b/i.test(html);
   const hasTake1       = /Take\s*[#]?1\b/i.test(html);
@@ -377,12 +365,14 @@ function validateGuideHtml(html = "") {
     (hasTake1 && hasTake2) ||
     (hasTakeOne && hasTakeTwo) ||
     (hasOptionA && hasOptionB);
-  // Pass the check if either the section heading OR the inner labels are present
-  if (!hasTwoTakeHeading && !hasTwoTakeContent) {
+  
+  // Do not accept just the heading, because it could just be the Table of Contents!
+  if (!hasTwoTakeContent) {
     missing.push("Two-Take Strategy (Take A + Take B)");
   }
 
-  if (!/Pre-Submission Checklist/i.test(html)) {
+  // Look for Checklist followed by list items
+  if (!/Pre-Submission Checklist[\s\S]{10,}(?:<li|[-•])/i.test(html)) {
     missing.push("Pre-Submission Checklist");
   }
   if (/TRUNCATED\s*[—-]\s*REQUEST PART 2/i.test(html)) {

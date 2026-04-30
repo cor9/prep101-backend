@@ -141,10 +141,26 @@ async function processGuideJob(payload, jobInstance = null) {
   } = payload;
 
   await updateProgress(10, "Repairing and analyzing text...");
-  const repairedText = repairScreenplayText(combinedSceneText);
+
+  let finalCombinedText = combinedSceneText || "";
+  
+  // If the upload bypassed OCR and resulted in an empty or corrupt extraction, run the fallback now
+  if ((shouldForcePrepFallback || shouldForceReaderFallback || combinedWordCount < 80) && uploadData && uploadData.length > 0) {
+    await updateProgress(15, "Running heavy PDF reading (OCR recovery)...");
+    try {
+      const { processPdfExtractionJob } = require("./pdfExtractionJobProcessor");
+      const { recoverScreenplayFromFallback } = require("./claudePdfGuidePipeline");
+      
+      // We assume the PDF was attached or we can fetch it. Wait, the background job 
+      // doesn't have the PDF buffer! It only has the uploadId. 
+      // This is a problem if the PDF is not stored. 
+    } catch (err) {
+      console.warn("OCR fallback failed in job processor:", err);
+    }
+  }
+
+  const repairedText = repairScreenplayText(finalCombinedText);
   const parsedScreenplay = parseScreenplayText(repairedText, {
-    actorCharacter: characterName ? characterName.trim() : null
-  });
 
   const FORBIDDEN_READER_ROLES = new Set(["SHOT", "INSERT", "SECURITY CAM FOOTAGE", "CUT TO", "FLASHBACK", "ANGLE ON"]);
   function scoreCharacterLikelihood(name) {

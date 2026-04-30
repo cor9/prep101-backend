@@ -571,7 +571,7 @@ const Dashboard = () => {
     // Netlify's proxy (prep101.site → Vercel) has a hard 26-second timeout;
     // guide generation takes 3–6 minutes, so proxied calls always 504.
     // Non-generation calls (upload, auth, usage) are short and stay on API_BASE.
-    const GENERATION_API_BASE = API_BASE || 'https://prep101-api.vercel.app';
+    const GENERATION_API_BASE = 'https://prep101-api.vercel.app';
 
     if (!uploadData?.uploadId && !uploadData?.uploadIds) {
       toast.error("Please upload your sides (PDF) before generating.");
