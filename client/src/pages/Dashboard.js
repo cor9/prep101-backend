@@ -501,7 +501,7 @@ const Dashboard = () => {
     if (serializableData?.scriptReadable === false) {
       if (canUseDirectPdf) {
         toast(
-          "We detected a formatting issue in extracted text. Prep101 will use direct PDF reading during generation.",
+          "PDF uploaded! We'll use our deep-reading mode during generation to process this document.",
           { icon: "📄", duration: 5000 }
         );
       } else {
@@ -946,9 +946,13 @@ const Dashboard = () => {
             ? "Guide generation timed out on the server. We stopped this attempt instead of pretending it is still building. Please retry, or paste the recovered scene text if this PDF keeps timing out."
             : "The generation process timed out. This usually happens with very long scripts or during high traffic. Please try again or paste the scene text directly below.",
           { duration: 8000 }
-        );
       } else {
-        toast.error(`Failed to generate guide: ${err.message}`, { duration: 6000 });
+        toast.error(`Failed to generate guide: ${err.message}`, { duration: 8000 });
+        if (/unable to recover recognizable screenplay sides|unable to read the uploaded sides/i.test(errorMessage)) {
+          setUploadData(null);
+          setUploadedFile(null);
+          try { sessionStorage.removeItem("prep101_upload_data"); } catch (_) {}
+        }
       }
     } finally {
       clearTimeout(timeoutId);
@@ -1636,13 +1640,13 @@ const Dashboard = () => {
                     <span>{uploadCanProceedViaDirectPdf ? "ℹ️" : "⚠️"}</span>
                     <strong>
                       {uploadCanProceedViaDirectPdf
-                        ? "PDF uploaded. We'll read directly from the original file during guide generation."
-                        : "PDF uploaded, but extraction confidence is low."}
+                        ? "PDF accepted. We'll use our deep-reading mode during generation."
+                        : "PDF accepted, but the text is difficult to read."}
                     </strong>
                   </div>
                   <div style={{ fontSize: "0.875rem" }}>
                     {uploadCanProceedViaDirectPdf
-                      ? `Extracted ${extractedWords} words, but quality checks flagged this file. You can still generate a Prep101 guide from the original PDF, or re-upload/paste text for a cleaner result.`
+                      ? `We'll process the original PDF file during generation to ensure we catch every detail. You can proceed below.`
                       : `Extracted ${extractedWords} words. Re-upload a clearer PDF or paste the sides text directly.`}
                   </div>
                 </div>

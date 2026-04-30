@@ -2857,9 +2857,9 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       uploadMessage:
         pipelineResult.uploadMessage ||
         (looksUnderExtracted
-          ? `Only ${wordCount} words were recovered from this ${pageCount}-page PDF. We'll use recovery reading during generation instead of trusting that count.`
+          ? `PDF uploaded! This appears to be a scanned document, so we'll do a deep-read of the pages during generation to ensure we catch every detail.`
           : looksCorruptedByWatermark
-            ? "The PDF text layer appears dominated by watermark text. We'll use recovery reading during generation instead of trusting that count."
+            ? "PDF uploaded! We detected heavy watermarks, so we'll use our enhanced reading mode during generation."
           : null),
       debug: {
         method: extractionMethod,
