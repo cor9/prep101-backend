@@ -900,6 +900,35 @@ async function persistBillingUserUpdates(user, updates) {
   return row ? normalizeUserRow(row) : { ...user, ...updates };
 }
 
+function assessGeneratedGuideQuality(html = "") {
+  const content = String(html || "");
+  const missing = [];
+  const lower = content.toLowerCase();
+
+  if (content.length < 2500) missing.push("guide is too short");
+  if (!/Final Coach Note|Closing Coach'?s?\s*Note|FINAL PEP TALK/i.test(content)) {
+    missing.push("final coach note");
+  }
+  if (!/Pre-Submission Checklist/i.test(content)) missing.push("pre-submission checklist");
+  if (!/Two[- ]Take|Take\s*A\b|Take\s*B\b|Take\s*1\b|Take\s*2\b/i.test(content)) {
+    missing.push("two-take strategy");
+  }
+  if (
+    lower.includes("no usable dramatic content detected") ||
+    lower.includes("script pages are not available") ||
+    lower.includes("actual script pages are not available") ||
+    lower.includes("resubmit with the correct pdf") ||
+    ((lower.match(/not stated in sides/g) || []).length >= 8)
+  ) {
+    missing.push("source-specific coaching");
+  }
+
+  return {
+    valid: missing.length === 0,
+    missing,
+  };
+}
+
 // Load methodology files into memory for RAG
 let methodologyDatabase = {};
 
@@ -3736,6 +3765,18 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     });
 
     const { guidePayload, isReaderMode: resultIsReaderMode } = jobResult;
+    const guideQuality = assessGeneratedGuideQuality(guidePayload.generatedHtml);
+    if (!guideQuality.valid) {
+      return res.status(422).json({
+        success: false,
+        error:
+          "Guide generation did not produce a complete, script-specific guide. No guide credit was used.",
+        reason: guideQuality.missing.join(", "),
+        creditRefunded: false,
+        creditConsumed: false,
+      });
+    }
+
     const { persistedGuide, persistenceMethod } = await persistGuideRecord(
       guidePayload,
       currentUser
@@ -3856,6 +3897,20 @@ app.get("/api/guides/jobs/:id", auth, async (req, res) => {
     }
 
     console.log(`[JOB ${id}] Finalizing and saving generated guide...`);
+
+    const guideQuality = assessGeneratedGuideQuality(guidePayload.generatedHtml);
+    if (!guideQuality.valid) {
+      return res.status(422).json({
+        id: job.id,
+        state: "failed",
+        success: false,
+        error:
+          "Guide generation did not produce a complete, script-specific guide. No guide credit was used.",
+        reason: guideQuality.missing.join(", "),
+        creditRefunded: false,
+        creditConsumed: false,
+      });
+    }
 
     const { persistedGuide, persistenceMethod } = await persistGuideRecord(
       guidePayload,

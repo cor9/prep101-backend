@@ -6,17 +6,29 @@ const {
   runAdminQuery,
   tables,
   normalizeGuideRow,
+  normalizeUserRow,
 } = require("../lib/supabaseAdmin");
+const {
+  buildPrep101Usage,
+  buildReader101Usage,
+} = require("../services/prep101EntitlementsService");
 
 const router = express.Router();
 
 let Guide = null;
+let User = null;
 let auth = null;
 
 try {
   Guide = require("../models/Guide");
 } catch (error) {
   console.warn("⚠️ Guide model not available in routes/guides.js");
+}
+
+try {
+  User = require("../models/User");
+} catch (error) {
+  console.warn("⚠️ User model not available in routes/guides.js");
 }
 
 try {
@@ -135,6 +147,83 @@ async function fetchGuideForUser(id, userId) {
   }, null);
 
   return normalizeGuideRow(result);
+}
+
+function assessGeneratedGuideQuality(html = "") {
+  const content = String(html || "");
+  const lower = content.toLowerCase();
+  const missing = [];
+  if (content.length < 2500) missing.push("guide is too short");
+  if (!/Final Coach Note|Closing Coach'?s?\s*Note|FINAL PEP TALK/i.test(content)) {
+    missing.push("final coach note");
+  }
+  if (!/Pre-Submission Checklist/i.test(content)) missing.push("pre-submission checklist");
+  if (!/Two[- ]Take|Take\s*A\b|Take\s*B\b|Take\s*1\b|Take\s*2\b/i.test(content)) {
+    missing.push("two-take strategy");
+  }
+  if (
+    lower.includes("no usable dramatic content detected") ||
+    lower.includes("script pages are not available") ||
+    lower.includes("actual script pages are not available") ||
+    lower.includes("resubmit with the correct pdf") ||
+    ((lower.match(/not stated in sides/g) || []).length >= 8)
+  ) {
+    missing.push("source-specific coaching");
+  }
+  return { valid: missing.length === 0, missing };
+}
+
+async function persistUserRefund(req, guideType) {
+  const userId = req.user.id;
+
+  if (User) {
+    const user = await User.findByPk(userId);
+    if (!user) throw new Error("User not found");
+    if (guideType === "reader101") {
+      await user.update({ reader101Credits: Number(user.reader101Credits || 0) + 1 });
+    } else {
+      await user.update({ prep101TopUpCredits: Number(user.prep101TopUpCredits || 0) + 1 });
+    }
+    await user.reload();
+    return user;
+  }
+
+  const row = await runAdminQuery(async (client) => {
+    const field = guideType === "reader101" ? "reader101Credits" : "prep101TopUpCredits";
+    const { data: current, error: fetchError } = await client
+      .from(tables.users)
+      .select("*")
+      .eq("id", userId)
+      .single();
+    if (fetchError) throw fetchError;
+    const { data, error } = await client
+      .from(tables.users)
+      .update({ [field]: Number(current?.[field] || 0) + 1 })
+      .eq("id", userId)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return data;
+  });
+
+  return normalizeUserRow(row);
+}
+
+async function deleteGuideForUser(id, userId) {
+  if (Guide) {
+    const guide = await Guide.findOne({ where: { id, userId } });
+    if (guide) await guide.destroy();
+    return;
+  }
+
+  await runAdminQuery(async (client) => {
+    const { error } = await client
+      .from(tables.guides)
+      .delete()
+      .eq("id", id)
+      .eq("userId", userId);
+    if (error) throw error;
+  });
 }
 
 async function renderPdfBuffer(guide) {
@@ -291,6 +380,48 @@ router.get("/:id/pdf", auth, async (req, res) => {
   } catch (error) {
     console.error("❌ [guides/pdf] Error:", error.message);
     return res.status(500).json({ error: "Failed to generate PDF" });
+  }
+});
+
+router.post("/:id/reclaim-credit", auth, async (req, res) => {
+  try {
+    const guide = await fetchGuideForUser(req.params.id, req.user.id);
+    if (!guide) return res.status(404).json({ error: "Guide not found" });
+
+    const guideType = guide.guideType || "prep101";
+    if (!["prep101", "reader101"].includes(guideType)) {
+      return res.status(400).json({
+        error: "Credit reclaim is only available for Prep101 and Reader101 guides.",
+      });
+    }
+
+    const quality = assessGeneratedGuideQuality(guide.generatedHtml);
+    const isAdmin = req.user?.betaAccessLevel === "admin";
+    const force = isAdmin && req.body?.force === true;
+    if (quality.valid && !force) {
+      return res.status(400).json({
+        error:
+          "This guide does not look incomplete. Contact support if you still need a credit restored.",
+        quality,
+      });
+    }
+
+    const updatedUser = await persistUserRefund(req, guideType);
+    await deleteGuideForUser(req.params.id, req.user.id);
+
+    return res.json({
+      success: true,
+      message: "Credit restored and incomplete guide removed.",
+      reclaimed: guideType === "reader101" ? "reader101Credit" : "prep101TopUpCredit",
+      usage:
+        guideType === "reader101"
+          ? buildReader101Usage(updatedUser)
+          : buildPrep101Usage(updatedUser),
+      quality,
+    });
+  } catch (error) {
+    console.error("❌ [guides/reclaim-credit] Error:", error.message);
+    return res.status(500).json({ error: "Failed to reclaim guide credit" });
   }
 });
 

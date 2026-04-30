@@ -46,6 +46,7 @@ const GuideView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [emailSending, setEmailSending] = useState(false);
+  const [reclaiming, setReclaiming] = useState(false);
   const authToken = user?.accessToken || user?.token;
 
   useEffect(() => {
@@ -209,6 +210,45 @@ const GuideView = () => {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  const handleReclaimCredit = async () => {
+    if (!user) {
+      setError("Please log in to reclaim a guide credit");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Restore this guide credit? This removes the incomplete guide from your account and returns one replacement credit."
+    );
+    if (!confirmed) return;
+
+    setReclaiming(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/guides/${id}/reclaim-credit`, {
+        method: "POST",
+        ...withApiCredentials({
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }, user),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || `Failed to restore credit (HTTP ${res.status})`);
+        return;
+      }
+
+      alert(data.message || "Credit restored.");
+      const product = guide.guideType === "reader101" ? "reader101" : "prep101";
+      navigate(`/dashboard?product=${product}`);
+    } catch (err) {
+      console.error("Error reclaiming guide credit:", err);
+      alert("Failed to restore credit. Please try again later.");
+    } finally {
+      setReclaiming(false);
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -318,6 +358,17 @@ const GuideView = () => {
                   disabled={emailSending}
                 >
                   {emailSending ? "Emailing…" : "Email This Guide"}
+                </button>
+                <button
+                  onClick={handleReclaimCredit}
+                  className="btn btnGhost"
+                  disabled={reclaiming}
+                  style={{
+                    borderColor: "#f59e0b",
+                    color: "#fbbf24",
+                  }}
+                >
+                  {reclaiming ? "Restoring…" : "Restore Credit"}
                 </button>
               </div>
             </div>
