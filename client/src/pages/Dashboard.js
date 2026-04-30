@@ -571,7 +571,7 @@ const Dashboard = () => {
     // Netlify's proxy (prep101.site → Vercel) has a hard 26-second timeout;
     // guide generation takes 3–6 minutes, so proxied calls always 504.
     // Non-generation calls (upload, auth, usage) are short and stay on API_BASE.
-    const GENERATION_API_BASE = 'https://prep101-api.vercel.app';
+    const GENERATION_API_BASE = API_BASE || 'https://prep101-api.vercel.app';
 
     if (!uploadData?.uploadId && !uploadData?.uploadIds) {
       toast.error("Please upload your sides (PDF) before generating.");
@@ -946,9 +946,10 @@ const Dashboard = () => {
             ? "Guide generation timed out on the server. We stopped this attempt instead of pretending it is still building. Please retry, or paste the recovered scene text if this PDF keeps timing out."
             : "The generation process timed out. This usually happens with very long scripts or during high traffic. Please try again or paste the scene text directly below.",
           { duration: 8000 }
+        );
       } else {
         toast.error(`Failed to generate guide: ${err.message}`, { duration: 8000 });
-        if (/unable to recover recognizable screenplay sides|unable to read the uploaded sides/i.test(errorMessage)) {
+        if (/unable to recover recognizable screenplay sides|unable to read the uploaded sides|Unable to recover meaningful text/i.test(errorMessage)) {
           setUploadData(null);
           setUploadedFile(null);
           try { sessionStorage.removeItem("prep101_upload_data"); } catch (_) {}

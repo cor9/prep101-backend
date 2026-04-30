@@ -3003,11 +3003,45 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       return res.status(503).json({ success: false, error: "ANTHROPIC_API_KEY is not configured." });
     }
 
-    // ─── Reader101 detection logic ──────────────────────────────────────────
+    const guideQueueEnabled = String(process.env.ENABLE_GUIDE_QUEUE || "").toLowerCase() === "true";
     const isReader101Request = 
       mode === "reader_support" || 
       req.body.product === "reader101" || 
       req.body.isReader101 === true;
+
+    if (guideQueueEnabled && process.env.REDIS_URL && enqueueGuideJob) {
+      console.log(`[GENERATE FROM PDF] Enqueuing durable guide job for user ${currentUser.id}`);
+      const payload = {
+        jobType: isReader101Request ? "reader101" : "prep101",
+        pdfBase64: pdfBuffer.toString("base64"),
+        filename: pdfFilename,
+        characterName: characterName.trim(),
+        actorAge,
+        productionTitle: productionTitle.trim(),
+        productionType: productionType.trim(),
+        roleSize: roleSize || (isReader101Request ? "Supporting" : ""),
+        genre: genre || "",
+        storyline: storyline || "",
+        characterBreakdown: characterBreakdown || "",
+        callbackNotes: callbackNotes || "",
+        focusArea: focusArea || (isReader101Request ? "reader_support" : ""),
+        shouldForceReaderFallback: isReader101Request,
+        shouldForcePrepFallback: !isReader101Request,
+        combinedSceneText: mergedSceneTextFromCache || "",
+        uploadData: allCachedEntries,
+        userId: currentUser.id,
+        user: currentUser,
+        mode: isReader101Request ? "reader_support" : "standard"
+      };
+      const job = await enqueueGuideJob(payload);
+      return res.status(202).json({
+        success: true,
+        jobId: job.id,
+        message: "Guide generation started. Please wait...",
+      });
+    }
+
+    // ─── Reader101 detection logic ──────────────────────────────────────────
 
     if (isReader101Request) {
       const reader101Usage = buildReader101Usage(currentUser);

@@ -141,26 +141,36 @@ async function processGuideJob(payload, jobInstance = null) {
   } = payload;
 
   await updateProgress(10, "Repairing and analyzing text...");
-
   let finalCombinedText = combinedSceneText || "";
   
-  // If the upload bypassed OCR and resulted in an empty or corrupt extraction, run the fallback now
-  if ((shouldForcePrepFallback || shouldForceReaderFallback || combinedWordCount < 80) && uploadData && uploadData.length > 0) {
+  if (payload.pdfBase64 && (shouldForcePrepFallback || shouldForceReaderFallback || combinedWordCount < 80)) {
     await updateProgress(15, "Running heavy PDF reading (OCR recovery)...");
     try {
       const { processPdfExtractionJob } = require("./pdfExtractionJobProcessor");
       const { recoverScreenplayFromFallback } = require("./claudePdfGuidePipeline");
       
-      // We assume the PDF was attached or we can fetch it. Wait, the background job 
-      // doesn't have the PDF buffer! It only has the uploadId. 
-      // This is a problem if the PDF is not stored. 
+      const ocrFallback = await processPdfExtractionJob({
+        filename: payload.filename || "upload.pdf",
+        pdfBase64: payload.pdfBase64,
+      });
+
+      const recoveredText = recoverScreenplayFromFallback(ocrFallback);
+      const recoveredWordCount = (recoveredText.match(/\b[\w']+\b/g) || []).length;
+      if (recoveredWordCount >= 80) {
+        finalCombinedText = recoveredText;
+      } else {
+        throw new Error("Unable to recover meaningful text from PDF.");
+      }
     } catch (err) {
       console.warn("OCR fallback failed in job processor:", err);
+      throw new Error("I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly.");
     }
   }
 
   const repairedText = repairScreenplayText(finalCombinedText);
   const parsedScreenplay = parseScreenplayText(repairedText, {
+    actorCharacter: characterName ? characterName.trim() : null
+  });
 
   const FORBIDDEN_READER_ROLES = new Set(["SHOT", "INSERT", "SECURITY CAM FOOTAGE", "CUT TO", "FLASHBACK", "ANGLE ON"]);
   function scoreCharacterLikelihood(name) {
