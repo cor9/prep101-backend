@@ -2743,7 +2743,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     console.log(`[UPLOAD] Extracting text from ${req.file.originalname}`);
     let pipelineResult = await ingestPdf(req.file.buffer, {
       maxPages: 6,
-      maxPipelineMs: 35000,
+      maxPipelineMs: 20000,
       allowLocalRaster: !process.env.VERCEL,
     });
     let cleanedText = pipelineResult.text || "";
@@ -3065,7 +3065,7 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
         const { ingestPdf } = require("./services/pdfIngestPipeline");
         const ingestResult = await ingestPdf(pdfBuffer, {
           maxPages: 6,
-          maxPipelineMs: 35000,
+          maxPipelineMs: 20000,
           allowLocalRaster: !process.env.VERCEL,
         });
         const fallbackText = ingestResult?.text || "";
