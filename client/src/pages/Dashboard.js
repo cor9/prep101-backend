@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import FileUpload from "../components/FileUpload";
 import GuideForm from "../components/GuideForm";
 import LoadingSpinner from "../components/LoadingSpinner";
+import PromoCodeInput from "../components/PromoCodeInput";
 import Footer from "../components/Footer";
 
 import API_BASE from "../config/api";
@@ -246,7 +247,7 @@ const Dashboard = () => {
   const [usageLoading, setUsageLoading] = useState(true);
   const [usageError, setUsageError] = useState(null);
 
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const token = (
     user?.accessToken ||
     user?.token ||
@@ -313,7 +314,7 @@ const Dashboard = () => {
               json.user?.subscription ||
               json.subscription?.currentPlan?.name,
             used: prep101Usage.monthlyUsed ?? json.user?.guidesUsed ?? 0,
-            limit: prep101Usage.monthlyLimit ?? json.user?.guidesLimit ?? 1,
+            limit: prep101Usage.monthlyLimit ?? json.user?.guidesLimit ?? 0,
             remaining: prep101Usage.totalRemaining,
             monthlyRemaining: prep101Usage.monthlyRemaining,
             topUpCredits:
@@ -343,7 +344,7 @@ const Dashboard = () => {
           setUsage({
             plan: user?.subscription || "free",
             used: user?.guidesUsed || 0,
-            limit: user?.guidesLimit || 1,
+            limit: user?.guidesLimit ?? 0,
             remaining: user?.prep101Usage?.totalRemaining,
             monthlyRemaining: user?.prep101Usage?.monthlyRemaining,
             topUpCredits:
@@ -442,6 +443,16 @@ const Dashboard = () => {
     document
       .getElementById("guide-builder")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const refreshDashboardAccess = async () => {
+    setRefreshKey((k) => k + 1);
+    if (typeof refreshUser === "function") {
+      try {
+        await refreshUser();
+      } catch (error) {
+        console.warn("Unable to refresh user after access update:", error);
+      }
+    }
   };
   const buildGuideDownloadUrl = (path) => {
     const baseUrl = `${API_BASE}${path}`;
@@ -572,7 +583,7 @@ const Dashboard = () => {
       );
       return;
     }
-    if (!canGenerate) {
+    if (modeForRequest !== "reader_support" && !canGenerate) {
       toast.error(
         isPrep101StarterPlan
           ? "You've used your 5 Prep101 guides. Buy 1 more guide or a 3-pack to keep going."
@@ -685,12 +696,13 @@ const Dashboard = () => {
         }
 
         if (!response.ok || parsedData?.success === false) {
-          const serverMessage =
-            parsedData?.error ||
-            parsedData?.reason ||
-            parsedData?.detail ||
-            parsedData?.message ||
-            parsedData?.debug?.tip;
+          const serverMessage = [
+            parsedData?.error,
+            parsedData?.reason,
+            parsedData?.detail,
+            parsedData?.message,
+            parsedData?.debug?.tip,
+          ].filter(Boolean).join(" ");
             
           const err = new Error(
             serverMessage || `Failed to generate guide (HTTP ${response.status})`
@@ -1000,6 +1012,8 @@ const Dashboard = () => {
           ["3", "Generate the guide", "Get a Prep101 guide saved to this account."],
         ],
       };
+  const prep101AccessBlocked =
+    !isReader101Context && !usageLoading && !canGenerate;
 
   return (
     <>
@@ -1481,7 +1495,11 @@ const Dashboard = () => {
                         </button>
                       )}
                     </div>
+                    <PromoCodeInput onRedeemSuccess={refreshDashboardAccess} />
                   </div>
+                )}
+                {canGenerate && (
+                  <PromoCodeInput onRedeemSuccess={refreshDashboardAccess} />
                 )}
               </>
             )}
@@ -1494,7 +1512,7 @@ const Dashboard = () => {
               title={builderCopy.title}
               description={builderCopy.description}
             />
-            {!uploadData && (
+            {!uploadData && !prep101AccessBlocked && (
               <div
                 style={{
                   display: "grid",
@@ -1520,12 +1538,53 @@ const Dashboard = () => {
                 gap: "1.1rem",
               }}
             >
-              <FileUpload
-                onUpload={handleFileUpload}
-                onUploadStart={handleUploadStart}
-                onUploadEnd={handleUploadEnd}
-                allowMultiple={isReader101Context}
-              />
+              {prep101AccessBlocked ? (
+                <div
+                  style={{
+                    borderRadius: 18,
+                    background: "#fffbeb",
+                    border: "1px solid #f59e0b",
+                    color: "#92400e",
+                    padding: "1rem",
+                  }}
+                >
+                  <div style={{ fontWeight: 900, marginBottom: 6 }}>
+                    You need Prep101 guide access before uploading sides.
+                  </div>
+                  <div style={{ lineHeight: 1.6, marginBottom: 12 }}>
+                    Your account has used all available Prep101 guides. Add a
+                    single guide, grab the 3-pack, or redeem a promo code here
+                    before starting the builder.
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => (window.location.href = PREP101_STRIPE_LINKS.singleGuide)}
+                      className="btn"
+                      style={{
+                        background: "#0f172a",
+                        color: "#fff",
+                        border: "none",
+                      }}
+                    >
+                      Buy Single A La Carte — $11.99
+                    </button>
+                    <button
+                      onClick={() => (window.location.href = PREP101_STRIPE_LINKS.threePack)}
+                      className="btn btnPrimary"
+                    >
+                      Buy 3-Pack — $21.99
+                    </button>
+                  </div>
+                  <PromoCodeInput onRedeemSuccess={refreshDashboardAccess} />
+                </div>
+              ) : (
+                <FileUpload
+                  onUpload={handleFileUpload}
+                  onUploadStart={handleUploadStart}
+                  onUploadEnd={handleUploadEnd}
+                  allowMultiple={isReader101Context}
+                />
+              )}
 
               {uploadIsUsable && (
                 <div
@@ -1620,7 +1679,7 @@ const Dashboard = () => {
                 </div>
               )}
 
-              {!uploadData && !isUploadingPdf && (
+              {!uploadData && !isUploadingPdf && !prep101AccessBlocked && (
                 <div
                   style={{
                     textAlign: "center",

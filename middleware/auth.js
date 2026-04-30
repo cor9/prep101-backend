@@ -168,10 +168,11 @@ async function findOrCreateUserFromSupabase(supabaseUser) {
     "Prep101 Actor";
 
   // Extract beta tester info from Supabase metadata
-  const betaAccessLevel =
+  const metadataBetaAccessLevel =
     supabaseUser.user_metadata?.betaAccessLevel ||
     supabaseUser.app_metadata?.betaAccessLevel ||
-    "none";
+    null;
+  const betaAccessLevel = metadataBetaAccessLevel || "none";
   const isBetaTester = betaAccessLevel !== "none";
 
   if (!User) {
@@ -211,16 +212,18 @@ async function findOrCreateUserFromSupabase(supabaseUser) {
         password: randomPassword,
         name: derivedName,
         subscription: "free",
-        guidesLimit: 1,
+        guidesLimit: 0,
         isBetaTester,
         betaAccessLevel,
       });
     } else {
       // Sync beta tester fields from Supabase metadata to database
       // Only update if they differ to avoid unnecessary database writes
+      const shouldSyncBetaMetadata = Boolean(metadataBetaAccessLevel);
       const needsUpdate =
-        user.isBetaTester !== isBetaTester ||
-        user.betaAccessLevel !== betaAccessLevel;
+        shouldSyncBetaMetadata &&
+        (user.isBetaTester !== isBetaTester ||
+          user.betaAccessLevel !== betaAccessLevel);
 
       if (needsUpdate) {
         await user.update({
@@ -429,7 +432,7 @@ module.exports = async (req, res, next) => {
         name: decoded.name || decoded.email?.split("@")[0] || "User",
         subscription: decoded.subscription || "free",
         guidesUsed: decoded.guidesUsed || 0,
-        guidesLimit: decoded.guidesLimit || 1,
+        guidesLimit: decoded.guidesLimit || 0,
       };
     }
 

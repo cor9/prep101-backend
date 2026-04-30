@@ -759,6 +759,24 @@ async function supabaseUpdateGuide(id, userId, updates) {
   return normalizeGuideRow(result.data);
 }
 
+async function persistGuideRecord(payload, user) {
+  const guidePayload = { ...payload };
+
+  if (isSupabaseAdminConfigured()) {
+    const { randomUUID } = require("crypto");
+    guidePayload.id = guidePayload.id || randomUUID();
+    await ensureSupabaseUser(user);
+    const persisted = await supabaseInsertGuide(guidePayload, { user });
+    if (!persisted) throw new Error("Supabase save failed");
+    return { persistedGuide: persisted, persistenceMethod: "supabase" };
+  }
+
+  const GuideModel = Guide || require("./models/Guide");
+  if (!GuideModel) throw new Error("Guide storage unavailable");
+  const persistedGuide = await GuideModel.create(guidePayload);
+  return { persistedGuide, persistenceMethod: "sequelize" };
+}
+
 // Ensure user exists in Supabase Users table before saving guides
 async function ensureSupabaseUser(user) {
   if (!isSupabaseAdminConfigured()) return false;
@@ -791,7 +809,7 @@ async function ensureSupabaseUser(user) {
         password: "supabase_auth", // Placeholder - actual auth is via Supabase Auth
         subscription: user.subscription || "free",
         guidesUsed: typeof user.guidesUsed === "number" ? user.guidesUsed : 0,
-        guidesLimit: typeof user.guidesLimit === "number" ? user.guidesLimit : 1,
+        guidesLimit: typeof user.guidesLimit === "number" ? user.guidesLimit : 0,
         prep101TopUpCredits:
           typeof user.prep101TopUpCredits === "number" ? user.prep101TopUpCredits : 0,
         prep101TopUpSessionIds: Array.isArray(user.prep101TopUpSessionIds)
@@ -3225,26 +3243,10 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       guideType: "prep101",
     };
 
-    let persistedGuide = null;
-    let persistenceMethod = "sequelize";
-
-    if (GuideModel) {
-      persistedGuide = await GuideModel.create(baseGuidePayload);
-    } else {
-      persistenceMethod = "supabase";
-      const { randomUUID } = require("crypto");
-      baseGuidePayload.id = randomUUID();
-      const userEnsured = await ensureSupabaseUser(currentUser);
-      if (!userEnsured) {
-        throw new Error("Supabase Users table is not configured for guide saving");
-      }
-      persistedGuide = await supabaseInsertGuide(baseGuidePayload, {
-        user: currentUser,
-      });
-      if (!persistedGuide) {
-        throw new Error("Guide model unavailable and Supabase fallback failed");
-      }
-    }
+    const { persistedGuide, persistenceMethod } = await persistGuideRecord(
+      baseGuidePayload,
+      currentUser
+    );
 
     let updatedBillingUser = currentUser;
     const consumption = getPrep101ConsumptionUpdate(currentUser);
@@ -3305,6 +3307,10 @@ app.post("/api/guides/generate", auth, async (req, res) => {
   const requestStartTime = Date.now(); // Track start time for Vercel timeout management
 
   try {
+    const requestBody =
+      req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? req.body
+        : {};
     const {
       uploadId,
       uploadIds,
@@ -3321,12 +3327,12 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       childGuideRequested,
       // Reader101 mode flag — "reader_support" activates the Reader Guide path
       mode,
-    } = req.body;
+    } = requestBody;
 
     const isReaderMode = 
       mode === "reader_support" || 
-      req.body.product === "reader101" || 
-      req.body.isReader101 === true;
+      requestBody.product === "reader101" || 
+      requestBody.isReader101 === true;
 
     // Handle both single and multiple upload IDs
     const uploadIdList = uploadIds
@@ -3336,25 +3342,36 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       : uploadId
         ? [uploadId]
         : [];
-    const scenePayloads = req.body.scenePayloads || {};
+    const scenePayloads =
+      requestBody.scenePayloads && typeof requestBody.scenePayloads === "object"
+        ? requestBody.scenePayloads
+        : {};
+
+    console.log("📝 Generate request received:", {
+      hasBody: Boolean(req.body),
+      bodyKeys: Object.keys(requestBody).slice(0, 20),
+      contentType: req.headers["content-type"],
+      uploadIdsCount: uploadIdList.length,
+      isReaderMode,
+    });
 
     // Fallback: Restore upload from request body if available (handles Vercel statelessness)
-    if ((req.body.sceneText || req.body.text) && uploadIdList.length > 0) {
+    if ((requestBody.sceneText || requestBody.text) && uploadIdList.length > 0) {
       const primaryId = uploadIdList[0];
       if (!uploads[primaryId]) {
         console.log(`[GENERATE] 🔄 Restoring upload ${primaryId} from client payload`);
         uploads[primaryId] = {
-          filename: req.body.filename || "restored-upload.pdf",
-          sceneText: req.body.sceneText || req.body.text,
-          characterNames: req.body.characterNames || [],
-          wordCount: req.body.wordCount || 0,
-          pageCount: req.body.pageCount || null,
+          filename: requestBody.filename || "restored-upload.pdf",
+          sceneText: requestBody.sceneText || requestBody.text,
+          characterNames: requestBody.characterNames || [],
+          wordCount: requestBody.wordCount || 0,
+          pageCount: requestBody.pageCount || null,
           uploadTime: new Date(),
           fileType: "sides", // Default
           userId: req.userId,
-          fallbackMode: Boolean(req.body.fallbackMode),
-          warnings: req.body.warnings || [],
-          source: req.body.source || "text",
+          fallbackMode: Boolean(requestBody.fallbackMode),
+          warnings: requestBody.warnings || [],
+          source: requestBody.source || "text",
         };
       }
     }
@@ -3394,7 +3411,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       hasCharacterName: !!characterName,
       hasProductionTitle: !!productionTitle,
       hasProductionType: !!productionType,
-      hasClientPayload: !!req.body.sceneText,
+      hasClientPayload: !!requestBody.sceneText,
       availableUploads: Object.keys(uploads).length,
       availableUploadIds: Object.keys(uploads).slice(0, 5), // First 5 for debugging
     });
@@ -3646,16 +3663,6 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       });
     }
 
-    // ─── QUEUE ASYNC JOB ────────────────────────────────
-    
-    // Check if queue is available
-    if (!enqueueGuideJob) {
-      return res.status(503).json({
-        success: false,
-        error: "Guide generation queue is unavailable on this server. Please try again later.",
-      });
-    }
-
     const payload = {
       userId: currentUser.id,
       isReaderMode,
@@ -3689,20 +3696,81 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       }, {})
     };
 
-    console.log(`[GENERATE] Enqueuing guide job for user ${currentUser.id}`);
-    const job = await enqueueGuideJob(payload);
+    if (process.env.REDIS_URL && enqueueGuideJob) {
+      console.log(`[GENERATE] Enqueuing durable guide job for user ${currentUser.id}`);
+      const job = await enqueueGuideJob(payload);
 
-    return res.status(202).json({
+      return res.status(202).json({
+        success: true,
+        jobId: job.id,
+        message: "Guide generation started. Please wait...",
+      });
+    }
+
+    console.log(
+      `[GENERATE] REDIS_URL missing; generating and saving guide synchronously for user ${currentUser.id}`
+    );
+
+    const { processGuideJob } = require("./services/guideJobProcessor");
+    const jobResult = await processGuideJob(payload, {
+      id: "sync",
+      updateProgress: async (progress) => {
+        const status =
+          typeof progress === "object" ? progress.status : String(progress || "");
+        if (status) console.log(`[GENERATE sync] ${status}`);
+      },
+    });
+
+    const { guidePayload, isReaderMode: resultIsReaderMode } = jobResult;
+    const { persistedGuide, persistenceMethod } = await persistGuideRecord(
+      guidePayload,
+      currentUser
+    );
+
+    const consumption = resultIsReaderMode
+      ? getReader101ConsumptionUpdate(currentUser)
+      : getPrep101ConsumptionUpdate(currentUser);
+
+    if (!consumption.allowed) {
+      return res.status(403).json({
+        success: false,
+        error: resultIsReaderMode
+          ? "Reader101 credits exhausted"
+          : "Prep101 credits exhausted",
+      });
+    }
+
+    const updatedBillingUser = Object.keys(consumption.updates).length
+      ? await persistBillingUserUpdates(currentUser, consumption.updates)
+      : currentUser;
+
+    return res.json({
       success: true,
-      jobId: job.id,
-      message: "Guide generation started. Please wait...",
+      guideId: persistedGuide.guideId,
+      guideContent: persistedGuide.generatedHtml,
+      savedToDatabase: true,
+      usage: resultIsReaderMode
+        ? buildReader101Usage(updatedBillingUser)
+        : buildPrep101Usage(updatedBillingUser),
+      metadata: {
+        characterName: guidePayload.characterName,
+        productionTitle: guidePayload.productionTitle,
+        productionType: guidePayload.productionType,
+        scriptWordCount: combinedWordCount,
+        guideLength: guidePayload.generatedHtml.length,
+        persistenceMethod,
+        synchronous: true,
+      },
     });
 
   } catch (error) {
     console.error("❌ Corey Ralston RAG error:", error);
+    const reason = error && error.message ? String(error.message) : undefined;
     res.status(500).json({
-      error: "Failed to start guide generation. Please try again.",
-      reason: error && error.message ? String(error.message) : undefined,
+      error: reason
+        ? `Failed to start guide generation: ${reason}`
+        : "Failed to start guide generation. Please try again.",
+      reason,
     });
   }
 });
@@ -3775,19 +3843,10 @@ app.get("/api/guides/jobs/:id", auth, async (req, res) => {
 
     console.log(`[JOB ${id}] Finalizing and saving generated guide...`);
 
-    let persistedGuide = null;
-    let persistenceMethod = "sequelize";
-
-    if (GuideModel) {
-      persistedGuide = await GuideModel.create(guidePayload);
-    } else {
-      persistenceMethod = "supabase";
-      const { randomUUID } = require("crypto");
-      guidePayload.id = randomUUID();
-      await ensureSupabaseUser(currentUser);
-      persistedGuide = await supabaseInsertGuide(guidePayload, { user: currentUser });
-      if (!persistedGuide) throw new Error("Supabase save failed");
-    }
+    const { persistedGuide, persistenceMethod } = await persistGuideRecord(
+      guidePayload,
+      currentUser
+    );
 
     // Deduct credits
     let updatedBillingUser = currentUser;

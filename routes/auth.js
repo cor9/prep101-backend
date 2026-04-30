@@ -14,6 +14,9 @@ const {
   buildPrep101Usage,
   buildReader101Usage,
 } = require("../services/prep101EntitlementsService");
+const {
+  reconcileStripePurchasesForUser,
+} = require("../services/stripeReconciliation");
 
 const router = express.Router();
 const AUTH_COOKIE_NAME = "ca101_session";
@@ -55,7 +58,7 @@ function serializeUser(user, account = null) {
     subscription: user.subscription || "free",
     guidesUsed: typeof user.guidesUsed === "number" ? user.guidesUsed : 0,
     guidesLimit:
-      typeof user.guidesLimit === "number" ? user.guidesLimit : user.guidesLimit ?? 1,
+      typeof user.guidesLimit === "number" ? user.guidesLimit : user.guidesLimit ?? 0,
     prep101TopUpCredits:
       typeof user.prep101TopUpCredits === "number" ? user.prep101TopUpCredits : 0,
     reader101Credits:
@@ -75,6 +78,12 @@ function serializeUser(user, account = null) {
 }
 
 async function buildSerializedUser(user, options = {}) {
+  if (options.reconcileStripe) {
+    user = await reconcileStripePurchasesForUser(user).catch((error) => {
+      console.warn("⚠️ Stripe purchase reconciliation skipped:", error.message);
+      return user;
+    });
+  }
   const account = await buildAccountContext(user, options);
   return serializeUser(user, account);
 }
@@ -130,7 +139,7 @@ router.post("/register", async (req, res) => {
                   password: password, // Will be hashed by hook
                   name: name,
                   subscription: "free",
-                  guidesLimit: 1,
+                  guidesLimit: 0,
                   isBetaTester
                 });
                 console.log("✅ Synced new user to local DB:", user.id);
@@ -147,7 +156,7 @@ router.post("/register", async (req, res) => {
             name,
             subscription: "free",
             guidesUsed: 0,
-            guidesLimit: 1,
+            guidesLimit: 0,
             subscriptionStatus: "active",
           };
 
@@ -157,6 +166,7 @@ router.post("/register", async (req, res) => {
 
           const serializedUser = await buildSerializedUser(hydratedUser, {
             ensureProfile: true,
+            reconcileStripe: true,
           });
 
           setSessionCookie(res, data.session?.access_token);
@@ -186,7 +196,10 @@ router.post("/register", async (req, res) => {
       return res.status(201).json({
         message: 'User registered',
         token,
-        user: await buildSerializedUser(newUser, { ensureProfile: true }),
+        user: await buildSerializedUser(newUser, {
+          ensureProfile: true,
+          reconcileStripe: true,
+        }),
       });
     }
 
@@ -266,7 +279,7 @@ router.post("/login", async (req, res) => {
                   password: randomPassword,
                   name: derivedName,
                   subscription: "free",
-                  guidesLimit: 1,
+                  guidesLimit: 0,
                   isBetaTester,
                   betaAccessLevel,
                 });
@@ -286,7 +299,7 @@ router.post("/login", async (req, res) => {
             name: user?.name || data.user.user_metadata?.name || email.split("@")[0],
             subscription: user?.subscription || "free",
             guidesUsed: user?.guidesUsed || 0,
-            guidesLimit: user?.guidesLimit ?? 1,
+            guidesLimit: user?.guidesLimit ?? 0,
             subscriptionStatus: user?.subscriptionStatus || "active",
             currentPeriodStart: user?.currentPeriodStart || null,
             currentPeriodEnd: user?.currentPeriodEnd || null,
@@ -303,7 +316,10 @@ router.post("/login", async (req, res) => {
           return res.json({
             message: "Login successful",
             token: data.session.access_token,
-            user: await buildSerializedUser(hydratedUser, { ensureProfile: true }),
+            user: await buildSerializedUser(hydratedUser, {
+              ensureProfile: true,
+              reconcileStripe: true,
+            }),
           });
         } else {
           console.error("❌ Supabase login returned no user or session");
@@ -343,7 +359,10 @@ router.post("/login", async (req, res) => {
         return res.json({
           message: "Login successful",
           token,
-          user: await buildSerializedUser(user, { ensureProfile: true }),
+          user: await buildSerializedUser(user, {
+            ensureProfile: true,
+            reconcileStripe: true,
+          }),
         });
       } catch (dbError) {
         console.error("❌ Database login error:", dbError.message);
@@ -389,7 +408,10 @@ router.get("/verify", auth, async (req, res) => {
   try {
     return res.json({
       valid: true,
-      user: await buildSerializedUser(req.user, { ensureProfile: true }),
+      user: await buildSerializedUser(req.user, {
+        ensureProfile: true,
+        reconcileStripe: true,
+      }),
     });
   } catch (error) {
     console.error("Verify error:", error);
@@ -399,7 +421,10 @@ router.get("/verify", auth, async (req, res) => {
 
 router.get("/dashboard", auth, async (req, res) => {
   try {
-    const user = await buildSerializedUser(req.user, { ensureProfile: true });
+    const user = await buildSerializedUser(req.user, {
+      ensureProfile: true,
+      reconcileStripe: true,
+    });
     return res.json({
       success: true,
       user,
@@ -420,7 +445,10 @@ router.get("/dashboard", auth, async (req, res) => {
 
 router.get("/profile", auth, async (req, res) => {
   try {
-    const user = await buildSerializedUser(req.user, { ensureProfile: true });
+    const user = await buildSerializedUser(req.user, {
+      ensureProfile: true,
+      reconcileStripe: true,
+    });
     return res.json({
       success: true,
       user,
