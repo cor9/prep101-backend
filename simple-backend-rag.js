@@ -144,8 +144,9 @@ app.get("/favicon.ico", (req, res) => {
   }
 });
 
-// Trust proxy - Required for Vercel and rate limiting to work correctly
-app.set("trust proxy", true);
+// Trust the single Vercel proxy hop. express-rate-limit rejects `true` because
+// it would trust arbitrary X-Forwarded-For values.
+app.set("trust proxy", 1);
 
 // Basic middleware setup first
 app.use(express.json({ limit: "10mb" }));
