@@ -2769,83 +2769,9 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     );
     let uploadWarnings = [...(pipelineResult.warnings || [])];
 
-    if (fallbackMode && processPdfExtractionJob) {
-      try {
-        console.warn("[UPLOAD] Low-density/corrupted watermark extraction detected; trying purifier/OCR recovery.", {
-          filename: req.file.originalname,
-          wordCount,
-          pageCount,
-          extractionMethod,
-          quality: quality.quality,
-        });
-        const recovered = await processPdfExtractionJob({
-          filename: req.file.originalname,
-          pdfBase64: req.file.buffer.toString("base64"),
-          userId: req.userId || req.user?.id || null,
-          createdAt: new Date().toISOString(),
-        });
-        const recoveredText = recoverTextFromExtractionJobResult(recovered);
-        const recoveredWordCount = getMeaningfulWordCount(recoveredText);
-        const recoveredQuality = assessQuality(recoveredText);
-        const recoveryMinimum = pageCount ? pageCount * 90 : 180;
-        const recoveryIsUsableForCorruption =
-          looksCorruptedByWatermark &&
-          recoveredWordCount >= recoveryMinimum &&
-          recoveredQuality.quality !== "repetitive" &&
-          recoveredQuality.quality !== "empty";
-        const recoveryBeatsLowDensityText =
-          recoveredWordCount > Math.max(wordCount * 2, recoveryMinimum);
-
-        if (recoveryIsUsableForCorruption || recoveryBeatsLowDensityText) {
-          cleanedText = recoveredText;
-          wordCount = recoveredWordCount;
-          pageCount = recovered.pageCount || pageCount;
-          quality = recoveredQuality;
-          extractionMethod = `purifier_ocr:${recovered.provider || "unknown"}`;
-          fallbackMode = false;
-          looksUnderExtracted = false;
-          looksCorruptedByWatermark = false;
-          uploadWarnings = [
-            ...(recovered.fallbackReason ? [`OCR fallback note: ${recovered.fallbackReason}`] : []),
-          ];
-          pipelineResult = {
-            ...pipelineResult,
-            text: recoveredText,
-            wordCount: recoveredWordCount,
-            pageCount,
-            source: extractionMethod,
-            limited: false,
-            confidence: "medium",
-            characterNames: [],
-            warnings: uploadWarnings,
-            diagnostics: {
-              ...pipelineResult.diagnostics,
-              purifierOcr: {
-                provider: recovered.provider,
-                pageCount: recovered.pageCount,
-                blockCount: recovered.blockCount,
-                fallbackReason: recovered.fallbackReason || null,
-              },
-            },
-          };
-          console.log("[UPLOAD] Purifier/OCR recovery succeeded.", {
-            filename: req.file.originalname,
-            recoveredWordCount,
-            provider: recovered.provider,
-          });
-        } else {
-          console.warn("[UPLOAD] Purifier/OCR recovery did not improve extraction enough.", {
-            recoveredWordCount,
-            recoveredQuality: recoveredQuality.quality,
-            originalWordCount: wordCount,
-            provider: recovered.provider,
-            fallbackReason: recovered.fallbackReason,
-          });
-        }
-      } catch (ocrError) {
-        console.warn("[UPLOAD] Purifier/OCR recovery failed; keeping limited extraction.", ocrError.message);
-      }
-    }
+    // Removed synchronous OCR fallback during upload to prevent Vercel 504 Gateway Timeouts.
+    // The frontend will see fallbackMode = true and warn the user.
+    // The async guide generation job will perform the OCR recovery (processPdfExtractionJob) safely in the background.
 
     if (looksUnderExtracted) {
       uploadWarnings.push(

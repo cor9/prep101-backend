@@ -58,7 +58,7 @@ def health() -> dict:
 
 
 @app.post("/purify", response_model=PurifyResponse)
-async def purify_pdf(
+def purify_pdf(
     file: UploadFile = File(...),
     dpi: int = Form(300),
     max_pages: int = Form(10),
@@ -66,7 +66,7 @@ async def purify_pdf(
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="File must be a PDF.")
 
-    raw_pdf = await file.read()
+    raw_pdf = file.file.read()
     if not raw_pdf:
         raise HTTPException(status_code=400, detail="Uploaded PDF is empty.")
 
