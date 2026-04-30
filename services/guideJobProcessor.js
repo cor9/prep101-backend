@@ -100,6 +100,7 @@ async function generatePrep101GuideFromText(payload = {}) {
   });
   const guideStep = await generateGuideHTML({
     analysis: analysisStep.analysis,
+    screenplayText: payload.repairedText || payload.combinedSceneText || "",
     metadata,
     preferredModel: DEFAULT_CLAUDE_MODEL,
     apiKey,

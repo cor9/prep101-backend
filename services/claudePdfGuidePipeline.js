@@ -39,6 +39,10 @@ COMPLETION ENFORCEMENT (NON-NEGOTIABLE):
 
 MANDATORY CONTENT RULES:
 - Do not invent script lines.
+- Do not invent production facts, network/studio/platform, casting office, showrunner, episode history, ratings, franchise context, locations, or time period.
+- Treat the project title as a label supplied by the user, not permission to use outside knowledge about that title.
+- If a fact is not in metadata or the screenplay text, write "Not stated in sides" or omit it.
+- Never claim "the actual script pages are not available" if screenplay text is provided. Use the provided screenplay text.
 - Coaching voice, not academic analysis. Direction over observation.
 - Convert explanation into playable instruction: "Do this", "Hold this beat", "Don't play X - play Y."
 - Every scene analysis must include at least one coached pause/silence/stillness moment.
@@ -65,6 +69,7 @@ TWO-TAKE STRATEGY (REQUIRED):
 
 PRODUCTION STAKES INTEGRATION (IF PROVIDED):
 - If metadata includes casting directors, showrunners/writers, or network/platform/studio/contract, weave those BY NAME into coaching language.
+- If those fields are not provided in metadata, do not infer them from the project title.
 - Must appear in:
   1) Project Overview
   2) At least one note inside Bold Choices / strategy
@@ -204,6 +209,9 @@ Rules:
 - NO coach note
 - NO two-take strategy
 - Keep the analysis grounded in provided script text and metadata.
+- Do not use outside knowledge about the production title.
+- Do not invent network, studio, casting, ratings, show history, plot details, or script events.
+- If the source text does not state something, label it "Not stated in sides" or omit it.
 `.trim();
 
 const EXTRACT_MAX_TOKENS = 4000;  // tighter = faster extraction per call
@@ -311,6 +319,13 @@ function recoverScreenplayFromFallback(ocrFallback = {}) {
 
 function validateGuideHtml(html = "") {
   const missing = [];
+  const fabricatedSourceWarnings = [
+    /actual script pages are not available/i,
+    /because the actual script .* not available/i,
+    /script pages .* not available/i,
+    /based from the character breakdown and production context/i,
+    /based on the character breakdown and production context/i,
+  ];
 
   // Final Coach Note check
   const hasFinalCoachNote =
@@ -347,6 +362,9 @@ function validateGuideHtml(html = "") {
   }
   if (/TRUNCATED\s*[—-]\s*REQUEST PART 2/i.test(html)) {
     missing.push("Complete guide body (received truncation marker)");
+  }
+  if (fabricatedSourceWarnings.some((pattern) => pattern.test(html))) {
+    missing.push("Script-grounded guide (model claimed script pages were unavailable)");
   }
   return { valid: missing.length === 0, missing };
 }
@@ -500,6 +518,7 @@ Rules:
 async function generateGuideHTML({
   analysis,   // now receives full analysis text directly (summarizeAnalysis step removed)
   summary,    // still accepted for backward compat when caller has a summary
+  screenplayText,
   metadata,
   preferredModel,
   apiKey,
@@ -507,6 +526,7 @@ async function generateGuideHTML({
   const metaBlock = buildMetadataBlock(metadata);
   // Prefer the richer analysis over a compressed summary when both are supplied
   const contextBlock = analysis || summary || "";
+  const scriptBlock = String(screenplayText || "").trim();
 
   let data, model;
   try {
@@ -523,8 +543,17 @@ async function generateGuideHTML({
 
 ${metaBlock}
 
+SOURCE SCREENPLAY TEXT — USE THIS AS THE GROUND TRUTH:
+${scriptBlock || "No screenplay text was provided. Do not generate scene-specific claims."}
+
 SCRIPT ANALYSIS:
-${contextBlock}`,
+${contextBlock}
+
+GROUNDING RULES:
+- Use the SOURCE SCREENPLAY TEXT for every line, scene, and relationship claim.
+- Do not use outside knowledge about the project title.
+- If network/studio/casting/showrunner facts are absent from metadata, do not mention them.
+- If the source text is insufficient for a section, say "Not stated in sides" and keep the coaching general but playable.`,
         },
       ],
     }));
@@ -566,7 +595,10 @@ METADATA:
 ${metaBlock}
 
 SCRIPT ANALYSIS:
-${contextBlock}`,
+${contextBlock}
+
+SOURCE SCREENPLAY TEXT:
+${scriptBlock || "No screenplay text was provided. Do not generate scene-specific claims."}`,
       },
     ],
   });
@@ -651,6 +683,7 @@ async function generateGuideFromPdfTwoCall({
     // Call 3: HTML guide — receives analysis directly (no intermediate summary call)
     const guideStep = await generateGuideHTML({
       analysis: analysisStep.analysis,
+      screenplayText,
       metadata,
       apiKey,
     });
@@ -697,6 +730,7 @@ async function generateGuideFromPdfTwoCall({
     // No summarizeAnalysis step — pass analysis directly (same as claude pipeline)
     const guideStep = await generateGuideHTML({
       analysis: analysisStep.analysis,
+      screenplayText,
       metadata,
       apiKey,
     });
