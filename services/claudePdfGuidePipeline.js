@@ -224,13 +224,13 @@ const REPAIR_MAX_TOKENS = 14000;
 function clampTimeout(value, fallback) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
-  return Math.min(240_000, Math.max(30_000, numeric));
+  return Math.min(290_000, Math.max(30_000, numeric));
 }
 
 // Per-call timeout for Claude requests. Configurable via env for quick tuning in production.
 const PER_CALL_TIMEOUT_MS = clampTimeout(
   process.env.CLAUDE_PDF_PER_CALL_TIMEOUT_MS,
-  240_000
+  290_000
 );
 const EXTRACTION_TIMEOUT_MS = clampTimeout(
   process.env.CLAUDE_PDF_EXTRACTION_TIMEOUT_MS,
@@ -435,7 +435,7 @@ async function extractScreenplay({
 
   const timeoutAttempts = [
     EXTRACTION_TIMEOUT_MS,
-    Math.min(240_000, EXTRACTION_TIMEOUT_MS + 45_000),
+    Math.min(290_000, EXTRACTION_TIMEOUT_MS + 45_000),
   ];
   let lastError = null;
 
