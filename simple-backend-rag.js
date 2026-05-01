@@ -3793,6 +3793,13 @@ app.post("/api/guides/generate", auth, async (req, res) => {
 // Endpoint to poll for guide job status
 app.get("/api/guides/jobs/:id", auth, async (req, res) => {
   try {
+    res.set({
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+      "Surrogate-Control": "no-store",
+    });
+
     const { id } = req.params;
     
     if (!getGuideJob) {

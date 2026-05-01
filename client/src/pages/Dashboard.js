@@ -654,7 +654,11 @@ const Dashboard = () => {
             await new Promise(resolve => setTimeout(resolve, 3000));
             
             const pollRes = await fetch(`${GENERATION_API_BASE}/api/guides/jobs/${parsedData.jobId}`, {
-              headers: token ? { Authorization: `Bearer ${token}` } : {}
+              cache: "no-store",
+              headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                "Cache-Control": "no-cache",
+              },
             });
             
             if (!pollRes.ok) throw new Error("Failed to poll guide status");
