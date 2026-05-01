@@ -1,6 +1,7 @@
 // Retrieves relevant methodology chunks from Supabase for guide generation.
 
 const { createClient } = require("@supabase/supabase-js");
+const { retrieveMethodologyContext } = require("./methodologyRetrieval");
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const DEFAULT_MATCH_COUNT = 6;
@@ -158,7 +159,7 @@ async function retrieveMethodologyChunks({
 
     if (error) {
       console.error("[RAG] Supabase retrieval error:", error.message);
-      return "";
+      return retrieveLocalMethodologyChunks({ metadata, screenplayText, matchCount });
     }
 
     if (!data || data.length === 0) {
@@ -171,8 +172,8 @@ async function retrieveMethodologyChunks({
       });
 
       if (retryError || !retryData || retryData.length === 0) {
-        console.warn("[RAG] Retry also returned no chunks; proceeding without methodology context");
-        return "";
+        console.warn("[RAG] Retry also returned no chunks; falling back to local methodology context");
+        return retrieveLocalMethodologyChunks({ metadata, screenplayText, matchCount });
       }
 
       console.log(`[RAG] Retry retrieved ${retryData.length} chunks`);
@@ -182,7 +183,39 @@ async function retrieveMethodologyChunks({
     console.log(`[RAG] Retrieved ${data.length} methodology chunks (threshold: ${matchThreshold})`);
     return formatChunks(data);
   } catch (error) {
-    console.error("[RAG] Retrieval failed silently:", error.message);
+    console.error("[RAG] Retrieval failed; falling back to local methodology context:", error.message);
+    return retrieveLocalMethodologyChunks({ metadata, screenplayText, matchCount });
+  }
+}
+
+function retrieveLocalMethodologyChunks({ metadata = {}, screenplayText = "", matchCount = DEFAULT_MATCH_COUNT }) {
+  try {
+    const context = retrieveMethodologyContext(
+      {
+        product: "prep101",
+        script: screenplayText,
+        characterName: metadata.characterName || "",
+        productionType: metadata.productionType || "",
+        genre: metadata.genre || "",
+        roleSize: metadata.roleSize || "",
+        storyline: metadata.storyline || "",
+        characterBreakdown: metadata.characterBreakdown || "",
+      },
+      { topK: matchCount }
+    );
+
+    const chunks = (context.selectedChunks || []).slice(0, matchCount);
+    if (!chunks.length) {
+      console.warn("[RAG] Local methodology fallback found no chunks");
+      return "";
+    }
+
+    console.log(`[RAG] Local methodology fallback retrieved ${chunks.length} chunks`);
+    return chunks
+      .map((chunk, i) => `[METHODOLOGY ${i + 1} - ${chunk.filename || chunk.id || "local"}]\n${chunk.text || ""}`)
+      .join("\n\n---\n\n");
+  } catch (error) {
+    console.error("[RAG] Local methodology fallback failed:", error.message);
     return "";
   }
 }
