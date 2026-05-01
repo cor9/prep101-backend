@@ -826,6 +826,7 @@ module.exports = {
   ANALYSIS_SYSTEM_PROMPT,
   GUIDE_SYSTEM_PROMPT,
   extractScreenplay,
+  recoverScreenplayFromFallback,
   generateAnalysis,
   summarizeAnalysis,
   generateGuideHTML,
