@@ -369,6 +369,31 @@ async function extractTextStage(pdfBuffer) {
   };
 }
 
+function withTimeout(promise, ms, label) {
+  let timeoutId;
+  const timeoutPromise = new Promise((resolve) => {
+    timeoutId = setTimeout(() => {
+      console.warn(`[pdfIngest] ${label} timed out after ${ms}ms`);
+      resolve({
+        stage: "document",
+        source: "document",
+        provider: label,
+        skipped: true,
+        text: "",
+        rawText: "",
+        wordCount: 0,
+        quality: "needs_escalation",
+        failures: [`timeout:${ms}ms`],
+        characterNames: [],
+      });
+    }, ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
+
 async function extractClaudeDocumentStage(pdfBuffer) {
   const apiKey = (process.env.ANTHROPIC_API_KEY || "").trim();
   if (!apiKey) {
@@ -387,125 +412,72 @@ async function extractClaudeDocumentStage(pdfBuffer) {
   }
 
   const prompt = `Extract only the usable audition script text from this PDF.
-
-INCLUDE:
-- Character names
-- Dialogue
-- Scene headings
-- Essential stage directions
-
-IGNORE:
-- Watermarks
-- Dates/timestamps
-- IDs/codes
-- Repeated headers/footers
-
+INCLUDE: Character names, dialogue, scene headings, essential stage directions.
+IGNORE: Watermarks, dates/timestamps, IDs/codes, repeated headers/footers.
 Return plain text only. No commentary.`;
 
-  const requestedModel =
+  const model =
     process.env.ANTHROPIC_DOCUMENT_MODEL ||
     process.env.CLAUDE_DOCUMENT_MODEL ||
     DEFAULT_CLAUDE_MODEL;
-  const fallbackModels = [
-    requestedModel,
-    "claude-3-5-sonnet-latest",
-    "claude-3-5-sonnet-20241022",
-  ].filter(Boolean);
-  const modelsToTry = [...new Set(fallbackModels)];
-  let lastError = "unknown_document_error";
-  const isAbortError = (error) => {
-    const message = String(error?.message || "");
-    return (
-      error?.name === "AbortError" ||
-      /aborted/i.test(message) ||
-      /The user aborted a request/i.test(message)
-    );
-  };
 
-  for (const model of modelsToTry) {
-    const configuredTimeout = Number(process.env.CLAUDE_DOCUMENT_TIMEOUT_MS || 120000);
-    const timeoutMs = Number.isFinite(configuredTimeout)
-      ? Math.min(210000, Math.max(20000, configuredTimeout))
-      : 120000;
-    const timeoutAttempts = [timeoutMs, Math.min(240000, timeoutMs + 45000)];
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
 
-    for (let attemptIndex = 0; attemptIndex < timeoutAttempts.length; attemptIndex += 1) {
-      const currentTimeoutMs = timeoutAttempts[attemptIndex];
-      const controller = new AbortController();
-      try {
-        const timeout = setTimeout(() => controller.abort(), currentTimeoutMs);
-        let response;
-        try {
-          response = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-api-key": apiKey,
-              "anthropic-version": "2023-06-01",
-            },
-            signal: controller.signal,
-            body: JSON.stringify({
-              model,
-              max_tokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 8192),
-              messages: [
-                {
-                  role: "user",
-                  content: [
-                    { type: "text", text: prompt },
-                    {
-                      type: "document",
-                      source: {
-                        type: "base64",
-                        media_type: "application/pdf",
-                        data: pdfBuffer.toString("base64"),
-                      },
-                    },
-                  ],
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        max_tokens: 4096,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              {
+                type: "document",
+                source: {
+                  type: "base64",
+                  media_type: "application/pdf",
+                  data: pdfBuffer.toString("base64"),
                 },
-              ],
-            }),
-          });
-        } finally {
-          clearTimeout(timeout);
-        }
+              },
+            ],
+          },
+        ],
+      }),
+    });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          lastError = `model=${model} status=${response.status} ${errorText}`;
-          break;
-        }
-
-        const json = await response.json();
-        const rawText =
-          json?.content?.map((part) => part?.text || "").join("\n") || "";
-        const evaluated = evaluateExtraction("document", rawText, {
-          minWordCount: 50,
-        });
-        if (evaluated.wordCount > 0) {
-          return {
-            source: "document",
-            provider: `claude-document:${model}`,
-            ...evaluated,
-          };
-        }
-
-        lastError = `model=${model} returned_empty_document_text`;
-        break;
-      } catch (error) {
-        const hasNextAttempt = attemptIndex < timeoutAttempts.length - 1;
-        if (isAbortError(error) && hasNextAttempt) {
-          lastError = `model=${model} aborted_timeout_${currentTimeoutMs}ms_retrying`;
-          continue;
-        }
-        lastError = `model=${model} ${error.message || "request_failed"}`;
-        break;
-      } finally {
-        controller.abort();
-      }
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        stage: "document",
+        source: "document",
+        provider: "claude-document",
+        text: "",
+        rawText: "",
+        wordCount: 0,
+        quality: "needs_escalation",
+        failures: [`claudeDocumentFailed:${response.status}:${errorText}`],
+        characterNames: [],
+      };
     }
-  }
 
-  {
+    const json = await response.json();
+    const rawText = json?.content?.map((part) => part?.text || "").join("\n") || "";
+    return {
+      source: "document",
+      provider: `claude-document:${model}`,
+      ...evaluateExtraction("document", rawText, { minWordCount: 50 }),
+    };
+  } catch (error) {
     return {
       stage: "document",
       source: "document",
@@ -514,9 +486,12 @@ Return plain text only. No commentary.`;
       rawText: "",
       wordCount: 0,
       quality: "needs_escalation",
-      failures: [`documentExtractionFailed:${lastError}`],
+      failures: [`claudeDocumentFailed:${error.message || "request_failed"}`],
       characterNames: [],
     };
+  } finally {
+    clearTimeout(timeout);
+    controller.abort();
   }
 }
 
@@ -538,20 +513,12 @@ async function extractGeminiDocumentStage(pdfBuffer) {
   }
 
   const prompt = `Extract only the usable audition script text from this PDF.
-
-INCLUDE:
-- Character names
-- Dialogue
-- Scene headings
-- Essential stage directions
-
-IGNORE:
-- Watermarks
-- Dates/timestamps
-- IDs/codes
-- Repeated headers/footers
-
+INCLUDE: Character names, dialogue, scene headings, essential stage directions.
+IGNORE: Watermarks, dates/timestamps, IDs/codes, repeated headers/footers.
 Return plain text only. No commentary.`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
 
   try {
     const response = await fetch(
@@ -559,6 +526,7 @@ Return plain text only. No commentary.`;
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           contents: [
             {
@@ -620,6 +588,9 @@ Return plain text only. No commentary.`;
       failures: [`geminiDocumentFailed:${error.message || "request_failed"}`],
       characterNames: [],
     };
+  } finally {
+    clearTimeout(timeout);
+    controller.abort();
   }
 }
 
@@ -644,7 +615,7 @@ function extractOpenAIResponseText(payload = {}) {
   return "";
 }
 
-async function uploadPdfToOpenAI(pdfBuffer, apiKey) {
+async function uploadPdfToOpenAI(pdfBuffer, apiKey, signal = undefined) {
   const form = new FormData();
   form.append("purpose", "assistants");
   form.append("file", pdfBuffer, {
@@ -658,6 +629,7 @@ async function uploadPdfToOpenAI(pdfBuffer, apiKey) {
       Authorization: `Bearer ${apiKey}`,
       ...form.getHeaders(),
     },
+    signal,
     body: form,
   });
 
@@ -701,24 +673,15 @@ async function extractOpenAIDocumentStage(pdfBuffer) {
 
   const model = process.env.OPENAI_DOCUMENT_MODEL || "gpt-4.1";
   const prompt = `Extract only the usable audition script text from this PDF.
-
-INCLUDE:
-- Character names
-- Dialogue
-- Scene headings
-- Essential stage directions
-
-IGNORE:
-- Watermarks
-- Dates/timestamps
-- IDs/codes
-- Repeated headers/footers
-
+INCLUDE: Character names, dialogue, scene headings, essential stage directions.
+IGNORE: Watermarks, dates/timestamps, IDs/codes, repeated headers/footers.
 Return plain text only. No commentary.`;
 
   let fileId = null;
-  try {
-    fileId = await uploadPdfToOpenAI(pdfBuffer, apiKey);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  const core = async () => {
+    fileId = await uploadPdfToOpenAI(pdfBuffer, apiKey, controller.signal);
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -726,9 +689,10 @@ Return plain text only. No commentary.`;
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model,
-        max_output_tokens: 8192,
+        max_output_tokens: 4096,
         input: [
           {
             role: "user",
@@ -764,6 +728,10 @@ Return plain text only. No commentary.`;
       provider: `openai-document:${model}`,
       ...evaluateExtraction("document", rawText, { minWordCount: 50 }),
     };
+  };
+
+  try {
+    return await withTimeout(core(), 30000, "openai-document");
   } catch (error) {
     return {
       stage: "document",
@@ -777,6 +745,8 @@ Return plain text only. No commentary.`;
       characterNames: [],
     };
   } finally {
+    clearTimeout(timeout);
+    controller.abort();
     await deleteOpenAIFile(fileId, apiKey);
   }
 }
@@ -1091,13 +1061,63 @@ async function ingestPdf(pdfBuffer, options = {}) {
     return resolvePipelineResult({ textStage, ocrStage: null, visionStage: null });
   }
 
-  // If text extraction is weak, try direct PDF document extraction via Claude
-  // before image conversion (which can fail on some serverless runtimes).
-  const [claudeDocumentStage, geminiDocumentStage, openaiDocumentStage] = await Promise.all([
-    extractClaudeDocumentStage(pdfBuffer),
-    extractGeminiDocumentStage(pdfBuffer),
-    extractOpenAIDocumentStage(pdfBuffer),
-  ]);
+  // If text extraction is weak, try direct PDF document extraction before image
+  // conversion (which can fail on some serverless runtimes), but never let the
+  // provider batch consume the whole serverless budget.
+  const DOCUMENT_STAGE_TIMEOUT_MS = 35000;
+  const [claudeDocumentStage, geminiDocumentStage, openaiDocumentStage] =
+    await Promise.race([
+      Promise.all([
+        extractClaudeDocumentStage(pdfBuffer),
+        extractGeminiDocumentStage(pdfBuffer),
+        extractOpenAIDocumentStage(pdfBuffer),
+      ]),
+      new Promise((resolve) =>
+        setTimeout(() => {
+          console.warn(
+            "[pdfIngest] Document stage hard timeout; all three extractors took too long"
+          );
+          resolve([
+            {
+              stage: "document",
+              source: "document",
+              provider: "claude-document",
+              skipped: true,
+              text: "",
+              rawText: "",
+              wordCount: 0,
+              quality: "needs_escalation",
+              failures: ["hardTimeout"],
+              characterNames: [],
+            },
+            {
+              stage: "document",
+              source: "document",
+              provider: "gemini-document",
+              skipped: true,
+              text: "",
+              rawText: "",
+              wordCount: 0,
+              quality: "needs_escalation",
+              failures: ["hardTimeout"],
+              characterNames: [],
+            },
+            {
+              stage: "document",
+              source: "document",
+              provider: "openai-document",
+              skipped: true,
+              text: "",
+              rawText: "",
+              wordCount: 0,
+              quality: "needs_escalation",
+              failures: ["hardTimeout"],
+              characterNames: [],
+            },
+          ]);
+        }, DOCUMENT_STAGE_TIMEOUT_MS)
+      ),
+    ]);
   const documentCandidates = [
     claudeDocumentStage,
     geminiDocumentStage,
