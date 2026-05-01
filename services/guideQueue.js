@@ -26,7 +26,9 @@ function getRedisConnection() {
   }
   return new IORedis(redisUrl, {
     maxRetriesPerRequest: null,
-    enableReadyCheck: true,
+    enableReadyCheck: false,
+    lazyConnect: true,
+    tls: redisUrl.startsWith("rediss://") ? {} : undefined,
   });
 }
 

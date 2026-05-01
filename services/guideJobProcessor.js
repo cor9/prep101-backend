@@ -19,6 +19,7 @@ const {
   getReader101ConsumptionUpdate,
   getPrep101ConsumptionUpdate,
 } = require("./prep101EntitlementsService");
+const { retrieveMethodologyChunks } = require("./ragRetrieval");
 
 let GuideModel = null;
 try {
@@ -92,16 +93,22 @@ async function generatePrep101GuideFromText(payload = {}) {
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
 
   const metadata = buildPrep101Metadata(payload);
+  const screenplayText = payload.repairedText || payload.combinedSceneText || "";
   const analysisStep = await generateAnalysis({
-    screenplayText: payload.repairedText || payload.combinedSceneText || "",
+    screenplayText,
     metadata,
     preferredModel: DEFAULT_CLAUDE_MODEL,
     apiKey,
   });
+  const methodologyContext = await retrieveMethodologyChunks({
+    metadata,
+    screenplayText,
+  });
   const guideStep = await generateGuideHTML({
     analysis: analysisStep.analysis,
-    screenplayText: payload.repairedText || payload.combinedSceneText || "",
+    screenplayText,
     metadata,
+    methodologyContext,
     preferredModel: DEFAULT_CLAUDE_MODEL,
     apiKey,
   });

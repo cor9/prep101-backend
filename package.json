@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node simple-backend-rag.js",
     "dev": "nodemon simple-backend-rag.js",
+    "worker:guide": "node worker.js",
     "worker:extract": "node workers/runExtractionWorker.js",
     "test:pdf-ingest": "node scripts/test-pdf-ingest-pipeline.js",
     "migrate": "node scripts/migrate.js",
