@@ -1,5 +1,6 @@
 const { sendAnthropicMessage } = require("./anthropicClient");
 const { processPdfExtractionJob } = require("./pdfExtractionJobProcessor");
+const { retrieveMethodologyChunks } = require("./ragRetrieval");
 
 const EXTRACTION_SYSTEM_PROMPT = `
 You are a screenplay parser.
@@ -217,7 +218,8 @@ Rules:
 const EXTRACT_MAX_TOKENS = 4000;  // tighter = faster extraction per call
 const ANALYSIS_MAX_TOKENS = 4000; // tighter = faster analysis per call
 const SUMMARY_MAX_TOKENS = 800;   // kept for backward compat (step removed from main pipeline)
-const GUIDE_MAX_TOKENS = 8000;    // restored — guide needs room; time saved by removing summarize step
+const GUIDE_MAX_TOKENS = 12000;   // restored — guide needs room; time saved by removing summarize step
+const REPAIR_MAX_TOKENS = 14000;
 
 function clampTimeout(value, fallback) {
   const numeric = Number(value);
@@ -228,7 +230,7 @@ function clampTimeout(value, fallback) {
 // Per-call timeout for Claude requests. Configurable via env for quick tuning in production.
 const PER_CALL_TIMEOUT_MS = clampTimeout(
   process.env.CLAUDE_PDF_PER_CALL_TIMEOUT_MS,
-  150_000
+  240_000
 );
 const EXTRACTION_TIMEOUT_MS = clampTimeout(
   process.env.CLAUDE_PDF_EXTRACTION_TIMEOUT_MS,
@@ -545,6 +547,7 @@ async function generateGuideHTML({
   summary,    // still accepted for backward compat when caller has a summary
   screenplayText,
   metadata,
+  methodologyContext = "",
   preferredModel,
   apiKey,
 }) {
@@ -568,7 +571,10 @@ async function generateGuideHTML({
 
 ${metaBlock}
 
-SOURCE SCREENPLAY TEXT — USE THIS AS THE GROUND TRUTH:
+${methodologyContext ? `COREY RALSTON'S METHODOLOGY — APPLY THIS TO THE GUIDE:
+${methodologyContext}
+
+` : ""}SOURCE SCREENPLAY TEXT — USE THIS AS THE GROUND TRUTH:
 ${scriptBlock || "No screenplay text was provided. Do not generate scene-specific claims."}
 
 SCRIPT ANALYSIS:
@@ -576,6 +582,7 @@ ${contextBlock}
 
 GROUNDING RULES:
 - Use the SOURCE SCREENPLAY TEXT for every line, scene, and relationship claim.
+- Apply Corey's methodology from the sections above to coaching language, bold choices, and character breakdown.
 - Do not use outside knowledge about the project title.
 - If network/studio/casting/showrunner facts are absent from metadata, do not mention them.
 - If the source text is insufficient for a section, say "Not stated in sides" and keep the coaching general but playable.`,
@@ -600,7 +607,7 @@ GROUNDING RULES:
   const repair = await sendAnthropicMessage({
     apiKey,
     preferredModel,
-    maxTokens: GUIDE_MAX_TOKENS,
+    maxTokens: REPAIR_MAX_TOKENS,
     system: GUIDE_SYSTEM_PROMPT,
     signal: makeCallSignal(),
     messages: [
@@ -627,7 +634,7 @@ ${scriptBlock || "No screenplay text was provided. Do not generate scene-specifi
       },
     ],
   });
-  logTokenUsage("generateGuideHTML.repair", repair.data, repair.model, GUIDE_MAX_TOKENS);
+  logTokenUsage("generateGuideHTML.repair", repair.data, repair.model, REPAIR_MAX_TOKENS);
 
   const repairedHtml = getAnthropicText(repair.data) || html;
   const finalValidation = validateGuideHtml(repairedHtml);
@@ -703,18 +710,29 @@ async function generateGuideFromPdfTwoCall({
       );
     }
 
-    // Call 2: analysis  (summarizeAnalysis step removed — saves ~15-30s per request)
+    // Call 2: analysis
     const analysisStep = await generateAnalysis({
       screenplayText,
       metadata,
       apiKey,
     });
 
-    // Call 3: HTML guide — receives analysis directly (no intermediate summary call)
+    // RAG: retrieve relevant methodology chunks from Supabase.
+    const methodologyContext = await retrieveMethodologyChunks({
+      metadata,
+      screenplayText,
+    });
+
+    if (methodologyContext) {
+      console.log("[ClaudePipeline] RAG context injected into guide generation");
+    }
+
+    // Call 3: HTML guide
     const guideStep = await generateGuideHTML({
       analysis: analysisStep.analysis,
       screenplayText,
       metadata,
+      methodologyContext,
       apiKey,
     });
 
