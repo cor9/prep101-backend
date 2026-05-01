@@ -61,9 +61,11 @@ function startGuideWorker() {
     },
     {
       connection,
-      concurrency: Number(process.env.GUIDE_WORKER_CONCURRENCY || 5),
+      concurrency: Number(process.env.GUIDE_WORKER_CONCURRENCY || 2),
       // guides can take a while
-      lockDuration: 600000, 
+      lockDuration: 600000,
+      stalledInterval: 60000,
+      maxStalledCount: 3,
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 100 },
     }

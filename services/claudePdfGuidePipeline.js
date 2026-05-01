@@ -114,19 +114,6 @@ DO NOT compress or remove:
 - Closing Coach's Note
 - Final Scene 3 physical/button instruction
 
-If full completion is impossible within the output limit:
-- Do NOT silently truncate
-- Do NOT end mid-sentence
-- Do NOT omit end sections without notice
-
-Instead output this visible warning block:
-
-⚠ GUIDE INCOMPLETE DUE TO OUTPUT LIMIT
-Missing sections:
-- [list exact missing sections]
-
-Then stop cleanly.
-
 SECTION PRESENCE CHECK — REQUIRED BEFORE FINAL OUTPUT:
 
 Before delivering the guide, verify that all of the following are present:
@@ -185,8 +172,7 @@ CRITICAL RULES:
   - Final Scene 3 physical instruction
 
 If you cannot complete the guide:
-OUTPUT:
-"TRUNCATED — REQUEST PART 2"
+Rewrite it shorter until every required section fits.
 
 OUTPUT:
 - Return complete self-contained HTML only.
@@ -405,6 +391,12 @@ function escapeHtml(value = "") {
     .replace(/'/g, "&#39;");
 }
 
+function clipText(value = "", maxChars = 12000) {
+  const text = String(value || "").trim();
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}\n\n[Input clipped for generation length.]`;
+}
+
 function appendPreSubmissionChecklist(html = "", metadata = {}) {
   const characterName = metadata.characterName || "the character";
   const productionTitle = metadata.productionTitle || "the project";
@@ -588,8 +580,9 @@ async function generateGuideHTML({
 }) {
   const metaBlock = buildMetadataBlock(metadata);
   // Prefer the richer analysis over a compressed summary when both are supplied
-  const contextBlock = analysis || summary || "";
-  const scriptBlock = String(screenplayText || "").trim();
+  const contextBlock = clipText(analysis || summary || "", 6500);
+  const methodologyBlock = clipText(methodologyContext, 4500);
+  const scriptBlock = clipText(screenplayText || "", 9000);
 
   let data, model;
   try {
@@ -604,10 +597,20 @@ async function generateGuideHTML({
           role: "user",
           content: `Generate the full Prep101 HTML guide.
 
+STRICT LENGTH CONTRACT:
+- Target 1,800-2,600 words total.
+- Use concise sections and short bullet lists.
+- Project Overview: max 120 words.
+- Character Breakdown: max 220 words.
+- Uta Hagen: one compact paragraph per answer.
+- Scene Action & Physicality: only the most playable beats.
+- Rehearsal Roadmap: 6 steps max.
+- You MUST finish with Pre-Submission Checklist and Final Coach Note.
+
 ${metaBlock}
 
-${methodologyContext ? `COREY RALSTON'S METHODOLOGY — APPLY THIS TO THE GUIDE:
-${methodologyContext}
+${methodologyBlock ? `COREY RALSTON'S METHODOLOGY — APPLY THIS TO THE GUIDE:
+${methodologyBlock}
 
 ` : ""}SOURCE SCREENPLAY TEXT — USE THIS AS THE GROUND TRUTH:
 ${scriptBlock || "No screenplay text was provided. Do not generate scene-specific claims."}
@@ -652,10 +655,13 @@ GROUNDING RULES:
 ${repairMissingList}
 
 Generate a COMPLETE Prep101 HTML guide. Rules:
+- Target 1,600-2,200 words total.
+- Compress every early section aggressively.
+- Use bullets instead of long paragraphs.
 - Include "Take A" and "Take B" labels explicitly
 - Include "Pre-Submission Checklist"
 - Include "Final Coach Note"
-- Do NOT output "TRUNCATED — REQUEST PART 2"
+- Never output a truncation marker
 - Return only self-contained HTML
 
 METADATA:
