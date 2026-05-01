@@ -1,4 +1,3 @@
-const path = require("path");
 const { repairScreenplayText } = require("./screenplayRepair");
 const { parseScreenplayText } = require("./screenplayParser");
 const { generateReaderGuide } = require("./readerGuideService");
@@ -9,24 +8,9 @@ const {
 const {
   DEFAULT_CLAUDE_MODEL,
 } = require("../config/models");
-const { scrubWatermarks, assessQuality } = require("./textCleaner");
+const { assessQuality } = require("./textCleaner");
 const { generateBoldChoices } = require("./boldChoicesService");
-const {
-  runAdminQuery,
-  tables: supabaseTables,
-} = require("../lib/supabaseAdmin");
-const {
-  getReader101ConsumptionUpdate,
-  getPrep101ConsumptionUpdate,
-} = require("./prep101EntitlementsService");
 const { retrieveMethodologyChunks } = require("./ragRetrieval");
-
-let GuideModel = null;
-try {
-  GuideModel = require("../models/Guide");
-} catch (e) {
-  // Model may not exist
-}
 
 function assessContentQuality(text, wordCount, isUpload = false) {
   const assessment = assessQuality(text, wordCount);
