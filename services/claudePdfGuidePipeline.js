@@ -396,6 +396,41 @@ function validateGuideHtml(html = "") {
   return { valid: missing.length === 0, missing };
 }
 
+function escapeHtml(value = "") {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function appendPreSubmissionChecklist(html = "", metadata = {}) {
+  const characterName = metadata.characterName || "the character";
+  const productionTitle = metadata.productionTitle || "the project";
+  const checklist = `
+<section class="prep101-section prep101-pre-submission-checklist">
+  <h2>Pre-Submission Checklist</h2>
+  <ul>
+    <li><strong>Framing / eyeline:</strong> Keep the frame steady and make the eyeline specific to the relationship in the sides.</li>
+    <li><strong>Lighting:</strong> Light the eyes clearly without flattening the emotional shifts.</li>
+    <li><strong>Background:</strong> Keep the background clean so the behavior reads before the room does.</li>
+    <li><strong>Sound:</strong> Check that every line and every intentional silence is audible.</li>
+    <li><strong>File naming / takes:</strong> Label the file with ${escapeHtml(characterName)} and ${escapeHtml(productionTitle)} before sending.</li>
+    <li><strong>Performance note:</strong> Play the moment before, then let the final button land as a choice instead of an explanation.</li>
+  </ul>
+</section>
+`;
+
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `${checklist}\n</body>`);
+  }
+  if (/<\/html>/i.test(html)) {
+    return html.replace(/<\/html>/i, `${checklist}\n</html>`);
+  }
+  return `${html}\n${checklist}`;
+}
+
 function markExtractionFailure(error) {
   const message = error?.message || "Unknown extraction failure";
   const wrapped = new Error(`EXTRACTION_FAILED: ${message}`);
@@ -639,6 +674,17 @@ ${scriptBlock || "No screenplay text was provided. Do not generate scene-specifi
   const repairedHtml = getAnthropicText(repair.data) || html;
   const finalValidation = validateGuideHtml(repairedHtml);
   if (!finalValidation.valid) {
+    const onlyChecklistMissing =
+      finalValidation.missing.length === 1 &&
+      finalValidation.missing.some((item) => /Pre-Submission Checklist/i.test(item));
+    if (onlyChecklistMissing) {
+      const completedHtml = appendPreSubmissionChecklist(repairedHtml, metadata);
+      const completedValidation = validateGuideHtml(completedHtml);
+      if (completedValidation.valid) {
+        console.warn("[ClaudePipeline] Appended deterministic Pre-Submission Checklist after repair.");
+        return { html: completedHtml, model: repair.model, usage: repair.data?.usage };
+      }
+    }
     if (finalValidation.missing.some((item) => /Final Coach Note|truncation/i.test(item))) {
       throw new Error("Guide truncated — retry with compression");
     }
