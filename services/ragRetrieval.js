@@ -8,24 +8,82 @@ const DEFAULT_MATCH_THRESHOLD = 0.65;
 
 let supabase = null;
 
-function getSupabaseClient() {
-  if (supabase) return supabase;
+function normalizeCredential(value = "") {
+  return String(value || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\$$/, "");
+}
 
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+function getSupabaseCredentialCandidates() {
+  const supabaseUrl = normalizeCredential(
+    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  );
+  const seen = new Set();
+  const candidates = [
+    ["SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY],
+    ["SUPABASE_SERVICE_KEY", process.env.SUPABASE_SERVICE_KEY],
+    ["SUPABASE_ANON_KEY", process.env.SUPABASE_ANON_KEY],
+  ]
+    .map(([name, value]) => ({ name, value: normalizeCredential(value) }))
+    .filter(({ value }) => {
+      if (!value || seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
 
-  if (!supabaseUrl || !serviceKey) {
+  if (!supabaseUrl || candidates.length === 0) {
     throw new Error("Supabase RAG credentials are not configured");
   }
 
-  supabase = createClient(supabaseUrl, serviceKey, {
+  return { supabaseUrl, candidates };
+}
+
+function describeCredential(candidate = {}) {
+  const value = candidate.value || "";
+  return `${candidate.name || "unknown"} length=${value.length} kind=${
+    value.startsWith("eyJ") ? "jwt" : value.startsWith("sb_") ? "secret" : "unknown"
+  }`;
+}
+
+function getSupabaseClient(supabaseUrl, candidate) {
+  const cacheKey = `${supabaseUrl}:${candidate.name}:${candidate.value.length}`;
+  if (supabase?.cacheKey === cacheKey) return supabase.client;
+
+  const client = createClient(supabaseUrl, candidate.value, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   });
+  supabase = { cacheKey, client };
 
-  return supabase;
+  return client;
+}
+
+async function matchMethodologyChunksWithFallback(params) {
+  const { supabaseUrl, candidates } = getSupabaseCredentialCandidates();
+  let lastError = null;
+
+  for (const candidate of candidates) {
+    const client = getSupabaseClient(supabaseUrl, candidate);
+    const { data, error } = await client.rpc("match_methodology_chunks", params);
+
+    if (!error) {
+      console.log(`[RAG] Supabase credential accepted: ${candidate.name}`);
+      return { data, error: null };
+    }
+
+    lastError = error;
+    if (/invalid api key/i.test(error.message || "")) {
+      console.error(`[RAG] Supabase rejected ${describeCredential(candidate)}: ${error.message}`);
+      continue;
+    }
+
+    return { data: null, error };
+  }
+
+  return { data: null, error: lastError || new Error("No Supabase credential candidates worked") };
 }
 
 async function embedQuery(text) {
@@ -74,9 +132,7 @@ async function retrieveMethodologyChunks({
   try {
     const query = buildRetrievalQuery(metadata, screenplayText);
     const queryEmbedding = await embedQuery(query);
-    const client = getSupabaseClient();
-
-    const { data, error } = await client.rpc("match_methodology_chunks", {
+    const { data, error } = await matchMethodologyChunksWithFallback({
       query_embedding: queryEmbedding,
       match_threshold: matchThreshold,
       match_count: matchCount,
@@ -90,14 +146,11 @@ async function retrieveMethodologyChunks({
     if (!data || data.length === 0) {
       console.warn("[RAG] No chunks retrieved above threshold; lowering threshold and retrying");
 
-      const { data: retryData, error: retryError } = await client.rpc(
-        "match_methodology_chunks",
-        {
-          query_embedding: queryEmbedding,
-          match_threshold: 0.5,
-          match_count: matchCount,
-        }
-      );
+      const { data: retryData, error: retryError } = await matchMethodologyChunksWithFallback({
+        query_embedding: queryEmbedding,
+        match_threshold: 0.5,
+        match_count: matchCount,
+      });
 
       if (retryError || !retryData || retryData.length === 0) {
         console.warn("[RAG] Retry also returned no chunks; proceeding without methodology context");
