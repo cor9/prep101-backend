@@ -369,31 +369,6 @@ async function extractTextStage(pdfBuffer) {
   };
 }
 
-function withTimeout(promise, ms, label) {
-  let timeoutId;
-  const timeoutPromise = new Promise((resolve) => {
-    timeoutId = setTimeout(() => {
-      console.warn(`[pdfIngest] ${label} timed out after ${ms}ms`);
-      resolve({
-        stage: "document",
-        source: "document",
-        provider: label,
-        skipped: true,
-        text: "",
-        rawText: "",
-        wordCount: 0,
-        quality: "needs_escalation",
-        failures: [`timeout:${ms}ms`],
-        characterNames: [],
-      });
-    }, ms);
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    clearTimeout(timeoutId);
-  });
-}
-
 async function extractClaudeDocumentStage(pdfBuffer) {
   const apiKey = (process.env.ANTHROPIC_API_KEY || "").trim();
   if (!apiKey) {
@@ -615,33 +590,6 @@ function extractOpenAIResponseText(payload = {}) {
   return "";
 }
 
-async function uploadPdfToOpenAI(pdfBuffer, apiKey, signal = undefined) {
-  const form = new FormData();
-  form.append("purpose", "assistants");
-  form.append("file", pdfBuffer, {
-    filename: "upload.pdf",
-    contentType: "application/pdf",
-  });
-
-  const response = await fetch("https://api.openai.com/v1/files", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      ...form.getHeaders(),
-    },
-    signal,
-    body: form,
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`openaiFileUploadFailed:${response.status}:${err}`);
-  }
-
-  const payload = await response.json();
-  return payload?.id;
-}
-
 async function deleteOpenAIFile(fileId, apiKey) {
   if (!fileId) return;
   try {
@@ -677,11 +625,63 @@ INCLUDE: Character names, dialogue, scene headings, essential stage directions.
 IGNORE: Watermarks, dates/timestamps, IDs/codes, repeated headers/footers.
 Return plain text only. No commentary.`;
 
-  let fileId = null;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  const core = async () => {
-    fileId = await uploadPdfToOpenAI(pdfBuffer, apiKey, controller.signal);
+  const timeout = setTimeout(() => {
+    console.warn("[pdfIngest] openai-document timed out after 30000ms; aborting");
+    controller.abort();
+  }, 30000);
+
+  let fileId = null;
+
+  try {
+    const form = new FormData();
+    form.append("purpose", "assistants");
+    form.append("file", pdfBuffer, {
+      filename: "upload.pdf",
+      contentType: "application/pdf",
+    });
+
+    const uploadResponse = await fetch("https://api.openai.com/v1/files", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        ...form.getHeaders(),
+      },
+      signal: controller.signal,
+      body: form,
+    });
+
+    if (!uploadResponse.ok) {
+      const err = await uploadResponse.text();
+      return {
+        stage: "document",
+        source: "document",
+        provider: "openai-document",
+        text: "",
+        rawText: "",
+        wordCount: 0,
+        quality: "needs_escalation",
+        failures: [`openaiFileUploadFailed:${uploadResponse.status}:${err}`],
+        characterNames: [],
+      };
+    }
+
+    const uploadPayload = await uploadResponse.json();
+    fileId = uploadPayload?.id;
+
+    if (!fileId) {
+      return {
+        stage: "document",
+        source: "document",
+        provider: "openai-document",
+        text: "",
+        rawText: "",
+        wordCount: 0,
+        quality: "needs_escalation",
+        failures: ["openaiFileUploadReturnedNoId"],
+        characterNames: [],
+      };
+    }
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -728,11 +728,8 @@ Return plain text only. No commentary.`;
       provider: `openai-document:${model}`,
       ...evaluateExtraction("document", rawText, { minWordCount: 50 }),
     };
-  };
-
-  try {
-    return await withTimeout(core(), 30000, "openai-document");
   } catch (error) {
+    const isAbort = error?.name === "AbortError" || /aborted/i.test(error?.message || "");
     return {
       stage: "document",
       source: "document",
@@ -741,7 +738,11 @@ Return plain text only. No commentary.`;
       rawText: "",
       wordCount: 0,
       quality: "needs_escalation",
-      failures: [`openaiDocumentFailed:${error.message || "request_failed"}`],
+      failures: [
+        isAbort
+          ? "openaiDocumentTimeout:30000ms"
+          : `openaiDocumentFailed:${error.message || "request_failed"}`,
+      ],
       characterNames: [],
     };
   } finally {
