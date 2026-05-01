@@ -7,6 +7,7 @@ const DEFAULT_MATCH_COUNT = 6;
 const DEFAULT_MATCH_THRESHOLD = 0.65;
 
 let supabase = null;
+let loggedSupabaseRagConfig = false;
 
 function normalizeCredential(value = "") {
   return String(value || "")
@@ -46,6 +47,15 @@ function describeCredential(candidate = {}) {
   }`;
 }
 
+function getSupabaseRef(supabaseUrl = "") {
+  try {
+    const hostname = new URL(supabaseUrl).hostname;
+    return hostname.split(".")[0] || hostname;
+  } catch (_error) {
+    return "invalid-url";
+  }
+}
+
 function getSupabaseClient(supabaseUrl, candidate) {
   const cacheKey = `${supabaseUrl}:${candidate.name}:${candidate.value.length}`;
   if (supabase?.cacheKey === cacheKey) return supabase.client;
@@ -64,6 +74,14 @@ function getSupabaseClient(supabaseUrl, candidate) {
 async function matchMethodologyChunksWithFallback(params) {
   const { supabaseUrl, candidates } = getSupabaseCredentialCandidates();
   let lastError = null;
+
+  if (!loggedSupabaseRagConfig) {
+    loggedSupabaseRagConfig = true;
+    console.log("[RAG] Supabase config candidates:", {
+      urlRef: getSupabaseRef(supabaseUrl),
+      candidates: candidates.map(describeCredential),
+    });
+  }
 
   for (const candidate of candidates) {
     const client = getSupabaseClient(supabaseUrl, candidate);
