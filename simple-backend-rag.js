@@ -3056,7 +3056,12 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       !isReader101Request &&
       !cachedTextHasUsableScript;
 
-    if (guideQueueEnabled && process.env.REDIS_URL && enqueueGuideJob) {
+    if (
+      guideQueueEnabled &&
+      process.env.REDIS_URL &&
+      enqueueGuideJob &&
+      !isReader101Request
+    ) {
       console.log(
         `[GENERATE FROM PDF] Enqueuing durable ${isReader101Request ? "Reader101" : "Prep101"} guide job for user ${currentUser.id}`
       );
@@ -3108,7 +3113,7 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       const { repairScreenplayText } = require("./services/screenplayRepair");
       const { parseScreenplayText } = require("./services/screenplayParser");
 
-      console.log("📖 [Reader101] generate-from-pdf — extracting via Claude...");
+      console.log("📖 [Reader101] generate-from-pdf — preparing reader guide text...");
 
       let repairedText;
       const recoverReaderTextFromStagedIngest = async (reason) => {
@@ -3130,23 +3135,35 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
         return null;
       };
 
-      try {
-        const extraction = await extractScreenplay({ pdfBuffer, role: characterName.trim(), apiKey });
-        repairedText = repairScreenplayText(extraction.screenplayText || "");
-      } catch (error) {
-        if (
-          mergedSceneTextFromCache &&
-          cachedSceneWordCount >= 80 &&
-          !cachedTextLooksUnderExtracted
-        ) {
-          console.warn(
-            `[Reader101] Direct PDF extraction failed (${error.message}); using upload-stage extracted text (${cachedSceneWordCount} words).`
-          );
-          repairedText = repairScreenplayText(mergedSceneTextFromCache);
-        } else {
-          repairedText = await recoverReaderTextFromStagedIngest(`failed (${error.message})`);
-          if (!repairedText) throw error;
+      if (cachedTextHasUsableScript && mergedSceneTextFromCache) {
+        console.log(
+          `[Reader101] Using upload-stage extracted text (${cachedSceneWordCount} words); skipping direct PDF extraction.`
+        );
+        repairedText = repairScreenplayText(mergedSceneTextFromCache);
+      } else {
+        try {
+          const extraction = await extractScreenplay({ pdfBuffer, role: characterName.trim(), apiKey });
+          repairedText = repairScreenplayText(extraction.screenplayText || "");
+        } catch (error) {
+          if (
+            mergedSceneTextFromCache &&
+            cachedSceneWordCount >= 80 &&
+            !cachedTextLooksUnderExtracted
+          ) {
+            console.warn(
+              `[Reader101] Direct PDF extraction failed (${error.message}); using upload-stage extracted text (${cachedSceneWordCount} words).`
+            );
+            repairedText = repairScreenplayText(mergedSceneTextFromCache);
+          } else {
+            repairedText = await recoverReaderTextFromStagedIngest(`failed (${error.message})`);
+            if (!repairedText) throw error;
+          }
         }
+      }
+
+      if (!repairedText) {
+        repairedText = await recoverReaderTextFromStagedIngest("returned no usable text");
+        if (!repairedText) throw new Error("Unable to recover Reader101 scene text.");
       }
 
       const repairedWordCount = (repairedText.match(/\b[\w']+\b/g) || []).length;

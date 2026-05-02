@@ -1,4 +1,9 @@
 ## 2026-05-01
+**Issue:** Reader101 PDF jobs could sit in the durable Prep101 worker queue for several minutes even when upload extraction had already recovered clean script text.
+**Decision:** Kept Prep101 PDF generation on the durable queue, but routed Reader101 PDF generation back through the Reader101-specific direct path and made that path trust clean upload-stage text immediately instead of re-running Claude PDF extraction first.
+**Status:** Success
+
+## 2026-05-01
 **Issue:** Prep101 queued PDF jobs were forcing OCR fallback for every non-Reader101 request, even when upload had already extracted clean screenplay text. This caused clean PDFs like `Lou 15 SciFi.pdf` to show contradictory "enhanced reading" and "unable to read" messages.
 **Decision:** Changed `generate-from-pdf` queue payloads to trust cached upload text when it has usable script content, pass `combinedWordCount`/`hasFullScript` into worker jobs, and skip heavy OCR recovery in the worker when cached text already has 80+ meaningful words.
 **Status:** Success
