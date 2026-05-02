@@ -217,6 +217,13 @@ function hasAny(text = "", needles = []) {
 }
 
 const NON_CHARACTER_CUES = new Set([
+  "SCRIPT TITLE",
+  "PROJECT TITLE",
+  "TITLE",
+  "IN THEIR EYES",
+  "IN HIS EYES",
+  "IN HER EYES",
+  "IN ITS EYES",
   "INT",
   "EXT",
   "INT.",
@@ -272,6 +279,8 @@ function isLikelyTechnicalCue(label = "") {
 
   const upper = normalized.toUpperCase();
   if (NON_CHARACTER_CUES.has(upper)) return true;
+  if (/\bCONT(?:['’]?D)?\b/i.test(label)) return true;
+  if (/\b(EYES|LOOKS?|STARES?|WATCHES|SEES)\b/i.test(normalized)) return true;
   if (/^OPTION\s+\d+$/i.test(normalized)) return true;
 
   const lower = normalize(normalized);

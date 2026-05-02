@@ -1,4 +1,9 @@
 ## 2026-05-01
+**Issue:** Reader101 could misread screenplay metadata and action labels (`SCRIPT TITLE`, `IN THEIR EYES`, `LOU CONT`) as reader roles, producing guides that coached fake scene partners instead of the actual counterpart.
+**Decision:** Added multi-layer reader-role sanitation in the screenplay parser, Reader101 cue inference, direct Reader101 PDF route, and queued Reader101 job processor. Continuation cues, title placeholders, eye/action labels, and technical labels are now rejected before guide generation.
+**Status:** Success
+
+## 2026-05-01
 **Issue:** Reader101 PDF jobs could sit in the durable Prep101 worker queue for several minutes even when upload extraction had already recovered clean script text.
 **Decision:** Kept Prep101 PDF generation on the durable queue, but routed Reader101 PDF generation back through the Reader101-specific direct path and made that path trust clean upload-stage text immediately instead of re-running Claude PDF extraction first.
 **Status:** Success

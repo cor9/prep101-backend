@@ -173,7 +173,21 @@ async function processGuideJob(payload, jobInstance = null) {
     actorCharacter: characterName ? characterName.trim() : null
   });
 
-  const FORBIDDEN_READER_ROLES = new Set(["SHOT", "INSERT", "SECURITY CAM FOOTAGE", "CUT TO", "FLASHBACK", "ANGLE ON"]);
+  const FORBIDDEN_READER_ROLES = new Set([
+    "SHOT",
+    "INSERT",
+    "SECURITY CAM FOOTAGE",
+    "CUT TO",
+    "FLASHBACK",
+    "ANGLE ON",
+    "SCRIPT TITLE",
+    "PROJECT TITLE",
+    "TITLE",
+    "IN THEIR EYES",
+    "IN HIS EYES",
+    "IN HER EYES",
+    "IN ITS EYES",
+  ]);
   function scoreCharacterLikelihood(name) {
     let score = 0;
     if (name.length <= 20) score += 1;
@@ -183,7 +197,10 @@ async function processGuideJob(payload, jobInstance = null) {
     return score;
   }
   const sanitizedReaderRoles = parsedScreenplay.readerRoles.filter(role => {
-    if (FORBIDDEN_READER_ROLES.has(role.trim().toUpperCase())) return false;
+    const upperRole = String(role || "").trim().toUpperCase();
+    if (!upperRole || FORBIDDEN_READER_ROLES.has(upperRole)) return false;
+    if (/\bCONT(?:['’]?D)?\b/.test(upperRole)) return false;
+    if (/\b(EYES|LOOKS?|STARES?|WATCHES|SEES)\b/.test(upperRole)) return false;
     return scoreCharacterLikelihood(role) >= 3;
   });
 

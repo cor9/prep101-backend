@@ -3189,8 +3189,28 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       }
 
       const parsedScreenplay = parseScreenplayText(repairedText, { actorCharacter: characterName.trim() });
-      const FORBIDDEN_READER_ROLES = new Set(["NARRATOR","V.O.","VO","O.S.","OS","ANNOUNCER"]);
-      const readerRoles = (parsedScreenplay.readerRoles || []).filter(r => !FORBIDDEN_READER_ROLES.has(r.trim().toUpperCase()));
+      const FORBIDDEN_READER_ROLES = new Set([
+        "NARRATOR",
+        "V.O.",
+        "VO",
+        "O.S.",
+        "OS",
+        "ANNOUNCER",
+        "SCRIPT TITLE",
+        "PROJECT TITLE",
+        "TITLE",
+        "IN THEIR EYES",
+        "IN HIS EYES",
+        "IN HER EYES",
+        "IN ITS EYES",
+      ]);
+      const readerRoles = (parsedScreenplay.readerRoles || []).filter((role) => {
+        const upperRole = String(role || "").trim().toUpperCase();
+        if (!upperRole || FORBIDDEN_READER_ROLES.has(upperRole)) return false;
+        if (/\bCONT(?:['’]?D)?\b/.test(upperRole)) return false;
+        if (/\b(EYES|LOOKS?|STARES?|WATCHES|SEES)\b/.test(upperRole)) return false;
+        return true;
+      });
 
       // Manage total time budget for the Reader101 path (240s to stay under Vercel's 300s)
       const readerController = new AbortController();

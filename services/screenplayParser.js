@@ -6,6 +6,13 @@
  */
 
 const NON_CHARACTER_PATTERNS = [
+  "SCRIPT TITLE",
+  "PROJECT TITLE",
+  "TITLE",
+  "IN THEIR EYES",
+  "IN HIS EYES",
+  "IN HER EYES",
+  "IN ITS EYES",
   "SHOT",
   "ANGLE",
   "INSERT",
@@ -17,7 +24,8 @@ const NON_CHARACTER_PATTERNS = [
   "WIDE",
   "CLOSE ON",
   "POV",
-  "INTERCUT"
+  "INTERCUT",
+  "CONTINUED"
 ];
 
 function normalizeText(rawText) {
@@ -104,6 +112,8 @@ function cleanCharacterName(name) {
 
 function isValidCharacter(name) {
   const upper = name.toUpperCase();
+  if (/\bCONT(?:['’]?D)?\b/.test(upper)) return false;
+  if (/\b(EYES|LOOKS?|STARES?|WATCHES|SEES)\b/.test(upper)) return false;
   return !NON_CHARACTER_PATTERNS.some(p => upper.includes(p));
 }
 
