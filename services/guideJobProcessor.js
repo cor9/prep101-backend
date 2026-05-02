@@ -138,8 +138,13 @@ async function processGuideJob(payload, jobInstance = null) {
 
   await updateProgress(10, "Repairing and analyzing text...");
   let finalCombinedText = combinedSceneText || "";
+  const finalCombinedWordCount = getMeaningfulWordCount(finalCombinedText);
   
-  if (payload.pdfBase64 && (shouldForcePrepFallback || shouldForceReaderFallback || combinedWordCount < 80)) {
+  if (
+    payload.pdfBase64 &&
+    finalCombinedWordCount < 80 &&
+    (shouldForcePrepFallback || shouldForceReaderFallback || combinedWordCount < 80)
+  ) {
     await updateProgress(15, "Running heavy PDF reading (OCR recovery)...");
     try {
       const { processPdfExtractionJob } = require("./pdfExtractionJobProcessor");

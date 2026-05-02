@@ -3008,6 +3008,16 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       mode === "reader_support" || 
       req.body.product === "reader101" || 
       req.body.isReader101 === true;
+    const cachedTextHasUsableScript =
+      cachedSceneWordCount >= 80 &&
+      !cachedTextLooksUnderExtracted &&
+      allCachedEntries.some((entry) => entry.fallbackMode !== true);
+    const shouldQueueReaderFallback =
+      isReader101Request &&
+      !cachedTextHasUsableScript;
+    const shouldQueuePrepFallback =
+      !isReader101Request &&
+      !cachedTextHasUsableScript;
 
     if (guideQueueEnabled && process.env.REDIS_URL && enqueueGuideJob) {
       console.log(`[GENERATE FROM PDF] Enqueuing durable guide job for user ${currentUser.id}`);
@@ -3025,9 +3035,11 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
         characterBreakdown: characterBreakdown || "",
         callbackNotes: callbackNotes || "",
         focusArea: focusArea || (isReader101Request ? "reader_support" : ""),
-        shouldForceReaderFallback: isReader101Request,
-        shouldForcePrepFallback: !isReader101Request,
+        shouldForceReaderFallback: shouldQueueReaderFallback,
+        shouldForcePrepFallback: shouldQueuePrepFallback,
         combinedSceneText: mergedSceneTextFromCache || "",
+        combinedWordCount: cachedSceneWordCount,
+        hasFullScript: allCachedEntries.some((entry) => entry.fileType === "full_script"),
         uploadData: allCachedEntries,
         userId: currentUser.id,
         user: currentUser,
