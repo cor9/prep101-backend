@@ -1,3 +1,18 @@
+## 2026-05-01
+**Issue:** Prep101 queued PDF jobs were forcing OCR fallback for every non-Reader101 request, even when upload had already extracted clean screenplay text. This caused clean PDFs like `Lou 15 SciFi.pdf` to show contradictory "enhanced reading" and "unable to read" messages.
+**Decision:** Changed `generate-from-pdf` queue payloads to trust cached upload text when it has usable script content, pass `combinedWordCount`/`hasFullScript` into worker jobs, and skip heavy OCR recovery in the worker when cached text already has 80+ meaningful words.
+**Status:** Success
+
+## 2026-05-01
+**Issue:** Async guide generation fixes were initially Prep101-heavy and left Reader101/Bold Choices exposed to stale polling, overlong methodology context, and incorrect worker routing.
+**Decision:** Applied queue and prompt safeguards across products: Reader101 worker jobs now derive mode from `jobType`/`mode`, Reader101 and Bold Choices methodology/script context is clipped before LLM calls, and Bold Choices job polling now uses no-cache semantics like Prep101.
+**Status:** Success
+
+## 2026-05-01
+**Issue:** Supabase vector RAG could fail in Render because the deployed Supabase key env var was invalid or mismatched, removing methodology context from guide generation.
+**Decision:** Hardened Supabase credential selection, added safe diagnostic logging, and added a local methodology retrieval fallback so guides still receive Corey methodology chunks when Supabase RPC rejects the key.
+**Status:** Success
+
 ## 2026-04-08
 **Issue:** Sparse and image-heavy PDFs were still falling through to weak extraction results because OCR existed in code but was never called from the upload route.
 **Decision:** Wired the upload pipeline to try `pdf-parse` first, then Adobe when enabled and sparse, then OCR when extraction is still sparse, empty, or repetitive. Added extraction attempt metadata to health diagnostics.
