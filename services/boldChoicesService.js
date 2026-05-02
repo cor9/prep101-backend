@@ -9,6 +9,11 @@ const { retrieveMethodologyContext } = require("./methodologyRetrieval");
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
 const { scrubWatermarks } = require("./textCleaner");
 
+function clipText(text = "", maxLength = 7000) {
+  const cleaned = String(text || "").trim();
+  return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength)}\n...[truncated]` : cleaned;
+}
+
 // ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
 const BOLD_CHOICES_SYSTEM_PROMPT = `You are Corey Ralston.
 
@@ -293,7 +298,7 @@ RETRIEVAL SIGNALS:
 
   if (data.sceneText && !data.fallbackMode) {
     lines.push("\nSIDES / SCENE TEXT (CRITICAL: Ignore any remaining timestamps, dates, watermarks, agency names, or page numbers):");
-    lines.push(scrubWatermarks(data.sceneText));
+    lines.push(clipText(scrubWatermarks(data.sceneText), 9000));
   } else if (data.fallbackMode) {
     lines.push("\n⚠️ FALLBACK NOTIFICATION: The uploaded audition sides were unreadable or corrupted.");
     lines.push("You must STILL generate a full Bold Choices Guide using only the provided metadata (character name, project type, genre, tone).");
@@ -305,7 +310,7 @@ RETRIEVAL SIGNALS:
     lines.push("- Every section (pov, choices, moments, etc.) must still be complete and feel surgical.");
   }
 
-  lines.push(methodologyBlock);
+  lines.push(clipText(methodologyBlock, 6500));
 
   // ── Modifier suffix ────────────────────────────────────────────────────────
   if (data.spinAgain) {

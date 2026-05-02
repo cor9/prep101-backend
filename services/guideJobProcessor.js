@@ -111,7 +111,7 @@ async function processGuideJob(payload, jobInstance = null) {
 
   const {
     userId,
-    isReaderMode,
+    isReaderMode: payloadIsReaderMode,
     combinedSceneText,
     characterName,
     actorAge,
@@ -130,6 +130,11 @@ async function processGuideJob(payload, jobInstance = null) {
     shouldForcePrepFallback,
     combinedWordCount,
   } = payload;
+  const isReaderMode =
+    payloadIsReaderMode === true ||
+    payload.jobType === "reader101" ||
+    payload.mode === "reader_support" ||
+    payload.product === "reader101";
 
   await updateProgress(10, "Repairing and analyzing text...");
   let finalCombinedText = combinedSceneText || "";

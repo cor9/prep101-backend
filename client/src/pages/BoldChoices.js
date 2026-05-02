@@ -285,6 +285,7 @@ const BoldChoices = () => {
           await new Promise(resolve => setTimeout(resolve, 3000));
           
           const pollRes = await fetch(`${API_BASE}/api/bold-choices/jobs/${data.jobId}`, {
+            cache: "no-store",
             ...withApiCredentials({}, user),
           });
           

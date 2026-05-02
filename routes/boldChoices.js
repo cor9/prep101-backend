@@ -421,6 +421,13 @@ router.post("/generate", auth, async (req, res) => {
  */
 router.get("/jobs/:id", auth, async (req, res) => {
   try {
+    res.set({
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+      "Surrogate-Control": "no-store",
+    });
+
     const { id } = req.params;
     
     if (!getGuideJob) {

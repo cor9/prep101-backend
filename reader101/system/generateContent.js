@@ -263,7 +263,7 @@ ${clipText(cleanedSceneText || "[No readable sides provided]")}`;
 
   const methodologyBlock = methodologyContext
     ? `RANKED METHODOLOGY MEMORY (READER101 FILTERED):
-${clipText(methodologyContext, 18000)}
+${clipText(methodologyContext, 6500)}
 
 RETRIEVAL SIGNALS:
 - Primary Archetype: ${retrievalSignals.primaryArchetype || "general"}
