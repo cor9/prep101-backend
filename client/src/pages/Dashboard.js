@@ -664,7 +664,14 @@ const Dashboard = () => {
               headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
             
-            if (!pollRes.ok) throw new Error("Failed to poll guide status");
+            if (!pollRes.ok) {
+              const errorPayload = await pollRes.json().catch(() => null);
+              throw new Error(
+                errorPayload?.reason ||
+                  errorPayload?.error ||
+                  "Failed to poll guide status"
+              );
+            }
             jobData = await pollRes.json();
             jobStatus = jobData.state;
             

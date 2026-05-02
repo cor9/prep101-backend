@@ -929,6 +929,40 @@ function assessGeneratedGuideQuality(html = "") {
   };
 }
 
+function assessReaderGuideQuality(html = "") {
+  const content = String(html || "");
+  const lower = content.toLowerCase();
+  const missing = [];
+
+  if (content.length < 1500) missing.push("reader guide is too short");
+  if (
+    !/Reader101|Reader Support|reader support|reader['’]?s job|your job|key beats/i.test(
+      content
+    )
+  ) {
+    missing.push("reader-specific coaching");
+  }
+  if (
+    lower.includes("no usable dramatic content detected") ||
+    lower.includes("script pages are not available") ||
+    lower.includes("actual script pages are not available") ||
+    lower.includes("resubmit with the correct pdf")
+  ) {
+    missing.push("source-specific reader guidance");
+  }
+
+  return {
+    valid: missing.length === 0,
+    missing,
+  };
+}
+
+function assessGuideQualityForType(html = "", guideType = "prep101") {
+  return guideType === "reader101"
+    ? assessReaderGuideQuality(html)
+    : assessGeneratedGuideQuality(html);
+}
+
 // Load methodology files into memory for RAG
 let methodologyDatabase = {};
 
@@ -3745,7 +3779,10 @@ app.post("/api/guides/generate", auth, async (req, res) => {
     });
 
     const { guidePayload, isReaderMode: resultIsReaderMode } = jobResult;
-    const guideQuality = assessGeneratedGuideQuality(guidePayload.generatedHtml);
+    const guideQuality = assessGuideQualityForType(
+      guidePayload.generatedHtml,
+      resultIsReaderMode ? "reader101" : guidePayload.guideType
+    );
     if (!guideQuality.valid) {
       return res.status(422).json({
         success: false,
@@ -3885,7 +3922,10 @@ app.get("/api/guides/jobs/:id", auth, async (req, res) => {
 
     console.log(`[JOB ${id}] Finalizing and saving generated guide...`);
 
-    const guideQuality = assessGeneratedGuideQuality(guidePayload.generatedHtml);
+    const guideQuality = assessGuideQualityForType(
+      guidePayload.generatedHtml,
+      isReaderMode ? "reader101" : guidePayload.guideType
+    );
     if (!guideQuality.valid) {
       return res.status(422).json({
         id: job.id,
