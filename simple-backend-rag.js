@@ -3006,8 +3006,11 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
     const guideQueueEnabled = String(process.env.ENABLE_GUIDE_QUEUE || "").toLowerCase() === "true";
     const isReader101Request = 
       mode === "reader_support" || 
+      req.body.mode === "reader_support" ||
       req.body.product === "reader101" || 
-      req.body.isReader101 === true;
+      req.body.isReader101 === true ||
+      req.body.isReader101 === "true" ||
+      req.body.focusArea === "reader_support";
     const cachedTextHasUsableScript =
       cachedSceneWordCount >= 80 &&
       !cachedTextLooksUnderExtracted &&
@@ -3020,7 +3023,9 @@ app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (re
       !cachedTextHasUsableScript;
 
     if (guideQueueEnabled && process.env.REDIS_URL && enqueueGuideJob) {
-      console.log(`[GENERATE FROM PDF] Enqueuing durable guide job for user ${currentUser.id}`);
+      console.log(
+        `[GENERATE FROM PDF] Enqueuing durable ${isReader101Request ? "Reader101" : "Prep101"} guide job for user ${currentUser.id}`
+      );
       const payload = {
         jobType: isReader101Request ? "reader101" : "prep101",
         pdfBase64: pdfBuffer.toString("base64"),
@@ -3337,10 +3342,13 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       mode,
     } = requestBody;
 
-    const isReaderMode = 
+    const isReaderMode =
       mode === "reader_support" || 
+      requestBody.mode === "reader_support" ||
       requestBody.product === "reader101" || 
-      requestBody.isReader101 === true;
+      requestBody.isReader101 === true ||
+      requestBody.isReader101 === "true" ||
+      requestBody.focusArea === "reader_support";
 
     // Handle both single and multiple upload IDs
     const uploadIdList = uploadIds

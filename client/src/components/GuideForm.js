@@ -15,7 +15,7 @@ const GUIDE_MODE_COPY = {
   },
 };
 
-const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard' }) => {
+const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard', lockMode = false }) => {
   const [formData, setFormData] = useState({
     characterName: '',
     productionTitle: '',
@@ -85,7 +85,12 @@ const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard' }) => {
     console.log('🌟 Child guide requested:', formData.childGuideRequested);
     console.log('👶 Actor age:', formData.actorAge);
 
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      mode: lockMode ? defaultMode : formData.mode,
+      product: lockMode && defaultMode === 'reader_support' ? 'reader101' : 'prep101',
+      isReader101: lockMode && defaultMode === 'reader_support',
+    });
   };
 
   const isFormValid = formData.characterName && formData.actorAge && formData.productionTitle && 
@@ -127,6 +132,7 @@ const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard' }) => {
           🎭 Character Information
         </h3>
 
+        {!lockMode && (
         <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '800', color: '#374151', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
             What are you creating?
@@ -165,6 +171,7 @@ const GuideForm = ({ onSubmit, hasFile, defaultMode = 'standard' }) => {
             })}
           </div>
         </div>
+        )}
         <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
           Tell us about the role and project. The more details you provide,
           the more useful your {selectedModeCopy.label} guide will be.

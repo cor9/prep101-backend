@@ -548,7 +548,13 @@ const Dashboard = () => {
   const handleGenerateGuide = async (formData) => {
     let payload = null;
     let loadingToastId = null;
-    const modeForRequest = formData?.mode || (isReader101Context ? "reader_support" : "standard");
+    const effectiveFormData = {
+      ...(formData || {}),
+      mode: isReader101Context ? "reader_support" : (formData?.mode || "standard"),
+      product: isReader101Context ? "reader101" : "prep101",
+      isReader101: isReader101Context,
+    };
+    const modeForRequest = effectiveFormData.mode;
     setActiveGenerationMode(modeForRequest);
     const normalizedUploadIdsForDirectPdf = (
       uploadData?.uploadIds || [uploadData?.uploadId]
@@ -603,7 +609,7 @@ const Dashboard = () => {
       if (uploadedFile) {
         multipart.append("file", uploadedFile);
       }
-      Object.entries(formData || {}).forEach(([key, value]) => {
+      Object.entries(effectiveFormData || {}).forEach(([key, value]) => {
         if (value == null) return;
         multipart.append(key, String(value));
       });
@@ -765,9 +771,9 @@ const Dashboard = () => {
         warnings: uploadData.warnings || [],
         source: uploadData.source || uploadData.extractionMethod || "text",
         mode: modeForRequest,
-        ...formData,
+        ...effectiveFormData,
       };
-      console.log("🚀 Starting guide generation for:", formData.characterName);
+      console.log("🚀 Starting guide generation for:", effectiveFormData.characterName);
       const loadingCopy =
         modeForRequest === "reader_support"
           ? "Generating your Reader101 guide... this may take about 3-6 minutes."
@@ -1681,6 +1687,7 @@ const Dashboard = () => {
                     isSubmitting={isGenerating}
                     disabled={!canGenerate}
                     defaultMode={builderMode}
+                    lockMode={isReader101Context || guideFilter === "prep101"}
                   />
                 </div>
               )}
