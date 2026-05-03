@@ -558,7 +558,7 @@ router.get("/jobs/:id", auth, async (req, res) => {
         savedGuideId = persisted?.guideId || null;
         savedGuideRecordId = persisted?.id || null;
       } catch (saveError) {
-        console.error("[BoldChoices] Failed to save guide to account:", saveError.message);
+        console.error("[BoldChoices] Failed to save guide to account:", saveError.message, saveError.cause?.message || "");
       }
     }
 

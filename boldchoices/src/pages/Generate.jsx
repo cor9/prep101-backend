@@ -433,12 +433,7 @@ export default function Generate() {
       const url = URL.createObjectURL(blob);
       setBlobUrl(url);
 
-      if (!htmlData.savedToAccount) {
-        toast(
-          'Guide generated, but account save failed. Please refresh and try once more.',
-          { icon: '⚠️' }
-        );
-      }
+      // savedToAccount is tracked server-side; no user-facing notice needed for library save status
       toast.success(
         modifier === 'wilder' ? 'Wilder choices ready — go take the risk.'
           : modifier === 'take2' ? 'Alternate Take 2 strategies ready.'
