@@ -78,11 +78,22 @@ function isDialogue(line) {
   return true;
 }
 
+// ALL CAPS lines used for emphasis within dialogue (e.g. "YOU WANNA KNOW WHAT I THINK?")
+// are not character names — they're emphatic speech. Detect them by sentence signals.
+function isEmphasizedDialogue(line) {
+  const trimmed = (line || "").trim();
+  if (!isAllCaps(trimmed)) return false;
+  if (/[?!]$/.test(trimmed)) return true;
+  if (trimmed.split(/\s+/).length > 5) return true;
+  if (/\b(WANNA|GONNA|GOTTA|CAN'T|DON'T|WON'T|ISN'T|AREN'T|DOESN'T|DIDN'T|WOULDN'T|SHOULDN'T|COULDN'T)\b/i.test(trimmed)) return true;
+  return false;
+}
+
 function findNextDialogueLine(lines, startIndex) {
   for (let i = startIndex; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    
+
     // skip PURE parentheticals
     if (line.startsWith('(')) {
       const afterParenMatch = line.match(/\)(.+)$/);
@@ -90,6 +101,11 @@ function findNextDialogueLine(lines, startIndex) {
         continue;
       }
     }
+
+    // Skip ALL CAPS lines — they're either another character name or emphatic dialogue,
+    // not the regular lowercase dialogue evidence needed to confirm a character cue.
+    if (isAllCaps(line)) continue;
+
     return line;
   }
   return null;
@@ -97,6 +113,15 @@ function findNextDialogueLine(lines, startIndex) {
 
 function isCharacterCue(line, lines, nextIndex) {
   if (!isAllCaps(line)) return false;
+  const trimmed = line.trim();
+  // Sentence-ending punctuation = emphatic dialogue, not a character name
+  if (/[?!]$/.test(trimmed)) return false;
+  // Trailing comma = mid-sentence continuation, not a character name
+  if (/,$/.test(trimmed)) return false;
+  // Too many words for a character name
+  if (trimmed.split(/\s+/).length > 5) return false;
+  // Lines starting with conjunctions/prepositions are sentence fragments, not names
+  if (/^(THAN|EVEN|ABOUT|HOW|BECAUSE|UNLESS|UNTIL|WHILE|ONCE|SINCE|THOUGH|ALTHOUGH|AND|BUT|OR|IF|WHEN|WHERE|JUST|STILL|ALSO|THEN|MAYBE)\b/i.test(trimmed)) return false;
   const nextLine = findNextDialogueLine(lines, nextIndex);
   if (!nextLine) return false;
   return isDialogue(nextLine);
@@ -264,7 +289,7 @@ function parseScreenplayText(rawText, options = {}) {
             continue;
           }
 
-          if (isDialogue(next) || next.startsWith('(')) {
+          if (isDialogue(next) || next.startsWith('(') || isEmphasizedDialogue(next)) {
             contentLines.push(next);
             j++;
             continue;
@@ -351,6 +376,7 @@ module.exports = {
   normalizeText,
   isCharacterCue,
   isDialogue,
+  isEmphasizedDialogue,
   isSceneHeading,
   cleanCharacterName,
   isValidCharacter,

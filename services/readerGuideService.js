@@ -8,18 +8,12 @@
 const { buildGuide } = require("../reader101/system/buildGuide");
 
 const REQUIRED_SECTION_TITLES = [
-  "What Will Go Wrong",
-  "Why This Matters",
-  "Performance Engine",
-  "Scene Snapshot",
   "Your Job",
-  "Playing Multiple Characters",
-  "Reader Fundamentals",
-  "Key Beats",
-  "Rhythm, Pace & Energy",
-  "Do This / Avoid This",
-  "Connection",
-  "Tone & Reference Anchor",
+  "3 Mistakes to Avoid",
+  "How to Read This Scene",
+  "Key Reader Lines",
+  "Silence",
+  "Timing That Matters",
   "Quick Reset",
 ];
 
@@ -307,6 +301,11 @@ function extractCharacterCues(sceneText = "") {
     if (/\d+\.$/.test(line)) continue;
     if (/\.$/.test(line) && !/\(CONT['’]?D\)/i.test(line)) continue;
     if (/[:!?]$/.test(line)) continue;
+
+    // Lines starting with conjunctions/prepositions are sentence fragments, not character names
+    if (/^(THAN|EVEN|ABOUT|HOW|BECAUSE|UNLESS|UNTIL|WHILE|ONCE|SINCE|THOUGH|ALTHOUGH|AND|BUT|OR|IF|WHEN|WHERE|JUST|STILL|ALSO|THEN|MAYBE)\b/i.test(line)) continue;
+    // Lines with possessives of common words are sentence fragments, not names
+    if (/\b(ELSE'S|EVERYONE'S|NOBODY'S|SOMEBODY'S|ANYBODY'S|EVERYONE|SOMEBODY|ANYBODY|NOBODY)\b/i.test(line)) continue;
 
     const normalized = normalizeCharacterLabel(line);
     if (!normalized) continue;
@@ -663,7 +662,6 @@ function validateReaderGuideOutput(html = "", modeContext = {}) {
       "Reader provides emotional grounding only.",
       "This scene contains behavior that may cause reader discomfort. That discomfort must NOT affect delivery.",
       "Your job is not to make this comfortable. Your job is to make it playable.",
-      "This moment may feel uncomfortable. Do not adjust your performance to avoid that discomfort.",
     ];
 
     for (const line of requiredHighRiskLines) {
