@@ -72,6 +72,21 @@ function countMeaningfulWords(text = "") {
   return (String(text || "").match(/\b[\w']+\b/g) || []).length;
 }
 
+function countDialogueWords(text = "") {
+  // Rough count of words that are likely dialogue (exclude sluglines, all-caps headers)
+  const lines = String(text || "").split("\n");
+  let count = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // Skip sluglines (INT./EXT.), all-caps cue headers (CHARACTER NAME), scene directions
+    if (/^(INT|EXT)[\.\s]/i.test(trimmed)) continue;
+    if (/^[A-Z][A-Z\s\.\(\)]{2,}$/.test(trimmed)) continue; // all-caps header
+    count += (trimmed.match(/\b[\w']+\b/g) || []).length;
+  }
+  return count;
+}
+
 function clipText(text = "", maxLength = 14000) {
   const cleaned = String(text || "").trim();
   return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength)}\n...[truncated]` : cleaned;
@@ -244,13 +259,21 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
     .filter(Boolean)
     .join("\n");
 
-  const sceneBlock = meta.fallbackMode
-    ? `SIDES STATUS:
-- Treat the extracted sides as partial or unreliable.
-- Use only clean metadata and any obviously readable story cues.
-- Do not invent exact dialogue or fake line-specific beats.`
-    : `READABLE SIDES:
-${clipText(cleanedSceneText || "[No readable sides provided]")}`;
+  const dialogueWordCount = countDialogueWords(cleanedSceneText);
+  const shortSidesMode = dialogueWordCount < 80 && cleanedSceneText.length > 30;
+
+  if (shortSidesMode) {
+    console.log(`[Reader101] SHORT_SIDES_MODE: TRUE — ${dialogueWordCount} dialogue words detected`);
+  }
+
+  // ── Scene block: ALWAYS include actual text when available ──────────────
+  // fallbackMode only adds a reliability note — it NEVER hides the script from Claude.
+  // When Claude has no text, guides are generic. Text is better than no text.
+  const hasSidesText = cleanedSceneText.length > 50;
+  const sceneBlock = hasSidesText
+    ? `SIDES TEXT${meta.fallbackMode ? " (PARTIAL EXTRACTION — use what is readable, note gaps)" : ""}:
+${clipText(cleanedSceneText)}`
+    : `SIDES STATUS: No readable text could be extracted. Base coaching on character name, show title, and genre metadata only. Do NOT invent dialogue or fake quotes.`;
 
   const methodologyBlock = methodologyContext
     ? `RANKED METHODOLOGY MEMORY (READER101 FILTERED):
@@ -376,27 +399,53 @@ Global rules:
 - Every list item must be one line.
 - Every list item must be a physical, vocal, timing, listening, or restraint directive.
 - Use plain, exact reader coaching. Not theory.
-- CITATION RULE — NON-NEGOTIABLE: Every bullet in Key Beats, Your Job, and Scene Snapshot MUST open with a direct quote from the sides in quotation marks. No quote = no bullet. If you cannot find a line to anchor the directive, write: "⚠ UNANCHORED — omitted. Upload full sides for guidance on this beat." Do NOT write the directive anyway with an UNANCHORED label. The flag is a stop sign, not a permission slip.
-- SCENE SNAPSHOT RULE: Generate one row per scene in the sides. Each row must include: location (from slugline), reader character(s), scene temperature, ${ACTOR_ROLE}'s arc in that scene. Writing about "the world" or "the show" is not a scene snapshot. If there are 3 scenes, there are 3 rows. No exceptions.
-- PLAYING MULTIPLE CHARACTERS RULE: Name every reader character explicitly — no categories, no "Character A," no "the insider." Each named character requires: One register description anchored to a specific moment in the sides, and One contrast line (e.g., "If X and Y feel the same, the audition dies instantly"). Generic register descriptions (e.g., "easy confidence") are not permitted without a cited line or beat from the sides that demonstrates it.
-- CONSEQUENCE RULE: The following consequence phrases are BANNED: "the emotional turn disappears", "the scene loses its pulse", "the actor feels the drop immediately", "the scene drifts off target", "the high-risk turn collapses". Every consequence must name what specifically breaks in THIS scene if the direction is ignored. Bad: "→ the emotional turn disappears". Good: "→ her 'I liked you from the second I saw you' lands as a confession instead of a correction, and the whole scene inverts"
-- SPECIFICITY CHECK — run before finalizing output: For every directive, ask: could this bullet appear in a guide for a completely different show with different characters? If yes: rewrite with a cited line or delete it. A directive that applies to all teen dramas is not a directive for THIS script.
-- KEY BEATS RULE: Minimum 5 beats required. Each beat must contain: A quoted line from the sides (required), One physical directive (what the reader does), One specific consequence (what breaks if they don't). If fewer than 5 anchored beats exist in the sides provided, generate only the beats you can anchor and write: "⚠ Upload complete sides for remaining beats." Do not pad with unanchored bullets to reach the minimum.
-- "what_will_go_wrong" must contain exactly 3 bullets and each bullet must identify a precise failure point plus consequence.
-- End "what_will_go_wrong" with the understanding that if these happen, the audition does not land.
-- "why_it_matters" must explain the actor's internal problem in plain truth, not genre summary.
-- "performance_engine.drive_*" is Push (Reader's Function): the resistance, pressure, or container the reader provides.
-- "performance_engine.fuel_*" is Pull (Actor's Need): what the actor is reaching for emotionally and how the reader either protects or destroys it.
-- "your_job" must be moment-based. Quote the actual line first, then correct the wrong instinct, then provide the right move.
-- "reader_fundamentals" must contain exactly 10 practical, scene-relevant reader rules.
-- "rhythm" must cover how to read this scene: cadence, punctuation, interruptions, pauses, volume, containment, and energy shifts.
-- "do" and "avoid" must be concrete and scene-specific. Quote the line or the moment first. Never use generic theory.
-- "connection" must explain where the actor depends on the reader and how the moment dies if the reader mishandles it.
-- "tone_reference_anchor" must start with consequence framing and then anchor the emotional texture to precise comps or scene truth, not generic genre explanation.
-- "quick_reset" must be 3 to 4 bullets max and should feel like live self-tape rescue notes.
-- Emotional framing should come before instruction. Consequences should follow instruction.
-- If fallback mode is true, stay useful without pretending you saw clean lines.
+  const shortSidesBlock = shortSidesMode
+    ? `
+SHORT SIDES MODE — ACTIVE (${dialogueWordCount} dialogue words detected)
 
+⚡ This guide must prioritize precision over volume. Every beat matters more when there are fewer of them.
+
+ADAPTATIONS:
+- KEY BEATS: Use every quotable line exactly once. Stage directions are quotable — treat them as anchors. If only 2 lines are quotable, the section gets 2 bullets. Do NOT pad to hit a count.
+- SCENE SNAPSHOT: Collapse to a single "Scene in One Line" per scene (e.g., "Diner. Shaggy delivers one piece of information and exits. Reader receives it like it matters."). Do not use a multi-row grid format.
+- YOUR JOB: This is the load-bearing section for short sides. Expand it. Fewer lines means the reader's precision on each one matters MORE — every cue is a setup the actor has to land on.
+- PLAYING MULTIPLE CHARACTERS: Only include if the sides actually show both reader characters interacting. If one character appears in only one scene, name them and their scene function specifically.
+- DO NOT generate filler bullets to fill section shapes. Missing beats are invisible. Generic beats are lies.
+`
+    : "";
+
+  const citationRule = hasSidesText
+    ? `- CITATION RULE: Every bullet in Key Beats, Your Job, and Scene Snapshot MUST open with a direct quote from the sides in quotation marks. Stage directions count as quotes — use the exact language from the page. No quote = no bullet. If you cannot find a line to anchor the directive, omit the bullet entirely. Do NOT pad with generic advice to hit a count.
+- ANCHOR QUOTES (extracted from sides — use these as your primary citation sources):
+${meta.anchorQuotes && meta.anchorQuotes.length > 0
+  ? meta.anchorQuotes.map(q => `  • "${q}"`).join("\n")
+  : "  (No pre-extracted anchors — mine the sides text directly for quotable lines.)"}
+- INVISIBLY GENERIC TEST: Before including any bullet, ask — could this appear in a guide for a completely different show? If yes, rewrite it with a specific quote or delete it.
+- TWO-CHARACTER CONTRAST RULE: If there are two reader characters, name both explicitly with one specific line or beat from each that shows their difference in pressure, status, or function. "If X and Y feel the same, the audition dies" is not enough — show HOW they differ using the actual text.
+`
+    : `- CITATION RULE: Since no readable sides are available, do NOT invent quotes. Use character names and show context from metadata only. Mark every coaching note with "(based on character type)" so the user knows it is metadata-based, not script-based.
+`;
+
+- SCENE SNAPSHOT RULE: ${shortSidesMode ? 'SHORT SIDES MODE — collapse to one Scene in One Line per scene (location, reader character, scene temperature, actor arc). No grid format.' : `Generate one row per scene in the sides. Each row must include: location (from slugline), reader character(s), scene temperature, ${ACTOR_ROLE}'s arc in that scene. Writing about "the world" or "the show" is not a scene snapshot.`}
+- PLAYING MULTIPLE CHARACTERS RULE: Name every reader character explicitly. Each named character requires: one register description anchored to a specific moment in the sides, and one contrast line naming what is different about their pressure, status, or function from the other reader character. Generic descriptions without a cited beat are not permitted.
+- CONSEQUENCE RULE: The following consequence phrases are BANNED: "the emotional turn disappears", "the scene loses its pulse", "the actor feels the drop immediately", "the scene drifts off target", "the high-risk turn collapses". Every consequence must name what specifically breaks in THIS scene.
+- SPECIFICITY CHECK — run before finalizing output: For every directive, ask: could this bullet appear in a guide for a completely different show with different characters? If yes: rewrite with a cited line or delete it.
+- KEY BEATS RULE: Use only lines you can anchor to the actual sides. If sides are short, generate only anchored beats — do NOT pad to reach any minimum. Each anchored beat must contain: a quoted line, one physical directive, one specific consequence.
+- "what_will_go_wrong" must contain exactly 3 bullets identifying precise failure points plus consequences specific to THIS scene.
+- "why_it_matters" must explain the actor's specific problem using the actual dynamics in these sides, not genre summary.
+- "performance_engine.drive_*" is Push (Reader's Function): the specific resistance or pressure the reader provides in THIS scene.
+- "performance_engine.fuel_*" is Pull (Actor's Need): what the actor reaches for and how the reader protects or destroys it.
+- "your_job" must be moment-based. ${shortSidesMode ? 'SHORT SIDES: this is the load-bearing section — expand it. Every reader line is a setup the actor must land on. Be specific about each one.' : 'Quote the actual line first, then correct the wrong instinct, then provide the right move.'}
+- "reader_fundamentals" must be practical, scene-relevant reader rules — include as many as the sides support. Do NOT pad to hit a number.
+- "rhythm" must cover cadence, punctuation, interruptions, pauses, volume, containment, and energy shifts specific to THIS scene.
+- "do" and "avoid" must be concrete and scene-specific. Quote the line or moment first.
+- "connection" must explain where the actor depends on the reader and how the specific moment dies if mishandled.
+- "tone_reference_anchor" must anchor emotional texture to precise scene truth, not generic genre explanation.
+- "quick_reset" should feel like live self-tape rescue notes for THIS specific scene.
+- Emotional framing before instruction. Consequences after instruction.
+
+${citationRule}
+${shortSidesBlock}
 ${highRiskRules}
 ${roleLockBlock}
 ${genreModeBlock}
@@ -465,6 +514,8 @@ ${methodologyBlock}
 
 ${validationFeedback ? `REVISION FEEDBACK:\n${validationFeedback}\n` : ""}
 
+${hasSidesText ? `CONFIRMATION — log internally before generating: "I have read the sides. The character ${meta.readerCharacterName || 'the reader character'} appears in the following lines: [list them]. I will anchor my coaching to these specific lines and no others."` : ""}
+
 Return the JSON object now.`;
 
   return guardrail + "\n\n" + userPrompt;
@@ -508,6 +559,63 @@ async function callAnthropic(prompt, apiKey, signal) {
   return text;
 }
 
+async function extractAnchorQuotes(sceneText, meta, apiKey, signal) {
+  // Lightweight pre-pass: extract quotable lines from the sides before main generation.
+  // These become the ANCHOR QUOTES injected into the main prompt.
+  if (!sceneText || sceneText.length < 100) return [];
+
+  const actorRole = (meta.characterName || "").trim();
+  const readerRoles = Array.isArray(meta.readerCharacterNames)
+    ? meta.readerCharacterNames.join(", ")
+    : (meta.readerCharacterName || "");
+
+  const anchorPrompt = `You are extracting quotable lines from a screenplay for a reader coaching guide.
+
+AUDITION ROLE (actor's character): ${actorRole}
+READER ROLE(S) (what the reader reads): ${readerRoles || "all other characters"}
+
+SIDES TEXT:
+${clipText(sceneText, 8000)}
+
+Task: Extract 8-15 directly quotable lines of dialogue OR stage directions from the sides above.
+- Include lines spoken by ALL characters (both ${actorRole} and reader characters).
+- Include action lines that describe key physical beats (e.g. "crosses to the door").
+- Return ONLY a JSON array of strings. No explanation. No markdown.
+- Each string must be an exact quote from the text above.
+- Do NOT invent or paraphrase. Copy the line verbatim.
+- If fewer than 4 quotable lines exist, return only what is there.
+
+Example output format: ["line one", "line two", "line three"]
+
+Return the JSON array now.`;
+
+  try {
+    const { data: payload } = await sendAnthropicMessage({
+      apiKey,
+      preferredModel: DEFAULT_CLAUDE_MODEL,
+      maxTokens: 800,
+      system: "You extract exact quotes from screenplay text. Return only a JSON array of strings.",
+      messages: [{ role: "user", content: anchorPrompt }],
+      signal,
+    });
+
+    const text = payload?.content?.[0]?.text || "";
+    const firstBracket = text.indexOf("[");
+    const lastBracket = text.lastIndexOf("]");
+    if (firstBracket === -1 || lastBracket === -1) return [];
+
+    const parsed = JSON.parse(text.slice(firstBracket, lastBracket + 1));
+    if (!Array.isArray(parsed)) return [];
+
+    const quotes = parsed.filter(q => typeof q === "string" && q.trim().length > 3);
+    console.log(`[Reader101] Anchor quote pre-pass: extracted ${quotes.length} quotes`);
+    return quotes;
+  } catch (err) {
+    console.warn("[Reader101] Anchor quote pre-pass failed (non-fatal):", err.message);
+    return [];
+  }
+}
+
 async function generateContent(meta = {}, options = {}) {
   const apiKey = String(process.env.ANTHROPIC_API_KEY || "").trim();
   const signal = options.signal;
@@ -518,6 +626,14 @@ async function generateContent(meta = {}, options = {}) {
 
   let validationFeedback = "";
   let lastError = null;
+
+  // ── Anchor quote pre-pass ────────────────────────────────────────────
+  // Extract quotable lines from the sides before main generation.
+  // Injected into the prompt as ANCHOR QUOTES to prevent generic output.
+  const cleanedForAnchor = scrubWatermarks(meta.sceneText || "").trim();
+  if (cleanedForAnchor.length > 100 && !meta.anchorQuotes) {
+    meta = { ...meta, anchorQuotes: await extractAnchorQuotes(cleanedForAnchor, meta, apiKey, signal) };
+  }
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
