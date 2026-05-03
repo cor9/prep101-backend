@@ -309,6 +309,11 @@ function isLikelyTechnicalCue(label = "") {
   if (/\b(EYES|LOOKS?|STARES?|WATCHES|SEES)\b/i.test(normalized)) return true;
   if (/^OPTION\s+\d+$/i.test(normalized)) return true;
 
+  // Page-range patterns: "PG 15-16", "PG 3", "PAGE 12", "PAGES 4-7"
+  if (/\b(?:PG\.?|PAGES?)\s+\d+/i.test(normalized)) return true;
+  // Standalone digit ranges like "15-16", "3-5"
+  if (/^\d{1,3}\s*[-–]\s*\d{1,3}$/.test(normalized.trim())) return true;
+
   const lower = normalize(normalized);
   const tokenHits = TECHNICAL_CUE_TOKENS.filter((token) => lower.includes(token)).length;
   if (tokenHits >= 2) return true;
@@ -338,6 +343,7 @@ function extractCharacterCues(sceneText = "") {
     if (!normalized) continue;
     if (NON_CHARACTER_CUES.has(normalized.toUpperCase())) continue;
     if (isLikelyTechnicalCue(normalized)) continue;
+    if (isGarbageCharacterName(normalized)) continue;
     if (/\bSIDES\b/i.test(normalized)) continue;
     if (normalized.split(" ").length > 4) continue;
 
@@ -371,9 +377,8 @@ function inferReaderCharacterNames({
     if (!key || seen.has(key) || key === normalize(normalizedAudition)) {
       return false;
     }
-    if (isLikelyTechnicalCue(name)) {
-      return false;
-    }
+    if (isLikelyTechnicalCue(name)) return false;
+    if (isGarbageCharacterName(name)) return false;
     seen.add(key);
     return true;
   });
