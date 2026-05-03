@@ -492,7 +492,11 @@ async function buildGuide(meta = {}, options = {}) {
   // ── Parent Reader Card path ────────────────────────────────────────────
   // Always true for Reader101 — completely different template + schema.
   if (meta.parentReaderMode !== false) {
-    return buildParentGuide(meta, options);
+    const parentHtml = await buildParentGuide(meta, options);
+    if (options.returnMeta) {
+      return { html: parentHtml, templateStyle: "parent", contentSource: "model" };
+    }
+    return parentHtml;
   }
 
   const templateStyle = selectTemplate(meta);

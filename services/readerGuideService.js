@@ -675,6 +675,18 @@ function validateReaderGuideOutput(html = "", modeContext = {}) {
     errors.push("Guide output still contains unresolved template placeholders.");
   }
 
+  // ── Parent card: different required sections, no actor sections needed ────────────
+  const isParentCard = content.includes("Parent Card") || content.includes("Your Lines");
+  if (isParentCard) {
+    const PARENT_REQUIRED = ["Your Lines", "How To Say", "Pause Here", "Don't Do This", "If It Goes Wrong"];
+    for (const title of PARENT_REQUIRED) {
+      if (!comparableContent.includes(title)) {
+        errors.push(`Missing required parent card section: ${title}.`);
+      }
+    }
+    return { ok: errors.length === 0, errors };
+  }
+
   for (const title of REQUIRED_SECTION_TITLES) {
     if (!comparableContent.includes(title)) {
       errors.push(`Missing required section: ${title}.`);
