@@ -8,6 +8,7 @@ const { checkAndIncrement } = require("../services/boldChoicesUsage");
 const { enqueueGuideJob, getGuideJob } = require("../services/guideQueue");
 const auth = require("../middleware/auth");
 const { buildAccountContext } = require("../services/accountContextService");
+const { getUpload } = require("../services/uploadStore");
 const {
   runAdminQuery,
   tables,
@@ -263,6 +264,7 @@ router.post("/generate", auth, async (req, res) => {
       spinAgain = false,
       previousGenerationId = null, // enables spin-aware generation
       fallbackMode = false,
+      uploadId = null,
     } = req.body;
     const normalizedSceneText =
       typeof sceneText === "string" ? sceneText.trim() : "";
@@ -272,11 +274,16 @@ router.post("/generate", auth, async (req, res) => {
     if (!characterName || typeof characterName !== "string" || !characterName.trim()) {
       return res.status(400).json({ error: "characterName is required" });
     }
-    if (!allowFallbackWithoutSceneText && normalizedSceneText.length < 20) {
+    // Require scene text OR a valid uploadId that we can do deep-read from
+    const sceneWordCount = normalizedSceneText.split(/\s+/).filter(Boolean).length;
+    const uploadEntry = uploadId ? getUpload(uploadId) : null;
+    const hasPdfFallback = Boolean(uploadEntry?.pdfBase64);
+    if (sceneWordCount < 20 && !hasPdfFallback) {
       return res.status(400).json({
-        error: "sceneText is required (minimum 20 characters)",
+        error: "Bold Choices needs your actual sides. Please paste the scene text or re-upload a readable PDF.",
       });
     }
+
 
     const validModifiers = [null, "wilder", "take2", "spin"];
     if (!validModifiers.includes(modifier)) {
@@ -372,7 +379,9 @@ router.post("/generate", auth, async (req, res) => {
       : "generated";
     logEvent(analyticsEvent, userId, { characterName, show: productionTitle, preview });
 
-    // ── Call Claude ──────────────────────────────────────────────────────────
+    // ── Build job payload ─────────────────────────────────────────────────
+    // Include pdfBase64 so the Render worker can deep-read the PDF if sceneText is thin.
+    const uploadEntry = uploadId ? getUpload(uploadId) : null;
     const inputData = {
       jobType: "bold_choices",
       userId,
@@ -391,9 +400,14 @@ router.post("/generate", auth, async (req, res) => {
       modifier: actualModifier,
       spinAgain: actualSpinAgain,
       fallbackMode,
-      previousOutputSummary, // injected into prompt for spin-aware variation
+      previousOutputSummary,
       format,
       preview,
+      // PDF recovery — same system as Prep101 + Reader101
+      ...(uploadEntry?.pdfBase64 ? {
+        pdfBase64: uploadEntry.pdfBase64,
+        filename: uploadEntry.filename || "upload.pdf",
+      } : {}),
     };
 
     console.log(`[BoldChoices] Enqueuing guide job for user ${userId}`);

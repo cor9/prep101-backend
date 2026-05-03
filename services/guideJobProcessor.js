@@ -137,15 +137,15 @@ async function processGuideJob(payload, jobInstance = null) {
     payload.product === "reader101";
 
   await updateProgress(10, "Repairing and analyzing text...");
-  let finalCombinedText = combinedSceneText || "";
+  let finalCombinedText = combinedSceneText || payload.sceneText || "";
   const finalCombinedWordCount = getMeaningfulWordCount(finalCombinedText);
   
+  // ── Universal PDF deep-read: fires for ALL guide types when text is thin ──
   if (
     payload.pdfBase64 &&
-    finalCombinedWordCount < 80 &&
-    (shouldForcePrepFallback || shouldForceReaderFallback || combinedWordCount < 80)
+    finalCombinedWordCount < 80
   ) {
-    await updateProgress(15, "Running heavy PDF reading (OCR recovery)...");
+    await updateProgress(15, "Running deep PDF read (OCR recovery)...");
     try {
       const { processPdfExtractionJob } = require("./pdfExtractionJobProcessor");
       const { recoverScreenplayFromFallback } = require("./claudePdfGuidePipeline");
@@ -159,12 +159,16 @@ async function processGuideJob(payload, jobInstance = null) {
       const recoveredWordCount = (recoveredText.match(/\b[\w']+\b/g) || []).length;
       if (recoveredWordCount >= 80) {
         finalCombinedText = recoveredText;
+        // Inject recovered text back so ALL downstream generators see it
+        payload.sceneText = recoveredText;
+        payload.combinedSceneText = recoveredText;
+        console.log(`[JobProcessor] OCR recovery succeeded: ${recoveredWordCount} words recovered`);
       } else {
         throw new Error("Unable to recover meaningful text from PDF.");
       }
     } catch (err) {
-      console.warn("OCR fallback failed in job processor:", err);
-      throw new Error("I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly.");
+      console.warn("[JobProcessor] OCR fallback failed:", err.message);
+      throw new Error("We weren't able to read this PDF. Please re-upload a clearer version or paste the sides text directly.");
     }
   }
 

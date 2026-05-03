@@ -411,6 +411,7 @@ export default function Generate() {
           preview: false,
           format: 'html',
           fallbackMode: Boolean(uploadData?.fallbackMode),
+          uploadId: uploadData?.uploadId || uploadData?.uploadIds?.[0] || null,
           warnings: uploadData?.warnings || [],
           ...(modifier ? { modifier } : {}),
           ...(isRetry ? { spinAgain: true, previousGenerationId: generationId } : {}),

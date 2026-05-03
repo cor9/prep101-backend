@@ -311,7 +311,8 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-const uploads = {};
+const { uploads, storeUpload } = require("./services/uploadStore");
+
 // Track extraction diagnostics for /api/health
 const extractionStats = {
   totals: { text: 0, ocr: 0, vision: 0 },
@@ -2847,7 +2848,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     
     const characterNames = pipelineResult.characterNames || [];
 
-    uploads[uploadId] = {
+    storeUpload(uploadId, {
       filename: req.file.originalname,
       pdfBase64: req.file.buffer.toString("base64"),
       sceneText: cleanedText,
@@ -2864,7 +2865,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       quality,
       warnings: uploadWarnings,
       source: extractionMethod,
-    };
+    });
 
     // 5) SMART RESPONSE: Success flag even on low quality, with fallback flag
     return res.status(200).json({
