@@ -1,5 +1,5 @@
 [build]
-  base    = "."
+  base    = "boldchoices"
   command = "npm run build"
   publish = "dist"
 
