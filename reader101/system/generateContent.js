@@ -13,56 +13,28 @@ Do not return markdown.
 Do not return HTML.
 Do not wrap the JSON in code fences.
 
-Reader101 is not a general acting lesson.
 Reader101 is an actor protection system.
 Your job is to stop the reader from ruining THIS specific audition.
 
-You are not teaching performance theory.
-You are correcting real-time reader behavior so the actor can go deeper.
-
 Hard rules:
-- No generic writing.
-- No blog tone.
-- No abstract genre talk unless it directly sharpens this exact scene.
-- No vague filler like "this scene is emotional" or "the actor needs support."
-- Tie every section to the actual sides, quoted lines, and concrete moments.
-- If the guide could apply to another audition, it has failed.
-- Coach pacing, tone, timing, listening, restraint, presence, and reaction.
-- Do NOT coach the reader to build character psychology like an actor.
-- Do NOT drift into therapy language or academic analysis.
-- Use direct, grounded, occasionally sharp language when needed.
-- Use consequence-driven coaching throughout.
-- Emotional framing should come before instruction; consequences should follow instruction.
-
-Every bullet must be one line, playable, and immediately usable in a live self-tape.
-Use "->" when it sharpens cause and effect.
-Do not repeat the same note across sections.
-Do not sanitize high-risk material. Keep it grounded and professional.`;
+- No generic writing. No blog tone.
+- Every sentence must be specific to this script and these lines.
+- Max total guide length: 1,000 words across all sections combined.
+- No section may exceed 6 bullets.
+- Do NOT repeat any consequence phrase across bullets. Each consequence must be unique and scene-specific.
+- Banned generic consequences (do not use): "the actor loses the support they need", "the scene dies instantly", "the actor feels the drop immediately", "the scene loses its pulse", "the emotional turn disappears", "the scene drifts off target".
+- Coach pacing, tone, timing, listening, restraint, and presence only.
+- Do NOT coach the reader to build character psychology.
+- Use direct, plain language. No pseudo-prestige framing.
+- If the guide could apply to a different show, it has failed.`;
 
 const SCHEMA_TEXT = `{
-  "what_will_go_wrong": ["", "", ""],
-  "why_it_matters": "",
-  "performance_engine": {
-    "drive_label": "",
-    "drive_text": "",
-    "drive_consequence": "",
-    "fuel_label": "",
-    "fuel_text": "",
-    "fuel_consequence": ""
-  },
-  "scene_snapshot": [
-    { "heading": "", "bullets": ["", ""] }
-  ],
-  "your_job": [""],
-  "playing_multiple_characters": [""],
-  "reader_fundamentals": [""],
-  "key_beats": [""],
-  "rhythm": [""],
-  "do": [""],
-  "avoid": [""],
-  "connection": [""],
-  "anchor_line": "",
-  "tone_reference_anchor": [""],
+  "your_job_sentence": "",
+  "mistakes": ["", "", ""],
+  "how_to_read": [""],
+  "key_reader_lines": [""],
+  "silence_and_interruptions": [""],
+  "timing": [""],
   "quick_reset": [""],
   "intimacy_section": [],
   "emotional_arc_mapping": []
@@ -119,7 +91,7 @@ function collectStrings(value, bucket = []) {
 function countQuotedReferences(value) {
   return collectStrings(value)
     .map((item) => String(item || ""))
-    .filter((item) => /["“”][^"“”]{2,}["“”]|'[^'\n]{3,}'/.test(item))
+    .filter((item) => /["""][^"""]{2,}["""]|'[^'\n]{3,}'/.test(item))
     .length;
 }
 
@@ -130,29 +102,19 @@ function validateStructuredContent(data = {}, meta = {}) {
     return ["Response must be a JSON object."];
   }
 
-  if (!Array.isArray(data.what_will_go_wrong) || data.what_will_go_wrong.length !== 3) {
-    errors.push('"what_will_go_wrong" must be an array of exactly 3 strings.');
+  if (!data.your_job_sentence || typeof data.your_job_sentence !== "string") {
+    errors.push('"your_job_sentence" must be a non-empty string — one sentence that captures the reader\'s single most important function.');
   }
 
-  if (!data.why_it_matters || typeof data.why_it_matters !== "string") {
-    errors.push('"why_it_matters" must be a string.');
-  }
-
-  if (!data.performance_engine || typeof data.performance_engine !== "object") {
-    errors.push('"performance_engine" must be an object.');
+  if (!Array.isArray(data.mistakes) || data.mistakes.length !== 3) {
+    errors.push('"mistakes" must be an array of exactly 3 strings.');
   }
 
   const requiredArrays = [
-    "scene_snapshot",
-    "your_job",
-    "playing_multiple_characters",
-    "reader_fundamentals",
-    "key_beats",
-    "rhythm",
-    "do",
-    "avoid",
-    "connection",
-    "tone_reference_anchor",
+    "how_to_read",
+    "key_reader_lines",
+    "silence_and_interruptions",
+    "timing",
     "quick_reset",
   ];
 
@@ -162,57 +124,41 @@ function validateStructuredContent(data = {}, meta = {}) {
     }
   }
 
-  if (Array.isArray(data.reader_fundamentals) && data.reader_fundamentals.length !== 10) {
-    errors.push('"reader_fundamentals" must contain exactly 10 scene-specific rules.');
+  if (Array.isArray(data.how_to_read) && (data.how_to_read.length < 2 || data.how_to_read.length > 5)) {
+    errors.push('"how_to_read" must contain 2 to 5 bullets.');
   }
 
-  if (Array.isArray(data.key_beats) && data.key_beats.length < 6) {
-    errors.push('"key_beats" must contain at least 6 scene-specific beats.');
+  if (Array.isArray(data.key_reader_lines) && (data.key_reader_lines.length < 2 || data.key_reader_lines.length > 6)) {
+    errors.push('"key_reader_lines" must contain 2 to 6 bullets.');
   }
 
-  if (Array.isArray(data.do) && (data.do.length < 4 || data.do.length > 6)) {
-    errors.push('"do" must contain 4 to 6 specific actions.');
+  if (Array.isArray(data.silence_and_interruptions) && (data.silence_and_interruptions.length < 2 || data.silence_and_interruptions.length > 5)) {
+    errors.push('"silence_and_interruptions" must contain 2 to 5 bullets.');
   }
 
-  if (Array.isArray(data.avoid) && (data.avoid.length < 4 || data.avoid.length > 6)) {
-    errors.push('"avoid" must contain 4 to 6 specific mistakes.');
+  if (Array.isArray(data.timing) && (data.timing.length < 2 || data.timing.length > 5)) {
+    errors.push('"timing" must contain 2 to 5 bullets.');
   }
 
-  if (Array.isArray(data.quick_reset) && (data.quick_reset.length < 3 || data.quick_reset.length > 4)) {
-    errors.push('"quick_reset" must contain 3 to 4 concise reset bullets.');
-  }
-
-  if (!data.anchor_line || typeof data.anchor_line !== "string") {
-    errors.push('"anchor_line" must be a string.');
+  if (Array.isArray(data.quick_reset) && (data.quick_reset.length < 2 || data.quick_reset.length > 4)) {
+    errors.push('"quick_reset" must contain 2 to 4 bullets.');
   }
 
   if (!meta.fallbackMode) {
-    const keyBeatsQuoteCount = countQuotedReferences(data.key_beats);
-    if (keyBeatsQuoteCount < 4) {
-      errors.push("Your 'key_beats' section must contain at least 4 bullets that explicitly quote lines of dialogue or stage directions using quotation marks.");
+    const keyLinesQuoteCount = countQuotedReferences(data.key_reader_lines);
+    if (keyLinesQuoteCount < 2) {
+      errors.push('"key_reader_lines" must quote at least 2 specific lines from the sides using quotation marks.');
     }
 
-    const doAvoidJobQuoteCount = countQuotedReferences([data.your_job, data.do, data.avoid]);
-    if (doAvoidJobQuoteCount < 4) {
-      errors.push("Your 'your_job', 'do', and 'avoid' sections must explicitly quote lines of dialogue using quotation marks before giving an instruction.");
-    }
-
-    const quotedReferenceCount = countQuotedReferences([
-      data.what_will_go_wrong,
-      data.why_it_matters,
-      data.performance_engine,
-      data.scene_snapshot,
-      data.your_job,
-      data.key_beats,
-      data.connection,
-      data.tone_reference_anchor,
-      data.quick_reset,
-      data.do,
-      data.avoid,
+    const totalQuotes = countQuotedReferences([
+      data.mistakes,
+      data.how_to_read,
+      data.key_reader_lines,
+      data.silence_and_interruptions,
+      data.timing,
     ]);
-
-    if (quotedReferenceCount < 12) {
-      errors.push("You failed the NO LINE REFERENCE, NO BULLET rule. You must use quotation marks to anchor at least 12 specific instructions to the exact text in the sides.");
+    if (totalQuotes < 6) {
+      errors.push('You must quote at least 6 specific lines from the sides across the guide. No quote = no bullet.');
     }
   }
 
@@ -228,12 +174,13 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
   const methodologyContext = String(meta.methodologyContext || "").trim();
   const retrievalSignals = meta.retrievalSignals || {};
 
+  const readerCharacterNames = Array.isArray(meta.readerCharacterNames) ? meta.readerCharacterNames : [];
+  const multipleReaders = readerCharacterNames.length > 1;
+
   const metadataBlock = [
     meta.characterName ? `AUDITION ROLE: ${meta.characterName}` : "",
     meta.readerCharacterName ? `READER ROLE: ${meta.readerCharacterName}` : "",
-    Array.isArray(meta.readerCharacterNames) && meta.readerCharacterNames.length
-      ? `READER ROLES: ${meta.readerCharacterNames.join(", ")}`
-      : "",
+    multipleReaders ? `READER ROLES: ${readerCharacterNames.join(", ")}` : "",
     meta.actorAge ? `ACTOR AGE: ${meta.actorAge}` : "",
     meta.productionTitle ? `TITLE: ${meta.productionTitle}` : "",
     meta.productionType ? `FORMAT: ${meta.productionType}` : "",
@@ -241,13 +188,12 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
     meta.storyline ? `STORYLINE: ${meta.storyline}` : "",
     meta.genreMode ? `GENRE MODE: ${meta.genreMode}` : "",
     `CHILD FOCUSED: ${childFocused ? "true" : "false"}`,
-    meta.templateStyle ? `TEMPLATE STYLE: ${meta.templateStyle}` : "",
+    `MULTIPLE READER ROLES: ${multipleReaders ? "true" : "false"}`,
     flags.length ? `FLAGS: ${flags.join(", ")}` : "",
     `FALLBACK MODE: ${meta.fallbackMode ? "true" : "false"}`,
     `MEANINGFUL WORDS: ${sceneWordCount}`,
-    meta.structure ? `STRUCTURAL TONE BIAS: ${meta.structure.tone_bias}` : "",
-    meta.structure ? `PULSE AND PACE: ${meta.structure.pace}` : "",
-    meta.structure ? `SCENE BEATS: ${meta.structure.beat_count}` : "",
+    meta.structure ? `SCENE PACE: ${meta.structure.pace}` : "",
+    meta.structure ? `BEAT COUNT: ${meta.structure.beat_count}` : "",
     meta.structure ? `INTERRUPTIONS: ${meta.structure.interruption_count}` : ""
   ]
     .filter(Boolean)
@@ -263,14 +209,12 @@ ${clipText(cleanedSceneText || "[No readable sides provided]")}`;
 
   const methodologyBlock = methodologyContext
     ? `RANKED METHODOLOGY MEMORY (READER101 FILTERED):
-${clipText(methodologyContext, 6500)}
+${clipText(methodologyContext, 4000)}
 
 RETRIEVAL SIGNALS:
 - Primary Archetype: ${retrievalSignals.primaryArchetype || "general"}
 - Secondary Archetype: ${retrievalSignals.secondaryArchetype || "none"}
 - Hagen Want: ${Array.isArray(retrievalSignals.hagen?.want) ? retrievalSignals.hagen.want.join(" | ") || "not clear" : "not clear"}
-- Hagen Obstacle: ${Array.isArray(retrievalSignals.hagen?.obstacle) ? retrievalSignals.hagen.obstacle.join(" | ") || "not clear" : "not clear"}
-- Hagen Tactics: ${Array.isArray(retrievalSignals.hagen?.tactics) ? retrievalSignals.hagen.tactics.join(" | ") || "not clear" : "not clear"}
 `
     : `RANKED METHODOLOGY MEMORY:
 - No retrieval chunks available. Stay script-faithful and role-locked.`;
@@ -279,192 +223,80 @@ RETRIEVAL SIGNALS:
     ? `HIGH-RISK RULES:
 - Disable comedic framing.
 - Force grounded realism.
-- Increase consequence density.
 - Fill "intimacy_section" with reader-facing directives only.
-- Fill "emotional_arc_mapping" with shift-based action -> consequence bullets.
-- The emotional progression is critical: curiosity -> participation -> awareness -> shame.
-- If foster_style_scene is present, weight shame, stillness, neutrality, and containment heavily.`
+- Fill "emotional_arc_mapping" with shift-based action -> consequence bullets.`
     : `HIGH-RISK RULES:
 - If the scene is not high-risk, return empty arrays for "intimacy_section" and "emotional_arc_mapping".`;
 
-  const roleLockBlock = `ROLE LOCK — READER101 VS PREP101:
-- You are operating in Reader101 mode, not Prep101.
-- Prep101 builds the performance. Reader101 protects it.
-- Reader101 does not generate performance; it removes obstacles to performance.
-- DO NOT analyze character psychology in depth.
-- DO NOT provide actor-focused technique.
-- DO NOT explain internal motivations beyond what is playable for the reader.
-- DO focus on timing, delivery, interaction, and reader restraint.
-- If output starts resembling actor coaching, STOP and redirect to reader behavior.`;
-
-  const genreModeBlock = `GENRE MODE SYSTEM:
-Active mode: ${genreMode}
-
-DRAMA MODE (default):
-- Slower pacing, silence/load-bearing beats, reader as container.
-
-MULTI-CAM MODE (strict):
-- Fast pacing, reversals, reader as grounded contrast.
-- No joke signaling, no cushioning, no early reactions.
-
-SINGLE-CAM COMEDY:
-- Natural pace with subtle reversals.
-- Reader can be slightly more reactive than multi-cam, still no joke signaling.
-
-THRILLER / HORROR:
-- Reader is pressure source.
-- Tension over warmth, loaded silence, no emotional cushioning.
-
-TEEN DRAMA:
-- Reader can mirror emotionally in a controlled way.
-- Keep stakes large but avoid melodrama.
-
-CHILD-FOCUSED CONTENT:
-- Protect the performance without patronizing language.
-- Do not artificially slow pacing.
-- Treat the actor as capable and specific.
-
-Apply the active mode as the behavior override before tone/style choices.`;
-
-  const priorityStack = `PRIORITY ORDER (MANDATORY):
-1) SCRIPT REALITY (what actually happens)
-2) GENRE MODE RULES
-3) READER FUNCTION
-4) TONE / STYLE
-
-Never invert this order.`;
+  const roleLockBlock = `ROLE LOCK:
+- Reader101 mode. You are coaching the reader, not the actor.
+- Do NOT analyze character psychology.
+- DO focus on timing, delivery, listening, and restraint.`;
 
   const ACTOR_ROLE = meta.characterName ? meta.characterName.trim() : "the actor";
   const guardrail = `
 ACTOR ROLE: ${ACTOR_ROLE}
-
-You are generating a Reader101 guide.
-
-The reader is NOT playing the actor role.
-
-Do NOT:
-- give direction for ${ACTOR_ROLE}'s performance
-- describe how ${ACTOR_ROLE} should act
-- analyze ${ACTOR_ROLE} as if the reader is performing them
+READER ROLE(S): ${readerCharacterNames.join(", ") || meta.readerCharacterName || "scene partner"}
 
 You are ONLY coaching the reader on how to support ${ACTOR_ROLE}.
+Do NOT give direction for ${ACTOR_ROLE}'s performance.
+Every instruction must answer: "What must the reader NOT mess up?"
 
 INTERNAL TRANSLATION RULE (MANDATORY):
 Before outputting any instruction, convert ALL actor insight into reader responsibility.
-If you think: "${ACTOR_ROLE} needs resistance to play this scene"
-It MUST be rewritten as: "If you soften here, ${ACTOR_ROLE} loses the resistance they need."
-If you think: "${ACTOR_ROLE} should play this angry"
-It MUST be rewritten as: "Do not pacify the scene; your coldness gives ${ACTOR_ROLE} the necessary wall to hit."
-
-Prep101 asks: "What should the actor do?"
-Reader101 asks: "What must the reader NOT mess up?"
-Everything you write must answer the second question.
+"${ACTOR_ROLE} needs resistance" → "If you soften here, ${ACTOR_ROLE} loses the wall they need."
+"${ACTOR_ROLE} should play this angry" → "Do not pacify the scene; your neutrality is what ${ACTOR_ROLE} has to fight against."
 `;
 
-  const userPrompt = `Generate structured Reader101 content for the fixed HTML template system.
+  const multipleCharactersNote = multipleReaders
+    ? `MULTIPLE READER ROLES NOTE:
+The reader plays ${readerCharacterNames.join(" and ")}. In "how_to_read", briefly distinguish the register difference between these roles in ONE bullet. Keep it surgical — one line per contrast. Do not write a full separate section for this.`
+    : `SINGLE READER ROLE NOTE:
+There is one reader character. Do not invent or imply multiple roles. Do not add multi-character contrast notes.`;
 
-Return ONLY valid JSON that matches this schema exactly:
+  const genreModeNote = `GENRE MODE: ${genreMode.toUpperCase()}
+${genreMode === "multicam"
+    ? "Fast pacing, hard cuts, reader stays grounded while actor escalates. No joke signaling."
+    : genreMode === "singlecam_comedy"
+      ? "Natural pace, subtle reversals, reader slightly reactive but never anticipates."
+      : genreMode === "thriller_horror"
+        ? "Reader is pressure source. Tension over warmth, loaded silence."
+        : genreMode === "teen_drama"
+          ? "Controlled emotional mirroring. Keep stakes large, avoid melodrama."
+          : "Slower pacing, silence matters, reader as container."
+}`;
+
+  const userPrompt = `Generate a Reader101 guide. Return ONLY valid JSON matching this schema exactly:
 ${SCHEMA_TEXT}
 
-Global rules:
-- SCRIPT-FAITHFUL CHARACTER RULE:
-  - Use only character names that explicitly appear in the provided sides/metadata.
-  - Do NOT infer, rename, relabel, or invent placeholder roles.
-  - If a role is unclear, reference it exactly as written in the script.
-- EXTRACTION-FIRST RULE:
-  - Before writing coaching, internally extract the real speaking roles and beat sequence from the sides.
-  - If speaker roles are unclear, do not invent structure; stay literal and use exact script labeling only.
-- Coach the reader on how to read the READER ROLE opposite the AUDITION ROLE.
-- Never instruct the reader to "play" or read lines for the AUDITION ROLE under ANY circumstances.
-- The reader's job is solely to support the actor who is playing the AUDITION ROLE.
-- If READER ROLE is present, treat that as the reader's character assignment throughout.
-- If READER ROLES is empty or missing, actively infer the scene partner(s) from the dialogue text. The reader plays EVERY speaking role EXCEPT the AUDITION ROLE.
-- If READER ROLES lists more than one role, coach all counterpart roles and contrast them clearly.
-- Any character-specific vocal, physical, or behavioral note must refer to the READER ROLE, never the AUDITION ROLE.
-- The product is: how to not destroy THIS specific audition.
-- Every list item must be one line.
-- Every list item must be a physical, vocal, timing, listening, or restraint directive.
-- Use plain, exact reader coaching. Not theory.
-- CITATION RULE — NON-NEGOTIABLE: Every bullet in Key Beats, Your Job, and Scene Snapshot MUST open with a direct quote from the sides in quotation marks. No quote = no bullet. If you cannot find a line to anchor the directive, write: "⚠ UNANCHORED — omitted. Upload full sides for guidance on this beat." Do NOT write the directive anyway with an UNANCHORED label. The flag is a stop sign, not a permission slip.
-- SCENE SNAPSHOT RULE: Generate one row per scene in the sides. Each row must include: location (from slugline), reader character(s), scene temperature, ${ACTOR_ROLE}'s arc in that scene. Writing about "the world" or "the show" is not a scene snapshot. If there are 3 scenes, there are 3 rows. No exceptions.
-- PLAYING MULTIPLE CHARACTERS RULE: Name every reader character explicitly — no categories, no "Character A," no "the insider." Each named character requires: One register description anchored to a specific moment in the sides, and One contrast line (e.g., "If X and Y feel the same, the audition dies instantly"). Generic register descriptions (e.g., "easy confidence") are not permitted without a cited line or beat from the sides that demonstrates it.
-- CONSEQUENCE RULE: The following consequence phrases are BANNED: "the emotional turn disappears", "the scene loses its pulse", "the actor feels the drop immediately", "the scene drifts off target", "the high-risk turn collapses". Every consequence must name what specifically breaks in THIS scene if the direction is ignored. Bad: "→ the emotional turn disappears". Good: "→ her 'I liked you from the second I saw you' lands as a confession instead of a correction, and the whole scene inverts"
-- SPECIFICITY CHECK — run before finalizing output: For every directive, ask: could this bullet appear in a guide for a completely different show with different characters? If yes: rewrite with a cited line or delete it. A directive that applies to all teen dramas is not a directive for THIS script.
-- KEY BEATS RULE: Minimum 5 beats required. Each beat must contain: A quoted line from the sides (required), One physical directive (what the reader does), One specific consequence (what breaks if they don't). If fewer than 5 anchored beats exist in the sides provided, generate only the beats you can anchor and write: "⚠ Upload complete sides for remaining beats." Do not pad with unanchored bullets to reach the minimum.
-- "what_will_go_wrong" must contain exactly 3 bullets and each bullet must identify a precise failure point plus consequence.
-- End "what_will_go_wrong" with the understanding that if these happen, the audition does not land.
-- "why_it_matters" must explain the actor's internal problem in plain truth, not genre summary.
-- "performance_engine.drive_*" is Push (Reader's Function): the resistance, pressure, or container the reader provides.
-- "performance_engine.fuel_*" is Pull (Actor's Need): what the actor is reaching for emotionally and how the reader either protects or destroys it.
-- "your_job" must be moment-based. Quote the actual line first, then correct the wrong instinct, then provide the right move.
-- "reader_fundamentals" must contain exactly 10 practical, scene-relevant reader rules.
-- "rhythm" must cover how to read this scene: cadence, punctuation, interruptions, pauses, volume, containment, and energy shifts.
-- "do" and "avoid" must be concrete and scene-specific. Quote the line or the moment first. Never use generic theory.
-- "connection" must explain where the actor depends on the reader and how the moment dies if the reader mishandles it.
-- "tone_reference_anchor" must start with consequence framing and then anchor the emotional texture to precise comps or scene truth, not generic genre explanation.
-- "quick_reset" must be 3 to 4 bullets max and should feel like live self-tape rescue notes.
-- Emotional framing should come before instruction. Consequences should follow instruction.
+FIELD INSTRUCTIONS:
+
+"your_job_sentence": ONE sentence. The single most important thing the reader must do in this specific scene. Not general advice — anchor it to the scene's central dynamic.
+
+"mistakes": Exactly 3 bullets. Each bullet = one specific reader failure + what specifically breaks in THIS scene (not a generic phrase). Quote the relevant line where possible.
+
+"how_to_read": 2–5 bullets. Practical behavior for the reader reading ${meta.readerCharacterName || "the reader role"} opposite ${ACTOR_ROLE}. Cover tone, emotional register, energy level, and any key contrast needed. If multiple reader roles exist, one bullet may note the register difference.
+
+"key_reader_lines": 2–6 bullets. Each bullet MUST open with a direct quote from the sides in quotation marks, then the specific delivery note. No quote = no bullet.
+
+"silence_and_interruptions": 2–5 bullets. Cover: (a) when to hold silence and let the actor work, (b) how to handle interruption beats, (c) stage directions like "(beat)" or "Long beat" that the reader must honor. Specific to THIS scene's actual beats.
+
+"timing": 2–5 bullets. Scene-specific notes on pacing, energy shifts, where the scene speeds up or slows down, and how to read the opening vs. closing exchange. No generic pacing advice.
+
+"quick_reset": 2–4 bullets. Live self-tape rescue notes — if something went wrong in the previous take, what to fix on the next one. Each bullet should start with the problem ("If you rushed..." / "If it felt flat...").
+
+GLOBAL RULES:
+- SCRIPT-FAITHFUL: Only use character names explicitly in the provided sides.
+- CITATION RULE: Every bullet in "key_reader_lines" must open with a quoted line. Other sections should quote lines where possible.
+- MAX 1,000 WORDS total across all sections.
+- No repeated consequence phrases. Each bullet has a unique, scene-specific consequence.
+- No pseudo-prestige language. Plain, direct, usable.
 - If fallback mode is true, stay useful without pretending you saw clean lines.
 
+${multipleCharactersNote}
+${genreModeNote}
 ${highRiskRules}
 ${roleLockBlock}
-${genreModeBlock}
-${priorityStack}
-
-${genreMode === "multicam"
-    ? `FORMAT OVERRIDE — MULTI-CAMERA SITCOM (STRICT MODE):
-If this is multi-camera/sitcom/audience-laughter material, these rules override defaults:
-
-1) COMEDY ENGINE DEFINITION (NON-NEGOTIABLE)
-- Structure is escalation -> reversal -> escalation -> reversal.
-- Do NOT reframe this as slow emotional arc analysis.
-- Comedy comes from contrast + timing + commitment.
-
-2) READER FUNCTION (CORRECTED)
-- Reader is NOT indifferent, cold, or a wall.
-- Reader is engaged, present, and one beat behind.
-- Stay grounded while the actor escalates.
-- If the reader is a parent/caregiver role, they care but cannot keep up.
-
-3) TIMING LAW (CRITICAL)
-- Every turn must land on the reader before response.
-- Do NOT react early, anticipate, or cushion.
-- If reader gets there first, the joke disappears and the scene collapses.
-
-4) ENERGY CONTRAST RULE
-- Do NOT match actor energy.
-- Actor escalates; reader stays grounded.
-- If energy matches, contrast disappears and comedy dies.
-
-5) NO JOKE SIGNALING RULE
-- Never smile through lines, soften into punchlines, or indicate "this is funny."
-- If you signal the joke, you kill the joke.
-
-6) PACING RULE (MULTI-CAM SPECIFIC)
-- Keep exchanges quick with minimal dead air.
-- Do NOT add thoughtful pauses unless text demands it.
-- Speed supports comedy; slowing down kills it.
-
-7) SCRIPT REALITY ENFORCEMENT (ANTI-HALLUCINATION)
-- ONLY use character names explicitly in the sides.
-- NEVER invent roles, labels, or placeholders.
-- NEVER reinterpret character structure.
-
-8) COMEDY-SAFE INTERPRETATION RULE
-- Do NOT impose shame arcs, trauma framing, or extra psychological depth not supported by the script.
-- Prioritize: what is happening, how fast it changes, and how reader timing supports turns.
-
-9) CONSEQUENCE LANGUAGE (MANDATORY STYLE)
-- Use hard-stakes language: "the scene dies", "the joke disappears", "the moment collapses", "casting checks out."
-- Avoid soft phrasing.
-
-10) CORE REFRAME
-- The reader is the normal world.
-- The actor is the disruption.
-
-11) ONE-LINE TRUTH
-- Reinforce this idea directly: "The reader stays real so the actor can be funny."`
-    : ""}
 
 METADATA:
 ${metadataBlock}
@@ -496,7 +328,7 @@ async function callAnthropic(prompt, apiKey, signal) {
   const { data: payload, model } = await sendAnthropicMessage({
     apiKey,
     preferredModel: DEFAULT_CLAUDE_MODEL,
-    maxTokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 3500),
+    maxTokens: Math.min(DEFAULT_CLAUDE_MAX_TOKENS, 2500),
     system: CONTENT_SYSTEM_PROMPT,
     messages: [{ role: "user", content: prompt }],
     signal,
