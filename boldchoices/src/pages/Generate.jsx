@@ -398,7 +398,7 @@ export default function Generate() {
     );
 
     try {
-      const htmlRes = await fetch(`${API_BASE}/api/bold-choices/generate`, {
+      const enqueueRes = await fetch(`${API_BASE}/api/bold-choices/generate`, {
         method: 'POST',
         ...withApiCredentials({
           headers: {
@@ -417,23 +417,56 @@ export default function Generate() {
         }),
       });
 
-      const htmlData = await htmlRes.json();
-      if (!htmlData.success) throw new Error(htmlData.error || 'Failed');
+      const enqueueData = await enqueueRes.json();
+      if (!enqueueData.success) throw new Error(enqueueData.error || 'Failed to start generation');
 
-      setResultHtml(htmlData.html);
-      if (htmlData.generationId) setGenerationId(htmlData.generationId);
-      if (htmlData.boldChoicesUsage) {
-        setBoldUsage(htmlData.boldChoicesUsage);
+      // ── Poll the job until it completes ─────────────────────────────────
+      let finalData = enqueueData;
+      if (enqueueRes.status === 202 && enqueueData.jobId) {
+        let jobState = 'waiting';
+        let jobData = null;
+
+        while (jobState !== 'completed' && jobState !== 'failed') {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+
+          const pollRes = await fetch(`${API_BASE}/api/bold-choices/jobs/${enqueueData.jobId}`, {
+            ...withApiCredentials({}, user),
+          });
+
+          if (!pollRes.ok) {
+            const errData = await pollRes.json().catch(() => ({}));
+            throw new Error(errData.error || `Polling failed (${pollRes.status})`);
+          }
+
+          jobData = await pollRes.json();
+          jobState = jobData.state;
+
+          if (jobData.statusMessage) {
+            toast.loading(jobData.statusMessage, { id: toastId });
+          }
+        }
+
+        if (jobState === 'failed') {
+          throw new Error(jobData?.failedReason || 'Guide generation failed. Please try again.');
+        }
+
+        finalData = jobData;
       }
+      // ────────────────────────────────────────────────────────────────────
+
+      if (!finalData.html) throw new Error('No guide content returned.');
+
+      setResultHtml(finalData.html);
+      if (finalData.generationId) setGenerationId(finalData.generationId);
+      if (finalData.boldChoicesUsage) setBoldUsage(finalData.boldChoicesUsage);
       setResultMeta({ ...form, isPreview: false });
 
       // Create blob URL for open-in-tab
       if (blobUrl) URL.revokeObjectURL(blobUrl);
-      const blob = new Blob([htmlData.html], { type: 'text/html' });
+      const blob = new Blob([finalData.html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       setBlobUrl(url);
 
-      // savedToAccount is tracked server-side; no user-facing notice needed for library save status
       toast.success(
         modifier === 'wilder' ? 'Wilder choices ready — go take the risk.'
           : modifier === 'take2' ? 'Alternate Take 2 strategies ready.'
