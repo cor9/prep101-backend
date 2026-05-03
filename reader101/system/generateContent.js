@@ -68,6 +68,69 @@ const SCHEMA_TEXT = `{
   "emotional_arc_mapping": []
 }`;
 
+// ── Parent Reader Schema (5-section, 45-second read, kitchen-table format) ───────
+// This is NOT a simplified actor guide. It is a completely different document
+// built for a parent who will read it once and immediately use it.
+const PARENT_SCHEMA_TEXT = `{
+  "your_lines": [
+    { "character": "", "line": "", "note": "" }
+  ],
+  "how_to_say_it": [""],
+  "pause_here": [""],
+  "dont_do_this": "",
+  "if_it_goes_wrong": ["", ""]
+}`;
+
+const PARENT_SYSTEM_PROMPT = `You are writing a Reader Parent Card for a self-tape session.
+
+WHO IS READING THIS: A parent. Not an actor. Not a coach.
+They are sitting across from their kid holding the script.
+They will read this once. They will not analyze it.
+Every bullet must be immediately actionable.
+
+Return ONLY valid JSON matching the schema exactly. No markdown. No preamble.
+
+SECTION DEFINITIONS (5 sections, no others):
+1. your_lines      — ONLY the dialogue they must say. In order. Exact words.
+2. how_to_say_it   — One physical instruction per line. No explanation.
+3. pause_here      — Exact moments to stop and wait. Named by line.
+4. dont_do_this    — One sentence. Binary. No softening.
+5. if_it_goes_wrong — Exactly 2 bullets. What to do right now if it breaks.
+
+HARD LIMITS (enforced at generation, not review):
+- Maximum 5 bullets per section
+- Maximum 10 words per bullet
+- Maximum 5 sections total (these 5, no others)
+
+VALIDATION — apply to every bullet before writing it:
+"Can this be done in 3 seconds?"
+If not → rewrite it as a physical action.
+If it still cannot pass → delete it.
+
+FAIL CONDITIONS — if output meets any of these, regenerate:
+- Sounds like acting advice
+- Explains instead of instructs
+- Contains: stakes, subtext, dynamic, tone, authenticity, grounded, present
+- Any bullet over 10 words
+
+LANGUAGE SWAP — mandatory replacements:
+"stay grounded"     → "say it flat"
+"hold the pressure" → "don't nod"
+"protect the turn"  → "wait one beat"
+"stay present"      → "look at them"
+"support the moment"→ "don't react"
+"stay available"    → "keep eye contact"
+
+FORMAT RULES:
+- your_lines: character name + exact line + note only if unusual word/name
+- how_to_say_it: "[first 3 words of line] → [instruction]" e.g. "Crack the case → say it flat"
+- pause_here: "After [exact line or cue] — stop. Wait."
+- dont_do_this: one sentence, starts with "Don't"
+- if_it_goes_wrong: 2 bullets, each under 6 words, physical only
+
+GOAL: A parent reads this in 45 seconds and uses it immediately. Nothing else matters.`;
+
+
 function countMeaningfulWords(text = "") {
   return (String(text || "").match(/\b[\w']+\b/g) || []).length;
 }
@@ -611,17 +674,22 @@ async function generateContent(meta = {}, options = {}) {
     throw new Error("ANTHROPIC_API_KEY not configured");
   }
 
+  // ── Parent Reader mode \u2014 completely different schema + prompt ──────────────
+  if (meta.parentReaderMode) {
+    return generateParentContent(meta, { apiKey, signal });
+  }
+
   let validationFeedback = "";
   let lastError = null;
 
-  // ── Anchor quote pre-pass ────────────────────────────────────────────
+  // \u2500\u2500 Anchor quote pre-pass \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   // Extract quotable lines from the sides before main generation.
   // Injected into the prompt as ANCHOR QUOTES to prevent generic output.
   const cleanedForAnchor = scrubWatermarks(meta.sceneText || "").trim();
   if (cleanedForAnchor.length > 100 && !meta.anchorQuotes) {
     const extracted = await extractAnchorQuotes(cleanedForAnchor, meta, apiKey, signal);
     if (!extracted.length) {
-      console.error("[Reader101] ANCHOR_QUOTES: NONE — proceeding without anchor quotes. Expect higher generic output risk.");
+      console.error("[Reader101] ANCHOR_QUOTES: NONE \u2014 proceeding without anchor quotes. Expect higher generic output risk.");
     }
     meta = { ...meta, anchorQuotes: extracted };
   }
@@ -661,8 +729,90 @@ async function generateContent(meta = {}, options = {}) {
   throw lastError || new Error("Failed to generate structured Reader101 content");
 }
 
+// \u2500\u2500 Parent Reader Card generation \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+function buildParentPrompt(meta = {}) {
+  const actorName = (meta.characterName || "").trim();
+  const readerRoles = Array.isArray(meta.characterNames) && meta.characterNames.length
+    ? meta.characterNames.join(", ")
+    : (meta.readerCharacterName || "all other characters");
+
+  const cleanedText = scrubWatermarks(meta.sceneText || "").trim();
+  const hasSides = cleanedText.length > 50;
+
+  const sidesBlock = hasSides
+    ? `SIDES TEXT (extract your_lines verbatim from this):\n${clipText(cleanedText, 8000)}`
+    : `NO READABLE SIDES AVAILABLE. Use character names from metadata only. Mark all lines as approximate.`;
+
+  return `Generate a Reader Parent Card.
+
+AUDITION ROLE (your kid's character): ${actorName || "the actor"}
+READER ROLE(S) (what you read aloud): ${readerRoles}
+
+${sidesBlock}
+
+Return the JSON now matching this exact schema:
+${PARENT_SCHEMA_TEXT}`;
+}
+
+function validateParentContent(data = {}) {
+  const errors = [];
+  if (!data || typeof data !== "object") return ["Response must be a JSON object."];
+
+  if (!Array.isArray(data.your_lines) || data.your_lines.length === 0) {
+    errors.push("your_lines must be a non-empty array.");
+  }
+  if (!Array.isArray(data.how_to_say_it) || data.how_to_say_it.length === 0) {
+    errors.push("how_to_say_it must be a non-empty array.");
+  }
+  if (!Array.isArray(data.pause_here) || data.pause_here.length === 0) {
+    errors.push("pause_here must be a non-empty array.");
+  }
+  if (typeof data.dont_do_this !== "string" || !data.dont_do_this.trim()) {
+    errors.push("dont_do_this must be a non-empty string.");
+  }
+  if (!Array.isArray(data.if_it_goes_wrong) || data.if_it_goes_wrong.length < 2) {
+    errors.push("if_it_goes_wrong must have exactly 2 bullets.");
+  }
+  return errors;
+}
+
+async function generateParentContent(meta = {}, { apiKey, signal }) {
+  console.log("[Reader101] PARENT_READER_MODE: generating 5-section parent card");
+  const prompt = buildParentPrompt(meta);
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const { data: payload } = await sendAnthropicMessage({
+        apiKey,
+        preferredModel: DEFAULT_CLAUDE_MODEL,
+        maxTokens: 1800,
+        system: PARENT_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: prompt }],
+        signal,
+      });
+
+      const rawText = payload?.content?.[0]?.text || "";
+      const parsed = parseJsonResponse(rawText);
+      const errors = validateParentContent(parsed);
+
+      if (errors.length) {
+        if (attempt < 2) continue;
+        console.warn("[Reader101] Parent card validation failed on retry:", errors.join(", "));
+      }
+
+      return parsed;
+    } catch (err) {
+      if (attempt >= 2) throw err;
+    }
+  }
+  throw new Error("Failed to generate parent reader card");
+}
+
 module.exports = {
   buildContentPrompt,
+  buildParentPrompt,
   generateContent,
+  generateParentContent,
   validateStructuredContent,
 };

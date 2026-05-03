@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{TITLE}}</title>
+  <style>
+    :root {
+      --bg: #0e1210;
+      --surface: #161c19;
+      --border: rgba(241,239,232,0.10);
+      --text: #F1EFE8;
+      --muted: #9B9182;
+      --amber: #633806;
+      --teal: #085041;
+      --red: #791F1F;
+      --dark: #1f2420;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: linear-gradient(160deg, #0c110f 0%, #0e1210 100%);
+      color: var(--text);
+      font-family: "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+      padding: 24px 16px 60px;
+    }
+    .guide { max-width: 780px; margin: 0 auto; }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .guide-header {
+      padding-bottom: 18px;
+      margin-bottom: 22px;
+      border-bottom: 3px solid #BA7517;
+    }
+    .guide-title { font-size: clamp(26px,4vw,38px); font-weight: 700; }
+    .guide-sub { margin-top: 6px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .tag { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--text); background: rgba(255,255,255,0.06); }
+
+    /* ── Callout banner ──────────────────────────────────────── */
+    .parent-banner {
+      background: rgba(8,80,65,0.18);
+      border: 1px solid rgba(8,80,65,0.45);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #b2d4cc;
+    }
+    .parent-banner strong { color: #d6ede8; }
+
+    /* ── Sections ────────────────────────────────────────────── */
+    .section {
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: rgba(22,28,25,0.94);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+    }
+    .sec-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 16px;
+    }
+    .sh-red  { background: #791F1F; }
+    .sh-teal { background: #085041; }
+    .sh-amber{ background: #633806; }
+    .sh-dark { background: #252a27; }
+    .sh-stop { background: #3d1a00; }
+    .sh-reset{ background: rgba(241,239,232,0.07); }
+    .sec-num   { min-width: 28px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: #D5D1C8; }
+    .sec-title { font-size: 15px; font-weight: 800; }
+    .sec-badge {
+      margin-left: auto; padding: 3px 9px; border-radius: 999px;
+      background: rgba(255,255,255,0.14); color: #F1EFE8;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    /* ── What Will Go Wrong ──────────────────────────────────── */
+    .warn-box { background: #090909; padding: 14px 18px 16px; }
+    .warn-intro { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #F26A6A; margin-bottom: 12px; }
+    .warn-list { list-style: none; }
+    .warn-list li {
+      font-size: 15px; line-height: 1.55; padding: 6px 0 6px 22px;
+      position: relative; color: var(--text);
+    }
+    .warn-list li::before { content: "✕"; position: absolute; left: 0; color: #E24B4A; font-weight: 700; }
+    .warn-footer { margin-top: 12px; font-size: 13px; color: var(--muted); font-style: italic; }
+
+    /* ── Your Lines (script block) ───────────────────────────── */
+    .lines-body { padding: 14px 18px 18px; }
+    .line-row {
+      display: flex; align-items: baseline; gap: 10px;
+      padding: 9px 12px; border-radius: 10px; margin-bottom: 8px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    }
+    .line-char {
+      flex-shrink: 0; min-width: 90px;
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #FAC775;
+    }
+    .line-text {
+      font-size: 16px; font-weight: 600; line-height: 1.5; color: var(--text);
+    }
+    .line-note {
+      display: block; margin-top: 4px;
+      font-size: 12px; color: var(--muted); font-style: italic;
+    }
+
+    /* ── How To Say Each Line ────────────────────────────────── */
+    .delivery-body { padding: 14px 18px 18px; }
+    .delivery-row {
+      padding: 10px 14px; border-radius: 10px; margin-bottom: 8px;
+      background: rgba(8,80,65,0.10); border-left: 3px solid #085041;
+    }
+    .delivery-row p { font-size: 14px; line-height: 1.6; color: var(--text); }
+    .delivery-row p strong { color: #8ecfc6; }
+
+    /* ── When To Stop ────────────────────────────────────────── */
+    .stop-body { padding: 14px 18px 18px; }
+    .stop-list { list-style: none; }
+    .stop-list li {
+      font-size: 14px; line-height: 1.6; padding: 8px 14px 8px 36px;
+      position: relative; color: var(--text); margin-bottom: 6px;
+      background: rgba(61,26,0,0.18); border-radius: 8px;
+    }
+    .stop-list li::before {
+      content: "✋"; position: absolute; left: 10px; top: 8px; font-size: 14px;
+    }
+
+    /* ── Never Do (single binary rule) ──────────────────────── */
+    .never-body { padding: 14px 18px 18px; }
+    .never-rule {
+      font-size: 18px; font-weight: 700; line-height: 1.45;
+      color: #F1EFE8; padding: 14px 18px;
+      background: rgba(121,31,31,0.18); border-radius: 12px;
+      border-left: 4px solid #E24B4A;
+    }
+    .never-rule span { color: #F26A6A; }
+
+    /* ── Quick Reset ─────────────────────────────────────────── */
+    .reset-body { padding: 14px 18px 18px; }
+    .reset-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .reset-list li {
+      font-size: 15px; font-weight: 600; padding: 10px 14px;
+      border-radius: 10px; background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border); color: var(--text);
+    }
+
+    /* ── CTA ─────────────────────────────────────────────────── */
+    .cta-section {
+      margin-top: 24px; padding: 20px;
+      background: #fff; border-radius: 16px;
+    }
+    .cta-section p { font-size: 14px; color: #1a1a1a; font-family: sans-serif; margin-bottom: 8px; }
+    .cta-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .cta-btns a {
+      background: #1a1a1a; color: #fff; padding: 10px 20px;
+      border-radius: 8px; text-decoration: none; font-size: 13px;
+      font-weight: 700; font-family: sans-serif;
+    }
+
+    @media (max-width: 580px) {
+      .line-row { flex-direction: column; gap: 4px; }
+      .line-char { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+  <div class="guide">
+    <div class="guide-header">
+      <div class="guide-title">{{TITLE}}</div>
+      <div class="guide-sub">{{SUB}}</div>
+      <div class="tag-row">{{TAG_ROW}}</div>
+    </div>
+
+    <div class="parent-banner">
+      <strong>You're the reader.</strong> Your kid is auditioning. This guide tells you exactly what to say, how to say it, and when to stop. Read it once. Then put it down and just do it.
+    </div>
+
+    {{NOTICE_BLOCK}}
+
+    <!-- 01 What Will Go Wrong -->
+    <div class="section">
+      <div class="sec-head sh-red">
+        <span class="sec-num">⚠</span>
+        <span class="sec-title">What Will Go Wrong</span>
+      </div>
+      <div class="warn-box">
+        <div class="warn-intro">Most parents accidentally kill the audition by doing one of these three things:</div>
+        {{WHAT_WILL_GO_WRONG}}
+        <div class="warn-footer">{{WHAT_WILL_GO_WRONG_FOOTER}}</div>
+      </div>
+    </div>
+
+    <!-- 02 Your Lines -->
+    <div class="section">
+      <div class="sec-head sh-teal">
+        <span class="sec-num">01</span>
+        <span class="sec-title">Your Lines</span>
+        <span class="sec-badge">say exactly this</span>
+      </div>
+      <div class="lines-body">{{YOUR_LINES}}</div>
+    </div>
+
+    <!-- 03 How To Say Each Line -->
+    <div class="section">
+      <div class="sec-head sh-amber">
+        <span class="sec-num">02</span>
+        <span class="sec-title">How To Say Each Line</span>
+      </div>
+      <div class="delivery-body">{{HOW_TO_SAY}}</div>
+    </div>
+
+    <!-- 04 When To Stop -->
+    <div class="section">
+      <div class="sec-head sh-stop">
+        <span class="sec-num">03</span>
+        <span class="sec-title">When To Stop</span>
+        <span class="sec-badge">silence is right</span>
+      </div>
+      <div class="stop-body">{{WHEN_TO_STOP}}</div>
+    </div>
+
+    <!-- 05 One Thing To Never Do -->
+    <div class="section">
+      <div class="sec-head sh-red">
+        <span class="sec-num">04</span>
+        <span class="sec-title">One Thing To Never Do</span>
+      </div>
+      <div class="never-body">
+        <div class="never-rule">{{NEVER_DO}}</div>
+      </div>
+    </div>
+
+    <!-- 06 Quick Reset -->
+    <div class="section">
+      <div class="sec-head sh-reset">
+        <span class="sec-num">05</span>
+        <span class="sec-title" style="color:#F1EFE8;">If It Goes Wrong — Quick Reset</span>
+      </div>
+      <div class="reset-body">{{QUICK_RESET}}</div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-section">
+      <p><strong>Want help with the actual performance?</strong></p>
+      <p>Your kid's lines, choices, and how to build a tape that actually stands out — that's what the system is for.</p>
+      <div class="cta-btns">
+        <a href="https://boldchoices.site">Bold Choices</a>
+        <a href="https://prep101.site">Prep101 Guide</a>
+        <a href="https://coaching.childactor101.com">Book Coaching</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

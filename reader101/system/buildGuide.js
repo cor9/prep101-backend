@@ -489,6 +489,12 @@ function normalizeContent(modelContent = {}, meta = {}) {
 }
 
 async function buildGuide(meta = {}, options = {}) {
+  // ── Parent Reader Card path ────────────────────────────────────────────
+  // Always true for Reader101 — completely different template + schema.
+  if (meta.parentReaderMode !== false) {
+    return buildParentGuide(meta, options);
+  }
+
   const templateStyle = selectTemplate(meta);
   const templatePath = path.join(process.cwd(), "reader101", "templates", `${templateStyle}.html`);
   const generateContentFn = options.generateContentFn || generateContent;
@@ -571,8 +577,80 @@ async function buildGuide(meta = {}, options = {}) {
   return html;
 }
 
+async function buildParentGuide(meta = {}, options = {}) {
+  const { generateParentContent } = require("./generateContent");
+  const templatePath = path.join(process.cwd(), "reader101", "templates", "parent.html");
+  const signal = options.signal;
+  const actorRole = (meta.characterName || "").trim();
+  const readerRoles = Array.isArray(meta.characterNames) && meta.characterNames.length
+    ? meta.characterNames
+    : [meta.readerCharacterName || "Reader"];
+
+  let raw = {};
+  try {
+    raw = await generateParentContent(meta, { apiKey: process.env.ANTHROPIC_API_KEY, signal });
+  } catch (err) {
+    console.warn("[Reader101] Parent card generation failed, using empty fallback:", err.message);
+  }
+
+  // ── Normalize parent card fields ────────────────────────────────────────────
+  const yourLines = (Array.isArray(raw.your_lines) ? raw.your_lines : []).map(l => {
+    const char = String(l.character || "").trim().toUpperCase();
+    const line = String(l.line || "").trim();
+    const note = String(l.note || "").trim();
+    if (!line) return null;
+    return `<div class="line-row"><span class="line-char">${char}</span><span class="line-text">${line}${note ? `<span class="line-note">${note}</span>` : ""}</span></div>`;
+  }).filter(Boolean).join("");
+
+  const howToSay = (Array.isArray(raw.how_to_say_it) ? raw.how_to_say_it : []).map(s =>
+    `<div class="delivery-row"><p>${String(s).trim()}</p></div>`
+  ).join("");
+
+  const pauseHere = buildList(Array.isArray(raw.pause_here) ? raw.pause_here : [], "stop-list");
+
+  const neverDo = String(raw.dont_do_this || "").trim() ||
+    `Don't add anything after your last line. Stop. Look at them.`;
+
+  const ifWrong = buildList(
+    Array.isArray(raw.if_it_goes_wrong) ? raw.if_it_goes_wrong : ["Say it flat.", "Wait one beat."],
+    "reset-list"
+  );
+
+  // ── Build title row ───────────────────────────────────────────────────────
+  const titleParts = [meta.productionTitle, actorRole].filter(Boolean);
+  const TITLE = titleParts.length ? `Reader Card — ${titleParts.join(" / ")}` : "Reader Parent Card";
+  const SUB = [`for ${actorRole || "actor"}`, meta.productionTitle, meta.productionType].filter(Boolean).join(" · ");
+  const readerLabel = readerRoles.join(" / ");
+  const TAG_ROW = [
+    `<span class="tag">Reader101</span>`,
+    `<span class="tag">Parent Card</span>`,
+    readerLabel ? `<span class="tag">${readerLabel}</span>` : "",
+    meta.genre ? `<span class="tag">${meta.genre}</span>` : "",
+  ].filter(Boolean).join("");
+
+  const normalized = {
+    TITLE, SUB, TAG_ROW,
+    NOTICE_BLOCK: "",
+    YOUR_LINES: yourLines || `<p style="color:#9B9182;font-size:14px;padding:12px">Lines not extracted — use your script.</p>`,
+    HOW_TO_SAY: howToSay || `<div class="delivery-row"><p>Say it flat. Stop. Wait.</p></div>`,
+    WHEN_TO_STOP: pauseHere,
+    NEVER_DO: neverDo,
+    QUICK_RESET: ifWrong,
+  };
+
+  const html = renderTemplate(templatePath, normalized);
+  return html;
+}
+
+function buildList(items, className) {
+  if (!items.length) return "";
+  const lis = items.map(item => `<li>${String(item).trim()}</li>`).join("");
+  return `<ul class="${className}">${lis}</ul>`;
+}
+
 module.exports = {
   buildGuide,
+  buildParentGuide,
   buildFallbackContent,
   normalizeContent,
 };
