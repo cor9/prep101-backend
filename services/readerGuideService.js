@@ -211,6 +211,32 @@ function normalizeCharacterLabel(value = "") {
     .trim();
 }
 
+/**
+ * Returns true when the supplied characterName looks like a PDF extraction
+ * artifact rather than a real character name.
+ *
+ * Examples that must be caught:
+ *   "PG 15-16 + 3 more roles"
+ *   "pg. 3-5"
+ *   "pages 4-7"
+ *   "+ 2 more roles"
+ *   "Page 12"
+ */
+function isGarbageCharacterName(name = "") {
+  const n = String(name || "").trim();
+  if (!n) return true;
+  // Page-range patterns: "PG 15-16", "pg. 3-5", "pages 4-7", "page 12"
+  if (/\b(?:pg\.?|page[s]?)\s+\d+(?:\s*[\-–]\s*\d+)?/i.test(n)) return true;
+  // "+ N more roles" or "+ more roles"
+  if (/\+\s*\d*\s*more\s+roles?/i.test(n)) return true;
+  // Pure numbers or "slide N"
+  if (/^\d+$/.test(n)) return true;
+  if (/^slide\s+\d+/i.test(n)) return true;
+  // Contains page-range digits like "15-16"
+  if (/\b\d{1,3}\s*[\-–]\s*\d{1,3}\b/.test(n) && /\bpg|page/i.test(n)) return true;
+  return false;
+}
+
 function hasAny(text = "", needles = []) {
   const normalized = normalize(text);
   return needles.some((needle) => normalized.includes(needle));
@@ -502,6 +528,10 @@ function detectGenreMode(data = {}, combinedContent = "") {
   if (
     ["thriller", "horror", "suspense", "psychological thriller"].some((token) =>
       full.includes(token)
+    ) &&
+    // Don't classify as thriller_horror if explicit comedy signals are present
+    !["comedy", "sitcom", "audience laughter"].some((token) =>
+      full.includes(token)
     )
   ) {
     return "thriller_horror";
@@ -680,6 +710,15 @@ function validateReaderGuideOutput(html = "", modeContext = {}) {
 }
 
 async function generateReaderGuide(data = {}, options = {}) {
+  // ── Input guard: reject garbage characterNames from PDF extraction failures ──
+  const rawCharacterName = String(data.characterName || "").trim();
+  if (!rawCharacterName || isGarbageCharacterName(rawCharacterName)) {
+    throw new Error(
+      `Reader101 guide aborted: the character name "${rawCharacterName || '(empty)'}" looks like a PDF extraction artifact (e.g. a page range). ` +
+      "Please re-upload the PDF or manually enter the character name."
+    );
+  }
+
   const signal = options.signal;
   const roleContext = resolveReaderRoleContext(data);
   const modeContext = buildReaderModeContext({
