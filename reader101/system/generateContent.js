@@ -87,6 +87,7 @@ function parseJsonResponse(text = "") {
   try {
     return JSON.parse(raw);
   } catch (error) {
+    console.error("[Reader101] generateContent FAILED — serving hardcoded template fallback. Error:", error.message);
     const firstBrace = raw.indexOf("{");
     const lastBrace = raw.lastIndexOf("}");
 
@@ -125,6 +126,7 @@ function countQuotedReferences(value) {
 
 function validateStructuredContent(data = {}, meta = {}) {
   const errors = [];
+  const isFallback = Boolean(meta.fallbackMode);
 
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return ["Response must be a JSON object."];
@@ -162,31 +164,34 @@ function validateStructuredContent(data = {}, meta = {}) {
     }
   }
 
-  if (Array.isArray(data.reader_fundamentals) && data.reader_fundamentals.length !== 10) {
-    errors.push('"reader_fundamentals" must contain exactly 10 scene-specific rules.');
-  }
+  // Strict count requirements — relaxed in fallback mode since there are no real lines to quote
+  if (!isFallback) {
+    if (Array.isArray(data.reader_fundamentals) && data.reader_fundamentals.length !== 10) {
+      errors.push('"reader_fundamentals" must contain exactly 10 scene-specific rules.');
+    }
 
-  if (Array.isArray(data.key_beats) && data.key_beats.length < 6) {
-    errors.push('"key_beats" must contain at least 6 scene-specific beats.');
-  }
+    if (Array.isArray(data.key_beats) && data.key_beats.length < 6) {
+      errors.push('"key_beats" must contain at least 6 scene-specific beats.');
+    }
 
-  if (Array.isArray(data.do) && (data.do.length < 4 || data.do.length > 6)) {
-    errors.push('"do" must contain 4 to 6 specific actions.');
-  }
+    if (Array.isArray(data.do) && (data.do.length < 4 || data.do.length > 6)) {
+      errors.push('"do" must contain 4 to 6 specific actions.');
+    }
 
-  if (Array.isArray(data.avoid) && (data.avoid.length < 4 || data.avoid.length > 6)) {
-    errors.push('"avoid" must contain 4 to 6 specific mistakes.');
-  }
+    if (Array.isArray(data.avoid) && (data.avoid.length < 4 || data.avoid.length > 6)) {
+      errors.push('"avoid" must contain 4 to 6 specific mistakes.');
+    }
 
-  if (Array.isArray(data.quick_reset) && (data.quick_reset.length < 3 || data.quick_reset.length > 4)) {
-    errors.push('"quick_reset" must contain 3 to 4 concise reset bullets.');
+    if (Array.isArray(data.quick_reset) && (data.quick_reset.length < 3 || data.quick_reset.length > 4)) {
+      errors.push('"quick_reset" must contain 3 to 4 concise reset bullets.');
+    }
   }
 
   if (!data.anchor_line || typeof data.anchor_line !== "string") {
     errors.push('"anchor_line" must be a string.');
   }
 
-  if (!meta.fallbackMode) {
+  if (!isFallback) {
     const keyBeatsQuoteCount = countQuotedReferences(data.key_beats);
     if (keyBeatsQuoteCount < 4) {
       errors.push("Your 'key_beats' section must contain at least 4 bullets that explicitly quote lines of dialogue or stage directions using quotation marks.");
