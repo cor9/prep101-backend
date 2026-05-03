@@ -2891,9 +2891,9 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       uploadMessage:
         pipelineResult.uploadMessage ||
         (looksUnderExtracted
-          ? `PDF uploaded! This appears to be a scanned document, so we'll do a deep-read of the pages during generation to ensure we catch every detail.`
+          ? `PDF uploaded! This looks like a scanned document — we'll do a deep-read during generation to make sure we catch everything.`
           : looksCorruptedByWatermark
-            ? "PDF uploaded! We detected heavy watermarks, so we'll use our enhanced reading mode during generation."
+            ? "PDF uploaded! This script has formatting we'll work around — we'll use an enhanced read during generation."
           : null),
       debug: {
         method: extractionMethod,

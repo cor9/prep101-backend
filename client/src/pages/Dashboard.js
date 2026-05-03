@@ -499,29 +499,27 @@ const Dashboard = () => {
       console.warn("Could not cache upload data for recovery:", error);
     }
     if (serializableData?.scriptReadable === false) {
-      if (canUseDirectPdf) {
-        toast(
-          "PDF uploaded! We'll use our deep-reading mode during generation to process this document.",
-          { icon: "📄", duration: 5000 }
-        );
-      } else {
-        toast.error(
-          "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
-        );
-      }
+      // PDF uploaded but needs enhanced reading — always show a calm reassurance,
+      // never an alarming error. Generation will attempt a deep-read pass automatically.
+      toast(
+        "PDF uploaded! This script uses a format that needs a deeper read — we'll handle that automatically when you generate.",
+        { icon: "📄", duration: 6000 }
+      );
       return;
     }
     if (extractedWords === 0) {
-      toast.error(
-        "PDF uploaded, but no readable script text was extracted. Re-upload or paste sides text for best results."
+      // Truly empty — no text at all, no uploadId fallback possible
+      toast(
+        "No readable text found in this PDF. Try re-uploading or paste the sides text directly below.",
+        { icon: "⚠️", duration: 6000 }
       );
       return;
     }
     if (serializableData.uploadMessage) {
-      toast(serializableData.uploadMessage, { icon: "🧠", duration: 5000 });
+      toast(serializableData.uploadMessage, { icon: "📄", duration: 5000 });
       return;
     }
-    toast.success(`PDF processed — extracted ${extractedWords} words.`);
+    toast.success(`PDF uploaded — ${extractedWords} words extracted and ready.`);
   };
 
   // Open HTML in a new tab (Blob URL). Optionally reuse a pre-opened window.
@@ -584,8 +582,11 @@ const Dashboard = () => {
       return;
     }
     if (uploadData?.scriptReadable === false && !shouldUseTwoCallPdfEndpoint) {
-      toast.error(
-        "I was unable to read the uploaded sides. Please re-upload the PDF or paste the scene text directly. I cannot generate a useful preparation guide without the actual script."
+      // If we can't use the two-call PDF endpoint AND the upload wasn't readable,
+      // the user needs to try a different approach. Show a calm, helpful prompt.
+      toast(
+        "This PDF needs a deeper read, but we don't have the original file to retry. Please re-upload the PDF or paste the sides text directly below.",
+        { icon: "📄", duration: 7000 }
       );
       return;
     }
@@ -961,13 +962,17 @@ const Dashboard = () => {
             : "The generation process timed out. This usually happens with very long scripts or during high traffic. Please try again or paste the scene text directly below.",
           { duration: 8000 }
         );
+      } else if (/unable to recover recognizable screenplay sides|unable to read the uploaded sides|Unable to recover meaningful text/i.test(errorMessage)) {
+        // All PDF reading fallbacks were exhausted — guide cannot be generated from this file
+        toast(
+          "We weren't able to read the script from this PDF after trying our enhanced reading mode. Please re-upload a clearer PDF, or paste the sides text directly in the field below.",
+          { icon: "📄", duration: 9000 }
+        );
+        setUploadData(null);
+        setUploadedFile(null);
+        try { sessionStorage.removeItem("prep101_upload_data"); } catch (_) {}
       } else {
         toast.error(`Failed to generate guide: ${err.message}`, { duration: 8000 });
-        if (/unable to recover recognizable screenplay sides|unable to read the uploaded sides|Unable to recover meaningful text/i.test(errorMessage)) {
-          setUploadData(null);
-          setUploadedFile(null);
-          try { sessionStorage.removeItem("prep101_upload_data"); } catch (_) {}
-        }
       }
     } finally {
       clearTimeout(timeoutId);
