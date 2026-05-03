@@ -165,25 +165,18 @@ function validateStructuredContent(data = {}, meta = {}) {
   }
 
   // Strict count requirements — relaxed in fallback mode since there are no real lines to quote
+  // Short scenes also can't meet high minimums — count enforcement belongs in the prompt, not here
   if (!isFallback) {
-    if (Array.isArray(data.reader_fundamentals) && data.reader_fundamentals.length !== 10) {
-      errors.push('"reader_fundamentals" must contain exactly 10 scene-specific rules.');
+    if (Array.isArray(data.key_beats) && data.key_beats.length < 2) {
+      errors.push('"key_beats" must contain at least 2 scene-specific beats.');
     }
 
-    if (Array.isArray(data.key_beats) && data.key_beats.length < 6) {
-      errors.push('"key_beats" must contain at least 6 scene-specific beats.');
+    if (Array.isArray(data.do) && data.do.length < 2) {
+      errors.push('"do" must contain at least 2 specific actions.');
     }
 
-    if (Array.isArray(data.do) && (data.do.length < 4 || data.do.length > 6)) {
-      errors.push('"do" must contain 4 to 6 specific actions.');
-    }
-
-    if (Array.isArray(data.avoid) && (data.avoid.length < 4 || data.avoid.length > 6)) {
-      errors.push('"avoid" must contain 4 to 6 specific mistakes.');
-    }
-
-    if (Array.isArray(data.quick_reset) && (data.quick_reset.length < 3 || data.quick_reset.length > 4)) {
-      errors.push('"quick_reset" must contain 3 to 4 concise reset bullets.');
+    if (Array.isArray(data.avoid) && data.avoid.length < 2) {
+      errors.push('"avoid" must contain at least 2 specific mistakes.');
     }
   }
 
@@ -193,13 +186,8 @@ function validateStructuredContent(data = {}, meta = {}) {
 
   if (!isFallback) {
     const keyBeatsQuoteCount = countQuotedReferences(data.key_beats);
-    if (keyBeatsQuoteCount < 4) {
-      errors.push("Your 'key_beats' section must contain at least 4 bullets that explicitly quote lines of dialogue or stage directions using quotation marks.");
-    }
-
-    const doAvoidJobQuoteCount = countQuotedReferences([data.your_job, data.do, data.avoid]);
-    if (doAvoidJobQuoteCount < 4) {
-      errors.push("Your 'your_job', 'do', and 'avoid' sections must explicitly quote lines of dialogue using quotation marks before giving an instruction.");
+    if (keyBeatsQuoteCount < 2) {
+      errors.push("'key_beats' must contain at least 2 bullets that quote lines of dialogue or stage directions.");
     }
 
     const quotedReferenceCount = countQuotedReferences([
@@ -210,14 +198,12 @@ function validateStructuredContent(data = {}, meta = {}) {
       data.your_job,
       data.key_beats,
       data.connection,
-      data.tone_reference_anchor,
-      data.quick_reset,
       data.do,
       data.avoid,
     ]);
 
-    if (quotedReferenceCount < 12) {
-      errors.push("You failed the NO LINE REFERENCE, NO BULLET rule. You must use quotation marks to anchor at least 12 specific instructions to the exact text in the sides.");
+    if (quotedReferenceCount < 4) {
+      errors.push("You must anchor at least 4 specific instructions to exact text from the sides using quotation marks.");
     }
   }
 
