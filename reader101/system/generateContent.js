@@ -377,6 +377,14 @@ Reader101 asks: "What must the reader NOT mess up?"
 Everything you write must answer the second question.
 `;
 
+  const shortSidesBlock = shortSidesMode
+    ? `\nSHORT SIDES MODE — ACTIVE (${dialogueWordCount} dialogue words detected)\n\n⚡ This guide must prioritize precision over volume. Every beat matters more when there are fewer of them.\n\nADAPTATIONS:\n- KEY BEATS: Use every quotable line exactly once. Stage directions are quotable — treat them as anchors. If only 2 lines are quotable, the section gets 2 bullets. Do NOT pad to hit a count.\n- SCENE SNAPSHOT: Collapse to a single "Scene in One Line" per scene. Do not use a multi-row grid format.\n- YOUR JOB: This is the load-bearing section for short sides. Expand it. Every cue is a setup the actor must land on.\n- PLAYING MULTIPLE CHARACTERS: Only include if both reader characters appear. Name them and their scene function specifically.\n- DO NOT generate filler bullets to fill section shapes. Missing beats are invisible. Generic beats are lies.\n`
+    : "";
+
+  const citationRule = hasSidesText
+    ? `- CITATION RULE: Every bullet in Key Beats, Your Job, and Scene Snapshot MUST open with a direct quote from the sides in quotation marks. Stage directions count as quotes. No quote = no bullet. If you cannot find a line to anchor the directive, omit the bullet entirely. Do NOT pad with generic advice to hit a count.\n- ANCHOR QUOTES (extracted from sides — use these as your primary citation sources):\n${meta.anchorQuotes && meta.anchorQuotes.length > 0 ? meta.anchorQuotes.map(q => `  • "${q}"`).join("\n") : "  (No pre-extracted anchors — mine the sides text directly for quotable lines.)"}\n- INVISIBLY GENERIC TEST: Before including any bullet, ask — could this appear in a guide for a completely different show? If yes, rewrite it with a specific quote or delete it.\n- TWO-CHARACTER CONTRAST RULE: If there are two reader characters, name both with one specific line or beat each showing their difference in pressure, status, or function. Required format: "[Char A] ([scene/pg]): [status/function anchored to a line]. [Char B] ([scene/pg]): [status/function anchored to a different line]. If they feel the same, the audition dies instantly." Generic labels without cited moments are not permitted.`
+    : `- CITATION RULE: No readable sides available. Do NOT invent quotes. Use character names and show context only.`;
+
   const userPrompt = `Generate structured Reader101 content for the fixed HTML template system.
 
 Return ONLY valid JSON that matches this schema exactly:
@@ -401,33 +409,6 @@ Global rules:
 - Every list item must be one line.
 - Every list item must be a physical, vocal, timing, listening, or restraint directive.
 - Use plain, exact reader coaching. Not theory.
-  const shortSidesBlock = shortSidesMode
-    ? `
-SHORT SIDES MODE — ACTIVE (${dialogueWordCount} dialogue words detected)
-
-⚡ This guide must prioritize precision over volume. Every beat matters more when there are fewer of them.
-
-ADAPTATIONS:
-- KEY BEATS: Use every quotable line exactly once. Stage directions are quotable — treat them as anchors. If only 2 lines are quotable, the section gets 2 bullets. Do NOT pad to hit a count.
-- SCENE SNAPSHOT: Collapse to a single "Scene in One Line" per scene (e.g., "Diner. Shaggy delivers one piece of information and exits. Reader receives it like it matters."). Do not use a multi-row grid format.
-- YOUR JOB: This is the load-bearing section for short sides. Expand it. Fewer lines means the reader's precision on each one matters MORE — every cue is a setup the actor has to land on.
-- PLAYING MULTIPLE CHARACTERS: Only include if the sides actually show both reader characters interacting. If one character appears in only one scene, name them and their scene function specifically.
-- DO NOT generate filler bullets to fill section shapes. Missing beats are invisible. Generic beats are lies.
-`
-    : "";
-
-  const citationRule = hasSidesText
-    ? `- CITATION RULE: Every bullet in Key Beats, Your Job, and Scene Snapshot MUST open with a direct quote from the sides in quotation marks. Stage directions count as quotes — use the exact language from the page. No quote = no bullet. If you cannot find a line to anchor the directive, omit the bullet entirely. Do NOT pad with generic advice to hit a count.
-- ANCHOR QUOTES (extracted from sides — use these as your primary citation sources):
-${meta.anchorQuotes && meta.anchorQuotes.length > 0
-  ? meta.anchorQuotes.map(q => `  • "${q}"`).join("\n")
-  : "  (No pre-extracted anchors — mine the sides text directly for quotable lines.)"}
-- INVISIBLY GENERIC TEST: Before including any bullet, ask — could this appear in a guide for a completely different show? If yes, rewrite it with a specific quote or delete it.
-- TWO-CHARACTER CONTRAST RULE: If there are two reader characters, you MUST name both explicitly and show HOW they differ using the actual text. Required format: "[Character A] ([location/pg reference]): [one-line status/function description anchored to a specific line or beat]. [Character B] ([location/pg reference]): [one-line status/function description anchored to a different specific line or beat]. If they feel the same, the audition dies instantly." Generic labels without cited moments are not permitted. Example of WRONG: "Daphne is warm, Bobo is serious." Example of RIGHT: "Daphne (diner scene): equal-status re-connection, overlapping banter — 'Crack the case, big shot' is a tease, not a question. Bobo (pg 54-57): receiving-a-confession pressure — 'What's the point of finding out the truth' lands on Bobo first, and the reader must hold that weight without flinching."
-`
-    : `- CITATION RULE: Since no readable sides are available, do NOT invent quotes. Use character names and show context from metadata only. Mark every coaching note with "(based on character type)" so the user knows it is metadata-based, not script-based.
-`;
-
 - SCENE SNAPSHOT RULE: ${shortSidesMode ? 'SHORT SIDES MODE — collapse to one Scene in One Line per scene (location, reader character, scene temperature, actor arc). No grid format.' : `Generate one row per scene in the sides. Each row must include: location (from slugline), reader character(s), scene temperature, ${ACTOR_ROLE}'s arc in that scene. Writing about "the world" or "the show" is not a scene snapshot.`}
 - PLAYING MULTIPLE CHARACTERS RULE: Name every reader character explicitly. Each named character requires: one register description anchored to a specific moment in the sides, and one contrast line naming what is different about their pressure, status, or function from the other reader character. Generic descriptions without a cited beat are not permitted.
 - CONSEQUENCE RULE: The following consequence phrases are BANNED: "the emotional turn disappears", "the scene loses its pulse", "the actor feels the drop immediately", "the scene drifts off target", "the high-risk turn collapses". Every consequence must name what specifically breaks in THIS scene.
