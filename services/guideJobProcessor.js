@@ -130,6 +130,9 @@ async function processGuideJob(payload, jobInstance = null) {
     shouldForcePrepFallback,
     combinedWordCount,
   } = payload;
+  // These may be reset below if OCR recovery succeeds
+  let effectiveReaderFallback = Boolean(shouldForceReaderFallback);
+  let effectivePrepFallback = Boolean(shouldForcePrepFallback);
   const isReaderMode =
     payloadIsReaderMode === true ||
     payload.jobType === "reader101" ||
@@ -162,7 +165,10 @@ async function processGuideJob(payload, jobInstance = null) {
         // Inject recovered text back so ALL downstream generators see it
         payload.sceneText = recoveredText;
         payload.combinedSceneText = recoveredText;
-        console.log(`[JobProcessor] OCR recovery succeeded: ${recoveredWordCount} words recovered`);
+        // Recovery succeeded — clear fallback flags so generators receive real text mode
+        effectiveReaderFallback = false;
+        effectivePrepFallback = false;
+        console.log(`[JobProcessor] OCR recovery succeeded: ${recoveredWordCount} words recovered. Fallback flags cleared.`);
       } else {
         throw new Error("Unable to recover meaningful text from PDF.");
       }
@@ -258,7 +264,7 @@ async function processGuideJob(payload, jobInstance = null) {
       productionType: productionType.trim(),
       genre: genre || "",
       storyline: storyline || "",
-      fallbackMode: shouldForceReaderFallback,
+      fallbackMode: effectiveReaderFallback,
     });
     
     guideId = `reader_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -277,7 +283,7 @@ async function processGuideJob(payload, jobInstance = null) {
       storyline: (storyline || "").trim(),
       extractionMethod,
       hasFullScript,
-      fallbackMode: shouldForcePrepFallback,
+      fallbackMode: effectivePrepFallback,
       uploadData,
     });
 

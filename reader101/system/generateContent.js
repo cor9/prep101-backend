@@ -260,7 +260,9 @@ function buildContentPrompt(meta = {}, validationFeedback = "") {
     .join("\n");
 
   const dialogueWordCount = countDialogueWords(cleanedSceneText);
-  const shortSidesMode = dialogueWordCount < 80 && cleanedSceneText.length > 30;
+  // Short Sides Mode: genuinely short scene with READABLE text.
+  // Exclude fallbackMode=true (corrupted/partial PDF) — that's corruption fallback, not short sides.
+  const shortSidesMode = dialogueWordCount < 80 && cleanedSceneText.length > 30 && !meta.fallbackMode;
 
   if (shortSidesMode) {
     console.log(`[Reader101] SHORT_SIDES_MODE: TRUE — ${dialogueWordCount} dialogue words detected`);
@@ -421,7 +423,7 @@ ${meta.anchorQuotes && meta.anchorQuotes.length > 0
   ? meta.anchorQuotes.map(q => `  • "${q}"`).join("\n")
   : "  (No pre-extracted anchors — mine the sides text directly for quotable lines.)"}
 - INVISIBLY GENERIC TEST: Before including any bullet, ask — could this appear in a guide for a completely different show? If yes, rewrite it with a specific quote or delete it.
-- TWO-CHARACTER CONTRAST RULE: If there are two reader characters, name both explicitly with one specific line or beat from each that shows their difference in pressure, status, or function. "If X and Y feel the same, the audition dies" is not enough — show HOW they differ using the actual text.
+- TWO-CHARACTER CONTRAST RULE: If there are two reader characters, you MUST name both explicitly and show HOW they differ using the actual text. Required format: "[Character A] ([location/pg reference]): [one-line status/function description anchored to a specific line or beat]. [Character B] ([location/pg reference]): [one-line status/function description anchored to a different specific line or beat]. If they feel the same, the audition dies instantly." Generic labels without cited moments are not permitted. Example of WRONG: "Daphne is warm, Bobo is serious." Example of RIGHT: "Daphne (diner scene): equal-status re-connection, overlapping banter — 'Crack the case, big shot' is a tease, not a question. Bobo (pg 54-57): receiving-a-confession pressure — 'What's the point of finding out the truth' lands on Bobo first, and the reader must hold that weight without flinching."
 `
     : `- CITATION RULE: Since no readable sides are available, do NOT invent quotes. Use character names and show context from metadata only. Mark every coaching note with "(based on character type)" so the user knows it is metadata-based, not script-based.
 `;
@@ -608,10 +610,14 @@ Return the JSON array now.`;
     if (!Array.isArray(parsed)) return [];
 
     const quotes = parsed.filter(q => typeof q === "string" && q.trim().length > 3);
-    console.log(`[Reader101] Anchor quote pre-pass: extracted ${quotes.length} quotes`);
+    if (quotes.length === 0) {
+      console.error("[Reader101] ANCHOR_QUOTES: FAILED — pre-pass returned empty array. Main generation will proceed without anchor quotes.");
+    } else {
+      console.log(`[Reader101] ANCHOR_QUOTES: ${quotes.length} extracted — ${quotes.slice(0, 3).map(q => `"${q.slice(0, 40)}"`).join(", ")}...`);
+    }
     return quotes;
   } catch (err) {
-    console.warn("[Reader101] Anchor quote pre-pass failed (non-fatal):", err.message);
+    console.error("[Reader101] ANCHOR_QUOTES: FAILED —", err.message);
     return [];
   }
 }
@@ -632,7 +638,11 @@ async function generateContent(meta = {}, options = {}) {
   // Injected into the prompt as ANCHOR QUOTES to prevent generic output.
   const cleanedForAnchor = scrubWatermarks(meta.sceneText || "").trim();
   if (cleanedForAnchor.length > 100 && !meta.anchorQuotes) {
-    meta = { ...meta, anchorQuotes: await extractAnchorQuotes(cleanedForAnchor, meta, apiKey, signal) };
+    const extracted = await extractAnchorQuotes(cleanedForAnchor, meta, apiKey, signal);
+    if (!extracted.length) {
+      console.error("[Reader101] ANCHOR_QUOTES: NONE — proceeding without anchor quotes. Expect higher generic output risk.");
+    }
+    meta = { ...meta, anchorQuotes: extracted };
   }
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
