@@ -381,7 +381,7 @@ router.post("/generate", auth, async (req, res) => {
 
     // ── Build job payload ─────────────────────────────────────────────────
     // Include pdfBase64 so the Render worker can deep-read the PDF if sceneText is thin.
-    const uploadEntry = uploadId ? getUpload(uploadId) : null;
+    // (uploadEntry already declared above in validation block)
     const inputData = {
       jobType: "bold_choices",
       userId,
