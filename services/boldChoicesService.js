@@ -296,10 +296,14 @@ RETRIEVAL SIGNALS:
   if (data.characterDescription) lines.push(`Character Description: ${scrubWatermarks(data.characterDescription)}`);
   if (data.storyline) lines.push(`Storyline: ${scrubWatermarks(data.storyline)}`);
 
-  if (data.sceneText && !data.fallbackMode) {
-    lines.push("\nSIDES / SCENE TEXT (CRITICAL: Ignore any remaining timestamps, dates, watermarks, agency names, or page numbers):");
-    lines.push(clipText(scrubWatermarks(data.sceneText), 9000));
-  } else if (data.fallbackMode) {
+  const rawSceneText = scrubWatermarks(data.sceneText || "").trim();
+  const hasSidesText = rawSceneText.length > 50;
+
+  if (hasSidesText) {
+    lines.push(`\nSIDES / SCENE TEXT${data.fallbackMode ? ' (PARTIAL EXTRACTION — use what is readable, note any obvious gaps)' : ' (CRITICAL: Ignore any remaining timestamps, dates, watermarks, agency names, or page numbers)'}:`);
+    lines.push(clipText(rawSceneText, 9000));
+  } else {
+    // Truly no readable text — metadata-only fallback
     lines.push("\n⚠️ FALLBACK NOTIFICATION: The uploaded audition sides were unreadable or corrupted.");
     lines.push("You must STILL generate a full Bold Choices Guide using only the provided metadata (character name, project type, genre, tone).");
     lines.push("\nINSTRUCTIONS FOR FALLBACK MODE:");

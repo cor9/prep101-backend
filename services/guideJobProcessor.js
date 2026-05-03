@@ -166,9 +166,13 @@ async function processGuideJob(payload, jobInstance = null) {
         payload.sceneText = recoveredText;
         payload.combinedSceneText = recoveredText;
         // Recovery succeeded — clear fallback flags so generators receive real text mode
+        // Also clear on the payload object itself (bold_choices passes payload directly)
+        payload.fallbackMode = false;
+        payload.shouldForceReaderFallback = false;
+        payload.shouldForcePrepFallback = false;
         effectiveReaderFallback = false;
         effectivePrepFallback = false;
-        console.log(`[JobProcessor] OCR recovery succeeded: ${recoveredWordCount} words recovered. Fallback flags cleared.`);
+        console.log(`[JobProcessor] OCR recovery succeeded: ${recoveredWordCount} words recovered. All fallback flags cleared.`);
       } else {
         throw new Error("Unable to recover meaningful text from PDF.");
       }
