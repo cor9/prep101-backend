@@ -676,11 +676,7 @@ Return the JSON array now.`;
     });
 
     const text = payload?.content?.[0]?.text || "";
-    const firstBracket = text.indexOf("[");
-    const lastBracket = text.lastIndexOf("]");
-    if (firstBracket === -1 || lastBracket === -1) return [];
-
-    const parsed = JSON.parse(text.slice(firstBracket, lastBracket + 1));
+    const parsed = parseJsonResponse(text);
     if (!Array.isArray(parsed)) return [];
 
     const quotes = parsed.filter(q => typeof q === "string" && q.trim().length > 3);
