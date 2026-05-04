@@ -105,13 +105,37 @@ function parseJsonResponse(text = "") {
   try {
     return JSON.parse(raw);
   } catch (error) {
-    console.error("[Reader101] generateContent FAILED — serving hardcoded template fallback. Error:", error.message);
-    const firstBrace = raw.indexOf("{");
-    const lastBrace = raw.lastIndexOf("}");
-
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      return JSON.parse(raw.slice(firstBrace, lastBrace + 1));
+    console.error("[Reader101] generateContent FAILED — attempting recovery. Error:", error.message);
+    
+    // Try to extract from markdown fences
+    const mdMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (mdMatch && mdMatch[1]) {
+      try {
+        return JSON.parse(mdMatch[1].trim());
+      } catch (e) {}
     }
+
+    // Try to extract the LAST complete object
+    try {
+      const lastBrace = raw.lastIndexOf("}");
+      if (lastBrace !== -1) {
+        let openBraceCount = 0;
+        let firstBrace = -1;
+        for (let i = lastBrace; i >= 0; i--) {
+          if (raw[i] === "}") openBraceCount++;
+          if (raw[i] === "{") {
+            openBraceCount--;
+            if (openBraceCount === 0) {
+              firstBrace = i;
+              break;
+            }
+          }
+        }
+        if (firstBrace !== -1) {
+          return JSON.parse(raw.slice(firstBrace, lastBrace + 1));
+        }
+      }
+    } catch (e) {}
 
     throw error;
   }
@@ -718,11 +742,19 @@ Return ONLY valid JSON matching exactly:
           apiKey,
           preferredModel: DEFAULT_CLAUDE_MODEL,
           maxTokens,
-          system: "You are formatting a specific section of a Reader Parent Card. Return ONLY valid JSON matching the requested schema. No markdown. No preamble. If a parent cannot DO this within 10 seconds, delete it.",
-          messages: [{ role: "user", content: sectionPrompt + "\n\nRAW FACTS:\n" + JSON.stringify(facts, null, 2) }],
+          system: "You are formatting a specific section of a Reader Parent Card. Return ONLY valid JSON matching the requested schema. No markdown code blocks. No preamble. Do NOT echo back the raw facts. If a parent cannot DO this within 10 seconds, delete it.",
+          messages: [{ role: "user", content: sectionPrompt + "\n\n<context>\nRAW FACTS:\n" + JSON.stringify(facts, null, 2) + "\n</context>\n\nOUTPUT ONLY THE JSON OBJECT." }],
           signal,
         });
-        return parseJsonResponse(payload?.content?.[0]?.text || "");
+        
+        let text = payload?.content?.[0]?.text || "";
+        if (text.trim().startsWith("```json")) {
+          text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+        } else if (text.trim().startsWith("```")) {
+          text = text.replace(/^```\s*/, "").replace(/\s*```$/, "");
+        }
+        
+        return parseJsonResponse(text);
       } catch (err) {
         if (attempt === 2) throw err;
         console.warn("[Reader101] Parent Card section validation failed, retrying:", err.message);
