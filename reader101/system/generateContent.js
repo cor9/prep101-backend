@@ -68,67 +68,7 @@ const SCHEMA_TEXT = `{
   "emotional_arc_mapping": []
 }`;
 
-// ── Parent Reader Schema (5-section, 45-second read, kitchen-table format) ───────
-// This is NOT a simplified actor guide. It is a completely different document
-// built for a parent who will read it once and immediately use it.
-const PARENT_SCHEMA_TEXT = `{
-  "your_lines": [
-    { "character": "", "line": "", "note": "" }
-  ],
-  "how_to_say_it": [""],
-  "pause_here": [""],
-  "dont_do_this": "",
-  "if_it_goes_wrong": ["", ""]
-}`;
-
-const PARENT_SYSTEM_PROMPT = `You are writing a Reader Parent Card for a self-tape session.
-
-WHO IS READING THIS: A parent. Not an actor. Not a coach.
-They are sitting across from their kid holding the script.
-They will read this once. They will not analyze it.
-Every bullet must be immediately actionable.
-
-Return ONLY valid JSON matching the schema exactly. No markdown. No preamble.
-
-SECTION DEFINITIONS (5 sections, no others):
-1. your_lines      — ONLY the dialogue they must say. In order. Exact words.
-2. how_to_say_it   — One physical instruction per line. No explanation.
-3. pause_here      — Exact moments to stop and wait. Named by line.
-4. dont_do_this    — One sentence. Binary. No softening.
-5. if_it_goes_wrong — Exactly 2 bullets. What to do right now if it breaks.
-
-HARD LIMITS (enforced at generation, not review):
-- Maximum 5 bullets per section
-- Maximum 10 words per bullet
-- Maximum 5 sections total (these 5, no others)
-
-VALIDATION — apply to every bullet before writing it:
-"Can this be done in 3 seconds?"
-If not → rewrite it as a physical action.
-If it still cannot pass → delete it.
-
-FAIL CONDITIONS — if output meets any of these, regenerate:
-- Sounds like acting advice
-- Explains instead of instructs
-- Contains: stakes, subtext, dynamic, tone, authenticity, grounded, present
-- Any bullet over 10 words
-
-LANGUAGE SWAP — mandatory replacements:
-"stay grounded"     → "say it flat"
-"hold the pressure" → "don't nod"
-"protect the turn"  → "wait one beat"
-"stay present"      → "look at them"
-"support the moment"→ "don't react"
-"stay available"    → "keep eye contact"
-
-FORMAT RULES:
-- your_lines: character name + exact line + note only if unusual word/name
-- how_to_say_it: "[first 3 words of line] → [instruction]" e.g. "Crack the case → say it flat"
-- pause_here: "After [exact line or cue] — stop. Wait."
-- dont_do_this: one sentence, starts with "Don't"
-- if_it_goes_wrong: 2 bullets, each under 6 words, physical only
-
-GOAL: A parent reads this in 45 seconds and uses it immediately. Nothing else matters.`;
+// ── Parent Reader Pipeline (6-section, two-pass generation) ───────
 
 
 function countMeaningfulWords(text = "") {
@@ -731,87 +671,122 @@ async function generateContent(meta = {}, options = {}) {
 
 // \u2500\u2500 Parent Reader Card generation \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-function buildParentPrompt(meta = {}) {
+// ─── Parent Reader Card generation ──────────────────────────────────────────────
+
+async function generateParentContent(meta = {}, { apiKey, signal }) {
+  console.log("[Reader101] PARENT_READER_MODE: Pass 1 — Extract raw facts");
+
   const actorName = (meta.characterName || "").trim();
   const readerRoles = Array.isArray(meta.characterNames) && meta.characterNames.length
     ? meta.characterNames.join(", ")
     : (meta.readerCharacterName || "all other characters");
-
   const cleanedText = scrubWatermarks(meta.sceneText || "").trim();
-  const hasSides = cleanedText.length > 50;
 
-  const sidesBlock = hasSides
-    ? `SIDES TEXT (extract your_lines verbatim from this):\n${clipText(cleanedText, 8000)}`
-    : `NO READABLE SIDES AVAILABLE. Use character names from metadata only. Mark all lines as approximate.`;
+  const pass1Prompt = `Extract raw facts from the scene. NO style. NO interpretation. Just raw facts.
+AUDITION ROLE (actor): ${actorName || "the actor"}
+READER ROLE(S): ${readerRoles}
 
-  return `Generate a Reader Parent Card.
+SIDES TEXT:
+${clipText(cleanedText, 8000)}
 
-AUDITION ROLE (your kid's character): ${actorName || "the actor"}
-READER ROLE(S) (what you read aloud): ${readerRoles}
+Return ONLY valid JSON matching exactly:
+{
+  "scene_summary": "string, 2 sentences max. Describes what happens literally.",
+  "reader_characters": ["char1", "char2"],
+  "lines": ["char: exact line text", "char: exact line text"],
+  "pauses": ["exact moment to pause 1", "exact moment to pause 2"]
+}`;
 
-${sidesBlock}
+  const { data: pass1Payload } = await sendAnthropicMessage({
+    apiKey,
+    preferredModel: DEFAULT_CLAUDE_MODEL,
+    maxTokens: 1500,
+    system: "You are a data extractor. Return only valid JSON. No explanations. No styling.",
+    messages: [{ role: "user", content: pass1Prompt }],
+    signal,
+  });
 
-Return the JSON now matching this exact schema:
-${PARENT_SCHEMA_TEXT}`;
-}
+  const pass1Raw = pass1Payload?.content?.[0]?.text || "";
+  const facts = parseJsonResponse(pass1Raw);
 
-function validateParentContent(data = {}) {
-  const errors = [];
-  if (!data || typeof data !== "object") return ["Response must be a JSON object."];
+  console.log("[Reader101] PARENT_READER_MODE: Pass 2 — Format (Generating 6 sections independently)");
 
-  if (!Array.isArray(data.your_lines) || data.your_lines.length === 0) {
-    errors.push("your_lines must be a non-empty array.");
-  }
-  if (!Array.isArray(data.how_to_say_it) || data.how_to_say_it.length === 0) {
-    errors.push("how_to_say_it must be a non-empty array.");
-  }
-  if (!Array.isArray(data.pause_here) || data.pause_here.length === 0) {
-    errors.push("pause_here must be a non-empty array.");
-  }
-  if (typeof data.dont_do_this !== "string" || !data.dont_do_this.trim()) {
-    errors.push("dont_do_this must be a non-empty string.");
-  }
-  if (!Array.isArray(data.if_it_goes_wrong) || data.if_it_goes_wrong.length < 2) {
-    errors.push("if_it_goes_wrong must have exactly 2 bullets.");
-  }
-  return errors;
-}
-
-async function generateParentContent(meta = {}, { apiKey, signal }) {
-  console.log("[Reader101] PARENT_READER_MODE: generating 5-section parent card");
-  const prompt = buildParentPrompt(meta);
-
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    try {
-      const { data: payload } = await sendAnthropicMessage({
-        apiKey,
-        preferredModel: DEFAULT_CLAUDE_MODEL,
-        maxTokens: 1800,
-        system: PARENT_SYSTEM_PROMPT,
-        messages: [{ role: "user", content: prompt }],
-        signal,
-      });
-
-      const rawText = payload?.content?.[0]?.text || "";
-      const parsed = parseJsonResponse(rawText);
-      const errors = validateParentContent(parsed);
-
-      if (errors.length) {
-        if (attempt < 2) continue;
-        console.warn("[Reader101] Parent card validation failed on retry:", errors.join(", "));
+  const generateSection = async (sectionPrompt, maxTokens = 500) => {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const { data: payload } = await sendAnthropicMessage({
+          apiKey,
+          preferredModel: DEFAULT_CLAUDE_MODEL,
+          maxTokens,
+          system: "You are formatting a specific section of a Reader Parent Card. Return ONLY valid JSON matching the requested schema. No markdown. No preamble. If a parent cannot DO this within 10 seconds, delete it.",
+          messages: [{ role: "user", content: sectionPrompt + "\n\nRAW FACTS:\n" + JSON.stringify(facts, null, 2) }],
+          signal,
+        });
+        return parseJsonResponse(payload?.content?.[0]?.text || "");
+      } catch (err) {
+        if (attempt === 2) throw err;
+        console.warn("[Reader101] Parent Card section validation failed, retrying:", err.message);
       }
-
-      return parsed;
-    } catch (err) {
-      if (attempt >= 2) throw err;
     }
-  }
-  throw new Error("Failed to generate parent reader card");
+  };
+
+  const p1 = generateSection(`01 — WHAT'S HAPPENING
+Write 2 sentences max.
+Describe only what happens.
+No emotions. No acting language.
+Write like a casual text message.
+If you use abstract words -> rewrite.
+Return JSON: { "whats_happening": "string" }`, 300);
+
+  const p2 = generateSection(`02 — WHO YOU'RE PLAYING
+List reader characters only.
+Format: NAME — description
+Max 8 words after dash.
+No adjectives describing emotion.
+No acting terms.
+Return JSON: { "who_youre_playing": ["NAME — description", ...] }`, 300);
+
+  const p3 = generateSection(`03 — HOW TO SAY IT
+Select up to 5 key lines for the reader.
+For each: "first few words" — physical instruction
+Allowed words only: flat, fast, slow, quiet, loud, no smile, straight face, look, stop, lean in, look away
+If instruction cannot be done in 3 seconds -> delete.
+Return JSON: { "how_to_say_it": ["\\"first few words\\" — instruction", ...] }`, 400);
+
+  const p4 = generateSection(`04 — PAUSE HERE
+List exact pause moments.
+Format: After "line" — wait.
+Max 5 bullets.
+No explanation.
+Return JSON: { "pause_here": ["After \\"line\\" — wait.", ...] }`, 400);
+
+  const p5 = generateSection(`05 — DON'T DO THIS
+Write ONE sentence.
+Name the most likely parent mistake.
+Must be specific to THIS scene.
+Return JSON: { "dont_do_this": "string" }`, 200);
+
+  const p6 = generateSection(`06 — IF IT GOES WRONG
+Write exactly 2 bullets.
+Each under 10 words.
+Must be direct actions: restart, point, pause, repeat, etc.
+No explanation.
+Return JSON: { "if_it_goes_wrong": ["action 1", "action 2"] }`, 200);
+
+  const [s1, s2, s3, s4, s5, s6] = await Promise.all([p1, p2, p3, p4, p5, p6]);
+
+  return {
+    whats_happening: s1.whats_happening || "",
+    who_youre_playing: s2.who_youre_playing || [],
+    how_to_say_it: s3.how_to_say_it || [],
+    pause_here: s4.pause_here || [],
+    dont_do_this: s5.dont_do_this || "",
+    if_it_goes_wrong: s6.if_it_goes_wrong || []
+  };
 }
 
 module.exports = {
   buildContentPrompt,
-  buildParentPrompt,
   generateContent,
   generateParentContent,
   validateStructuredContent,

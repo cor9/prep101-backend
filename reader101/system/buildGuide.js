@@ -602,19 +602,27 @@ async function buildParentGuide(meta = {}, options = {}) {
     return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  const yourLinesHtml = (Array.isArray(raw.your_lines) ? raw.your_lines : [])
-    .filter(l => l && String(l.line || "").trim())
-    .map(l => {
-      const char = esc(String(l.character || "").toUpperCase());
-      const line = esc(String(l.line || "").trim());
-      const note = String(l.note || "").trim();
-      return `<div class="line-row"><span class="line-char">${char}</span><span class="line-text">${line}${note ? `<span class="line-note">${esc(note)}</span>` : ""}</span></div>`;
-    }).join("") || `<p style="color:#9B9182;padding:12px;font-size:14px;">Use your script for the lines.</p>`;
+  const whatsHappeningHtml = `<p style="font-size:15px;line-height:1.6;color:var(--text);">${esc(String(raw.whats_happening || "Nothing explicitly defined. Read the scene carefully.").trim())}</p>`;
+
+  const whoYourePlayingHtml = (Array.isArray(raw.who_youre_playing) ? raw.who_youre_playing : [])
+    .filter(Boolean)
+    .map(s => {
+      const parts = String(s).split("—");
+      if (parts.length > 1) {
+        return `<div class="delivery-row"><p><strong style="color:#FAC775;text-transform:uppercase;font-size:12px;letter-spacing:0.05em;">${esc(parts[0].trim())}</strong> — ${esc(parts.slice(1).join("—").trim())}</p></div>`;
+      }
+      return `<div class="delivery-row"><p>${esc(String(s).trim())}</p></div>`;
+    }).join("") || `<div class="delivery-row"><p>Read for all other characters.</p></div>`;
 
   const howToSayHtml = (Array.isArray(raw.how_to_say_it) ? raw.how_to_say_it : [])
     .filter(Boolean)
-    .map(s => `<div class="delivery-row"><p>${esc(String(s).trim())}</p></div>`)
-    .join("") || `<div class="delivery-row"><p>Say it flat. Wait one beat.</p></div>`;
+    .map(s => {
+      const parts = String(s).split("—");
+      if (parts.length > 1) {
+        return `<div class="delivery-row"><p><strong>"${esc(parts[0].replace(/"/g, '').trim())}"</strong> — ${esc(parts.slice(1).join("—").trim())}</p></div>`;
+      }
+      return `<div class="delivery-row"><p>${esc(String(s).trim())}</p></div>`;
+    }).join("") || `<div class="delivery-row"><p>Say it flat. Wait one beat.</p></div>`;
 
   const pauseItems = Array.isArray(raw.pause_here) ? raw.pause_here.filter(Boolean) : [];
   const pauseHtml = pauseItems.length
@@ -656,19 +664,13 @@ async function buildParentGuide(meta = {}, options = {}) {
     .guide-sub{margin-top:6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
     .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
     .tag{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--text);background:rgba(255,255,255,0.06);}
-    .parent-banner{background:rgba(8,80,65,0.18);border:1px solid rgba(8,80,65,0.45);border-radius:12px;padding:14px 18px;margin-bottom:18px;font-size:13px;line-height:1.6;color:#b2d4cc;}
-    .parent-banner strong{color:#d6ede8;}
     .section{margin-bottom:14px;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:rgba(22,28,25,0.94);box-shadow:0 20px 60px rgba(0,0,0,0.22);}
     .sec-head{display:flex;align-items:center;gap:10px;padding:11px 16px;}
     .sh-red{background:#791F1F;} .sh-teal{background:#085041;} .sh-amber{background:#633806;} .sh-dark{background:#252a27;} .sh-stop{background:#3d1a00;} .sh-reset{background:rgba(241,239,232,0.07);}
     .sec-num{min-width:28px;font-size:11px;font-weight:800;letter-spacing:0.06em;color:#D5D1C8;}
     .sec-title{font-size:15px;font-weight:800;}
     .sec-badge{margin-left:auto;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,0.14);color:#F1EFE8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;}
-    .lines-body,.delivery-body,.stop-body,.never-body,.reset-body{padding:14px 18px 18px;}
-    .line-row{display:flex;align-items:baseline;gap:10px;padding:9px 12px;border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);}
-    .line-char{flex-shrink:0;min-width:90px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#FAC775;}
-    .line-text{font-size:16px;font-weight:600;line-height:1.5;color:var(--text);}
-    .line-note{display:block;margin-top:4px;font-size:12px;color:var(--muted);font-style:italic;}
+    .delivery-body,.stop-body,.never-body,.reset-body{padding:14px 18px 18px;}
     .delivery-row{padding:10px 14px;border-radius:10px;margin-bottom:8px;background:rgba(8,80,65,0.10);border-left:3px solid #085041;}
     .delivery-row p{font-size:14px;line-height:1.6;color:var(--text);}
     .stop-list{list-style:none;}
@@ -677,81 +679,69 @@ async function buildParentGuide(meta = {}, options = {}) {
     .never-rule{font-size:18px;font-weight:700;line-height:1.45;color:#F1EFE8;padding:14px 18px;background:rgba(121,31,31,0.18);border-radius:12px;border-left:4px solid #E24B4A;}
     .reset-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
     .reset-list li{font-size:15px;font-weight:600;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text);}
-    .cta-section{margin-top:24px;padding:20px;background:#fff;border-radius:16px;}
-    .cta-section p{font-size:14px;color:#1a1a1a;font-family:sans-serif;margin-bottom:8px;}
-    .cta-btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
-    .cta-btns a{background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;font-family:sans-serif;}
-    @media(max-width:580px){.line-row{flex-direction:column;gap:4px;}.line-char{min-width:unset;}}
   </style>
 </head>
 <body>
   <div class="guide">
     <div class="guide-header">
-      <div class="guide-title">${TITLE}</div>
-      <div class="guide-sub">${SUB}</div>
-      <div class="tag-row">${tagHtml}</div>
-    </div>
-
-    <div class="parent-banner">
-      <strong>You're the reader.</strong> Your kid is auditioning. This guide tells you exactly what to say, how to say it, and when to stop. Read it once. Then put it down and just do it.
+      <div class="guide-title">\${TITLE}</div>
+      <div class="guide-sub">\${SUB}</div>
+      <div class="tag-row">\${tagHtml}</div>
     </div>
 
     <div class="section">
       <div class="sec-head sh-teal">
         <span class="sec-num">01</span>
-        <span class="sec-title">Your Lines</span>
-        <span class="sec-badge">say exactly this</span>
+        <span class="sec-title">What's Happening</span>
       </div>
-      <div class="lines-body">${yourLinesHtml}</div>
+      <div class="delivery-body">\${whatsHappeningHtml}</div>
     </div>
 
     <div class="section">
       <div class="sec-head sh-amber">
         <span class="sec-num">02</span>
+        <span class="sec-title">Who You're Playing</span>
+      </div>
+      <div class="delivery-body">\${whoYourePlayingHtml}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-teal">
+        <span class="sec-num">03</span>
         <span class="sec-title">How To Say It</span>
       </div>
-      <div class="delivery-body">${howToSayHtml}</div>
+      <div class="delivery-body">\${howToSayHtml}</div>
     </div>
 
     <div class="section">
       <div class="sec-head sh-stop">
-        <span class="sec-num">03</span>
+        <span class="sec-num">04</span>
         <span class="sec-title">Pause Here</span>
         <span class="sec-badge">silence is right</span>
       </div>
-      <div class="stop-body">${pauseHtml}</div>
+      <div class="stop-body">\${pauseHtml}</div>
     </div>
 
     <div class="section">
       <div class="sec-head sh-red">
-        <span class="sec-num">04</span>
+        <span class="sec-num">05</span>
         <span class="sec-title">Don't Do This</span>
       </div>
       <div class="never-body">
-        <div class="never-rule">${neverDoText}</div>
+        <div class="never-rule">\${neverDoText}</div>
       </div>
     </div>
 
     <div class="section">
       <div class="sec-head sh-reset">
-        <span class="sec-num">05</span>
+        <span class="sec-num">06</span>
         <span class="sec-title" style="color:#F1EFE8;">If It Goes Wrong</span>
       </div>
-      <div class="reset-body">${ifWrongHtml}</div>
-    </div>
-
-    <div class="cta-section">
-      <p><strong>Want help with the actual performance?</strong></p>
-      <p>Your kid's lines, choices, and how to build a tape that stands out — that's what the system is for.</p>
-      <div class="cta-btns">
-        <a href="https://boldchoices.site">Bold Choices</a>
-        <a href="https://prep101.site">Prep101 Guide</a>
-        <a href="https://coaching.childactor101.com">Book Coaching</a>
-      </div>
+      <div class="reset-body">\${ifWrongHtml}</div>
     </div>
   </div>
 </body>
-</html>`;
+</html>\`;
 }
 
 
