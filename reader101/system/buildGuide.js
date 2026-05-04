@@ -684,9 +684,9 @@ async function buildParentGuide(meta = {}, options = {}) {
 <body>
   <div class="guide">
     <div class="guide-header">
-      <div class="guide-title">\${TITLE}</div>
-      <div class="guide-sub">\${SUB}</div>
-      <div class="tag-row">\${tagHtml}</div>
+      <div class="guide-title">${TITLE}</div>
+      <div class="guide-sub">${SUB}</div>
+      <div class="tag-row">${tagHtml}</div>
     </div>
 
     <div class="section">
@@ -694,7 +694,7 @@ async function buildParentGuide(meta = {}, options = {}) {
         <span class="sec-num">01</span>
         <span class="sec-title">What's Happening</span>
       </div>
-      <div class="delivery-body">\${whatsHappeningHtml}</div>
+      <div class="delivery-body">${whatsHappeningHtml}</div>
     </div>
 
     <div class="section">
@@ -702,7 +702,7 @@ async function buildParentGuide(meta = {}, options = {}) {
         <span class="sec-num">02</span>
         <span class="sec-title">Who You're Playing</span>
       </div>
-      <div class="delivery-body">\${whoYourePlayingHtml}</div>
+      <div class="delivery-body">${whoYourePlayingHtml}</div>
     </div>
 
     <div class="section">
@@ -710,7 +710,7 @@ async function buildParentGuide(meta = {}, options = {}) {
         <span class="sec-num">03</span>
         <span class="sec-title">How To Say It</span>
       </div>
-      <div class="delivery-body">\${howToSayHtml}</div>
+      <div class="delivery-body">${howToSayHtml}</div>
     </div>
 
     <div class="section">
@@ -719,7 +719,7 @@ async function buildParentGuide(meta = {}, options = {}) {
         <span class="sec-title">Pause Here</span>
         <span class="sec-badge">silence is right</span>
       </div>
-      <div class="stop-body">\${pauseHtml}</div>
+      <div class="stop-body">${pauseHtml}</div>
     </div>
 
     <div class="section">
@@ -728,7 +728,7 @@ async function buildParentGuide(meta = {}, options = {}) {
         <span class="sec-title">Don't Do This</span>
       </div>
       <div class="never-body">
-        <div class="never-rule">\${neverDoText}</div>
+        <div class="never-rule">${neverDoText}</div>
       </div>
     </div>
 
@@ -737,11 +737,11 @@ async function buildParentGuide(meta = {}, options = {}) {
         <span class="sec-num">06</span>
         <span class="sec-title" style="color:#F1EFE8;">If It Goes Wrong</span>
       </div>
-      <div class="reset-body">\${ifWrongHtml}</div>
+      <div class="reset-body">${ifWrongHtml}</div>
     </div>
   </div>
 </body>
-</html>\`;
+</html>`;
 }
 
 
