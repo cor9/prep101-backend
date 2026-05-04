@@ -115,29 +115,34 @@ function parseJsonResponse(text = "") {
       } catch (e) {}
     }
 
-    // Try to extract the LAST complete object
+    // Try to extract by finding JSON objects
+    // This looks for all possible opening braces
     try {
+      const openBraces = [];
+      for (let i = 0; i < raw.length; i++) {
+        if (raw[i] === "{") openBraces.push(i);
+      }
+      
       const lastBrace = raw.lastIndexOf("}");
-      if (lastBrace !== -1) {
-        let openBraceCount = 0;
-        let firstBrace = -1;
-        for (let i = lastBrace; i >= 0; i--) {
-          if (raw[i] === "}") openBraceCount++;
-          if (raw[i] === "{") {
-            openBraceCount--;
-            if (openBraceCount === 0) {
-              firstBrace = i;
-              break;
-            }
+      
+      if (openBraces.length > 0 && lastBrace !== -1) {
+        // Try from the last opening brace backwards
+        for (let i = openBraces.length - 1; i >= 0; i--) {
+          const startIndex = openBraces[i];
+          if (startIndex > lastBrace) continue;
+          
+          try {
+            const possibleJson = raw.slice(startIndex, lastBrace + 1);
+            return JSON.parse(possibleJson);
+          } catch (e) {
+            // Keep trying earlier opening braces
           }
-        }
-        if (firstBrace !== -1) {
-          return JSON.parse(raw.slice(firstBrace, lastBrace + 1));
         }
       }
     } catch (e) {}
 
-    throw error;
+    // If all recovery attempts fail, throw a clear error with the preview
+    throw new Error(`Claude returned invalid JSON: ${error.message} (Preview: ${raw.slice(0, 100)})`);
   }
 }
 
