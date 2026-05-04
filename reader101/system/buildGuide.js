@@ -583,7 +583,6 @@ async function buildGuide(meta = {}, options = {}) {
 
 async function buildParentGuide(meta = {}, options = {}) {
   const { generateParentContent } = require("./generateContent");
-  const templatePath = path.join(process.cwd(), "reader101", "templates", "parent.html");
   const signal = options.signal;
   const actorRole = (meta.characterName || "").trim();
   const readerRoles = Array.isArray(meta.characterNames) && meta.characterNames.length
@@ -593,58 +592,168 @@ async function buildParentGuide(meta = {}, options = {}) {
   let raw = {};
   try {
     raw = await generateParentContent(meta, { apiKey: process.env.ANTHROPIC_API_KEY, signal });
+    console.log("[Reader101] Parent card generated:", JSON.stringify(raw).slice(0, 200));
   } catch (err) {
-    console.warn("[Reader101] Parent card generation failed, using empty fallback:", err.message);
+    console.warn("[Reader101] Parent card generation failed:", err.message);
   }
 
-  // ── Normalize parent card fields ────────────────────────────────────────────
-  const yourLines = (Array.isArray(raw.your_lines) ? raw.your_lines : []).map(l => {
-    const char = String(l.character || "").trim().toUpperCase();
-    const line = String(l.line || "").trim();
-    const note = String(l.note || "").trim();
-    if (!line) return null;
-    return `<div class="line-row"><span class="line-char">${char}</span><span class="line-text">${line}${note ? `<span class="line-note">${note}</span>` : ""}</span></div>`;
-  }).filter(Boolean).join("");
+  // ── Build HTML fragments directly (no renderTemplate — it uses actor guide tokens) ──
+  function esc(s) {
+    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
 
-  const howToSay = (Array.isArray(raw.how_to_say_it) ? raw.how_to_say_it : []).map(s =>
-    `<div class="delivery-row"><p>${String(s).trim()}</p></div>`
-  ).join("");
+  const yourLinesHtml = (Array.isArray(raw.your_lines) ? raw.your_lines : [])
+    .filter(l => l && String(l.line || "").trim())
+    .map(l => {
+      const char = esc(String(l.character || "").toUpperCase());
+      const line = esc(String(l.line || "").trim());
+      const note = String(l.note || "").trim();
+      return `<div class="line-row"><span class="line-char">${char}</span><span class="line-text">${line}${note ? `<span class="line-note">${esc(note)}</span>` : ""}</span></div>`;
+    }).join("") || `<p style="color:#9B9182;padding:12px;font-size:14px;">Use your script for the lines.</p>`;
 
-  const pauseHere = buildList(Array.isArray(raw.pause_here) ? raw.pause_here : [], "stop-list");
+  const howToSayHtml = (Array.isArray(raw.how_to_say_it) ? raw.how_to_say_it : [])
+    .filter(Boolean)
+    .map(s => `<div class="delivery-row"><p>${esc(String(s).trim())}</p></div>`)
+    .join("") || `<div class="delivery-row"><p>Say it flat. Wait one beat.</p></div>`;
 
-  const neverDo = String(raw.dont_do_this || "").trim() ||
-    `Don't add anything after your last line. Stop. Look at them.`;
+  const pauseItems = Array.isArray(raw.pause_here) ? raw.pause_here.filter(Boolean) : [];
+  const pauseHtml = pauseItems.length
+    ? `<ul class="stop-list">${pauseItems.map(s => `<li>${esc(String(s).trim())}</li>`).join("")}</ul>`
+    : `<ul class="stop-list"><li>After your last line — stop. Wait.</li></ul>`;
 
-  const ifWrong = buildList(
-    Array.isArray(raw.if_it_goes_wrong) ? raw.if_it_goes_wrong : ["Say it flat.", "Wait one beat."],
-    "reset-list"
-  );
+  const neverDoText = esc(String(raw.dont_do_this || "Don't add anything after your last line.").trim());
 
-  // ── Build title row ───────────────────────────────────────────────────────
+  const ifWrongItems = Array.isArray(raw.if_it_goes_wrong) ? raw.if_it_goes_wrong.filter(Boolean) : [];
+  const ifWrongHtml = ifWrongItems.length >= 2
+    ? `<ul class="reset-list">${ifWrongItems.slice(0, 2).map(s => `<li>${esc(String(s).trim())}</li>`).join("")}</ul>`
+    : `<ul class="reset-list"><li>Say it flat.</li><li>Wait one beat.</li></ul>`;
+
+  // ── Title / tags ──────────────────────────────────────────────────────────
   const titleParts = [meta.productionTitle, actorRole].filter(Boolean);
-  const TITLE = titleParts.length ? `Reader Card — ${titleParts.join(" / ")}` : "Reader Parent Card";
-  const SUB = [`for ${actorRole || "actor"}`, meta.productionTitle, meta.productionType].filter(Boolean).join(" · ");
+  const TITLE = esc(titleParts.length ? `Reader Card — ${titleParts.join(" / ")}` : "Reader Parent Card");
+  const SUB = esc([`for ${actorRole || "actor"}`, meta.productionTitle, meta.productionType].filter(Boolean).join(" · "));
   const readerLabel = readerRoles.join(" / ");
-  const TAG_ROW = [
+  const tagHtml = [
     `<span class="tag">Reader101</span>`,
     `<span class="tag">Parent Card</span>`,
-    readerLabel ? `<span class="tag">${readerLabel}</span>` : "",
-    meta.genre ? `<span class="tag">${meta.genre}</span>` : "",
+    readerLabel ? `<span class="tag">${esc(readerLabel)}</span>` : "",
+    meta.genre ? `<span class="tag">${esc(meta.genre)}</span>` : "",
   ].filter(Boolean).join("");
 
-  const normalized = {
-    TITLE, SUB, TAG_ROW,
-    NOTICE_BLOCK: "",
-    YOUR_LINES: yourLines || `<p style="color:#9B9182;font-size:14px;padding:12px">Lines not extracted — use your script.</p>`,
-    HOW_TO_SAY: howToSay || `<div class="delivery-row"><p>Say it flat. Stop. Wait.</p></div>`,
-    WHEN_TO_STOP: pauseHere,
-    NEVER_DO: neverDo,
-    QUICK_RESET: ifWrong,
-  };
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${TITLE}</title>
+  <style>
+    :root{--bg:#0e1210;--surface:#161c19;--border:rgba(241,239,232,0.10);--text:#F1EFE8;--muted:#9B9182;--amber:#633806;--teal:#085041;--red:#791F1F;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:linear-gradient(160deg,#0c110f 0%,#0e1210 100%);color:var(--text);font-family:"Avenir Next","Trebuchet MS",system-ui,sans-serif;padding:24px 16px 60px;}
+    .guide{max-width:780px;margin:0 auto;}
+    .guide-header{padding-bottom:18px;margin-bottom:22px;border-bottom:3px solid #BA7517;}
+    .guide-title{font-size:clamp(24px,4vw,36px);font-weight:700;}
+    .guide-sub{margin-top:6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
+    .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+    .tag{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--text);background:rgba(255,255,255,0.06);}
+    .parent-banner{background:rgba(8,80,65,0.18);border:1px solid rgba(8,80,65,0.45);border-radius:12px;padding:14px 18px;margin-bottom:18px;font-size:13px;line-height:1.6;color:#b2d4cc;}
+    .parent-banner strong{color:#d6ede8;}
+    .section{margin-bottom:14px;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:rgba(22,28,25,0.94);box-shadow:0 20px 60px rgba(0,0,0,0.22);}
+    .sec-head{display:flex;align-items:center;gap:10px;padding:11px 16px;}
+    .sh-red{background:#791F1F;} .sh-teal{background:#085041;} .sh-amber{background:#633806;} .sh-dark{background:#252a27;} .sh-stop{background:#3d1a00;} .sh-reset{background:rgba(241,239,232,0.07);}
+    .sec-num{min-width:28px;font-size:11px;font-weight:800;letter-spacing:0.06em;color:#D5D1C8;}
+    .sec-title{font-size:15px;font-weight:800;}
+    .sec-badge{margin-left:auto;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,0.14);color:#F1EFE8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;}
+    .lines-body,.delivery-body,.stop-body,.never-body,.reset-body{padding:14px 18px 18px;}
+    .line-row{display:flex;align-items:baseline;gap:10px;padding:9px 12px;border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);}
+    .line-char{flex-shrink:0;min-width:90px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:#FAC775;}
+    .line-text{font-size:16px;font-weight:600;line-height:1.5;color:var(--text);}
+    .line-note{display:block;margin-top:4px;font-size:12px;color:var(--muted);font-style:italic;}
+    .delivery-row{padding:10px 14px;border-radius:10px;margin-bottom:8px;background:rgba(8,80,65,0.10);border-left:3px solid #085041;}
+    .delivery-row p{font-size:14px;line-height:1.6;color:var(--text);}
+    .stop-list{list-style:none;}
+    .stop-list li{font-size:14px;line-height:1.6;padding:8px 14px 8px 36px;position:relative;color:var(--text);margin-bottom:6px;background:rgba(61,26,0,0.18);border-radius:8px;}
+    .stop-list li::before{content:"✋";position:absolute;left:10px;top:8px;font-size:14px;}
+    .never-rule{font-size:18px;font-weight:700;line-height:1.45;color:#F1EFE8;padding:14px 18px;background:rgba(121,31,31,0.18);border-radius:12px;border-left:4px solid #E24B4A;}
+    .reset-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
+    .reset-list li{font-size:15px;font-weight:600;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text);}
+    .cta-section{margin-top:24px;padding:20px;background:#fff;border-radius:16px;}
+    .cta-section p{font-size:14px;color:#1a1a1a;font-family:sans-serif;margin-bottom:8px;}
+    .cta-btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+    .cta-btns a{background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;font-family:sans-serif;}
+    @media(max-width:580px){.line-row{flex-direction:column;gap:4px;}.line-char{min-width:unset;}}
+  </style>
+</head>
+<body>
+  <div class="guide">
+    <div class="guide-header">
+      <div class="guide-title">${TITLE}</div>
+      <div class="guide-sub">${SUB}</div>
+      <div class="tag-row">${tagHtml}</div>
+    </div>
 
-  const html = renderTemplate(templatePath, normalized);
-  return html;
+    <div class="parent-banner">
+      <strong>You're the reader.</strong> Your kid is auditioning. This guide tells you exactly what to say, how to say it, and when to stop. Read it once. Then put it down and just do it.
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-teal">
+        <span class="sec-num">01</span>
+        <span class="sec-title">Your Lines</span>
+        <span class="sec-badge">say exactly this</span>
+      </div>
+      <div class="lines-body">${yourLinesHtml}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-amber">
+        <span class="sec-num">02</span>
+        <span class="sec-title">How To Say It</span>
+      </div>
+      <div class="delivery-body">${howToSayHtml}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-stop">
+        <span class="sec-num">03</span>
+        <span class="sec-title">Pause Here</span>
+        <span class="sec-badge">silence is right</span>
+      </div>
+      <div class="stop-body">${pauseHtml}</div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-red">
+        <span class="sec-num">04</span>
+        <span class="sec-title">Don't Do This</span>
+      </div>
+      <div class="never-body">
+        <div class="never-rule">${neverDoText}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-head sh-reset">
+        <span class="sec-num">05</span>
+        <span class="sec-title" style="color:#F1EFE8;">If It Goes Wrong</span>
+      </div>
+      <div class="reset-body">${ifWrongHtml}</div>
+    </div>
+
+    <div class="cta-section">
+      <p><strong>Want help with the actual performance?</strong></p>
+      <p>Your kid's lines, choices, and how to build a tape that stands out — that's what the system is for.</p>
+      <div class="cta-btns">
+        <a href="https://boldchoices.site">Bold Choices</a>
+        <a href="https://prep101.site">Prep101 Guide</a>
+        <a href="https://coaching.childactor101.com">Book Coaching</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
 }
+
 
 function buildList(items, className) {
   if (!items.length) return "";
