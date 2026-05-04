@@ -95,6 +95,86 @@ function clipText(text = "", maxLength = 14000) {
   return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength)}\n...[truncated]` : cleaned;
 }
 
+function collectJsonCandidates(raw = "") {
+  const text = String(raw || "");
+  const candidates = [];
+
+  for (let start = 0; start < text.length; start += 1) {
+    const opening = text[start];
+    if (opening !== "{" && opening !== "[") continue;
+
+    const closing = opening === "{" ? "}" : "]";
+    const stack = [closing];
+    let inString = false;
+    let escaped = false;
+
+    for (let i = start + 1; i < text.length; i += 1) {
+      const char = text[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = inString;
+        continue;
+      }
+
+      if (char === "\"") {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (char === "{" || char === "[") {
+        stack.push(char === "{" ? "}" : "]");
+        continue;
+      }
+
+      if (char === "}" || char === "]") {
+        if (char !== stack[stack.length - 1]) {
+          break;
+        }
+
+        stack.pop();
+
+        if (stack.length === 0) {
+          candidates.push({
+            start,
+            end: i + 1,
+            text: text.slice(start, i + 1),
+          });
+          break;
+        }
+      }
+    }
+  }
+
+  return candidates.sort((a, b) => {
+    if (b.end !== a.end) return b.end - a.end;
+    const bLength = b.end - b.start;
+    const aLength = a.end - a.start;
+    if (bLength !== aLength) return bLength - aLength;
+    return b.start - a.start;
+  });
+}
+
+function parseJsonCandidate(raw = "") {
+  const candidates = collectJsonCandidates(raw);
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate.text);
+    } catch (error) {
+      // Keep trying candidates; model output often contains JSON examples
+      // before the actual payload.
+    }
+  }
+
+  return null;
+}
+
 function parseJsonResponse(text = "") {
   const raw = String(text || "").trim();
 
@@ -108,38 +188,19 @@ function parseJsonResponse(text = "") {
     console.error("[Reader101] generateContent FAILED — attempting recovery. Error:", error.message);
     
     // Try to extract from markdown fences
-    const mdMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (mdMatch && mdMatch[1]) {
+    const fenceMatches = [...raw.matchAll(/```(?:json)?\s*([\s\S]*?)\s*```/gi)];
+    for (let i = fenceMatches.length - 1; i >= 0; i -= 1) {
+      const fenced = fenceMatches[i][1];
       try {
-        return JSON.parse(mdMatch[1].trim());
-      } catch (e) {}
+        return JSON.parse(fenced.trim());
+      } catch (e) {
+        const parsedFence = parseJsonCandidate(fenced);
+        if (parsedFence) return parsedFence;
+      }
     }
 
-    // Try to extract by finding JSON objects
-    // This looks for all possible opening braces
-    try {
-      const openBraces = [];
-      for (let i = 0; i < raw.length; i++) {
-        if (raw[i] === "{") openBraces.push(i);
-      }
-      
-      const lastBrace = raw.lastIndexOf("}");
-      
-      if (openBraces.length > 0 && lastBrace !== -1) {
-        // Try from the last opening brace backwards
-        for (let i = openBraces.length - 1; i >= 0; i--) {
-          const startIndex = openBraces[i];
-          if (startIndex > lastBrace) continue;
-          
-          try {
-            const possibleJson = raw.slice(startIndex, lastBrace + 1);
-            return JSON.parse(possibleJson);
-          } catch (e) {
-            // Keep trying earlier opening braces
-          }
-        }
-      }
-    } catch (e) {}
+    const parsedCandidate = parseJsonCandidate(raw);
+    if (parsedCandidate) return parsedCandidate;
 
     // If all recovery attempts fail, throw a clear error with the preview
     throw new Error(`Claude returned invalid JSON: ${error.message} (Preview: ${raw.slice(0, 100)})`);
@@ -826,5 +887,6 @@ module.exports = {
   buildContentPrompt,
   generateContent,
   generateParentContent,
+  parseJsonResponse,
   validateStructuredContent,
 };
