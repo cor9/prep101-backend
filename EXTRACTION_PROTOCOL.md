@@ -8,6 +8,12 @@ Generate from verified script text, not from raw PDF text volume. A PDF can cont
 
 ## Runtime Protocol
 
+0. Upload transport routing
+   - Vercel serverless functions cannot be the transport for large PDF multipart bodies.
+   - Client PDFs over 3MB must route directly to the serverful Render/Node upload origin: `REACT_APP_RENDER_UPLOAD_URL + /upload/pdf`.
+   - PDFs at or under 3MB may continue through the normal `/api/upload` path.
+   - Do not solve this by client-side compression, PDF base64 encoding, or trying to raise Vercel's request-body limit.
+
 1. Fast text-layer pass
    - Run `pdf-parse` / Adobe text extraction.
    - Keep page count and raw diagnostics.

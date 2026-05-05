@@ -10,6 +10,10 @@ This pipeline decouples upload from extraction and uses:
 
 ## API Endpoints
 
+- `POST /upload/pdf` (`multipart/form-data`, `file=PDF`)
+  - Serverful/Render upload route for PDFs over 3MB so uploads bypass Vercel's serverless request-body ceiling.
+  - Uses the same PDF ingest response contract as `/api/upload`.
+  - Requires the frontend build variable `REACT_APP_RENDER_UPLOAD_URL` to point at the Render/Node upload origin.
 - `POST /api/extraction/jobs` (`multipart/form-data`, `file=PDF`)
   - Queues extraction job.
   - Returns `202` with `jobId`.
@@ -59,6 +63,7 @@ Value should be your Render URL.
 
 - `REDIS_URL`
 - `PDF_PURIFIER_URL`
+- `REACT_APP_RENDER_UPLOAD_URL` (Netlify frontend build variable for large PDF upload routing)
 - `MISTRAL_API_KEY`
 - `LLAMA_CLOUD_API_KEY` (fallback path)
 

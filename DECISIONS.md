@@ -1,3 +1,13 @@
+## 2026-05-05
+**Issue:** PDFs over Vercel's practical multipart/request-body ceiling were failing with HTTP 413 before the upload pipeline could extract script text. Files like `MADDIE_Marked_Sides_5.5.26 (1).pdf` are under the product upload promise but over the Vercel serverless transport limit.
+**Decision:** Kept normal small-PDF uploads on `/api/upload`, but routed client PDFs over 3MB directly to the serverful Render/Node upload origin via `REACT_APP_RENDER_UPLOAD_URL + /upload/pdf`. Added `/upload/pdf` as a serverful alias for the same PDF upload pipeline, raised Express and multer upload limits to 20MB, and avoided client-side PDF compression/base64 workarounds.
+**Status:** Success
+
+## 2026-05-05
+**Issue:** The large-PDF routing change depends on a build-time frontend env var, so Netlify sites needed fresh deploys after adding `REACT_APP_RENDER_UPLOAD_URL`.
+**Decision:** Triggered fresh Netlify production redeploys for `prep101.site`, `reader101.site`, and `boldchoices.site`. Prep101 and Reader101 rebuilt through Netlify cloud builds; Bold Choices was redeployed through its manual/API Netlify deploy path.
+**Status:** Success
+
 ## 2026-05-01
 **Issue:** Reader101 could misread screenplay metadata and action labels (`SCRIPT TITLE`, `IN THEIR EYES`, `LOU CONT`) as reader roles, producing guides that coached fake scene partners instead of the actual counterpart.
 **Decision:** Added multi-layer reader-role sanitation in the screenplay parser, Reader101 cue inference, direct Reader101 PDF route, and queued Reader101 job processor. Continuation cues, title placeholders, eye/action labels, and technical labels are now rejected before guide generation.
