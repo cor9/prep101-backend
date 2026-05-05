@@ -6,8 +6,8 @@ import { withApiCredentials } from '../utils/apiAuth';
 
 const DIRECT_API_BASE = 'https://prep101-api.vercel.app';
 const MAX_FILES = 2;
-const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
-const MAX_UPLOAD_LABEL = '4MB';
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_UPLOAD_LABEL = '10MB';
 
 const isLegacyFallbackMessage = (value = '') =>
   /limited script text detected|upload clearer sides for line-specific detail/i.test(
@@ -25,7 +25,7 @@ const parseResponseSafely = async (response) => {
     return {
       ok: false,
       data: {
-        error: `This PDF is too large for upload. Please use a file under ${MAX_UPLOAD_LABEL}, or export/compress the sides and try again.`,
+        error: 'The upload service rejected this PDF before Reader101 could process it. Please export/compress the sides PDF and try again, or paste the sides text directly.',
         raw: raw.slice(0, 180),
       },
     };

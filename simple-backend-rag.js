@@ -308,7 +308,7 @@ app.use(speedLimiter);
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 4 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 function handleUploadMiddleware(req, res, next) {
@@ -318,7 +318,7 @@ function handleUploadMiddleware(req, res, next) {
     if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({
         success: false,
-        error: "This PDF is too large for upload. Please use a file under 4MB, or export/compress the sides and try again.",
+        error: "This PDF is too large for upload. Please use a file under 10MB, or export/compress the sides and try again.",
         code: "UPLOAD_FILE_TOO_LARGE",
       });
     }
