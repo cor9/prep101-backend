@@ -308,8 +308,32 @@ app.use(speedLimiter);
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 4 * 1024 * 1024 },
 });
+
+function handleUploadMiddleware(req, res, next) {
+  upload.single("file")(req, res, (error) => {
+    if (!error) return next();
+
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        success: false,
+        error: "This PDF is too large for upload. Please use a file under 4MB, or export/compress the sides and try again.",
+        code: "UPLOAD_FILE_TOO_LARGE",
+      });
+    }
+
+    if (error instanceof multer.MulterError) {
+      return res.status(400).json({
+        success: false,
+        error: "File upload failed. Please try another PDF.",
+        code: error.code || "UPLOAD_ERROR",
+      });
+    }
+
+    return next(error);
+  });
+}
 
 const { uploads, storeUpload } = require("./services/uploadStore");
 
@@ -2769,7 +2793,7 @@ app.options("/api/upload", (req, res) => {
 
 // PDF Upload endpoint
 // PDF Upload endpoint
-app.post("/api/upload", upload.single("file"), async (req, res) => {
+app.post("/api/upload", handleUploadMiddleware, async (req, res) => {
   try {
     if (!req.file || req.file.mimetype !== "application/pdf") {
       return res.status(400).json({ error: "Please upload a PDF file" });
@@ -2920,7 +2944,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 });
 
 // Claude Two-Call PDF -> Guide endpoint
-app.post("/api/guides/generate-from-pdf", auth, upload.single("file"), async (req, res) => {
+app.post("/api/guides/generate-from-pdf", auth, handleUploadMiddleware, async (req, res) => {
   try {
     const {
       uploadId,
