@@ -8,6 +8,8 @@ const DIRECT_API_BASE = 'https://prep101-api.vercel.app';
 const MAX_FILES = 2;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_UPLOAD_LABEL = '10MB';
+const RENDER_UPLOAD_THRESHOLD_BYTES = 3 * 1024 * 1024;
+const RENDER_UPLOAD_BASE = (process.env.REACT_APP_RENDER_UPLOAD_URL || '').replace(/\/$/, '');
 
 const isLegacyFallbackMessage = (value = '') =>
   /limited script text detected|upload clearer sides for line-specific detail/i.test(
@@ -46,13 +48,34 @@ const parseResponseSafely = async (response) => {
   }
 };
 
+const buildUploadRoute = (file) => {
+  const shouldUseRender = file.size > RENDER_UPLOAD_THRESHOLD_BYTES;
+
+  if (shouldUseRender) {
+    if (!RENDER_UPLOAD_BASE) {
+      throw new Error(
+        'Large PDF upload route is not configured. Set REACT_APP_RENDER_UPLOAD_URL so PDFs over 3MB bypass Vercel.'
+      );
+    }
+
+    return {
+      uploadUrl: `${RENDER_UPLOAD_BASE}/upload/pdf`,
+      fallbackUrl: null,
+    };
+  }
+
+  return {
+    uploadUrl: `${API_BASE}/api/upload`,
+    fallbackUrl: `${DIRECT_API_BASE}/api/upload`,
+  };
+};
+
 const uploadSingleFile = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const uploadUrl = `${API_BASE}/api/upload`;
-  const fallbackUrl = `${DIRECT_API_BASE}/api/upload`;
-  const canFallback = uploadUrl !== fallbackUrl;
+  const { uploadUrl, fallbackUrl } = buildUploadRoute(file);
+  const canFallback = Boolean(fallbackUrl && uploadUrl !== fallbackUrl);
 
   const requestInit = {
     method: 'POST',
@@ -235,7 +258,7 @@ const FileUpload = ({ onUpload, onUploadStart, onUploadEnd, allowMultiple = fals
         onUploadEnd(uploadSucceeded);
       }
     }
-  }, [onUpload, onUploadStart, onUploadEnd, allowMultiple]);
+  }, [onUpload, onUploadStart, onUploadEnd]);
 
   const maxFiles = allowMultiple ? MAX_FILES : 1;
 

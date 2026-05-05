@@ -149,8 +149,8 @@ app.get("/favicon.ico", (req, res) => {
 app.set("trust proxy", 1);
 
 // Basic middleware setup first
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 // CORS middleware — explicit allowlist so platform-level headers (vercel.json) and
 // Express headers stay in sync. Known origins get specific ACAO + credentials (needed
@@ -308,7 +308,7 @@ app.use(speedLimiter);
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
 });
 
 function handleUploadMiddleware(req, res, next) {
@@ -318,7 +318,7 @@ function handleUploadMiddleware(req, res, next) {
     if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({
         success: false,
-        error: "This PDF is too large for upload. Please use a file under 10MB, or export/compress the sides and try again.",
+        error: "This PDF is too large for upload. Please use a file under 20MB, or export/compress the sides and try again.",
         code: "UPLOAD_FILE_TOO_LARGE",
       });
     }
@@ -2791,15 +2791,22 @@ app.options("/api/upload", (req, res) => {
   res.status(200).end();
 });
 
-// PDF Upload endpoint
-// PDF Upload endpoint
-app.post("/api/upload", handleUploadMiddleware, async (req, res) => {
+app.options("/upload/pdf", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Max-Age", "86400");
+  res.status(200).end();
+});
+
+async function handlePdfUpload(req, res) {
   try {
     if (!req.file || req.file.mimetype !== "application/pdf") {
       return res.status(400).json({ error: "Please upload a PDF file" });
     }
 
-    console.log(`[UPLOAD] Extracting text from ${req.file.originalname}`);
+    console.log(`[UPLOAD] ${req.path} extracting text from ${req.file.originalname}`);
     let pipelineResult = await ingestPdf(req.file.buffer, {
       maxPages: 6,
       maxPipelineMs: 20000,
@@ -2941,7 +2948,9 @@ app.post("/api/upload", handleUploadMiddleware, async (req, res) => {
       debug: error.message 
     });
   }
-});
+}
+
+app.post(["/api/upload", "/upload/pdf"], handleUploadMiddleware, handlePdfUpload);
 
 // Claude Two-Call PDF -> Guide endpoint
 app.post("/api/guides/generate-from-pdf", auth, handleUploadMiddleware, async (req, res) => {
