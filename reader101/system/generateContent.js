@@ -760,7 +760,7 @@ async function generateContent(meta = {}, options = {}) {
 // ─── Parent Reader Card generation ──────────────────────────────────────────────
 
 async function generateParentContent(meta = {}, { apiKey, signal }) {
-  console.log("[Reader101] PARENT_READER_MODE: Pass 1 — Extract raw facts");
+  console.log("[Reader101] PARENT_READER_MODE: Generating Parent Card content");
 
   const actorName = (meta.characterName || "").trim();
   const readerRoles = Array.isArray(meta.characterNames) && meta.characterNames.length
@@ -768,115 +768,94 @@ async function generateParentContent(meta = {}, { apiKey, signal }) {
     : (meta.readerCharacterName || "all other characters");
   const cleanedText = scrubWatermarks(meta.sceneText || "").trim();
 
-  const pass1Prompt = `Extract raw facts from the scene. NO style. NO interpretation. Just raw facts.
-AUDITION ROLE (actor): ${actorName || "the actor"}
-READER ROLE(S): ${readerRoles}
+  const systemPrompt = \`You are creating a Reader Parent Card for a self-tape audition.
+You are coaching the reader (who is a parent, not an actor), NOT the actor.
+The parent needs simple, direct, behavioral instructions to help their child.
+Return ONLY valid JSON matching the requested schema. No markdown code blocks. No preamble.
+
+SCHEMA:
+{
+  "whats_happening": "string (2 sentences max. Describe what happens literally. No emotions. Write like a casual text message.)",
+  "who_youre_playing": ["NAME — description", "NAME — description"],
+  "how_to_say_it": ["\\"first few words\\" — instruction"],
+  "pause_here": ["After \\"line\\" — wait."],
+  "dont_do_this": "string (ONE sentence naming the most likely parent mistake specific to this scene)",
+  "if_it_goes_wrong": ["action 1", "action 2"]
+}\`;
+
+  const userPrompt = \`AUDITION ROLE (actor): \${actorName || "the actor"}
+READER ROLE(S): \${readerRoles}
 
 SIDES TEXT:
-${clipText(cleanedText, 8000)}
+\${clipText(cleanedText, 8000)}
 
-Return ONLY valid JSON matching exactly:
-{
-  "scene_summary": "string, 2 sentences max. Describes what happens literally.",
-  "reader_characters": ["char1", "char2"],
-  "lines": ["char: exact line text", "char: exact line text"],
-  "pauses": ["exact moment to pause 1", "exact moment to pause 2"]
-}`;
+RULES FOR SECTIONS:
+01 WHAT'S HAPPENING:
+- Describe only what happens. No acting language.
+- If you use abstract words -> rewrite.
 
-  const { data: pass1Payload } = await sendAnthropicMessage({
-    apiKey,
-    preferredModel: DEFAULT_CLAUDE_MODEL,
-    maxTokens: 1500,
-    system: "You are a data extractor. Return only valid JSON. No explanations. No styling.",
-    messages: [{ role: "user", content: pass1Prompt }],
-    signal,
-  });
+02 WHO YOU'RE PLAYING:
+- List reader characters only.
+- Format: NAME — description (Max 8 words after dash).
+- No adjectives describing emotion. No acting terms.
 
-  const pass1Raw = pass1Payload?.content?.[0]?.text || "";
-  const facts = parseJsonResponse(pass1Raw);
+03 HOW TO SAY IT:
+- Select up to 5 key lines for the reader.
+- For each: "first few words" — physical instruction
+- Allowed words only: flat, fast, slow, quiet, loud, no smile, straight face, look, stop, lean in, look away.
+- If instruction cannot be done in 3 seconds -> delete.
+- CITATION LOCK: You MUST anchor each instruction to a specific spoken line from the sides. If there are no readable lines to anchor direction to, provide a minimal fallback. "Say it flat" with no line reference is NOT allowed if there is dialogue.
 
-  console.log("[Reader101] PARENT_READER_MODE: Pass 2 — Format (Generating 6 sections independently)");
+04 PAUSE HERE:
+- List exact pause moments.
+- Format: After "line" — wait.
+- Max 5 bullets. No explanation.
+- CITATION LOCK: Must anchor to a specific line.
 
-  const generateSection = async (sectionPrompt, maxTokens = 500) => {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const { data: payload } = await sendAnthropicMessage({
-          apiKey,
-          preferredModel: DEFAULT_CLAUDE_MODEL,
-          maxTokens,
-          system: "You are formatting a specific section of a Reader Parent Card. Return ONLY valid JSON matching the requested schema. No markdown code blocks. No preamble. Do NOT echo back the raw facts. If a parent cannot DO this within 10 seconds, delete it.",
-          messages: [{ role: "user", content: sectionPrompt + "\n\n<context>\nRAW FACTS:\n" + JSON.stringify(facts, null, 2) + "\n</context>\n\nOUTPUT ONLY THE JSON OBJECT." }],
-          signal,
-        });
-        
-        let text = payload?.content?.[0]?.text || "";
-        if (text.trim().startsWith("```json")) {
-          text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-        } else if (text.trim().startsWith("```")) {
-          text = text.replace(/^```\s*/, "").replace(/\s*```$/, "");
-        }
-        
-        return parseJsonResponse(text);
-      } catch (err) {
-        if (attempt === 2) throw err;
-        console.warn("[Reader101] Parent Card section validation failed, retrying:", err.message);
+05 DON'T DO THIS:
+- Write ONE sentence. Name the most likely parent mistake specific to THIS scene.
+
+06 IF IT GOES WRONG:
+- Write exactly 2 bullets. Each under 10 words.
+- Must be direct actions: restart, point, pause, repeat, etc. No explanation.
+
+OUTPUT ONLY VALID JSON MATCHING THE SCHEMA.\`;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const { data: payload } = await sendAnthropicMessage({
+        apiKey,
+        preferredModel: DEFAULT_CLAUDE_MODEL,
+        maxTokens: 1500,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        signal,
+      });
+
+      let text = payload?.content?.[0]?.text || "";
+      if (text.trim().startsWith("\`\`\`json")) {
+        text = text.replace(/^\`\`\`json\\s*/, "").replace(/\\s*\`\`\`$/, "");
+      } else if (text.trim().startsWith("\`\`\`")) {
+        text = text.replace(/^\`\`\`\\s*/, "").replace(/\\s*\`\`\`$/, "");
       }
+
+      const parsed = parseJsonResponse(text);
+      return {
+        whats_happening: parsed.whats_happening || "",
+        who_youre_playing: parsed.who_youre_playing || [],
+        how_to_say_it: parsed.how_to_say_it || [],
+        pause_here: parsed.pause_here || [],
+        dont_do_this: parsed.dont_do_this || "",
+        if_it_goes_wrong: parsed.if_it_goes_wrong || []
+      };
+    } catch (err) {
+      if (attempt === 2) {
+        console.warn("[Reader101] Parent card generation failed after 2 attempts:", err.message);
+        throw err;
+      }
+      console.warn("[Reader101] Parent card generation validation failed, retrying:", err.message);
     }
-  };
-
-  const p1 = generateSection(`01 — WHAT'S HAPPENING
-Write 2 sentences max.
-Describe only what happens.
-No emotions. No acting language.
-Write like a casual text message.
-If you use abstract words -> rewrite.
-Return JSON: { "whats_happening": "string" }`, 300);
-
-  const p2 = generateSection(`02 — WHO YOU'RE PLAYING
-List reader characters only.
-Format: NAME — description
-Max 8 words after dash.
-No adjectives describing emotion.
-No acting terms.
-Return JSON: { "who_youre_playing": ["NAME — description", ...] }`, 300);
-
-  const p3 = generateSection(`03 — HOW TO SAY IT
-Select up to 5 key lines for the reader.
-For each: "first few words" — physical instruction
-Allowed words only: flat, fast, slow, quiet, loud, no smile, straight face, look, stop, lean in, look away
-If instruction cannot be done in 3 seconds -> delete.
-Return JSON: { "how_to_say_it": ["\\"first few words\\" — instruction", ...] }`, 400);
-
-  const p4 = generateSection(`04 — PAUSE HERE
-List exact pause moments.
-Format: After "line" — wait.
-Max 5 bullets.
-No explanation.
-Return JSON: { "pause_here": ["After \\"line\\" — wait.", ...] }`, 400);
-
-  const p5 = generateSection(`05 — DON'T DO THIS
-Write ONE sentence.
-Name the most likely parent mistake.
-Must be specific to THIS scene.
-Return JSON: { "dont_do_this": "string" }`, 200);
-
-  const p6 = generateSection(`06 — IF IT GOES WRONG
-Write exactly 2 bullets.
-Each under 10 words.
-Must be direct actions: restart, point, pause, repeat, etc.
-No explanation.
-Return JSON: { "if_it_goes_wrong": ["action 1", "action 2"] }`, 200);
-
-  const [s1, s2, s3, s4, s5, s6] = await Promise.all([p1, p2, p3, p4, p5, p6]);
-
-  return {
-    whats_happening: s1.whats_happening || "",
-    who_youre_playing: s2.who_youre_playing || [],
-    how_to_say_it: s3.how_to_say_it || [],
-    pause_here: s4.pause_here || [],
-    dont_do_this: s5.dont_do_this || "",
-    if_it_goes_wrong: s6.if_it_goes_wrong || []
-  };
+  }
 }
 
 module.exports = {
