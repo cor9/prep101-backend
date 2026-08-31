@@ -31,12 +31,12 @@ function ProtectedRoute({ children }) {
   }
   if (user?.account?.onboardingRequired) {
     const token = user?.accessToken || user?.token;
-    const next = `https://boldchoices.site${location.pathname}${location.search || ''}`;
+    const next = `https://boldchoices.childactor101.com${location.pathname}${location.search || ''}`;
     return <AccountSetupRedirect token={token} next={next} />;
   }
   if (user?.account?.needsActorSelection) {
     const token = user?.accessToken || user?.token;
-    const next = `https://boldchoices.site${location.pathname}${location.search || ''}`;
+    const next = `https://boldchoices.childactor101.com${location.pathname}${location.search || ''}`;
     return <ActorSelectionRedirect token={token} next={next} />;
   }
   return children;

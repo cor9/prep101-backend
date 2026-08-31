@@ -82,9 +82,9 @@ Goal: Convert PDF sides + metadata (role, genre, type, etc.) into a styled HTML 
 ## Guide Library + Deploy Status (2026-04-08)
 - Generated `.netlify` link metadata was being tracked in the repo and was causing CLI deploys to target the wrong site/base; the fix now ignores `.netlify/` directories and removes tracked link files from git
 - The real Netlify production site IDs are now confirmed from CLI:
-  - `prep101.site` → `3a29b147-338a-4764-918f-a2e809f81f3e`
-  - `boldchoices.site` → `b96522d2-39bb-4020-9f52-3f26e583647b`
-  - `reader101.site` → `702352dd-18a3-4e28-bfa4-480c4499ab39`
+  - `prep101.childactor101.com` → `3a29b147-338a-4764-918f-a2e809f81f3e`
+  - `boldchoices.childactor101.com` → `b96522d2-39bb-4020-9f52-3f26e583647b`
+  - `reader101.childactor101.com` → `702352dd-18a3-4e28-bfa4-480c4499ab39`
 - `/api/guides` is no longer just a stub path; it now supports real list/get/html/pdf export behavior backed by Sequelize or Supabase fallback
 - The dashboard guide library now exposes open, HTML, and PDF actions instead of a mislabeled single download button
 - Bold Choices now persists full generated guides into the shared guide library so they can appear in the same account-facing guide list as Prep101 and Reader101

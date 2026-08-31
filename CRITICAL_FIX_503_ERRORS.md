@@ -79,8 +79,8 @@ curl https://prep101-api.vercel.app/health
 
 Try these URLs now:
 1. **Health Check**: https://prep101-api.vercel.app/health
-2. **Dashboard**: https://prep101.site/dashboard (should load)
-3. **Login**: https://prep101.site/login (should work)
+2. **Dashboard**: https://prep101.childactor101.com/dashboard (should load)
+3. **Login**: https://prep101.childactor101.com/login (should work)
 
 ## Technical Details
 

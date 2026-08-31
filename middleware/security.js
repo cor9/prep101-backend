@@ -55,9 +55,9 @@ const corsOptions = {
           'http://localhost:3000',
           'http://localhost:3001',
           'http://localhost:5173',
-          'https://prep101.site',
-          'https://boldchoices.site',
-          'https://reader101.site',
+          'https://prep101.childactor101.com',
+          'https://boldchoices.childactor101.com',
+          'https://reader101.childactor101.com',
         ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {

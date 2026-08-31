@@ -175,7 +175,7 @@ export default function GuideResult({
       show: meta?.show || '',
       ...(generationId ? { seed: generationId } : {}),
     });
-    return `https://prep101.site${path}?${params}`;
+    return `https://prep101.childactor101.com${path}?${params}`;
   };
 
   return (

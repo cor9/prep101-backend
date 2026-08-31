@@ -72,7 +72,7 @@ This will:
 ## Step 3: Test After Disabling
 
 1. **Test your app:**
-   - Hit Prep101: https://prep101.site
+   - Hit Prep101: https://prep101.childactor101.com
    - Run one test workflow
    - Create a guide
    - Check admin routes

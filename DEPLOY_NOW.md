@@ -68,7 +68,7 @@ The deployment will:
 
 ### Step 4: Test Login (1 minute)
 
-1. Go to: https://prep101.site/login
+1. Go to: https://prep101.childactor101.com/login
 2. Try logging in with your credentials
 3. Should work! ✅
 
@@ -80,7 +80,7 @@ Check browser console for:
 
 After deployment, test these:
 
-- [ ] Login works on https://prep101.site/login
+- [ ] Login works on https://prep101.childactor101.com/login
 - [ ] After login, redirects to /account
 - [ ] Account page shows user data
 - [ ] Can generate guides (if you have credits)

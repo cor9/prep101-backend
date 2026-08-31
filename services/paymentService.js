@@ -196,8 +196,8 @@ class PaymentService {
           },
         ],
         mode,
-        success_url: successUrl || 'https://prep101.site/app/stripe/success',
-        cancel_url: cancelUrl || 'https://prep101.site/pricing',
+        success_url: successUrl || 'https://prep101.childactor101.com/app/stripe/success',
+        cancel_url: cancelUrl || 'https://prep101.childactor101.com/pricing',
         allow_promotion_codes: true,
         billing_address_collection: 'required',
         metadata: {

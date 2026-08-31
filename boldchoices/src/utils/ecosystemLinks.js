@@ -1,5 +1,5 @@
-const PREP_ROOT = 'https://prep101.site';
-const READER_ROOT = 'https://reader101.site';
+const PREP_ROOT = 'https://prep101.childactor101.com';
+const READER_ROOT = 'https://reader101.childactor101.com';
 
 export const ACCOUNT_LABEL = 'Child Actor 101 Account';
 
@@ -19,7 +19,7 @@ export function buildPrepAuthCallbackUrl(token, redirect = `${PREP_ROOT}/dashboa
 
 export function buildPrepOnboardingUrl({
   token,
-  next = 'https://boldchoices.site/generate',
+  next = 'https://boldchoices.childactor101.com/generate',
 } = {}) {
   const onboarding = new URL(`${PREP_ROOT}/onboarding`);
   if (next) onboarding.searchParams.set('next', next);
@@ -28,7 +28,7 @@ export function buildPrepOnboardingUrl({
 
 export function buildPrepSelectActorUrl({
   token,
-  next = 'https://boldchoices.site/generate',
+  next = 'https://boldchoices.childactor101.com/generate',
 } = {}) {
   const selectActor = new URL(`${PREP_ROOT}/select-actor`);
   if (next) selectActor.searchParams.set('next', next);

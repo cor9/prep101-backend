@@ -154,16 +154,12 @@ app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 // CORS middleware — explicit allowlist so platform-level headers (vercel.json) and
 // Express headers stay in sync. Known origins get specific ACAO + credentials (needed
-// for the ca101_session cookie on proxied same-origin paths). Unknown/dev origins still
-// get CORS headers so local development works. No-origin requests (server-to-server, curl)
-// are passed through without CORS headers.
+// for the ca101_session cookie on proxied same-origin paths). Unknown origins do not
+// receive CORS headers. No-origin requests (server-to-server, curl) are passed through.
 const CORS_ALLOWED_ORIGINS = new Set([
-  'https://prep101.site',
-  'https://www.prep101.site',
-  'https://boldchoices.site',
-  'https://www.boldchoices.site',
-  'https://reader101.site',
-  'https://www.reader101.site',
+  'https://prep101.childactor101.com',
+  'https://boldchoices.childactor101.com',
+  'https://reader101.childactor101.com',
   'https://childactor101.com',
   'https://www.childactor101.com',
   'http://localhost:3000',
@@ -179,11 +175,6 @@ app.use((req, res, next) => {
     // Known frontend: set specific origin and allow credentials (cookie auth)
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Vary', 'Origin');
-  } else if (origin) {
-    // Unknown origin (e.g., local dev at a non-listed port): reflect without credentials
-    // Cross-origin generation calls use Bearer tokens, not cookies, so credentials is not needed.
-    res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
   }
   // No origin = server-to-server or curl: skip CORS headers entirely

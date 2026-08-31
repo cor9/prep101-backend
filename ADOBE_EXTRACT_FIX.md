@@ -111,7 +111,7 @@ Check: Is extractWithAdobe available?
   3. OCR with Claude Vision (fallback)
 
 ### Test Upload
-Try uploading a PDF at: https://prep101.site/dashboard
+Try uploading a PDF at: https://prep101.childactor101.com/dashboard
 - Should upload successfully ✅
 - Check browser console for extraction method used
 - Should see one of:

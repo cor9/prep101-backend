@@ -39,7 +39,7 @@ const resolvePostAuthDestination = (nextDestination, user) => {
 const getRegisterContext = (nextDestination) => {
   const destination = String(nextDestination || '').toLowerCase();
 
-  if (destination.includes('reader101.site')) {
+  if (destination.includes('reader101.childactor101.com')) {
     return {
       badge: 'R',
       title: 'Join Reader101',
@@ -47,7 +47,7 @@ const getRegisterContext = (nextDestination) => {
     };
   }
 
-  if (destination.includes('boldchoices.site')) {
+  if (destination.includes('boldchoices.childactor101.com')) {
     return {
       badge: 'B',
       title: 'Join Bold Choices',

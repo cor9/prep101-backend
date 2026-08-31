@@ -111,7 +111,7 @@ Current thresholds are strict. We can temporarily lower them:
 ## Testing
 
 ### Test Script Upload:
-1. Go to https://prep101.site/dashboard
+1. Go to https://prep101.childactor101.com/dashboard
 2. Upload a script PDF
 3. Check browser console for errors
 4. Check if error is "Limited content..."

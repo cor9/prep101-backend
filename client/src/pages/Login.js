@@ -41,7 +41,7 @@ const resolvePostAuthDestination = (nextDestination, user) => {
 const getLoginContext = (nextDestination) => {
   const destination = String(nextDestination || '').toLowerCase();
 
-  if (destination.includes('reader101.site')) {
+  if (destination.includes('reader101.childactor101.com')) {
     return {
       badge: 'R',
       title: 'Welcome Back',
@@ -49,7 +49,7 @@ const getLoginContext = (nextDestination) => {
     };
   }
 
-  if (destination.includes('boldchoices.site')) {
+  if (destination.includes('boldchoices.childactor101.com')) {
     return {
       badge: 'B',
       title: 'Welcome Back',

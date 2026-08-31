@@ -9,8 +9,8 @@ import {
 
 const ECOSYSTEM = [
   { label: 'Child Actor 101', href: 'https://childactor101.com', logo: '/childactor101-logo.png' },
-  { label: 'Bold Choices', href: 'https://boldchoices.site', logo: '/boldchoiceslogo.png' },
-  { label: 'Reader101', href: 'https://reader101.site', logo: '/reader101-footer.png' },
+  { label: 'Bold Choices', href: 'https://boldchoices.childactor101.com', logo: '/boldchoiceslogo.png' },
+  { label: 'Reader101', href: 'https://reader101.childactor101.com', logo: '/reader101-footer.png' },
   { label: 'Coaching by Corey', href: 'https://coaching.childactor101.com', logo: '/coaching-footer.png' },
 ];
 

@@ -25,14 +25,14 @@ export default function Navbar() {
   const prepAccountHref = needsOnboarding
     ? buildPrepOnboardingUrl({
         token,
-        next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
+        next: `https://boldchoices.childactor101.com${location.pathname}${location.search || ''}`,
       })
     : needsActorSelection
       ? buildPrepSelectActorUrl({
           token,
-          next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
+          next: `https://boldchoices.childactor101.com${location.pathname}${location.search || ''}`,
         })
-      : buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=bold_choices');
+      : buildPrepAuthCallbackUrl(token, 'https://prep101.childactor101.com/dashboard?product=bold_choices');
 
   const handleLogout = async () => {
     await logout({ nextUrl: `${window.location.origin}/` });
@@ -93,7 +93,7 @@ export default function Navbar() {
         {/* Ecosystem links — always visible on landing */}
         <div className="nav-ext-links" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <a
-            href={user ? prepAccountHref : 'https://prep101.site'}
+            href={user ? prepAccountHref : 'https://prep101.childactor101.com'}
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link-ext nav-link-prep"
@@ -150,7 +150,7 @@ export default function Navbar() {
                 <a
                   href={buildPrepSelectActorUrl({
                     token,
-                    next: `https://boldchoices.site${location.pathname}${location.search || ''}`,
+                    next: `https://boldchoices.childactor101.com${location.pathname}${location.search || ''}`,
                   })}
                   target="_blank"
                   rel="noopener noreferrer"

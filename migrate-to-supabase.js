@@ -93,4 +93,4 @@ console.log('');
 console.log('💰 Cost Savings: $7/month (Render PostgreSQL eliminated)');
 console.log('🎯 Total monthly cost: $0 (Vercel free + Supabase free)');
 console.log('');
-console.log('🧪 Test your app at: https://prep101.site');
+console.log('🧪 Test your app at: https://prep101.childactor101.com');

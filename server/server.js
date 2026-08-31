@@ -33,8 +33,7 @@ app.use(cors({
       'http://127.0.0.1:3002',
       process.env.BASE_URL,
       'https://prep101-frontend.vercel.app',
-      'https://prep101.site',
-      'https://www.prep101.site'
+      'https://prep101.childactor101.com'
     ];
     if (allowedOrigins.includes(origin)) return callback(null, true);
     // Allow Vercel previews

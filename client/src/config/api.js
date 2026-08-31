@@ -1,5 +1,5 @@
 // API Configuration
-// On prep101.site use same-origin /api (Netlify proxy via _redirects)
+// On prep101.childactor101.com use same-origin /api (Netlify proxy via _redirects)
 // to avoid browser CORS blocks on large multipart uploads.
 const host =
   typeof window !== "undefined" ? String(window.location.hostname || "") : "";

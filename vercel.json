@@ -14,7 +14,7 @@
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://prep101.site"
+          "value": "https://prep101.childactor101.com"
         },
         {
           "key": "Access-Control-Allow-Methods",
@@ -34,12 +34,12 @@
   "redirects": [
     {
       "source": "/app/stripe/success",
-      "destination": "https://prep101.site/app/stripe/success",
+      "destination": "https://prep101.childactor101.com/app/stripe/success",
       "permanent": false
     },
     {
       "source": "/payment-success",
-      "destination": "https://prep101.site/payment-success",
+      "destination": "https://prep101.childactor101.com/payment-success",
       "permanent": false
     }
   ],

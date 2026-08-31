@@ -35,7 +35,7 @@
 ## 🧪 Test Your Login Now!
 
 ### Step 1: Test Login
-1. Go to: **https://prep101.site/login**
+1. Go to: **https://prep101.childactor101.com/login**
 2. Enter your credentials
 3. Click "Sign In"
 4. Should redirect to /account ✅
@@ -103,7 +103,7 @@ curl https://prep101-api.vercel.app/health
 
 ## 📝 Next Steps
 
-1. **Test login immediately** on https://prep101.site/login
+1. **Test login immediately** on https://prep101.childactor101.com/login
 2. **Report any issues** if login still doesn't work
 3. **Monitor logs** for any authentication errors
 4. **Update frontend** if backend URL needs to change
@@ -129,7 +129,7 @@ vercel --prod
 ## 🎉 Success Indicators
 
 You'll know everything is working when:
-- ✅ Can login at https://prep101.site/login
+- ✅ Can login at https://prep101.childactor101.com/login
 - ✅ Redirected to /account after login
 - ✅ Account page shows your data
 - ✅ No 401 errors in console

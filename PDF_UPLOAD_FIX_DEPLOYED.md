@@ -91,7 +91,7 @@ function assessContentQuality(text, wordCount, isUpload = false) {
 ## 🧪 TESTING
 
 ### Quick Test
-1. Go to https://prep101.site/dashboard
+1. Go to https://prep101.childactor101.com/dashboard
 2. Upload **any** PDF with at least a few words
 3. Should upload successfully ✅
 

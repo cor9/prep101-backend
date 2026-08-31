@@ -163,7 +163,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Called by AuthCallback when receiving a token from prep101.site bridge
+  // Called by AuthCallback when receiving a token from prep101.childactor101.com bridge
   const loginWithToken = async (token) => {
     const u = await hydrateUserFromToken(token);
     persistUser(u);

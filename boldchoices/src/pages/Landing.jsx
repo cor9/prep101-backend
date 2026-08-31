@@ -660,7 +660,7 @@ export default function Landing() {
           <button
             className="btn-upgrade"
             style={S.btnUpgrade}
-            onClick={() => window.open(user ? buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=prep101') : 'https://prep101.site', '_blank')}
+            onClick={() => window.open(user ? buildPrepAuthCallbackUrl(token, 'https://prep101.childactor101.com/dashboard?product=prep101') : 'https://prep101.childactor101.com', '_blank')}
           >
             Explore Prep101 →
           </button>
@@ -708,7 +708,7 @@ export default function Landing() {
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
           {[
             { label: 'ChildActor101', href: 'https://childactor101.com' },
-            { label: 'Prep101', href: user ? buildPrepAuthCallbackUrl(token, 'https://prep101.site/dashboard?product=bold_choices') : 'https://prep101.site' },
+            { label: 'Prep101', href: user ? buildPrepAuthCallbackUrl(token, 'https://prep101.childactor101.com/dashboard?product=bold_choices') : 'https://prep101.childactor101.com' },
             { label: 'Reader101', href: buildReader101Url({ token }) },
             { label: 'Coaching by Corey', href: 'https://coaching.childactor101.com' },
           ].map(({ label, href }) => (

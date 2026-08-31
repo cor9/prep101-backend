@@ -572,7 +572,7 @@ const Dashboard = () => {
         (isReader101Context && normalizedUploadIdsForDirectPdf.length > 0));
 
     // Generation endpoints go DIRECT to Vercel — never through the Netlify proxy.
-    // Netlify's proxy (prep101.site → Vercel) has a hard 26-second timeout;
+    // Netlify's proxy (prep101.childactor101.com → Vercel) has a hard 26-second timeout;
     // guide generation takes 3–6 minutes, so proxied calls always 504.
     // Non-generation calls (upload, auth, usage) are short and stay on API_BASE.
     const GENERATION_API_BASE = API_BASE || 'https://prep101-api.vercel.app';

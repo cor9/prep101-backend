@@ -8,6 +8,6 @@ Attach `childactor101.sbs` to this project and keep the Stripe Payment Links poi
 
 Behavior:
 
-- `/app/stripe/success` redirects to `https://prep101.site/app/stripe/success`
-- `/payment-success` redirects to `https://prep101.site/payment-success`
+- `/app/stripe/success` redirects to `https://prep101.childactor101.com/app/stripe/success`
+- `/payment-success` redirects to `https://prep101.childactor101.com/payment-success`
 - all other routes render a small fallback page with a manual continue link

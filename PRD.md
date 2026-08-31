@@ -11,7 +11,7 @@
 
 PREP101 is an AI-powered acting audition preparation platform that generates personalized, professional-quality audition guides for actors. By combining expert acting methodology with advanced AI technology (Claude Sonnet 4), PREP101 transforms script sides into comprehensive, actionable prep guides that help actors book more roles.
 
-**Website**: https://prep101.site  
+**Website**: https://prep101.childactor101.com
 **Target Market**: Professional and aspiring actors preparing for auditions  
 **Current Stage**: Live production, post-MVP
 
@@ -289,7 +289,7 @@ PREP101 will become the #1 digital acting coach, helping thousands of actors boo
 - **Styling**: CSS Modules + Tailwind-inspired utilities
 - **State**: React Context (Auth, Stripe)
 - **Hosting**: Netlify
-- **Domain**: prep101.site
+- **Domain**: prep101.childactor101.com
 
 ### Backend
 - **Framework**: Express.js + Node.js

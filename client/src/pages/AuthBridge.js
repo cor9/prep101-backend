@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 /**
  * AuthBridge — Prep101 route that hands a short-lived auth token to another ecosystem site.
- * URL: /auth-bridge?redirect=https://boldchoices.site/auth-callback
+ * URL: /auth-bridge?redirect=https://boldchoices.childactor101.com/auth-callback
  *
  * If logged in: appends ?token=JWT to the redirect URL.
  * If not logged in: sends user to /login and returns here after.

@@ -40,7 +40,7 @@ const Home = () => {
               They struggle with what to do, how to build it, and whether it works.
             </p>
             <div className="system-grid">
-              <a href="https://boldchoices.site" className="system-card system-card--sibling" target="_blank" rel="noopener noreferrer">
+              <a href="https://boldchoices.childactor101.com" className="system-card system-card--sibling" target="_blank" rel="noopener noreferrer">
                 <div className="system-card-step">1. What do I do?</div>
                 <img src="/boldchoiceslogo.png" alt="Bold Choices" className="system-card-logo" loading="lazy" />
                 <div className="system-card-tagline">Find the choice</div>
@@ -53,7 +53,7 @@ const Home = () => {
                 <div className="system-card-tagline">Build the performance</div>
               </div>
 
-              <a href="https://reader101.site" className="system-card system-card--sibling" target="_blank" rel="noopener noreferrer">
+              <a href="https://reader101.childactor101.com" className="system-card system-card--sibling" target="_blank" rel="noopener noreferrer">
                 <div className="system-card-step">3. Is the tape working?</div>
                 <img src="/reader101-footer.png" alt="Reader101" className="system-card-logo" loading="lazy" />
                 <div className="system-card-tagline">Protect the read</div>

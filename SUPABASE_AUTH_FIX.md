@@ -91,7 +91,7 @@ vercel deploy --prod
    ```
 
 2. **Test Production**:
-   - Go to https://prep101.site/login
+   - Go to https://prep101.childactor101.com/login
    - Try logging in with existing credentials
    - Check browser console for authentication logs
    - Should see: `✅ User logged in via Supabase`

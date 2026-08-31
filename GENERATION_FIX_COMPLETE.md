@@ -116,7 +116,7 @@ curl https://prep101-api.vercel.app/api/methodology
 Should return `"totalFiles": 11` with all methodology files listed.
 
 ### Full Guide Generation Test
-1. Go to https://prep101.site/dashboard
+1. Go to https://prep101.childactor101.com/dashboard
 2. Upload a script PDF
 3. Fill in character details
 4. Click "Generate Guide"

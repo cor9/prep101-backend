@@ -1,6 +1,6 @@
-const PREP_ROOT = 'https://prep101.site';
-const BOLD_ROOT = 'https://boldchoices.site';
-const READER_ROOT = 'https://reader101.site';
+const PREP_ROOT = 'https://prep101.childactor101.com';
+const BOLD_ROOT = 'https://boldchoices.childactor101.com';
+const READER_ROOT = 'https://reader101.childactor101.com';
 
 export const ACCOUNT_LABEL = 'Child Actor 101 Account';
 
