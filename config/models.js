@@ -1,7 +1,7 @@
 const DEFAULT_CLAUDE_MODEL =
   process.env.CLAUDE_MODEL ||
   process.env.ANTHROPIC_MODEL ||
-  "claude-sonnet-4-6";
+  "claude-sonnet-5";
 
 // Central place to control maximum output tokens for Claude.
 // Can be overridden via CLAUDE_MAX_TOKENS, then clamped by known model limits.

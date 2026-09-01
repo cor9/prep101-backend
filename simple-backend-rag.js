@@ -326,7 +326,7 @@ function handleUploadMiddleware(req, res, next) {
   });
 }
 
-const { uploads, storeUpload } = require("./services/uploadStore");
+const { uploads, storeUpload, resolveUploadPdf } = require("./services/uploadStore");
 const { isAdminUser: isOwnerOrAdmin } = require("./services/ownerAdmin");
 
 // Track extraction diagnostics for /api/health
@@ -3032,6 +3032,17 @@ app.post("/api/guides/generate-from-pdf", auth, handleUploadMiddleware, async (r
 
 
     if (!pdfBuffer) {
+      // The upload store is per-instance; on a miss, take the copy the browser
+      // still holds rather than dead-ending a perfectly good upload.
+      const inlinePdf = resolveUploadPdf(null, req.body);
+      if (inlinePdf) {
+        pdfBuffer = Buffer.from(inlinePdf.pdfBase64, "base64");
+        pdfFilename = inlinePdf.filename;
+        console.log("[GENERATE FROM PDF] Upload store missed; using client-supplied PDF.");
+      }
+    }
+
+    if (!pdfBuffer) {
       return res.status(400).json({
         error: "Please upload a PDF file, or provide a valid uploadId from a recent PDF upload.",
       });
@@ -3776,6 +3787,15 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       });
     }
 
+    const generatePdfSource =
+      (uploadIdList || [])
+        .map((id) => resolveUploadPdf(uploads[id], {}))
+        .find(Boolean) || resolveUploadPdf(null, req.body);
+
+    console.log(
+      `[GENERATE] PDF for deep-read: ${generatePdfSource ? generatePdfSource.source : "none"}`
+    );
+
     const payload = {
       userId: currentUser.id,
       isReaderMode,
@@ -3797,6 +3817,14 @@ app.post("/api/guides/generate", auth, async (req, res) => {
       shouldForcePrepFallback,
       combinedWordCount,
       uploadIdList,
+      // Without this the worker has no PDF to deep-read, so a thin or
+      // structure-less extraction could never be recovered on this route.
+      ...(generatePdfSource
+        ? {
+            pdfBase64: generatePdfSource.pdfBase64,
+            filename: generatePdfSource.filename,
+          }
+        : {}),
       // Minimal upload extraction to survive queue serialization
       uploads: uploadIdList.reduce((acc, id) => {
         if (uploads[id]) {

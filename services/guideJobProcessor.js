@@ -34,6 +34,38 @@ const DEEP_READ_TRIGGER_WORDS = 80;
 // Kept in step with the per-product route validators.
 const MIN_USABLE_WORDS = 20;
 
+// Strip the trailing modifiers a cue can carry so "EVIE (CONT'D)" still counts
+// as EVIE, while "EVIE BIKES DOWN CARMODY ROAD" (an action line the parser
+// mistook for a cue) correctly does not.
+function normalizeSpeaker(value = "") {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s*\((?:CONT'?D|O\.?S\.?|O\.?C\.?|V\.?O\.?)\)\s*$/i, "")
+    .trim();
+}
+
+/**
+ * How many dialogue blocks the parser can attribute to this character.
+ * Zero means the extraction lost its speaker cues: the lines are all there,
+ * but nothing says which of them the actor is reading.
+ */
+function countAttributedLines(text, characterName) {
+  const target = normalizeSpeaker(characterName);
+  if (!target || !text) return 0;
+  try {
+    const parsed = parseScreenplayText(repairScreenplayText(text), {
+      actorCharacter: String(characterName).trim(),
+    });
+    return (parsed.dialogueBlocks || []).filter(
+      (block) => normalizeSpeaker(block?.speaker) === target
+    ).length;
+  } catch (error) {
+    console.warn("[JobProcessor] Could not assess speaker attribution:", error.message);
+    return 0;
+  }
+}
+
 function getMeaningfulWordCount(text = "") {
   return (text.match(/\b[\w']+\b/g) || []).length;
 }
@@ -149,14 +181,33 @@ async function processGuideJob(payload, jobInstance = null) {
   let finalCombinedText = combinedSceneText || payload.sceneText || "";
   let finalCombinedWordCount = getMeaningfulWordCount(finalCombinedText);
 
+  // A PDF can extract plenty of words and still be useless: when the layout-aware
+  // extractors time out, the text stage flattens the page and every speaker cue
+  // is lost, so no line can be attributed to the actor. Word count alone cannot
+  // see that, which is why structure is checked separately.
+  let attributedLines = countAttributedLines(finalCombinedText, characterName);
+  const extractionLooksLimited = Boolean(
+    payload.fallbackMode ||
+      payload.shouldForcePrepFallback ||
+      payload.shouldForceReaderFallback ||
+      payload.extractionConfidence === "low"
+  );
+  const lostSpeakerAttribution =
+    extractionLooksLimited && Boolean(characterName) && attributedLines === 0;
+
   // ── Universal PDF deep-read: fires for ALL guide types when text is thin ──
   // This is a best-effort enhancement, not a gate. Short sides (a half-page
   // scene, a single monologue) legitimately land under DEEP_READ_TRIGGER_WORDS,
   // and a failed OCR pass must never discard text we already have.
   if (
     payload.pdfBase64 &&
-    finalCombinedWordCount < DEEP_READ_TRIGGER_WORDS
+    (finalCombinedWordCount < DEEP_READ_TRIGGER_WORDS || lostSpeakerAttribution)
   ) {
+    if (lostSpeakerAttribution) {
+      console.log(
+        `[JobProcessor] ${finalCombinedWordCount} words extracted but no lines attributable to "${characterName}" — running deep read to recover speaker cues.`
+      );
+    }
     await updateProgress(15, "Running deep PDF read (OCR recovery)...");
     try {
       const { processPdfExtractionJob } = require("./pdfExtractionJobProcessor");
@@ -169,10 +220,26 @@ async function processGuideJob(payload, jobInstance = null) {
 
       const recoveredText = recoverScreenplayFromFallback(ocrFallback);
       const recoveredWordCount = getMeaningfulWordCount(recoveredText);
+      const recoveredAttributed = countAttributedLines(recoveredText, characterName);
 
-      if (recoveredWordCount > finalCombinedWordCount) {
+      // A spatially-mapped read can be slightly shorter than the flattened one
+      // yet far more useful, because it puts the speaker cues back. Accept that
+      // trade, but not a recovery that drops most of the script to get there.
+      const improvesWordCount = recoveredWordCount > finalCombinedWordCount;
+      const restoresAttribution =
+        lostSpeakerAttribution &&
+        recoveredAttributed > 0 &&
+        recoveredWordCount >= Math.floor(finalCombinedWordCount * 0.6);
+
+      if (improvesWordCount || restoresAttribution) {
+        if (restoresAttribution && !improvesWordCount) {
+          console.log(
+            `[JobProcessor] Deep read recovered ${recoveredAttributed} attributed lines for "${characterName}" (${recoveredWordCount} words vs ${finalCombinedWordCount}); taking the structured text.`
+          );
+        }
         finalCombinedText = recoveredText;
         finalCombinedWordCount = recoveredWordCount;
+        attributedLines = recoveredAttributed;
         // Inject recovered text back so ALL downstream generators see it
         payload.sceneText = recoveredText;
         payload.combinedSceneText = recoveredText;
