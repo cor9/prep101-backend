@@ -74,6 +74,18 @@ function startGuideWorker() {
     {
       connection,
       concurrency: Number(process.env.GUIDE_WORKER_CONCURRENCY || 2),
+      // BullMQ re-issues its blocking poll every `drainDelay` SECONDS while the
+      // queue is idle (library default: 5). On a 24/7 worker that alone is
+      // ~17k Redis commands a day spent doing nothing, which is enough to
+      // exhaust an Upstash free-tier month on its own. 30s cuts it ~6x.
+      //
+      // Not higher: BullMQ caps its own computed block at 10s
+      // (maximumBlockTimeout) for reconnection safety, and serverless Redis
+      // drops idle connections, so a very long block trades one problem for
+      // another. This costs no pickup latency — the blocking command returns
+      // as soon as a job arrives; drainDelay only sets how often it re-issues
+      // when nothing does.
+      drainDelay: Number(process.env.GUIDE_WORKER_DRAIN_DELAY || 30),
       // guides can take a while
       lockDuration: 600000,
       stalledInterval: 60000,

@@ -50,6 +50,11 @@ function startExtractionWorker() {
     {
       connection,
       concurrency: Number(process.env.EXTRACTION_WORKER_CONCURRENCY || 2),
+      // Same idle-polling cost as the guide worker — see the note in
+      // services/guideQueue.js. This one was also on BullMQ's 30s default
+      // stalled check, which is twice as chatty as it needs to be here.
+      drainDelay: Number(process.env.EXTRACTION_WORKER_DRAIN_DELAY || 30),
+      stalledInterval: 60000,
       removeOnComplete: { count: 50 },
       removeOnFail: { count: 50 },
     }
