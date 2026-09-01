@@ -1,4 +1,5 @@
 const express = require('express');
+const { isAdminUser } = require('../services/ownerAdmin');
 const { body, validationResult } = require('express-validator');
 const auth = require('../middleware/auth');
 const PromoCode = require('../models/PromoCode');
@@ -164,8 +165,7 @@ const requireAdmin = async (req, res, next) => {
     const user = await User.findByPk(req.userId);
 
     // Check if user is admin or owner email
-    const ownerEmail = process.env.OWNER_EMAIL;
-    if (user && (user.email === ownerEmail || user.betaAccessLevel === 'admin')) {
+    if (isAdminUser(user)) {
       next();
     } else {
       return res.status(403).json({

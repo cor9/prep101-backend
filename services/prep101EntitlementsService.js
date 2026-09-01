@@ -1,3 +1,5 @@
+const { isAdminUser } = require("./ownerAdmin");
+
 function toNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -152,7 +154,8 @@ function getMonthlyGuidesUsed(user) {
 }
 
 function buildPrep101Usage(user) {
-  const monthlyLimit = getMonthlyGuideLimit(user);
+  // null monthlyLimit is this function's existing "unlimited" sentinel.
+  const monthlyLimit = isAdminUser(user) ? null : getMonthlyGuideLimit(user);
   const monthlyUsed = getMonthlyGuidesUsed(user);
   const topUpCredits = getPrep101TopUpCredits(user);
   const hasUnlimitedMonthly = monthlyLimit === null;
@@ -189,13 +192,15 @@ function hasReader101Unlimited(user) {
 }
 
 function buildReader101Usage(user) {
-  const unlimited = hasReader101Unlimited(user);
+  const admin = isAdminUser(user);
+  const unlimited = admin || hasReader101Unlimited(user);
   const credits = getReader101Credits(user);
 
   return {
     unlimited,
     credits,
     canGenerate: unlimited || credits > 0,
+    source: admin ? "admin" : undefined,
   };
 }
 
@@ -212,7 +217,11 @@ function hasBoldChoicesUnlimited(user) {
 }
 
 function buildBoldChoicesUsage(user) {
-  const unlimited = hasBoldChoicesUnlimited(user);
+  // Admins are unlimited regardless of Stripe state. This object is served to
+  // the client as well as read by the route, so leaving admin out of it told
+  // owners they were "using the free monthly generation path".
+  const admin = isAdminUser(user);
+  const unlimited = admin || hasBoldChoicesUnlimited(user);
   const credits = getBoldChoicesCredits(user);
 
   return {
@@ -220,6 +229,7 @@ function buildBoldChoicesUsage(user) {
     credits,
     canGenerate: unlimited || credits > 0,
     modifierAccess: unlimited,
+    source: admin ? "admin" : undefined,
   };
 }
 

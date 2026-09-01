@@ -9,6 +9,7 @@ const { enqueueGuideJob, getGuideJob } = require("../services/guideQueue");
 const auth = require("../middleware/auth");
 const { buildAccountContext } = require("../services/accountContextService");
 const { getUpload } = require("../services/uploadStore");
+const { isAdminUser } = require("../services/ownerAdmin");
 const {
   runAdminQuery,
   tables,
@@ -331,13 +332,9 @@ router.post("/generate", auth, async (req, res) => {
     }
 
     const currentUser = await loadBillingUser(req.user);
-    const OWNER_EMAIL = process.env.OWNER_EMAIL || 'corey@childactor101.com';
-    const isAdmin = currentUser && currentUser.email === OWNER_EMAIL;
+    const isAdmin = isAdminUser(currentUser);
     const boldChoicesUsage = buildBoldChoicesUsage(currentUser);
-    const hasUnlimitedAccess =
-      isAdmin ||
-      currentUser?.betaAccessLevel === 'admin' ||
-      boldChoicesUsage.unlimited;
+    const hasUnlimitedAccess = isAdmin || boldChoicesUsage.unlimited;
     const userId = req.userId || (currentUser && currentUser.id);
     const account = await buildAccountContext(currentUser || req.user, { ensureProfile: true });
     const activeActor = account?.activeActor || null;
@@ -778,8 +775,7 @@ router.post("/analytics", auth, (req, res) => {
  */
 router.get("/admin/dashboard", auth, async (req, res) => {
   try {
-    const OWNER_EMAIL = process.env.OWNER_EMAIL || 'corey@childactor101.com';
-    const isAdmin = req.user && req.user.email === OWNER_EMAIL;
+    const isAdmin = isAdminUser(req.user);
     
     if (!isAdmin) {
       return res.status(403).json({ error: "Admin access required" });

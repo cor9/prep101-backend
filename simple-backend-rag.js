@@ -327,6 +327,7 @@ function handleUploadMiddleware(req, res, next) {
 }
 
 const { uploads, storeUpload } = require("./services/uploadStore");
+const { isAdminUser: isOwnerOrAdmin } = require("./services/ownerAdmin");
 
 // Track extraction diagnostics for /api/health
 const extractionStats = {
@@ -3053,9 +3054,7 @@ app.post("/api/guides/generate-from-pdf", auth, handleUploadMiddleware, async (r
       });
     }
 
-    const isAdminUser =
-      currentUser.betaAccessLevel === "admin" ||
-      currentUser.subscription === "admin";
+    const isAdminUser = isOwnerOrAdmin(currentUser);
 
     const apiKey = (process.env.ANTHROPIC_API_KEY || "").trim();
     if (!apiKey) {
@@ -3580,9 +3579,7 @@ app.post("/api/guides/generate", auth, async (req, res) => {
 
     const prep101Usage = buildPrep101Usage(currentUser);
     const reader101Usage = buildReader101Usage(currentUser);
-    const isAdminUser =
-      currentUser.betaAccessLevel === "admin" ||
-      currentUser.subscription === "admin";
+    const isAdminUser = isOwnerOrAdmin(currentUser);
     const hasReaderAccess = isAdminUser || reader101Usage.canGenerate;
     const hasPrep101Access = isAdminUser || prep101Usage.canGenerate;
 

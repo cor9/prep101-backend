@@ -28,24 +28,7 @@ const ADMIN_SUBSCRIPTION_VALUES = [
   "boldchoices_monthly",
 ];
 
-const DEFAULT_OWNER_EMAILS = [
-  "corey@childactor101.com",
-  "admin@prep101.site",
-  "themrralstons@icloud.com",
-];
-
-function getAdminOwnerEmails() {
-  const configured = String(process.env.OWNER_EMAILS || process.env.OWNER_EMAIL || "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-  return new Set([...DEFAULT_OWNER_EMAILS, ...configured]);
-}
-
-function isOwnerAdminEmail(email) {
-  if (!email) return false;
-  return getAdminOwnerEmails().has(String(email).trim().toLowerCase());
-}
+const { isOwnerAdminEmail } = require("../services/ownerAdmin");
 
 const router = express.Router();
 
