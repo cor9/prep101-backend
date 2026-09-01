@@ -455,7 +455,14 @@ export default function Generate() {
       });
 
       const enqueueData = await enqueueRes.json();
-      if (!enqueueData.success) throw new Error(enqueueData.error || 'Failed to start generation');
+      if (!enqueueData.success) {
+        // The server sends a user-facing `error` plus a technical `detail`.
+        // Dropping the detail made every failure look identical.
+        if (enqueueData.detail) {
+          console.error('[BoldChoices] generation failed:', enqueueData.code || '', enqueueData.detail);
+        }
+        throw new Error(enqueueData.error || 'Failed to start generation');
+      }
 
       // ── Poll the job until it completes ─────────────────────────────────
       let finalData = enqueueData;

@@ -16,6 +16,7 @@
 
 const DEFAULT_OWNER_EMAILS = [
   "corey@childactor101.com",
+  "admin@childactor101.com",
   "admin@prep101.site",
   "themrralstons@icloud.com",
 ];

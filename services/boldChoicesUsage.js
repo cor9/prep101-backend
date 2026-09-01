@@ -141,4 +141,28 @@ async function checkAndIncrement(userId, limit = 1) {
   }
 }
 
-module.exports = { getUsage, incrementUsage, checkAndIncrement };
+/**
+ * Give back a generation that was counted but never actually queued, so an
+ * infrastructure failure does not consume someone's monthly allowance.
+ */
+async function refundUsage(userId) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  const today = getThisMonth();
+  try {
+    const rows = await sbFetch(
+      `boldchoices_usage?user_id=eq.${encodeURIComponent(String(userId))}&date=eq.${today}&select=id,count`,
+    );
+    if (!rows || rows.length === 0) return;
+    const { id, count } = rows[0];
+    const next = Math.max(0, Number(count || 0) - 1);
+    await sbFetch(`boldchoices_usage?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ count: next }),
+    });
+    console.log(`[BoldChoices] Refunded usage for ${userId}: ${count} -> ${next}`);
+  } catch (error) {
+    console.warn("[BoldChoices] Could not refund usage:", error.message);
+  }
+}
+
+module.exports = { getUsage, incrementUsage, checkAndIncrement, refundUsage };

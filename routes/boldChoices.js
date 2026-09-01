@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require("uuid");
 const { randomUUID } = require("crypto");
 const { generateBoldChoices } = require("../services/boldChoicesService");
 const { renderBoldChoicesTemplate } = require("../services/boldChoicesTemplate");
-const { checkAndIncrement } = require("../services/boldChoicesUsage");
+const { checkAndIncrement, refundUsage } = require("../services/boldChoicesUsage");
 const { enqueueGuideJob, getGuideJob } = require("../services/guideQueue");
 const auth = require("../middleware/auth");
 const { buildAccountContext } = require("../services/accountContextService");
@@ -248,6 +248,11 @@ function isValidGuideData(data) {
  * Auth: required (JWT bearer)
  */
 router.post("/generate", auth, async (req, res) => {
+  // Usage is consumed before the job is queued, so a queue outage would
+  // silently burn someone's monthly generation. Track it and refund on failure.
+  let consumedMonthlyUsage = false;
+  let consumedUserId = null;
+
   try {
     const {
       characterName,
@@ -340,6 +345,8 @@ router.post("/generate", auth, async (req, res) => {
           usageCount: count,
         });
       }
+      consumedMonthlyUsage = true;
+      consumedUserId = userId;
     }
 
     let actualSpinAgain = spinAgain;
@@ -424,9 +431,33 @@ router.post("/generate", auth, async (req, res) => {
 // Delete remaining code in /generate since it's now async
   } catch (err) {
     console.error("[BoldChoices] Generation error:", err.message);
+
+    // Nothing was queued, so anything already deducted must go back.
+    if (consumedMonthlyUsage && consumedUserId) {
+      await refundUsage(consumedUserId);
+    }
+
+    // Distinguish "our queue is down" from "your guide failed" — the first is
+    // temporary and retryable, and telling users otherwise wastes their time.
+    const message = String(err?.message || "");
+    const queueUnavailable =
+      /rate-limit|rate limit|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|Connection is closed|max requests|redis/i.test(
+        message
+      );
+
+    if (queueUnavailable) {
+      return res.status(503).json({
+        error:
+          "Bold Choices can't queue new guides right now. Nothing was used from your account — please try again in a few minutes.",
+        code: "QUEUE_UNAVAILABLE",
+        detail: message,
+      });
+    }
+
     return res.status(500).json({
       error: "Failed to generate Bold Choices guide",
-      detail: err.message || "Unknown generation error",
+      code: "GENERATION_FAILED",
+      detail: message || "Unknown generation error",
     });
   }
 });
