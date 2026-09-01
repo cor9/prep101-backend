@@ -28,6 +28,12 @@ function assessContentQuality(text, wordCount, isUpload = false) {
   };
 }
 
+// Below this, a PDF deep-read is worth attempting to enrich thin extractions.
+const DEEP_READ_TRIGGER_WORDS = 80;
+// Below this, there is not enough script to build a guide from at all.
+// Kept in step with the per-product route validators.
+const MIN_USABLE_WORDS = 20;
+
 function getMeaningfulWordCount(text = "") {
   return (text.match(/\b[\w']+\b/g) || []).length;
 }
@@ -141,12 +147,15 @@ async function processGuideJob(payload, jobInstance = null) {
 
   await updateProgress(10, "Repairing and analyzing text...");
   let finalCombinedText = combinedSceneText || payload.sceneText || "";
-  const finalCombinedWordCount = getMeaningfulWordCount(finalCombinedText);
-  
+  let finalCombinedWordCount = getMeaningfulWordCount(finalCombinedText);
+
   // ── Universal PDF deep-read: fires for ALL guide types when text is thin ──
+  // This is a best-effort enhancement, not a gate. Short sides (a half-page
+  // scene, a single monologue) legitimately land under DEEP_READ_TRIGGER_WORDS,
+  // and a failed OCR pass must never discard text we already have.
   if (
     payload.pdfBase64 &&
-    finalCombinedWordCount < 80
+    finalCombinedWordCount < DEEP_READ_TRIGGER_WORDS
   ) {
     await updateProgress(15, "Running deep PDF read (OCR recovery)...");
     try {
@@ -159,25 +168,37 @@ async function processGuideJob(payload, jobInstance = null) {
       });
 
       const recoveredText = recoverScreenplayFromFallback(ocrFallback);
-      const recoveredWordCount = (recoveredText.match(/\b[\w']+\b/g) || []).length;
-      if (recoveredWordCount >= 80) {
+      const recoveredWordCount = getMeaningfulWordCount(recoveredText);
+
+      if (recoveredWordCount > finalCombinedWordCount) {
         finalCombinedText = recoveredText;
+        finalCombinedWordCount = recoveredWordCount;
         // Inject recovered text back so ALL downstream generators see it
         payload.sceneText = recoveredText;
         payload.combinedSceneText = recoveredText;
-        // Recovery succeeded — clear fallback flags so generators receive real text mode
-        // Also clear on the payload object itself (bold_choices passes payload directly)
-        payload.fallbackMode = false;
-        payload.shouldForceReaderFallback = false;
-        payload.shouldForcePrepFallback = false;
-        effectiveReaderFallback = false;
-        effectivePrepFallback = false;
-        console.log(`[JobProcessor] OCR recovery succeeded: ${recoveredWordCount} words recovered. All fallback flags cleared.`);
+
+        if (recoveredWordCount >= DEEP_READ_TRIGGER_WORDS) {
+          // Full recovery — clear fallback flags so generators receive real text mode
+          // Also clear on the payload object itself (bold_choices passes payload directly)
+          payload.fallbackMode = false;
+          payload.shouldForceReaderFallback = false;
+          payload.shouldForcePrepFallback = false;
+          effectiveReaderFallback = false;
+          effectivePrepFallback = false;
+          console.log(`[JobProcessor] Deep PDF read succeeded: ${recoveredWordCount} words recovered. All fallback flags cleared.`);
+        } else {
+          console.log(`[JobProcessor] Deep PDF read improved text to ${recoveredWordCount} words; staying in fallback mode.`);
+        }
       } else {
-        throw new Error("Unable to recover meaningful text from PDF.");
+        console.log(`[JobProcessor] Deep PDF read added nothing (${recoveredWordCount} vs ${finalCombinedWordCount} words); keeping upload-stage text.`);
       }
     } catch (err) {
-      console.warn("[JobProcessor] OCR fallback failed:", err.message);
+      // Recovery is optional. Fall through on the text we already extracted.
+      console.warn("[JobProcessor] Deep PDF read failed, continuing with upload-stage text:", err.message);
+    }
+
+    // Only give up once there is genuinely nothing to build a guide from.
+    if (finalCombinedWordCount < MIN_USABLE_WORDS) {
       throw new Error("We weren't able to read this PDF. Please re-upload a clearer version or paste the sides text directly.");
     }
   }

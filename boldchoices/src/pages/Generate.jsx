@@ -16,6 +16,23 @@ const sanitizeWarnings = (warnings = []) =>
     (warning) => !isLegacyFallbackMessage(warning)
   );
 
+// Text below this reads as a thin extraction the server may want to deep-read.
+const DEEP_READ_TRIGGER_WORDS = 80;
+// Keeps the generate request inside the platform's body limit once base64'd.
+const MAX_INLINE_PDF_BYTES = 3 * 1024 * 1024;
+
+const readFileAsBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const comma = result.indexOf(',');
+      resolve(comma === -1 ? '' : result.slice(comma + 1));
+    };
+    reader.readAsDataURL(file);
+  });
+
 // ── STYLES ──────────────────────────────────────────────────────────────────
 const S = {
   page: {
@@ -327,8 +344,21 @@ export default function Generate() {
           ? null
           : data.uploadMessage;
 
+        // The server's upload store is in-memory, and the generate request can
+        // land on a different instance than this upload did. When the text came
+        // back thin, carry the PDF ourselves so the deep-read still has it.
+        let retainedPdfBase64 = null;
+        if (derivedWordCount < DEEP_READ_TRIGGER_WORDS && file.size <= MAX_INLINE_PDF_BYTES) {
+          try {
+            retainedPdfBase64 = await readFileAsBase64(file);
+          } catch (readErr) {
+            console.warn('Could not retain PDF for deep-read:', readErr);
+          }
+        }
+
         setUploadData({
           ...data,
+          pdfBase64: retainedPdfBase64,
           wordCount: derivedWordCount,
           uploadMessage: sanitizedUploadMessage,
           warnings: sanitizeWarnings(data.warnings),
@@ -412,6 +442,12 @@ export default function Generate() {
           format: 'html',
           fallbackMode: Boolean(uploadData?.fallbackMode),
           uploadId: uploadData?.uploadId || uploadData?.uploadIds?.[0] || null,
+          ...(uploadData?.pdfBase64
+            ? {
+                pdfBase64: uploadData.pdfBase64,
+                filename: uploadData.filename || 'upload.pdf',
+              }
+            : {}),
           warnings: uploadData?.warnings || [],
           ...(modifier ? { modifier } : {}),
           ...(isRetry ? { spinAgain: true, previousGenerationId: generationId } : {}),

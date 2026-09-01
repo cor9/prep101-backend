@@ -67,6 +67,46 @@ async function logEvent(event, userId, meta = {}) {
   }
 }
 
+// The upload store is in-memory. On Vercel the /api/upload call and this
+// /generate call can land on different lambda instances, so the store often
+// misses and the deep-read never receives the PDF it was built to read.
+// Accept a client-supplied copy as a fallback, bounded and sniffed first.
+const MAX_INLINE_PDF_BYTES = 3 * 1024 * 1024;
+
+function resolveUploadPdf(uploadEntry, body = {}) {
+  if (uploadEntry?.pdfBase64) {
+    return {
+      pdfBase64: uploadEntry.pdfBase64,
+      filename: uploadEntry.filename || "upload.pdf",
+      source: "upload-store",
+    };
+  }
+
+  const inline = typeof body.pdfBase64 === "string" ? body.pdfBase64.trim() : "";
+  if (!inline) return null;
+
+  let buffer;
+  try {
+    buffer = Buffer.from(inline.replace(/^data:[^,]*,/, ""), "base64");
+  } catch (error) {
+    console.warn("[BoldChoices] Ignoring unreadable inline pdfBase64:", error.message);
+    return null;
+  }
+
+  if (!buffer.length || buffer.length > MAX_INLINE_PDF_BYTES) return null;
+  if (buffer.subarray(0, 5).toString("latin1") !== "%PDF-") return null;
+
+  return {
+    // Re-encode so downstream always sees clean base64.
+    pdfBase64: buffer.toString("base64"),
+    filename:
+      typeof body.filename === "string" && body.filename.trim()
+        ? body.filename.trim()
+        : "upload.pdf",
+    source: "request-body",
+  };
+}
+
 async function ensureGuideUser(user = {}) {
   if (!user?.id || !user?.email) return false;
 
@@ -277,8 +317,8 @@ router.post("/generate", auth, async (req, res) => {
     // Require scene text OR a valid uploadId that we can do deep-read from
     const sceneWordCount = normalizedSceneText.split(/\s+/).filter(Boolean).length;
     const uploadEntry = uploadId ? getUpload(uploadId) : null;
-    const hasPdfFallback = Boolean(uploadEntry?.pdfBase64);
-    if (sceneWordCount < 20 && !hasPdfFallback) {
+    const resolvedPdf = resolveUploadPdf(uploadEntry, req.body);
+    if (sceneWordCount < 20 && !resolvedPdf) {
       return res.status(400).json({
         error: "Bold Choices needs your actual sides. Please paste the scene text or re-upload a readable PDF.",
       });
@@ -381,7 +421,12 @@ router.post("/generate", auth, async (req, res) => {
 
     // ── Build job payload ─────────────────────────────────────────────────
     // Include pdfBase64 so the Render worker can deep-read the PDF if sceneText is thin.
-    // (uploadEntry already declared above in validation block)
+    // (uploadEntry and resolvedPdf already declared above in validation block)
+    console.log(
+      `[BoldChoices] Sides: ${sceneWordCount} words | PDF for deep-read: ${
+        resolvedPdf ? resolvedPdf.source : "none"
+      }`
+    );
     const inputData = {
       jobType: "bold_choices",
       userId,
@@ -404,9 +449,9 @@ router.post("/generate", auth, async (req, res) => {
       format,
       preview,
       // PDF recovery — same system as Prep101 + Reader101
-      ...(uploadEntry?.pdfBase64 ? {
-        pdfBase64: uploadEntry.pdfBase64,
-        filename: uploadEntry.filename || "upload.pdf",
+      ...(resolvedPdf ? {
+        pdfBase64: resolvedPdf.pdfBase64,
+        filename: resolvedPdf.filename,
       } : {}),
     };
 

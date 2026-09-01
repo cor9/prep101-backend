@@ -4,7 +4,8 @@
 
 require("dotenv").config();
 
-const { startGuideWorker } = require("./services/guideQueue");
+const guideQueue = require("./services/guideQueue");
+const { startGuideWorker } = guideQueue;
 
 console.log("Prep101 Guide Worker starting...");
 console.log(`   Redis: ${process.env.REDIS_URL ? "configured" : "MISSING"}`);
@@ -19,6 +20,16 @@ if (!process.env.REDIS_URL) {
 
 if (!process.env.ANTHROPIC_API_KEY) {
   console.error("ANTHROPIC_API_KEY is required. Exiting.");
+  process.exit(1);
+}
+
+// A worker that cannot load the processor would accept jobs and fail every one
+// of them. Refuse to start instead, so a broken deploy is obvious immediately.
+if (guideQueue.processorLoadError) {
+  console.error(
+    "Guide processor failed to load; refusing to start the worker.",
+    guideQueue.processorLoadError
+  );
   process.exit(1);
 }
 

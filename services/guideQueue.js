@@ -1,14 +1,26 @@
 const { Queue, Worker, QueueEvents } = require("bullmq");
 const IORedis = require("ioredis");
 
-// Provide a placeholder so backend doesn't crash before processor is created
-let processGuideJob = async () => { throw new Error("Processor not implemented yet"); };
+// Provide a placeholder so backend doesn't crash before processor is created.
+// If the real processor fails to load (syntax error, missing dependency), every
+// job will fail — so surface the underlying cause instead of a generic stub
+// message, and make it loud enough to notice in the logs.
+let processorLoadError = null;
+let processGuideJob = async () => {
+  throw new Error(
+    `Guide processor unavailable: ${processorLoadError?.message || "not implemented yet"}`
+  );
+};
 
 try {
   const processor = require("./guideJobProcessor");
   processGuideJob = processor.processGuideJob;
 } catch (error) {
-  console.warn("⚠️ Guide processor not fully available yet:", error.message);
+  processorLoadError = error;
+  console.error(
+    "❌ Guide processor failed to load. Every guide job will fail until this is fixed:",
+    error
+  );
 }
 
 const QUEUE_NAME = "guide-generation-jobs";
@@ -223,6 +235,9 @@ async function getGuideJob(jobId) {
 
 module.exports = {
   QUEUE_NAME,
+  get processorLoadError() {
+    return processorLoadError;
+  },
   enqueueGuideJob,
   getGuideJob,
   getGuideQueue,

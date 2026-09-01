@@ -755,8 +755,6 @@ async function generateContent(meta = {}, options = {}) {
   throw lastError || new Error("Failed to generate structured Reader101 content");
 }
 
-// \u2500\u2500 Parent Reader Card generation \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-
 // ─── Parent Reader Card generation ──────────────────────────────────────────────
 
 async function generateParentContent(meta = {}, { apiKey, signal }) {
@@ -768,7 +766,7 @@ async function generateParentContent(meta = {}, { apiKey, signal }) {
     : (meta.readerCharacterName || "all other characters");
   const cleanedText = scrubWatermarks(meta.sceneText || "").trim();
 
-  const systemPrompt = \`You are creating a Reader Parent Card for a self-tape audition.
+  const systemPrompt = `You are creating a Reader Parent Card for a self-tape audition.
 You are coaching the reader (who is a parent, not an actor), NOT the actor.
 The parent needs simple, direct, behavioral instructions to help their child.
 Return ONLY valid JSON matching the requested schema. No markdown code blocks. No preamble.
@@ -781,13 +779,13 @@ SCHEMA:
   "pause_here": ["After \\"line\\" — wait."],
   "dont_do_this": "string (ONE sentence naming the most likely parent mistake specific to this scene)",
   "if_it_goes_wrong": ["action 1", "action 2"]
-}\`;
+}`;
 
-  const userPrompt = \`AUDITION ROLE (actor): \${actorName || "the actor"}
-READER ROLE(S): \${readerRoles}
+  const userPrompt = `AUDITION ROLE (actor): ${actorName || "the actor"}
+READER ROLE(S): ${readerRoles}
 
 SIDES TEXT:
-\${clipText(cleanedText, 8000)}
+${clipText(cleanedText, 8000)}
 
 RULES FOR SECTIONS:
 01 WHAT'S HAPPENING:
@@ -819,7 +817,7 @@ RULES FOR SECTIONS:
 - Write exactly 2 bullets. Each under 10 words.
 - Must be direct actions: restart, point, pause, repeat, etc. No explanation.
 
-OUTPUT ONLY VALID JSON MATCHING THE SCHEMA.\`;
+OUTPUT ONLY VALID JSON MATCHING THE SCHEMA.`;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
@@ -833,10 +831,10 @@ OUTPUT ONLY VALID JSON MATCHING THE SCHEMA.\`;
       });
 
       let text = payload?.content?.[0]?.text || "";
-      if (text.trim().startsWith("\`\`\`json")) {
-        text = text.replace(/^\`\`\`json\\s*/, "").replace(/\\s*\`\`\`$/, "");
-      } else if (text.trim().startsWith("\`\`\`")) {
-        text = text.replace(/^\`\`\`\\s*/, "").replace(/\\s*\`\`\`$/, "");
+      if (text.trim().startsWith("```json")) {
+        text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      } else if (text.trim().startsWith("```")) {
+        text = text.replace(/^```\s*/, "").replace(/\s*```$/, "");
       }
 
       const parsed = parseJsonResponse(text);
