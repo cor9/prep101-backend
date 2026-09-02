@@ -352,12 +352,20 @@ async function generateBoldChoices(data) {
   let messages = [{ role: "user", content: userPrompt }];
 
   async function callClaude(msgArray) {
-    const { data: result, model } = await sendAnthropicMessage({
+    const { model, stopReason, text } = await sendAnthropicMessage({
       apiKey: ANTHROPIC_API_KEY,
       preferredModel: DEFAULT_CLAUDE_MODEL,
       maxTokens: DEFAULT_CLAUDE_MAX_TOKENS,
       system: BOLD_CHOICES_SYSTEM_PROMPT,
       messages: msgArray,
+      // Be explicit rather than inheriting a per-model default. Sonnet 5 runs
+      // adaptive thinking when `thinking` is omitted (Sonnet 4.6 did not), which
+      // both slows this call down and spends max_tokens the guide JSON needs.
+      // Set BOLD_CHOICES_THINKING=adaptive to trade latency for depth.
+      thinking:
+        process.env.BOLD_CHOICES_THINKING === "adaptive"
+          ? { type: "adaptive" }
+          : { type: "disabled" },
     });
 
     if (model !== DEFAULT_CLAUDE_MODEL) {
@@ -366,7 +374,16 @@ async function generateBoldChoices(data) {
       );
     }
 
-    return result.content[0]?.text || "";
+    // A response cut off at the token ceiling is truncated mid-JSON. Retrying
+    // only makes it longer, so say what actually happened instead of blaming
+    // the model for "invalid JSON".
+    if (stopReason === "max_tokens") {
+      throw new Error(
+        `Bold Choices ran out of output room (max_tokens ${DEFAULT_CLAUDE_MAX_TOKENS}). The sides may be unusually long - try trimming them, or raise CLAUDE_MAX_TOKENS.`
+      );
+    }
+
+    return text;
   }
 
   let rawText = await callClaude(messages);

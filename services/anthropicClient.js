@@ -65,6 +65,23 @@ function flattenForOpenAI({ system, messages = [] }) {
   return chunks.join("\n\n---\n\n");
 }
 
+/**
+ * Pull the assistant's text out of a Messages API response.
+ *
+ * Never index content[0] directly. On models that think (adaptive thinking is
+ * ON BY DEFAULT on Sonnet 5 / Opus 5, unlike Sonnet 4.6 where omitting the
+ * `thinking` param meant no thinking), content[0] is a thinking block whose
+ * `.text` is undefined, and naive extraction silently yields "".
+ */
+function getAnthropicText(data = {}) {
+  const content = Array.isArray(data?.content) ? data.content : [];
+  return content
+    .filter((block) => block?.type === "text" && typeof block?.text === "string")
+    .map((block) => block.text)
+    .join("\n")
+    .trim();
+}
+
 async function sendAnthropicMessage({
   apiKey,
   messages,
@@ -73,6 +90,7 @@ async function sendAnthropicMessage({
   preferredModel = DEFAULT_CLAUDE_MODEL,
   signal,
   openAIFallbackModel,
+  thinking,
 }) {
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY not configured");
@@ -88,6 +106,7 @@ async function sendAnthropicMessage({
       max_tokens: effectiveMaxTokens,
       messages,
       ...(system ? { system } : {}),
+      ...(thinking ? { thinking } : {}),
     };
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -103,7 +122,13 @@ async function sendAnthropicMessage({
 
     if (response.ok) {
       const data = await response.json();
-      return { data, model, maxTokens: effectiveMaxTokens };
+      return {
+        data,
+        model,
+        maxTokens: effectiveMaxTokens,
+        stopReason: data?.stop_reason || null,
+        text: getAnthropicText(data),
+      };
     }
 
     const errorText = await response.text();
@@ -154,5 +179,6 @@ async function sendAnthropicMessage({
 }
 
 module.exports = {
+  getAnthropicText,
   sendAnthropicMessage,
 };
