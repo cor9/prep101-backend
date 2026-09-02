@@ -31,7 +31,20 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   subscription: {
-    type: DataTypes.ENUM('free', 'basic', 'premium'),
+    // Must stay in step with enum_Users_subscription in Postgres and with the
+    // plan names resolved by services/prep101EntitlementsService.js. The plan
+    // names below the first three were missing here and in the database, so
+    // the column could not record most of what we actually sell and paid
+    // entitlement had to be inferred from stripePriceId alone.
+    type: DataTypes.ENUM(
+      'free',
+      'basic',
+      'premium',
+      'starter',
+      'bundle',
+      'reader101_monthly',
+      'boldchoices_monthly'
+    ),
     defaultValue: 'free'
   },
   subscriptionId: DataTypes.STRING,
