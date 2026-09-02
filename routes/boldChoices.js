@@ -84,28 +84,40 @@ async function ensureGuideUser(user = {}) {
 
   if (existing?.id) return true;
 
-  // Keep this conservative so schema drift in Users table doesn't block guide saves.
-  let upsertResult = await runAdminQuery(async (client) =>
+  // Users.password, name, createdAt and updatedAt are all NOT NULL with no
+  // database default. This upsert used to send only {id, email, name} and then
+  // "fall back" to {id, email}, so BOTH attempts failed a NOT NULL constraint
+  // and no row was ever written for a Supabase-Auth user. Those accounts then
+  // had nowhere to carry a subscription, so a paying customer looked like a
+  // free one. Send every required column instead.
+  //
+  // The password is a hash of random bytes: these accounts authenticate through
+  // Supabase Auth and never verify against this column, but the schema demands
+  // a value and an unguessable one keeps it unusable.
+  const bcrypt = require("bcryptjs");
+  const now = new Date().toISOString();
+  const unusablePassword = bcrypt.hashSync(randomUUID() + randomUUID(), 10);
+
+  const upsertResult = await runAdminQuery(async (client) =>
     client.from(tables.users).upsert(
       {
         id: user.id,
         email: user.email,
         name: user.name || user.email.split("@")[0],
+        password: unusablePassword,
+        createdAt: now,
+        updatedAt: now,
       },
       { onConflict: "id" }
     )
   );
 
   if (upsertResult?.error) {
-    // Legacy compatibility fallback: try upsert without name if constrained.
-    upsertResult = await runAdminQuery(async (client) =>
-      client.from(tables.users).upsert(
-        {
-          id: user.id,
-          email: user.email,
-        },
-        { onConflict: "id" }
-      )
+    console.error(
+      "[BoldChoices] Could not provision Users row for",
+      user.email,
+      "-",
+      upsertResult.error.message || upsertResult.error
     );
   }
 
