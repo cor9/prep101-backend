@@ -1,5 +1,6 @@
 const { Queue, Worker, QueueEvents } = require("bullmq");
 const IORedis = require("ioredis");
+const { finalizeGuideJob } = require("./guideFinalizer");
 
 // Provide a placeholder so backend doesn't crash before processor is created.
 // If the real processor fails to load (syntax error, missing dependency), every
@@ -60,6 +61,38 @@ function getGuideQueueEvents() {
   return queueEventsSingleton;
 }
 
+// Generate, then immediately make the guide real.
+//
+// Finalization used to happen only when the browser polled for the finished
+// job, so walking away from a running generation lost the guide entirely. The
+// worker owns it now: by the time the job is marked complete, the guide is
+// saved, the credit is spent, and the email is out. The polling endpoint still
+// finalizes as a fallback, and both paths no-op if the other got there first.
+//
+// Bold Choices jobs are excluded — that product persists to its own
+// boldchoices_generations table through its own route.
+async function runAndFinalizeGuideJob(payload = {}, jobInstance = null) {
+  const result = await processGuideJob(payload, jobInstance);
+
+  if (!result || !result.guidePayload) return result;
+
+  const outcome = await finalizeGuideJob({
+    guidePayload: result.guidePayload,
+    isReaderMode: Boolean(result.isReaderMode),
+    source: "worker",
+  });
+
+  if (!outcome.finalized && outcome.reason !== "quality_gate") {
+    console.warn(
+      `[GuideWorker] Guide ${result.guidePayload.guideId} generated but not finalized (${outcome.reason}); the polling endpoint will retry.`
+    );
+  }
+
+  // Hand the outcome forward so the polling endpoint can skip work it no
+  // longer needs to do, without changing the shape callers already read.
+  return { ...result, finalization: outcome };
+}
+
 function startGuideWorker() {
   if (!useRedisQueue) return null;
   if (workerSingleton) return workerSingleton;
@@ -69,7 +102,7 @@ function startGuideWorker() {
     QUEUE_NAME,
     async (job) => {
       // Pass the job instance so the processor can update progress
-      return processGuideJob(job.data || {}, job);
+      return runAndFinalizeGuideJob(job.data || {}, job);
     },
     {
       connection,
@@ -163,7 +196,7 @@ async function enqueueGuideJob(payload = {}) {
           }
         };
         
-        const result = await processGuideJob(payload, mockJob);
+        const result = await runAndFinalizeGuideJob(payload, mockJob);
         
         inMemoryJobs.set(id, {
           ...active,

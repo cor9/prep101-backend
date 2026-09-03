@@ -12,6 +12,8 @@ const {
   buildPrep101Usage,
   buildReader101Usage,
 } = require("../services/prep101EntitlementsService");
+const { assessGeneratedGuideQuality } = require("../services/guideQuality");
+const emailService = require("../services/emailService");
 
 const router = express.Router();
 
@@ -147,30 +149,6 @@ async function fetchGuideForUser(id, userId) {
   }, null);
 
   return normalizeGuideRow(result);
-}
-
-function assessGeneratedGuideQuality(html = "") {
-  const content = String(html || "");
-  const lower = content.toLowerCase();
-  const missing = [];
-  if (content.length < 2500) missing.push("guide is too short");
-  if (!/Final Coach Note|Closing Coach'?s?\s*Note|FINAL PEP TALK/i.test(content)) {
-    missing.push("final coach note");
-  }
-  if (!/Pre-Submission Checklist/i.test(content)) missing.push("pre-submission checklist");
-  if (!/Two[- ]Take|Take\s*A\b|Take\s*B\b|Take\s*1\b|Take\s*2\b/i.test(content)) {
-    missing.push("two-take strategy");
-  }
-  if (
-    lower.includes("no usable dramatic content detected") ||
-    lower.includes("script pages are not available") ||
-    lower.includes("actual script pages are not available") ||
-    lower.includes("resubmit with the correct pdf") ||
-    ((lower.match(/not stated in sides/g) || []).length >= 8)
-  ) {
-    missing.push("source-specific coaching");
-  }
-  return { valid: missing.length === 0, missing };
 }
 
 async function persistUserRefund(req, guideType) {
@@ -380,6 +358,40 @@ router.get("/:id/pdf", auth, async (req, res) => {
   } catch (error) {
     console.error("❌ [guides/pdf] Error:", error.message);
     return res.status(500).json({ error: "Failed to generate PDF" });
+  }
+});
+
+// The guide view has always had an "Email me this guide" button; the route it
+// posts to was never built, so it answered 404 and the actor got
+// "Failed to email guide."
+router.post("/:id/email", auth, async (req, res) => {
+  try {
+    const guide = await fetchGuideForUser(req.params.id, req.user.id);
+    if (!guide) return res.status(404).json({ error: "Guide not found" });
+
+    if (!emailService.isConfigured()) {
+      return res.status(503).json({
+        error: "Email delivery isn't configured on this server yet.",
+      });
+    }
+
+    const to = req.user.email;
+    if (!to) {
+      return res.status(400).json({
+        error: "Your account has no email address on file.",
+      });
+    }
+
+    await emailService.sendGuideReadyEmail({
+      to,
+      guide,
+      html: wrapGuideHtml(guide.generatedHtml, guide),
+    });
+
+    return res.json({ success: true, sentTo: to });
+  } catch (error) {
+    console.error("❌ [guides/email] Error:", error.message);
+    return res.status(500).json({ error: "Failed to email guide" });
   }
 });
 

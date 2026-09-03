@@ -19,6 +19,7 @@ const {
   getReader101ConsumptionUpdate,
   getPrep101ConsumptionUpdate,
 } = require("./services/prep101EntitlementsService");
+const { assessGuideQualityForType } = require("./services/guideQuality");
 
 // Create app immediately for fast health checks
 const app = express();
@@ -784,7 +785,14 @@ async function persistGuideRecord(payload, user) {
   if (isSupabaseAdminConfigured()) {
     const { randomUUID } = require("crypto");
     guidePayload.id = guidePayload.id || randomUUID();
-    await ensureSupabaseUser(user);
+    const userReady = await ensureSupabaseUser(user);
+    if (!userReady) {
+      // Inserting anyway just trades this for "violates foreign key constraint
+      // Guides_userId_fkey", which tells the actor nothing and buries the cause.
+      throw new Error(
+        `Could not provision an account record for ${user?.email || user?.id}; guide not saved.`
+      );
+    }
     const persisted = await supabaseInsertGuide(guidePayload, { user });
     if (!persisted) throw new Error("Supabase save failed");
     return { persistedGuide: persisted, persistenceMethod: "supabase" };
@@ -814,6 +822,58 @@ async function ensureSupabaseUser(user) {
   if (checkResult?.data) {
     console.log(`✅ User ${user.id} exists in Supabase Users table`);
     return true;
+  }
+
+  // Accounts that predate Supabase Auth have a Users row keyed by a legacy
+  // UUID, while the JWT now carries the auth.users id. Same person, two ids —
+  // and because email is unique, the insert below can never succeed for them:
+  // it collides with their own old row, ensureSupabaseUser returns false, and
+  // the guide insert dies on Guides_userId_fkey.
+  //
+  // Adopt the legacy row instead of fighting it. Guides.userId is ON UPDATE
+  // CASCADE, so re-pointing the id carries the account's existing guides with
+  // it rather than orphaning them.
+  if (user.email) {
+    // ILIKE treats % and _ as wildcards and both are legal in an email local
+    // part, so an unescaped pattern could match — and then adopt — a different
+    // person's account. Escape them, then confirm the row really is an exact
+    // case-insensitive match before touching it.
+    const emailPattern = String(user.email).replace(/([\\%_])/g, "\\$1");
+    const legacyResult = await runAdminQuery((client) =>
+      client
+        .from(SUPABASE_USERS_TABLE)
+        .select("id, email")
+        .ilike("email", emailPattern)
+        .maybeSingle()
+    );
+
+    const legacyRow = legacyResult?.data;
+    const emailsMatch =
+      legacyRow?.email &&
+      String(legacyRow.email).toLowerCase() === String(user.email).toLowerCase();
+    const legacyId = emailsMatch ? legacyRow.id : null;
+
+    if (legacyId && legacyId !== user.id) {
+      console.log(
+        `🔗 Relinking legacy Users row ${legacyId} to auth id ${user.id} for ${user.email}`
+      );
+      const relinked = await runAdminQuery((client) =>
+        client
+          .from(SUPABASE_USERS_TABLE)
+          .update({ id: user.id })
+          .eq("id", legacyId)
+          .select("id")
+          .single()
+      );
+
+      if (relinked?.error) {
+        console.error("❌ Failed to relink legacy Users row:", relinked.error);
+        return false;
+      }
+
+      console.log(`✅ Relinked ${user.email} to auth id ${user.id}`);
+      return true;
+    }
   }
 
   // User doesn't exist, create them
@@ -915,69 +975,6 @@ async function persistBillingUserUpdates(user, updates) {
   });
 
   return row ? normalizeUserRow(row) : { ...user, ...updates };
-}
-
-function assessGeneratedGuideQuality(html = "") {
-  const content = String(html || "");
-  const missing = [];
-  const lower = content.toLowerCase();
-
-  if (content.length < 2500) missing.push("guide is too short");
-  if (!/Final Coach Note|Closing Coach'?s?\s*Note|FINAL PEP TALK/i.test(content)) {
-    missing.push("final coach note");
-  }
-  if (!/Pre-Submission Checklist/i.test(content)) missing.push("pre-submission checklist");
-  if (!/Two[- ]Take|Take\s*A\b|Take\s*B\b|Take\s*1\b|Take\s*2\b/i.test(content)) {
-    missing.push("two-take strategy");
-  }
-  if (
-    lower.includes("no usable dramatic content detected") ||
-    lower.includes("script pages are not available") ||
-    lower.includes("actual script pages are not available") ||
-    lower.includes("resubmit with the correct pdf") ||
-    ((lower.match(/not stated in sides/g) || []).length >= 8)
-  ) {
-    missing.push("source-specific coaching");
-  }
-
-  return {
-    valid: missing.length === 0,
-    missing,
-  };
-}
-
-function assessReaderGuideQuality(html = "") {
-  const content = String(html || "");
-  const lower = content.toLowerCase();
-  const missing = [];
-
-  if (content.length < 1500) missing.push("reader guide is too short");
-  if (
-    !/Reader101|Reader Support|reader support|reader['’]?s job|your job|key beats/i.test(
-      content
-    )
-  ) {
-    missing.push("reader-specific coaching");
-  }
-  if (
-    lower.includes("no usable dramatic content detected") ||
-    lower.includes("script pages are not available") ||
-    lower.includes("actual script pages are not available") ||
-    lower.includes("resubmit with the correct pdf")
-  ) {
-    missing.push("source-specific reader guidance");
-  }
-
-  return {
-    valid: missing.length === 0,
-    missing,
-  };
-}
-
-function assessGuideQualityForType(html = "", guideType = "prep101") {
-  return guideType === "reader101"
-    ? assessReaderGuideQuality(html)
-    : assessGeneratedGuideQuality(html);
 }
 
 // Load methodology files into memory for RAG
@@ -3989,6 +3986,10 @@ app.get("/api/guides/jobs/:id", auth, async (req, res) => {
       if (existing) alreadyPersisted = true;
     }
 
+    // The worker finalizes as soon as generation completes, so for a job that
+    // ran to completion this is now the normal path, not the rare double-poll
+    // it used to be. Answer with the same shape the save-here branch returns
+    // so the client cannot tell the two apart.
     if (alreadyPersisted) {
       return res.json({
         id: job.id,
@@ -3997,10 +3998,15 @@ app.get("/api/guides/jobs/:id", auth, async (req, res) => {
         statusMessage: "Completed",
         guideId: guidePayload.guideId,
         guideContent: guidePayload.generatedHtml,
+        savedToDatabase: true,
+        usage: isReaderMode
+          ? buildReader101Usage(currentUser)
+          : buildPrep101Usage(currentUser),
         metadata: {
           characterName: guidePayload.characterName,
           productionTitle: guidePayload.productionTitle,
           productionType: guidePayload.productionType,
+          scriptWordCount: combinedWordCount,
           guideLength: guidePayload.generatedHtml.length,
           alreadyPersisted: true,
         }
