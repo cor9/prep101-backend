@@ -6,6 +6,7 @@ const { generateBoldChoices } = require("../services/boldChoicesService");
 const { renderBoldChoicesTemplate } = require("../services/boldChoicesTemplate");
 const { checkAndIncrement, refundUsage } = require("../services/boldChoicesUsage");
 const { enqueueGuideJob, getGuideJob } = require("../services/guideQueue");
+const { ensureUserRow } = require("../services/userProvisioning");
 const auth = require("../middleware/auth");
 const { buildAccountContext } = require("../services/accountContextService");
 const { getUpload, resolveUploadPdf } = require("../services/uploadStore");
@@ -68,60 +69,12 @@ async function logEvent(event, userId, meta = {}) {
   }
 }
 
+// Provisioning lives in services/userProvisioning.js so the Bold Choices route,
+// the Prep101/Reader101 path and the guide worker cannot drift apart again —
+// they did once, and the copy that was never fixed omitted NOT NULL columns.
 async function ensureGuideUser(user = {}) {
   if (!user?.id || !user?.email) return false;
-
-  const existing = await runAdminQuery(async (client) => {
-    const { data, error } = await client
-      .from(tables.users)
-      .select("id")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
-  }, null);
-
-  if (existing?.id) return true;
-
-  // Users.password, name, createdAt and updatedAt are all NOT NULL with no
-  // database default. This upsert used to send only {id, email, name} and then
-  // "fall back" to {id, email}, so BOTH attempts failed a NOT NULL constraint
-  // and no row was ever written for a Supabase-Auth user. Those accounts then
-  // had nowhere to carry a subscription, so a paying customer looked like a
-  // free one. Send every required column instead.
-  //
-  // The password is a hash of random bytes: these accounts authenticate through
-  // Supabase Auth and never verify against this column, but the schema demands
-  // a value and an unguessable one keeps it unusable.
-  const bcrypt = require("bcryptjs");
-  const now = new Date().toISOString();
-  const unusablePassword = bcrypt.hashSync(randomUUID() + randomUUID(), 10);
-
-  const upsertResult = await runAdminQuery(async (client) =>
-    client.from(tables.users).upsert(
-      {
-        id: user.id,
-        email: user.email,
-        name: user.name || user.email.split("@")[0],
-        password: unusablePassword,
-        createdAt: now,
-        updatedAt: now,
-      },
-      { onConflict: "id" }
-    )
-  );
-
-  if (upsertResult?.error) {
-    console.error(
-      "[BoldChoices] Could not provision Users row for",
-      user.email,
-      "-",
-      upsertResult.error.message || upsertResult.error
-    );
-  }
-
-  return !upsertResult?.error;
+  return ensureUserRow(user);
 }
 
 async function persistGuideToLibrary(user, payload) {

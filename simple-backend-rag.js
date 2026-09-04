@@ -20,6 +20,7 @@ const {
   getPrep101ConsumptionUpdate,
 } = require("./services/prep101EntitlementsService");
 const { assessGuideQualityForType } = require("./services/guideQuality");
+const { ensureUserRow } = require("./services/userProvisioning");
 
 // Create app immediately for fast health checks
 const app = express();
@@ -812,118 +813,13 @@ async function persistGuideRecord(payload, user) {
   return { persistedGuide, persistenceMethod: "sequelize" };
 }
 
-// Ensure user exists in Supabase Users table before saving guides
+// Ensure user exists in Supabase Users table before saving guides.
+// The implementation is shared with the Bold Choices route and the guide
+// worker: two copies of it drifted once already, and the unfixed one omitted
+// NOT NULL columns so Prep101 could not provision an account that Bold Choices
+// could. See services/userProvisioning.js.
 async function ensureSupabaseUser(user) {
-  if (!isSupabaseAdminConfigured()) return false;
-
-  const SUPABASE_USERS_TABLE = supabaseTables.users;
-
-  // Check if user exists
-  const checkResult = await runAdminQuery((client) =>
-    client
-      .from(SUPABASE_USERS_TABLE)
-      .select("id")
-      .eq("id", user.id)
-      .maybeSingle()
-  );
-
-  if (checkResult?.data) {
-    console.log(`✅ User ${user.id} exists in Supabase Users table`);
-    return true;
-  }
-
-  // Accounts that predate Supabase Auth have a Users row keyed by a legacy
-  // UUID, while the JWT now carries the auth.users id. Same person, two ids —
-  // and because email is unique, the insert below can never succeed for them:
-  // it collides with their own old row, ensureSupabaseUser returns false, and
-  // the guide insert dies on Guides_userId_fkey.
-  //
-  // Adopt the legacy row instead of fighting it. Guides.userId is ON UPDATE
-  // CASCADE, so re-pointing the id carries the account's existing guides with
-  // it rather than orphaning them.
-  if (user.email) {
-    // ILIKE treats % and _ as wildcards and both are legal in an email local
-    // part, so an unescaped pattern could match — and then adopt — a different
-    // person's account. Escape them, then confirm the row really is an exact
-    // case-insensitive match before touching it.
-    const emailPattern = String(user.email).replace(/([\\%_])/g, "\\$1");
-    const legacyResult = await runAdminQuery((client) =>
-      client
-        .from(SUPABASE_USERS_TABLE)
-        .select("id, email")
-        .ilike("email", emailPattern)
-        .maybeSingle()
-    );
-
-    const legacyRow = legacyResult?.data;
-    const emailsMatch =
-      legacyRow?.email &&
-      String(legacyRow.email).toLowerCase() === String(user.email).toLowerCase();
-    const legacyId = emailsMatch ? legacyRow.id : null;
-
-    if (legacyId && legacyId !== user.id) {
-      console.log(
-        `🔗 Relinking legacy Users row ${legacyId} to auth id ${user.id} for ${user.email}`
-      );
-      const relinked = await runAdminQuery((client) =>
-        client
-          .from(SUPABASE_USERS_TABLE)
-          .update({ id: user.id })
-          .eq("id", legacyId)
-          .select("id")
-          .single()
-      );
-
-      if (relinked?.error) {
-        console.error("❌ Failed to relink legacy Users row:", relinked.error);
-        return false;
-      }
-
-      console.log(`✅ Relinked ${user.email} to auth id ${user.id}`);
-      return true;
-    }
-  }
-
-  // User doesn't exist, create them
-  console.log(`📝 Creating user ${user.id} in Supabase Users table...`);
-  const insertResult = await runAdminQuery((client) =>
-    client
-      .from(SUPABASE_USERS_TABLE)
-      .insert({
-        id: user.id,
-        email: user.email,
-        name: user.name || user.email.split("@")[0],
-        password: "supabase_auth", // Placeholder - actual auth is via Supabase Auth
-        subscription: user.subscription || "free",
-        guidesUsed: typeof user.guidesUsed === "number" ? user.guidesUsed : 0,
-        guidesLimit: typeof user.guidesLimit === "number" ? user.guidesLimit : 0,
-        prep101TopUpCredits:
-          typeof user.prep101TopUpCredits === "number" ? user.prep101TopUpCredits : 0,
-        prep101TopUpSessionIds: Array.isArray(user.prep101TopUpSessionIds)
-          ? user.prep101TopUpSessionIds
-          : [],
-        reader101Credits:
-          typeof user.reader101Credits === "number" ? user.reader101Credits : 0,
-        reader101SessionIds: Array.isArray(user.reader101SessionIds)
-          ? user.reader101SessionIds
-          : [],
-        boldChoicesCredits:
-          typeof user.boldChoicesCredits === "number" ? user.boldChoicesCredits : 0,
-        boldChoicesSessionIds: Array.isArray(user.boldChoicesSessionIds)
-          ? user.boldChoicesSessionIds
-          : [],
-      })
-      .select("id")
-      .single()
-  );
-
-  if (insertResult?.error) {
-    console.error("❌ Failed to create user in Supabase:", insertResult.error);
-    return false;
-  }
-
-  console.log(`✅ User ${user.id} created in Supabase Users table`);
-  return true;
+  return ensureUserRow(user);
 }
 
 async function loadBillingUser(user) {

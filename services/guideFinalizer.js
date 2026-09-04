@@ -32,6 +32,7 @@ const {
   getReader101ConsumptionUpdate,
 } = require("./prep101EntitlementsService");
 const { assessGuideQualityForType } = require("./guideQuality");
+const { ensureUserRowById } = require("./userProvisioning");
 const emailService = require("./emailService");
 
 function isDuplicateKeyError(error) {
@@ -122,12 +123,22 @@ async function finalizeGuideJob({ guidePayload, isReaderMode = false, source = "
       return { finalized: false, reason: "quality_gate", missing: quality.missing };
     }
 
-    // The Guides.userId foreign key needs a Users row. If it is missing, the
-    // request path can build one from the auth record; this process cannot.
-    const user = await loadUserById(userId);
+    // The Guides.userId foreign key needs a Users row. Accounts created through
+    // Supabase Auth may not have one — provisioning has silently failed for
+    // them in the past — so build it from the auth record rather than giving
+    // up. Deferring to the polling endpoint was never a real fallback for a
+    // guide whose owner has already closed the tab.
+    let user = await loadUserById(userId);
+    if (!user) {
+      console.log(
+        `[Finalizer] No Users row for ${userId}; provisioning one from the auth record.`
+      );
+      const provisioned = await ensureUserRowById(userId);
+      if (provisioned) user = await loadUserById(userId);
+    }
     if (!user) {
       console.warn(
-        `[Finalizer] No Users row for ${userId}; deferring ${guideId} to the polling endpoint.`
+        `[Finalizer] Could not provision a Users row for ${userId}; deferring ${guideId}.`
       );
       return { finalized: false, reason: "user_row_missing" };
     }
