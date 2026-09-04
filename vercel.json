@@ -48,5 +48,11 @@
       "source": "/api/(.*)",
       "destination": "/api/simple-backend-rag.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/finalize-guides",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }

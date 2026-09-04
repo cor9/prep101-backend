@@ -516,6 +516,14 @@ try {
 }
 
 try {
+  const cronRoutes = require("./routes/cron");
+  app.use("/api/cron", cronRoutes);
+  console.log("✅ Cron routes loaded");
+} catch (error) {
+  console.log("⚠️  Cron routes not available:", error.message);
+}
+
+try {
   const guidesRoutes = require("./routes/guides");
   app.use("/api/guides", guidesRoutes);
   console.log("✅ Guide routes loaded");

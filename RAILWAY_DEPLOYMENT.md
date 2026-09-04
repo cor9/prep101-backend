@@ -25,43 +25,6 @@ NODE_ENV=production
 PORT=3001 (or let Railway set this automatically)
 ```
 
-## The guide worker service
-
-`worker.js` (`npm run worker:guide`) runs as its own Railway service, separate
-from the API. It is not optional plumbing: since the finalization fix, the
-worker is what **saves the guide to the database, spends the credit, and emails
-the actor**. The API's polling endpoint is only a fallback for the case where
-someone is still watching the page.
-
-That means the worker service needs credentials the API used to hold alone:
-
-```
-REDIS_URL=rediss://...                 # required, worker exits without it
-ANTHROPIC_API_KEY=sk-ant-...           # required, worker exits without it
-SUPABASE_URL=https://xxxx.supabase.co  # required to SAVE guides
-SUPABASE_SERVICE_ROLE_KEY=...          # required to SAVE guides
-SES_SMTP_HOST=email-smtp.<region>.amazonaws.com
-SES_SMTP_PORT=587
-SES_SMTP_USER=...
-SES_SMTP_PASS=...
-EMAIL_FROM=noreply@prep101.site
-FRONTEND_URL=https://prep101.childactor101.com   # used for the link in the email
-```
-
-The worker prints a status banner on boot. Check the deploy logs read:
-
-```
-   Redis: configured
-   Anthropic: configured
-   Supabase: configured
-   Email (SES): configured
-```
-
-`Supabase: MISSING` means guides generate but are only saved if the actor's
-browser happens to still be polling — the failure mode that lost every Prep101
-guide between May and September. `Email (SES): MISSING` means guides save but
-nobody is told.
-
 ## Deployment Steps
 
 1. **Connect your GitHub repository to Railway**

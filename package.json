@@ -11,6 +11,7 @@
     "test:pdf-ingest": "node scripts/test-pdf-ingest-pipeline.js",
     "recover:guides": "node scripts/recover-stuck-guides.js",
     "test:finalizer": "node scripts/test-guide-finalizer.js",
+    "test:cron": "node scripts/test-cron-recovery.js",
     "migrate": "node scripts/migrate.js",
     "start:enhanced": "node simple-backend-rag.js",
     "setup-supabase": "node setup-supabase.js",
