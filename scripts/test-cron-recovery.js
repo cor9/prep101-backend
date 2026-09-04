@@ -85,6 +85,19 @@ function req(server, { token, query = "" } = {}) {
   r = await req(server, { token: "s3cret-valuX" });
   check("401 with a same-length wrong token", r.status === 401, r);
 
+  // 2b. A secret stored with a trailing newline still authenticates. Vercel
+  //     sends the header without it, so an untrimmed compare would 401 forever.
+  process.env.CRON_SECRET = "s3cret-value\n";
+  state.jobs = []; state.persisted = new Set(); state.finalized = [];
+  r = await req(server, { token: "s3cret-value" });
+  check("tolerates a newline-padded stored secret", r.status === 200, r);
+  process.env.CRON_SECRET = " s3cret-value ";
+  r = await req(server, { token: "s3cret-value" });
+  check("tolerates a space-padded stored secret", r.status === 200, r);
+  r = await req(server, { token: "s3cret-valu" });
+  check("still rejects a wrong token when padded", r.status === 401, r);
+  process.env.CRON_SECRET = "s3cret-value";
+
   // 3. Healthy system: nothing stranded.
   state.jobs = [job("1")];
   state.persisted = new Set(["g-1"]);

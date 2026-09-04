@@ -20,7 +20,13 @@ function timingSafeEqual(a, b) {
 }
 
 function authorizeCron(req, res, next) {
-  const secret = process.env.CRON_SECRET;
+  // Env vars on this project have a history of arriving with trailing
+  // newlines - SUPABASE_URL still does, which is why lib/supabaseAdmin.js
+  // carries normalizeCredential. It matters more here than there: an HTTP
+  // header cannot hold a raw newline, so a secret stored as "abc\n" would be
+  // sent by Vercel Cron as "abc" and never match itself. The sweep would then
+  // 401 on every run and silently stop protecting anything.
+  const secret = String(process.env.CRON_SECRET || "").trim();
 
   if (!secret) {
     console.error(
@@ -34,7 +40,7 @@ function authorizeCron(req, res, next) {
   // Vercel Cron sends `Authorization: Bearer $CRON_SECRET` when the env var is
   // present on the project.
   const header = req.get("authorization") || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
 
   if (!token || !timingSafeEqual(token, secret)) {
     return res.status(401).json({ error: "Unauthorized" });
