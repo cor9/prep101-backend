@@ -72,7 +72,6 @@
       width: auto;
       object-fit: contain;
       display: block;
-      filter: brightness(0) invert(1);
     }
     @media (max-width: 640px) {
       .nav-logo img { height: 38px; }
@@ -178,7 +177,6 @@
       height: auto;
       max-height: 240px;
       object-fit: contain;
-      filter: brightness(0) invert(1);
     }
     .hero-wordmark-tag {
       font-family: var(--font-display);
@@ -741,6 +739,9 @@
       object-fit: contain;
       filter: brightness(0) invert(1);
     }
+    .bundle-product-logo[src="reader101-logo.png"] {
+      filter: none;
+    }
     .bundle-product-desc {
       font-family: var(--font-mono);
       font-size: 14px;
@@ -931,7 +932,7 @@
       text-align: center;
       background: rgba(0,0,0,0.4);
     }
-    .footer-logo img { height: 32px; width: auto; object-fit: contain; opacity: 0.8; filter: brightness(0) invert(1); }
+    .footer-logo img { height: 32px; width: auto; object-fit: contain; opacity: 0.8; }
     .footer-closer {
       font-family: var(--font-display);
       font-size: clamp(20px, 3vw, 28px);
