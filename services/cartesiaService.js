@@ -99,9 +99,11 @@ async function generateScenePartnerAudio({
   const onCallerAbort = () => controller.abort();
   if (signal) signal.addEventListener("abort", onCallerAbort, { once: true });
 
-  let response;
+  // The timeout covers the body read too: node-fetch resolves on headers, so a
+  // stalled audio stream would otherwise hang the request.
+  let audio;
   try {
-    response = await fetch(CARTESIA_TTS_URL, {
+    const response = await fetch(CARTESIA_TTS_URL, {
       method: "POST",
       signal: controller.signal,
       headers: {
@@ -111,7 +113,23 @@ async function generateScenePartnerAudio({
       },
       body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        `[Cartesia] TTS error ${response.status} [model=${CARTESIA_MODEL_ID}]: ${errorText}`
+      );
+      throw new CartesiaError(
+        `Cartesia TTS error ${response.status}: ${errorText.slice(0, 300)}`,
+        // Pass through bad-input errors; anything else (auth, quota, outage) is
+        // our upstream's problem, not the caller's.
+        { status: [400, 422].includes(response.status) ? 400 : 502 }
+      );
+    }
+
+    audio = await response.buffer();
   } catch (error) {
+    if (error instanceof CartesiaError) throw error;
     if (error.name === "AbortError") {
       throw new CartesiaError("Cartesia TTS request timed out", {
         status: 504,
@@ -123,21 +141,6 @@ async function generateScenePartnerAudio({
     clearTimeout(timeout);
     if (signal) signal.removeEventListener("abort", onCallerAbort);
   }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(
-      `[Cartesia] TTS error ${response.status} [model=${CARTESIA_MODEL_ID}]: ${errorText}`
-    );
-    throw new CartesiaError(
-      `Cartesia TTS error ${response.status}: ${errorText.slice(0, 300)}`,
-      // Pass through bad-input errors; anything else (auth, quota, outage) is
-      // our upstream's problem, not the caller's.
-      { status: [400, 422].includes(response.status) ? 400 : 502 }
-    );
-  }
-
-  const audio = await response.buffer();
 
   return {
     audio,
