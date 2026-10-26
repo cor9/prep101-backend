@@ -605,6 +605,14 @@ try {
   console.log("⚠️  Bold Choices routes not available:", error.message);
 }
 
+try {
+  const rehearsalRoutes = require("./routes/rehearsal");
+  app.use("/api/rehearsal", rehearsalRoutes);
+  console.log("✅ Rehearsal (LineCue beta) routes loaded");
+} catch (error) {
+  console.log("⚠️  Rehearsal routes not available:", error.message);
+}
+
 // Secure API key handling (trim to avoid invisible whitespace issues)
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || "").trim();
 if (!ANTHROPIC_API_KEY) {
