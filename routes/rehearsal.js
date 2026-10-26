@@ -25,6 +25,20 @@ const upload = multer({
 // Cap per-line TTS input so one request can't run up a large Cartesia bill.
 const MAX_TTS_CHARS = 1000;
 
+// ingestPdf's cleaned text drops lines like "ALICE" or "BOB" as watermark noise,
+// which strips the speaker cues rehearsal needs. Use the uncleaned text of the
+// stage the pipeline picked; Claude is told to skip watermarks itself.
+function getCuePreservingText(ingest) {
+  const diagnostics = ingest?.diagnostics || {};
+  const stage = diagnostics[`${ingest?.source}Stage`];
+  const rawText = String(stage?.rawText || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return rawText || ingest?.text || '';
+}
+
 function handleScriptUpload(req, res, next) {
   upload.single('file')(req, res, (error) => {
     if (!error) return next();
@@ -70,7 +84,8 @@ router.post('/process-script', handleScriptUpload, async (req, res) => {
       allowLocalRaster: !process.env.VERCEL,
     });
 
-    if (!ingest.text || !ingest.text.trim()) {
+    const scriptText = getCuePreservingText(ingest);
+    if (!scriptText.trim()) {
       return res.status(422).json({
         success: false,
         error: 'We could not read any text from this PDF. Try a text-based (not scanned) copy of the sides.',
@@ -79,7 +94,7 @@ router.post('/process-script', handleScriptUpload, async (req, res) => {
     }
 
     const { dialogueLines, characters, model, usage } =
-      await extractStructuredRehearsalScript(ingest.text);
+      await extractStructuredRehearsalScript(scriptText);
 
     if (dialogueLines.length === 0) {
       return res.status(422).json({
