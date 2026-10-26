@@ -2,6 +2,7 @@ const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
 const auth = require("../middleware/auth");
 const User = require("../models/User");
+const { getBetaFeatures } = require("../middleware/betaAuth");
 const {
   addActorProfile,
   buildAccountContext,
@@ -70,6 +71,7 @@ function serializeUser(user, account = null) {
     currentPeriodEnd: user.currentPeriodEnd || null,
     betaAccessLevel: user.betaAccessLevel || "none",
     isBetaTester: Boolean(user.isBetaTester),
+    betaFeatures: getBetaFeatures(user),
     prep101Usage,
     reader101Usage,
     boldChoicesUsage,
@@ -305,6 +307,7 @@ router.post("/login", async (req, res) => {
             currentPeriodEnd: user?.currentPeriodEnd || null,
             betaAccessLevel: user?.betaAccessLevel || "none",
             isBetaTester: Boolean(user?.isBetaTester),
+            betaFeatures: getBetaFeatures(user),
           };
 
           await ensureProfile(hydratedUser).catch((error) => {
