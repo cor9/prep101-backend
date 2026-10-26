@@ -56,6 +56,7 @@ function requireBetaFeature(featureName) {
 
 module.exports = {
   LINECUE_REHEARSAL_FEATURE,
+  getBetaFeatures,
   requireBetaFeature,
   userHasBetaFeature,
 };

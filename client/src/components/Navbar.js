@@ -6,6 +6,7 @@ import {
   buildBoldChoicesUrl,
   buildReader101Url,
 } from '../utils/ecosystemLinks';
+import { LINECUE_FEATURE } from '../config/betaFeatures';
 
 const ECOSYSTEM = [
   { label: 'ChildActor101', href: 'https://childactor101.com', color: '#6366f1' },
@@ -21,6 +22,8 @@ export default function Navbar() {
   const { user, logout, selectActor } = useAuth();
   const [isSwitchingActor, setIsSwitchingActor] = useState(false);
   const token = user?.accessToken || user?.token;
+  const hasLineCue =
+    Array.isArray(user?.betaFeatures) && user.betaFeatures.includes(LINECUE_FEATURE);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -136,6 +139,7 @@ export default function Navbar() {
                   </button>
                 </>
               )}
+              {hasLineCue && <Link to="/linecue">LineCue (beta)</Link>}
               <Link to="/dashboard" title={ACCOUNT_LABEL}>My Account</Link>
               <button onClick={handleLogout} className="nav__logout">Logout</button>
             </>

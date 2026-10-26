@@ -23,6 +23,7 @@ import AuthBridge from './pages/AuthBridge';
 import AuthCallback from './pages/AuthCallback';
 import Onboarding from './pages/Onboarding';
 import SelectActor from './pages/SelectActor';
+import LineCue from './pages/LineCue';
 import './App.css';
 
 
@@ -171,6 +172,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <BoldChoices />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/linecue"
+                  element={
+                    <ProtectedRoute>
+                      <LineCue />
                     </ProtectedRoute>
                   }
                 />
