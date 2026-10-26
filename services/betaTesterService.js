@@ -10,7 +10,8 @@ class BetaTesterService {
       'advanced-analytics': 'Detailed guide performance analytics',
       'api-access': 'Direct API access for integrations',
       'priority-support': 'Priority customer support',
-      'early-access': 'Access to features before public release'
+      'early-access': 'Access to features before public release',
+      'linecue_rehearsal': 'LineCue scene rehearsal with AI scene-partner audio'
     };
   }
 
@@ -85,7 +86,7 @@ class BetaTesterService {
     const featureMap = {
       'early': ['early-access', 'priority-support'],
       'premium': ['early-access', 'priority-support', 'advanced-rag', 'bulk-guide-generation'],
-      'admin': ['early-access', 'priority-support', 'advanced-rag', 'bulk-guide-generation', 'custom-methodology', 'advanced-analytics', 'api-access']
+      'admin': ['early-access', 'priority-support', 'advanced-rag', 'bulk-guide-generation', 'custom-methodology', 'advanced-analytics', 'api-access', 'linecue_rehearsal']
     };
     
     return featureMap[accessLevel] || ['early-access'];

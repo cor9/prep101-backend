@@ -91,6 +91,8 @@ async function sendAnthropicMessage({
   signal,
   openAIFallbackModel,
   thinking,
+  tools,
+  toolChoice,
 }) {
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY not configured");
@@ -107,6 +109,8 @@ async function sendAnthropicMessage({
       messages,
       ...(system ? { system } : {}),
       ...(thinking ? { thinking } : {}),
+      ...(tools ? { tools } : {}),
+      ...(toolChoice ? { tool_choice: toolChoice } : {}),
     };
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
