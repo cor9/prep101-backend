@@ -247,7 +247,8 @@ export default function LineCue() {
         audio.onended = () => {
           if (!cancelled) setIndex((i) => i + 1);
         };
-        audio.src = url;
+        // Same line as before (a pause, then Resume): keep its position.
+        if (audio.src !== url) audio.src = url;
         return audio.play().catch(() => {
           if (cancelled) return;
           setPlaying(false);
@@ -362,7 +363,9 @@ export default function LineCue() {
       setPlaying(true);
       return;
     }
-    if (!playing) unlockAudio();
+    // Resuming reuses the element unlocked on Start; re-unlocking would swap
+    // out a half-played line and restart it.
+    if (!playing && !audioElRef.current) unlockAudio();
     setPlaying((p) => !p);
   };
 
